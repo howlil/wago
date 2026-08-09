@@ -72,10 +72,18 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
 
       try {
         const result = await listActivity(150);
+
+        if (!Array.isArray(result.events)) {
+          setEvents([]);
+          setError("Activity endpoint returned an invalid response. Restart or update the backend, then refresh.");
+          return;
+        }
+
         setEvents(result.events);
         setError(null);
       } catch (caught) {
         const apiError = caught as { message?: string };
+        setEvents([]);
         setError(apiError.message ?? "Could not load gateway activity.");
       } finally {
         if (showLoading) {

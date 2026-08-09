@@ -9,6 +9,7 @@ import {
   getAppInfo,
   getCurrentQr,
   getHealth,
+  listActivity,
   pairWhatsApp,
   sendMessage,
   setStoredApiKey,
@@ -94,6 +95,15 @@ describe("dashboard", () => {
     expect(await screen.findByRole("heading", { name: "Control" })).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Control" })).toHaveLength(1);
     expect(screen.getByRole("heading", { name: "Activity Log" })).toBeTruthy();
+  });
+
+  it("handles malformed activity responses without crashing the dashboard", async () => {
+    vi.mocked(listActivity).mockResolvedValueOnce({ success: true, events: undefined } as never);
+
+    render(<App />);
+
+    expect(await screen.findByText(/activity endpoint returned an invalid response/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Control" })).toBeTruthy();
   });
 
   it("opens the change-account dialog for an existing binding", async () => {

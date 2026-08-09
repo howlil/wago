@@ -9,6 +9,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      "/activity": backendTarget,
       "/app": backendTarget,
       "/health": backendTarget,
       "/messages": backendTarget,
