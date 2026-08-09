@@ -1,6 +1,6 @@
 FROM node:26-alpine AS frontend-deps
 WORKDIR /app/frontend
-RUN corepack enable
+RUN npm install --global pnpm@11.18.0
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
@@ -10,7 +10,7 @@ RUN pnpm run build
 
 FROM node:26-alpine AS backend-deps
 WORKDIR /app/backend
-RUN corepack enable
+RUN npm install --global pnpm@11.18.0
 COPY backend/package.json backend/pnpm-lock.yaml backend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
@@ -28,7 +28,7 @@ ENV AUTH_DIR=/app/data/auth
 ENV FRONTEND_DIST=/app/public
 ENV ALLOW_WEB_BOOTSTRAP=false
 
-RUN corepack enable
+RUN npm install --global pnpm@11.18.0
 COPY backend/package.json backend/pnpm-lock.yaml backend/pnpm-workspace.yaml ./backend/
 WORKDIR /app/backend
 RUN pnpm install --frozen-lockfile --prod
