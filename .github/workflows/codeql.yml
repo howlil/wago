@@ -35,11 +35,10 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 26
+          package-manager-cache: false
 
       - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.18.0 --activate
+        run: npm install --global pnpm@11.18.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
