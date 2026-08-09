@@ -59,7 +59,6 @@ describe("whatsapp send semantics", () => {
   beforeEach(async () => {
     vi.useRealTimers();
     vi.resetModules();
-    delete process.env.WA_VERSION_MODE;
     baileysMock.ev.removeAllListeners();
     baileysMock.fetchLatestBaileysVersion.mockClear();
     baileysMock.makeWASocket.mockClear();
@@ -271,7 +270,7 @@ describe("whatsapp send semantics", () => {
     expect(getWhatsAppStatus().status).toBe("disconnected");
   });
 
-  it("uses bundled Baileys version by default", async () => {
+  it("uses bundled Baileys version", async () => {
     const { initializeWhatsApp } = await import("./whatsapp.js");
 
     await initializeWhatsApp();
@@ -283,18 +282,5 @@ describe("whatsapp send semantics", () => {
       }),
     );
     expect(baileysMock.makeWASocket.mock.calls[0]?.[0]).not.toHaveProperty("version");
-  });
-
-  it("fetches live Baileys version once when WA_VERSION_MODE=live", async () => {
-    process.env.WA_VERSION_MODE = "live";
-    const { initializeWhatsApp } = await import("./whatsapp.js");
-
-    await initializeWhatsApp();
-    await initializeWhatsApp();
-
-    expect(baileysMock.fetchLatestBaileysVersion).toHaveBeenCalledTimes(1);
-    expect(baileysMock.makeWASocket.mock.calls[0]?.[0]).toMatchObject({
-      version: [2, 3000, 0],
-    });
   });
 });
