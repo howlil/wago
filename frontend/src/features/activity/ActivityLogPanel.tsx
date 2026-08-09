@@ -140,7 +140,7 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
     <section className={`${cardBodyClass} h-full`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className={sectionTitleClass}>Activity log</h2>
+          <h2 className={sectionTitleClass}>Activity Log</h2>
           <p className={sectionDescriptionClass}>Recent operational events. Sensitive values are masked.</p>
         </div>
         <button
