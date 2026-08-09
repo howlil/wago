@@ -67,17 +67,27 @@ describe("app", () => {
   });
 
   it("returns a JSON API error for malformed JSON bodies", async () => {
-    const response = await request(app).post("/messages/send").set("Content-Type", "application/json").send("{bad json");
+    const response = await request(app)
+      .post("/messages/send")
+      .set("Content-Type", "application/json")
+      .send("{bad json");
     expect(response.status).toBe(400);
     expect(response.headers["content-type"]).toContain("application/json");
-    expect(response.body).toEqual({ success: false, error: "INVALID_JSON", message: "Request body must be valid JSON" });
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_JSON",
+      message: "Request body must be valid JSON",
+    });
   });
 
   it("returns a JSON API error for oversized JSON bodies", async () => {
-    const response = await request(app).post("/messages/send").set("Content-Type", "application/json").send({
-      to: "081234567890",
-      text: "x".repeat(40_000),
-    });
+    const response = await request(app)
+      .post("/messages/send")
+      .set("Content-Type", "application/json")
+      .send({
+        to: "081234567890",
+        text: "x".repeat(40_000),
+      });
     expect(response.status).toBe(413);
     expect(response.body).toEqual({ success: false, error: "PAYLOAD_TOO_LARGE", message: "Request body is too large" });
   });

@@ -29,9 +29,6 @@ describe("validateRuntimeConfig", () => {
         apiKeyConfigured: false,
         corsOrigin: "*",
       }),
-    ).toEqual([
-      "API_KEY is required in production.",
-      "CORS_ORIGIN is required in production and must not be *.",
-    ]);
+    ).toEqual(["API_KEY is required in production.", "CORS_ORIGIN is required in production and must not be *."]);
   });
 });
