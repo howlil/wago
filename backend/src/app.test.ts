@@ -11,8 +11,10 @@ const apiKeyRequiredResponse = {
 
 describe("app", () => {
   beforeEach(() => {
+    config.allowWebBootstrap = true;
     config.apiKey = null;
     config.apiKeySource = "unset";
+    config.requestLogging = false;
   });
 
   it("returns health status", async () => {
@@ -20,6 +22,20 @@ describe("app", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok" });
+  });
+
+  it("returns readiness status", async () => {
+    config.apiKey = "ready-key";
+    config.apiKeySource = "env";
+
+    const response = await request(app).get("/ready");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: "ok",
+      appId: config.appId,
+      apiKeyConfigured: true
+    });
   });
 
   it("allows browser clients to consume the API during local development", async () => {
@@ -41,6 +57,23 @@ describe("app", () => {
       success: false,
       error: "INVALID_JSON",
       message: "Request body must be valid JSON"
+    });
+  });
+
+  it("returns a JSON API error for oversized JSON bodies", async () => {
+    const response = await request(app)
+      .post("/messages/send")
+      .set("Content-Type", "application/json")
+      .send({
+        to: "081234567890",
+        text: "x".repeat(40_000)
+      });
+
+    expect(response.status).toBe(413);
+    expect(response.body).toEqual({
+      success: false,
+      error: "PAYLOAD_TOO_LARGE",
+      message: "Request body is too large"
     });
   });
 
@@ -78,6 +111,19 @@ describe("app", () => {
     expect(response.headers["set-cookie"]?.[0]).toContain(config.authCookieName);
     expect(config.apiKey).toBe(response.body.apiKey);
     expect(config.apiKeySource).toBe("generated");
+  });
+
+  it("rejects web bootstrap when disabled", async () => {
+    config.allowWebBootstrap = false;
+
+    const response = await request(app).post("/app/bootstrap");
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      success: false,
+      error: "WEB_BOOTSTRAP_DISABLED",
+      message: "Web bootstrap is disabled. Set API_KEY or enable ALLOW_WEB_BOOTSTRAP for initial setup."
+    });
   });
 
   it("rejects bootstrap after an API key exists", async () => {

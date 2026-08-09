@@ -10,6 +10,7 @@ const dataDirectory = process.env.DATA_DIR?.trim() || defaultDataDirectory;
 const settingsFile = process.env.APP_SETTINGS_FILE?.trim() || resolve(dataDirectory, "app-settings.json");
 const envAppId = process.env.APP_ID?.trim();
 const envApiKey = process.env.API_KEY?.trim();
+const nodeEnv = process.env.NODE_ENV?.trim() || "development";
 
 type ApiKeySource = "env" | "generated" | "unset";
 
@@ -48,14 +49,17 @@ if (!envAppId && !persistedSettings.appId) {
 
 export const config = {
   appId: initialAppId,
+  allowWebBootstrap: process.env.ALLOW_WEB_BOOTSTRAP?.toLowerCase() === "true" || nodeEnv !== "production",
   apiKey: envApiKey || persistedSettings.apiKey || null,
   apiKeySource: (envApiKey ? "env" : persistedSettings.apiKey ? "generated" : "unset") as ApiKeySource,
   authCookieName: process.env.AUTH_COOKIE_NAME?.trim() || "wa_gateway_api_key",
   authCookieSecure: process.env.AUTH_COOKIE_SECURE?.toLowerCase() === "true",
+  bodyLimit: process.env.BODY_LIMIT?.trim() || "32kb",
   authDirectory: process.env.AUTH_DIR?.trim() || resolve(dataDirectory, "auth"),
   corsOrigin: process.env.CORS_ORIGIN?.trim() || "*",
   dataDirectory,
-  frontendDirectory: process.env.FRONTEND_DIST?.trim() || null
+  frontendDirectory: process.env.FRONTEND_DIST?.trim() || null,
+  requestLogging: process.env.REQUEST_LOGGING?.toLowerCase() !== "false"
 };
 
 export function bootstrapApiKey(): { success: true; appId: string; apiKey: string } | { success: false; message: string } {

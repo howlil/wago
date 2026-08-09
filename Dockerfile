@@ -26,6 +26,7 @@ ENV PORT=3000
 ENV DATA_DIR=/app/data
 ENV AUTH_DIR=/app/data/auth
 ENV FRONTEND_DIST=/app/public
+ENV ALLOW_WEB_BOOTSTRAP=false
 
 RUN corepack enable
 COPY backend/package.json backend/pnpm-lock.yaml backend/pnpm-workspace.yaml ./backend/
@@ -35,7 +36,9 @@ RUN pnpm install --frozen-lockfile --prod
 WORKDIR /app
 COPY --from=backend-build /app/backend/dist ./backend/dist
 COPY --from=frontend-build /app/frontend/dist ./public
+RUN mkdir -p /app/data && chown -R node:node /app
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD wget -qO- "http://127.0.0.1:${PORT}/health" >/dev/null || exit 1
+USER node
 CMD ["node", "backend/dist/index.js"]

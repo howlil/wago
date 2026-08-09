@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { requireApiKey } from "../middleware/auth.js";
+import { createRateLimit } from "../middleware/rate-limit.js";
 import { getMessageStatus, sendTextMessage } from "../whatsapp.js";
 
 export const messageRouter = Router();
 
-messageRouter.post("/send", requireApiKey, async (req, res) => {
+messageRouter.post("/send", requireApiKey, createRateLimit({ limit: 30, windowMs: 60_000 }), async (req, res) => {
   const { to, text } = req.body as { to?: unknown; text?: unknown };
 
   if (typeof to !== "string" || typeof text !== "string" || !to.trim() || !text.trim()) {

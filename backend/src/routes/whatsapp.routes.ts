@@ -1,6 +1,7 @@
 import { Router } from "express";
 import QRCode from "qrcode";
 import { requireApiKey } from "../middleware/auth.js";
+import { createRateLimit } from "../middleware/rate-limit.js";
 import { getCurrentQr, getWhatsAppStatus, rebindWhatsApp } from "../whatsapp.js";
 
 export const whatsappRouter = Router();
@@ -40,7 +41,7 @@ whatsappRouter.get("/qr/image", requireApiKey, async (_req, res) => {
   return res.type("image/svg+xml").send(svg);
 });
 
-whatsappRouter.post("/rebind", requireApiKey, async (_req, res) => {
+whatsappRouter.post("/rebind", requireApiKey, createRateLimit({ limit: 5, windowMs: 60_000 }), async (_req, res) => {
   try {
     const result = await rebindWhatsApp();
 

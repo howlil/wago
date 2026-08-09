@@ -17,6 +17,14 @@ appRouter.get("/info", (req, res) => {
 });
 
 appRouter.post("/bootstrap", (_req, res) => {
+  if (!config.allowWebBootstrap) {
+    return res.status(403).json({
+      success: false,
+      error: "WEB_BOOTSTRAP_DISABLED",
+      message: "Web bootstrap is disabled. Set API_KEY or enable ALLOW_WEB_BOOTSTRAP for initial setup."
+    });
+  }
+
   const result = bootstrapApiKey();
 
   if (!result.success) {

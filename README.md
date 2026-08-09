@@ -36,6 +36,9 @@ Available endpoints:
 
 ```text
 GET  /health
+GET  /ready
+GET  /app/info
+POST /app/bootstrap
 GET  /whatsapp/status
 GET  /whatsapp/qr
 GET  /whatsapp/qr/image
@@ -45,7 +48,7 @@ GET  /messages/:id/status
 ```
 
 `GET /app/info` is public and returns the configured App ID plus API key status. WhatsApp and message endpoints require `Authorization: Bearer <API_KEY>`.
-`POST /app/bootstrap` is public only before the app has an API key; after initialization it returns `409`.
+`POST /app/bootstrap` is available only when `ALLOW_WEB_BOOTSTRAP=true` and the app has no API key; after initialization it returns `409`.
 
 Open `http://localhost:3000/whatsapp/qr/image` in a browser to scan the WhatsApp login QR when authentication is required.
 
@@ -60,7 +63,9 @@ APP_ID=wa-gateway-prod
 API_KEY=
 DATA_DIR=/app/data
 AUTH_DIR=/app/data/auth
+ALLOW_WEB_BOOTSTRAP=false
 AUTH_COOKIE_SECURE=true
+BODY_LIMIT=32kb
 PORT=3000
 HOST=0.0.0.0
 CORS_ORIGIN=https://your-app.example.com
@@ -72,6 +77,14 @@ Run locally with Docker:
 ```bash
 docker compose up --build
 ```
+
+For first-run setup through the web UI, start with bootstrap enabled, initialize the app, then restart without it:
+
+```bash
+ALLOW_WEB_BOOTSTRAP=true docker compose up --build
+```
+
+For public deployments, prefer setting `API_KEY` yourself or enable web bootstrap only while the app is private.
 
 If local port `3000` is occupied:
 
@@ -85,6 +98,7 @@ Build the production image directly:
 docker build -t wa-gateway .
 docker run --rm -p 3000:3000 \
   -e APP_ID=wa-gateway-prod \
+  -e ALLOW_WEB_BOOTSTRAP=true \
   -e DATA_DIR=/app/data \
   -e AUTH_DIR=/app/data/auth \
   -v wa_data:/app/data \
