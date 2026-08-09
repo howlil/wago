@@ -4,7 +4,6 @@ import makeWASocket, {
   useMultiFileAuthState,
   WAMessageStatus,
   type WASocket,
-  type WAVersion,
 } from "@whiskeysockets/baileys";
 import { config } from "../config/index.js";
 import { baileysLogger, logger, maskIdentifier } from "../infrastructure/logger.js";
@@ -42,7 +41,6 @@ import {
   resetReconnectAttempts,
   shouldScheduleReconnect,
 } from "./reconnect-state.js";
-import { getLiveBaileysVersion } from "./wa-version.js";
 
 export type { WhatsAppStatus, WhatsAppStatusSnapshot };
 export { getMessageStatus };
@@ -67,13 +65,6 @@ let socketGeneration = 0;
 let reconnectAttempt = 0;
 let reconnectTimer: NodeJS.Timeout | undefined;
 const reachoutRestrictedUntil = new Map<string, number>();
-
-type SocketOptions = {
-  auth: Awaited<ReturnType<typeof useMultiFileAuthState>>["state"];
-  getMessage: typeof getRecentMessage;
-  logger: typeof baileysLogger;
-  version?: WAVersion;
-};
 
 function createNamedError(name: string, message: string): Error {
   const error = new Error(message);
@@ -123,17 +114,11 @@ export async function initializeWhatsApp(): Promise<void> {
 
   try {
     const { state, saveCreds } = await useMultiFileAuthState(authDirectory);
-    const socketOptions: SocketOptions = {
+    const nextSocket = makeWASocket({
       auth: state,
       getMessage: getRecentMessage,
       logger: baileysLogger,
-    };
-
-    if (config.waVersionMode === "live") {
-      socketOptions.version = await getLiveBaileysVersion();
-    }
-
-    const nextSocket = makeWASocket(socketOptions);
+    });
 
     socket = nextSocket;
 

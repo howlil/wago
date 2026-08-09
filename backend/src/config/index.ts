@@ -77,7 +77,6 @@ export const config = {
   trustProxy: false,
   defaultCountryCode: "62",
   logLevel: nodeEnv === "production" ? "info" : "debug",
-  waVersionMode: "default" as const,
 };
 
 export function bootstrapApiKey():
