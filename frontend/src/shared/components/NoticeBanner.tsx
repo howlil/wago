@@ -15,9 +15,7 @@ export function NoticeBanner({ notice }: NoticeBannerProps) {
   return (
     <div
       className={`mb-5 mt-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${
-        success
-          ? "border-[#bfe1d4] bg-[#e7f6f0] text-[#155a45]"
-          : "border-[#efc1c5] bg-[#fff0f1] text-[#8b2932]"
+        success ? "border-[#bfe1d4] bg-[#e7f6f0] text-[#155a45]" : "border-[#efc1c5] bg-[#fff0f1] text-[#8b2932]"
       }`}
       role={success ? "status" : "alert"}
     >

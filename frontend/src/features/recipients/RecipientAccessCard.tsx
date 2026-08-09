@@ -15,12 +15,7 @@ type RecipientAccessCardProps = {
 
 type LocalNotice = { type: "success" | "error"; message: string } | null;
 
-export function RecipientAccessCard({
-  enabled,
-  refreshKey = 0,
-  suggestedPhone,
-  onAllowed,
-}: RecipientAccessCardProps) {
+export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, onAllowed }: RecipientAccessCardProps) {
   const [recipients, setRecipients] = useState<RecipientRecord[]>([]);
   const [phone, setPhone] = useState("");
   const [label, setLabel] = useState("");
@@ -129,7 +124,8 @@ export function RecipientAccessCard({
         <div>
           <h2 className={sectionTitleClass}>Recipient Access</h2>
           <p className={sectionDescriptionClass}>
-            Explicitly allow outbound recipients here. Opt-outs remain blocked until permission is intentionally restored.
+            Explicitly allow outbound recipients here. Opt-outs remain blocked until permission is intentionally
+            restored.
           </p>
         </div>
       </div>

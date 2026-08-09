@@ -1,11 +1,9 @@
 export type HealthState = "checking" | "ok" | "error";
 
-export type Notice =
-  | {
-      type: "success" | "error";
-      message: string;
-    }
-  | null;
+export type Notice = {
+  type: "success" | "error";
+  message: string;
+} | null;
 
 export type CopiedField = "appId" | "apiKey" | null;
 

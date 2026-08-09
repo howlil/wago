@@ -11,14 +11,7 @@ type RecipientFormProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export function RecipientForm({
-  phone,
-  label,
-  busy,
-  onPhoneChange,
-  onLabelChange,
-  onSubmit,
-}: RecipientFormProps) {
+export function RecipientForm({ phone, label, busy, onPhoneChange, onLabelChange, onSubmit }: RecipientFormProps) {
   return (
     <form
       onSubmit={onSubmit}

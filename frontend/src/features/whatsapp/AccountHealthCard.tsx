@@ -76,9 +76,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         <div className="rounded-xl bg-[#f5f8f6] p-4">
           <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[#718179]">New chats</span>
           <strong
-            className={`mt-1.5 block text-sm ${
-              capRestricted || capWarning ? "text-[#916000]" : "text-[#176b55]"
-            }`}
+            className={`mt-1.5 block text-sm ${capRestricted || capWarning ? "text-[#916000]" : "text-[#176b55]"}`}
           >
             {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "No active cap"}
           </strong>
