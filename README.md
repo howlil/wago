@@ -2,6 +2,28 @@
 
 Lightweight WhatsApp Gateway MVP built with Node.js, TypeScript, Express, and Baileys.
 
+## Support Boundary
+
+Supported:
+
+- single WhatsApp account
+- single Wago process/container
+- Docker self-hosting with one persistent data volume
+- text message sending through the API
+- recipient consent, opt-out, idempotency, and outbound safety limits
+- reverse proxy or PaaS routing in front of the container
+
+Unsupported:
+
+- multiple running replicas sharing one auth directory
+- multi-tenant SaaS or multiple WhatsApp sessions
+- bulk messaging, campaigns, scraping, or number enumeration
+- guaranteed ban prevention
+- anti-detection behavior such as fake typing, proxy rotation, fingerprint rotation, or message mutation
+- horizontal scaling without redesigning session ownership and auth storage
+
+This project uses Baileys, an unofficial WhatsApp Web client. Wago is not affiliated with WhatsApp and cannot guarantee that an account will avoid WhatsApp technical or policy enforcement. For official business messaging requirements, evaluate WhatsApp Cloud API.
+
 ## Backend
 
 ```bash
@@ -17,6 +39,20 @@ cd frontend
 pnpm install
 pnpm run dev
 ```
+
+## Quality Commands
+
+From the repository root:
+
+```bash
+pnpm install
+pnpm check
+pnpm test
+pnpm build
+```
+
+`pnpm check` runs Biome formatting/import/lint checks for backend and frontend source. Use `pnpm check:fix` for safe automatic fixes.
+GitHub Actions runs the same root quality commands, a Docker image build, and CodeQL analysis on pushes and pull requests to `main`.
 
 If the backend is running on another port:
 
@@ -56,11 +92,13 @@ Open `http://localhost:3000/whatsapp/qr/image` in a browser to scan the WhatsApp
 
 This repository includes a root `Dockerfile` that builds the frontend and backend into one container. The backend serves the frontend static files and API from the same host.
 The HTTP server starts before WhatsApp finishes connecting, so `/health`, `/ready`, and the dashboard remain available while the socket is pairing or reconnecting.
+The default `docker-compose.yml` is production-oriented and uses a published image plus a named Docker volume. Use `docker-compose.dev.yml` when you want to build from local source.
 
 Required production environment:
 
 ```env
 APP_ID=wa-gateway-prod
+WAGO_VERSION=v0.1.0
 API_KEY=
 DATA_DIR=/app/data
 AUTH_DIR=/app/data/auth
@@ -74,20 +112,33 @@ REQUEST_LOGGING=true
 LOG_LEVEL=info
 PORT=3000
 HOST=0.0.0.0
+BIND_ADDRESS=127.0.0.1
+HOST_PORT=3000
 CORS_ORIGIN=https://your-app.example.com
 FRONTEND_DIST=/app/public
 ```
 
-Run locally with Docker:
+Production install:
 
 ```bash
-docker compose up --build
+cp .env.production.example .env
+# edit .env, set API_KEY and CORS_ORIGIN
+docker compose pull
+docker compose up -d
+```
+
+By default the production compose file binds to `127.0.0.1:${HOST_PORT:-3000}`. Put Caddy, Traefik, Nginx, or your PaaS router in front of it for public HTTPS. Set `BIND_ADDRESS=0.0.0.0` only when you intentionally want the container port exposed on every interface.
+
+Run locally from source:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 For first-run setup through the web UI, start with bootstrap enabled, initialize the app, then restart without it:
 
 ```bash
-ALLOW_WEB_BOOTSTRAP=true docker compose up --build
+ALLOW_WEB_BOOTSTRAP=true docker compose -f docker-compose.dev.yml up --build
 ```
 
 For public deployments, prefer setting `API_KEY` yourself or enable web bootstrap only while the app is private.
@@ -99,7 +150,7 @@ Logs are structured JSON. Keep `LOG_LEVEL=info` in production unless debugging, 
 If local port `3000` is occupied:
 
 ```bash
-HOST_PORT=3101 docker compose up --build
+HOST_PORT=3101 docker compose -f docker-compose.dev.yml up --build
 ```
 
 Build the production image directly:
@@ -135,3 +186,44 @@ Runtime settings are stored in `backend/data/app-settings.json`; WhatsApp authen
 `WA_VERSION_MODE=default` uses the WhatsApp Web version bundled with the installed Baileys release. Use `WA_VERSION_MODE=live` only for troubleshooting pairing/version issues; it fetches the live version once per process and reuses it for reconnects.
 
 This project intentionally uses Baileys filesystem auth state for the single-account self-hosted profile. Treat `backend/data/auth` like a private key: mount it as persistent storage, back it up carefully, and do not share it between multiple running replicas.
+Do not paste auth state, QR payloads, API keys, full phone numbers, full JIDs, message text, or raw production logs into public issues. See `SECURITY.md` for reporting guidance.
+
+Production compose stores data in the named volume `wago_data`. Upgrade by changing `WAGO_VERSION`, then run:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Rollback uses the same process with an older version:
+
+```env
+WAGO_VERSION=v0.1.1
+```
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Do not run `docker compose down -v` for normal upgrades because `-v` removes `wago_data` and can delete the WhatsApp auth session.
+
+Release images are published to `ghcr.io/howlil/wago-simple` from Git tags matching `v*`, for example `v0.1.2`. Published tags include the full version tag, the minor tag such as `0.1`, and `latest`.
+
+Backup the production volume:
+
+```bash
+docker run --rm -v wago_data:/data -v "$PWD:/backup" alpine \
+  tar czf /backup/wago_data-backup.tgz -C /data .
+```
+
+Restore into an empty production volume:
+
+```bash
+docker run --rm -v wago_data:/data -v "$PWD:/backup" alpine \
+  sh -c "cd /data && tar xzf /backup/wago_data-backup.tgz"
+```
+
+## Contributing and Security
+
+Read `CONTRIBUTING.md` before opening a pull request and `SECURITY.md` before reporting sensitive issues. This project is MIT licensed.

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const baileysMock = vi.hoisted(() => ({
-  fetchLatestBaileysVersion: vi.fn(async () => ({ version: [2, 3000, 0] }))
+  fetchLatestBaileysVersion: vi.fn(async () => ({ version: [2, 3000, 0] })),
 }));
 
 vi.mock("@whiskeysockets/baileys", () => ({
-  fetchLatestBaileysVersion: baileysMock.fetchLatestBaileysVersion
+  fetchLatestBaileysVersion: baileysMock.fetchLatestBaileysVersion,
 }));
 
 describe("WA version strategy", () => {

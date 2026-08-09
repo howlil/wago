@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { allowRecipientJid, optOutRecipient, resetRecipientStoreForTest } from "./recipient-store.js";
+import { allowRecipientJid, optOutRecipient, resetRecipientStoreForTest } from "../recipients/store.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
   getOutboundPolicyHttpStatus,
   isOutboundPolicyError,
+  type OutboundPolicyDecision,
+  type OutboundPolicyInput,
   pauseOutbound,
   recordOutboundAccepted,
   recordOutboundRejected,
   resetOutboundPolicyState,
   resumeOutbound,
-  type OutboundPolicyDecision,
-  type OutboundPolicyInput
 } from "./outbound-policy.js";
 
 function makeInput(overrides: Partial<OutboundPolicyInput> = {}): OutboundPolicyInput {
@@ -19,7 +19,7 @@ function makeInput(overrides: Partial<OutboundPolicyInput> = {}): OutboundPolicy
     to: "6281234567890",
     jid: "6281234567890@s.whatsapp.net",
     text: "Hello",
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -48,7 +48,7 @@ describe("outbound policy", () => {
       expect(decision).toEqual({
         allowed: false,
         reason: "OUTBOUND_PAUSED",
-        message: "Outbound messaging is paused"
+        message: "Outbound messaging is paused",
       });
     });
 
@@ -86,7 +86,7 @@ describe("outbound policy", () => {
       expect(second).toEqual({
         allowed: false,
         reason: "DUPLICATE_MESSAGE",
-        message: 'Message with idempotency key "order-123" was already sent'
+        message: 'Message with idempotency key "order-123" was already sent',
       });
     });
 
@@ -134,7 +134,7 @@ describe("outbound policy", () => {
       expect(decision).toEqual({
         allowed: false,
         reason: "RECIPIENT_NOT_ALLOWED",
-        message: "Recipient is not allowed for outbound messages"
+        message: "Recipient is not allowed for outbound messages",
       });
     });
 
@@ -146,7 +146,7 @@ describe("outbound policy", () => {
       expect(decision).toEqual({
         allowed: false,
         reason: "RECIPIENT_OPTED_OUT",
-        message: "Recipient has opted out of outbound messages"
+        message: "Recipient has opted out of outbound messages",
       });
     });
   });
@@ -161,11 +161,11 @@ describe("outbound policy", () => {
           accountHealthFetcher: {
             fetchAccountReachoutTimelock: async () => ({
               isActive: true,
-              timeEnforcementEnds: retryAt
+              timeEnforcementEnds: retryAt,
             }),
-            fetchNewChatMessageCap: async () => undefined
-          }
-        })
+            fetchNewChatMessageCap: async () => undefined,
+          },
+        }),
       );
 
       expect(decision.allowed).toBe(false);
@@ -181,16 +181,16 @@ describe("outbound policy", () => {
           accountHealthFetcher: {
             fetchAccountReachoutTimelock: async () => undefined,
             fetchNewChatMessageCap: async () => ({
-              capping_status: "CAPPED"
-            })
-          }
-        })
+              capping_status: "CAPPED",
+            }),
+          },
+        }),
       );
 
       expect(decision).toEqual({
         allowed: false,
         reason: "WA_NEW_CHAT_CAPPED",
-        message: "WhatsApp reports this account has reached its new-chat cap"
+        message: "WhatsApp reports this account has reached its new-chat cap",
       });
     });
   });
@@ -399,7 +399,7 @@ describe("outbound policy", () => {
         allowed: false,
         reason: "WA_REACHOUT_RESTRICTED",
         message: "Outbound is restricted",
-        retryAt
+        retryAt,
       };
 
       const error = createOutboundPolicyError(decision);

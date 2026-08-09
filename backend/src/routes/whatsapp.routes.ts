@@ -9,14 +9,14 @@ export const whatsappRouter = Router();
 whatsappRouter.get("/status", requireApiKey, (_req, res) => {
   res.json({
     success: true,
-    ...getWhatsAppStatus()
+    ...getWhatsAppStatus(),
   });
 });
 
 whatsappRouter.get("/qr", requireApiKey, (_req, res) => {
   res.json({
     success: true,
-    ...getCurrentQr()
+    ...getCurrentQr(),
   });
 });
 
@@ -28,14 +28,14 @@ whatsappRouter.get("/qr/image", requireApiKey, async (_req, res) => {
       success: status === "connected",
       qr: null,
       status,
-      message: status === "connected" ? "WhatsApp is already connected" : "QR is not available"
+      message: status === "connected" ? "WhatsApp is already connected" : "QR is not available",
     });
   }
 
   const svg = await QRCode.toString(qr, {
     type: "svg",
     margin: 2,
-    width: 320
+    width: 320,
   });
 
   return res.type("image/svg+xml").send(svg);
@@ -48,13 +48,13 @@ whatsappRouter.post("/rebind", requireApiKey, createRateLimit({ limit: 5, window
     return res.json({
       success: true,
       message: "WhatsApp session was cleared. Scan the new QR to bind another account.",
-      ...result
+      ...result,
     });
   } catch {
     return res.status(500).json({
       success: false,
       error: "REBIND_FAILED",
-      message: "Failed to rebind WhatsApp session"
+      message: "Failed to rebind WhatsApp session",
     });
   }
 });

@@ -1,0 +1,39 @@
+name: Feature Request
+description: Suggest a scoped improvement.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Wago intentionally does not support bulk messaging, campaign tooling, anti-detection tricks, or WhatsApp restriction bypasses.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or operator problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the smallest useful change.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope Fit
+      options:
+        - Single-account self-hosted gateway
+        - Documentation or operations
+        - Unsure
+        - Out of scope
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered

@@ -24,7 +24,7 @@ const baileysMock = vi.hoisted(() => {
     },
     removeAllListeners(): void {
       handlers.clear();
-    }
+    },
   };
 
   return {
@@ -38,21 +38,21 @@ const baileysMock = vi.hoisted(() => {
     logout: vi.fn(),
     fetchAccountReachoutTimelock: vi.fn(),
     fetchNewChatMessageCap: vi.fn(),
-    useMultiFileAuthState: vi.fn()
+    useMultiFileAuthState: vi.fn(),
   };
 });
 
 vi.mock("@whiskeysockets/baileys", () => ({
   default: baileysMock.makeWASocket,
   DisconnectReason: {
-    loggedOut: 401
+    loggedOut: 401,
   },
   fetchLatestBaileysVersion: baileysMock.fetchLatestBaileysVersion,
   useMultiFileAuthState: baileysMock.useMultiFileAuthState,
   WAMessageStatus: {
     ERROR: 0,
-    SERVER_ACK: 1
-  }
+    SERVER_ACK: 1,
+  },
 }));
 
 describe("whatsapp send semantics", () => {
@@ -74,7 +74,7 @@ describe("whatsapp send semantics", () => {
 
     baileysMock.useMultiFileAuthState.mockResolvedValue({
       state: {},
-      saveCreds: baileysMock.saveCreds
+      saveCreds: baileysMock.saveCreds,
     });
     baileysMock.makeWASocket.mockReturnValue({
       ev: baileysMock.ev,
@@ -83,20 +83,20 @@ describe("whatsapp send semantics", () => {
       onWhatsApp: baileysMock.onWhatsApp,
       sendMessage: baileysMock.sendMessage,
       end: baileysMock.end,
-      logout: baileysMock.logout
+      logout: baileysMock.logout,
     });
     baileysMock.fetchAccountReachoutTimelock.mockResolvedValue(undefined);
     baileysMock.fetchNewChatMessageCap.mockResolvedValue(undefined);
     baileysMock.onWhatsApp.mockResolvedValue([
       {
         exists: true,
-        jid: "6281234567890@s.whatsapp.net"
-      }
+        jid: "6281234567890@s.whatsapp.net",
+      },
     ]);
     baileysMock.sendMessage.mockResolvedValue({
       key: {
-        id: "message-1"
-      }
+        id: "message-1",
+      },
     });
   });
 
@@ -106,7 +106,7 @@ describe("whatsapp send semantics", () => {
 
   it("returns pending immediately after Baileys accepts the send request", async () => {
     const { initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipient-store.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -115,13 +115,13 @@ describe("whatsapp send semantics", () => {
 
     await expect(sendTextMessage("6281234567890", "Hello")).resolves.toEqual({
       messageId: "message-1",
-      status: "pending"
+      status: "pending",
     });
   });
 
   it("keeps message status pending until a Baileys status update arrives", async () => {
     const { getMessageStatus, initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipient-store.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -129,32 +129,34 @@ describe("whatsapp send semantics", () => {
     baileysMock.ev.emit("connection.update", { connection: "open" });
 
     const result = await sendTextMessage("6281234567890", "Hello");
+    const messageId = result.messageId;
 
-    expect(getMessageStatus(result.messageId!)).toMatchObject({
+    expect(messageId).toBe("message-1");
+    expect(getMessageStatus(messageId ?? "")).toMatchObject({
       id: "message-1",
-      status: "pending"
+      status: "pending",
     });
 
     baileysMock.ev.emit("messages.update", [
       {
         key: {
-          id: "message-1"
+          id: "message-1",
         },
         update: {
-          status: 1
-        }
-      }
+          status: 1,
+        },
+      },
     ]);
 
-    expect(getMessageStatus(result.messageId!)).toMatchObject({
+    expect(getMessageStatus(messageId ?? "")).toMatchObject({
       id: "message-1",
-      status: "accepted"
+      status: "accepted",
     });
   });
 
   it("caches successful recipient lookup for repeated sends", async () => {
     const { initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipient-store.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -176,14 +178,14 @@ describe("whatsapp send semantics", () => {
       reachoutTimeLock: {
         isActive: true,
         timeEnforcementEnds: retryAt,
-        enforcementType: "WEB_COMPANION_ONLY"
-      }
+        enforcementType: "WEB_COMPANION_ONLY",
+      },
     });
 
     expect(getWhatsAppStatus().accountHealth.reachoutTimeLock).toEqual({
       isActive: true,
       retryAt: "2026-08-09T00:30:00.000Z",
-      enforcementType: "WEB_COMPANION_ONLY"
+      enforcementType: "WEB_COMPANION_ONLY",
     });
   });
 
@@ -199,10 +201,10 @@ describe("whatsapp send semantics", () => {
       lastDisconnect: {
         error: {
           output: {
-            statusCode: 428
-          }
-        }
-      }
+            statusCode: 428,
+          },
+        },
+      },
     });
 
     expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
@@ -223,10 +225,10 @@ describe("whatsapp send semantics", () => {
       lastDisconnect: {
         error: {
           output: {
-            statusCode: 401
-          }
-        }
-      }
+            statusCode: 401,
+          },
+        },
+      },
     });
 
     await vi.advanceTimersByTimeAsync(60000);
@@ -249,10 +251,10 @@ describe("whatsapp send semantics", () => {
       lastDisconnect: {
         error: {
           output: {
-            statusCode: 428
-          }
-        }
-      }
+            statusCode: 428,
+          },
+        },
+      },
     });
 
     await vi.advanceTimersByTimeAsync(60000);
@@ -277,8 +279,8 @@ describe("whatsapp send semantics", () => {
     expect(baileysMock.fetchLatestBaileysVersion).not.toHaveBeenCalled();
     expect(baileysMock.makeWASocket).toHaveBeenCalledWith(
       expect.objectContaining({
-        getMessage: expect.any(Function)
-      })
+        getMessage: expect.any(Function),
+      }),
     );
     expect(baileysMock.makeWASocket.mock.calls[0]?.[0]).not.toHaveProperty("version");
   });
@@ -292,7 +294,7 @@ describe("whatsapp send semantics", () => {
 
     expect(baileysMock.fetchLatestBaileysVersion).toHaveBeenCalledTimes(1);
     expect(baileysMock.makeWASocket.mock.calls[0]?.[0]).toMatchObject({
-      version: [2, 3000, 0]
+      version: [2, 3000, 0],
     });
   });
 });

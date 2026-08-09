@@ -2,7 +2,8 @@ const BACKOFF_DELAYS_MS = [2000, 5000, 15000, 30000, 60000] as const;
 const JITTER_RATIO = 0.2;
 
 export function getReconnectDelayMs(attempt: number, random = Math.random): number {
-  const baseDelay = BACKOFF_DELAYS_MS[Math.min(Math.max(attempt, 0), BACKOFF_DELAYS_MS.length - 1)]!;
+  const backoffIndex = Math.min(Math.max(attempt, 0), BACKOFF_DELAYS_MS.length - 1);
+  const baseDelay = BACKOFF_DELAYS_MS[backoffIndex] ?? BACKOFF_DELAYS_MS[BACKOFF_DELAYS_MS.length - 1];
   const jitterRange = baseDelay * JITTER_RATIO;
   const jitter = Math.floor((random() * 2 - 1) * jitterRange);
 

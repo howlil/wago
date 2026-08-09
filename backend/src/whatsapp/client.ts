@@ -1,29 +1,26 @@
+import { mkdir, rm } from "node:fs/promises";
 import makeWASocket, {
   DisconnectReason,
-  WAMessageStatus,
   useMultiFileAuthState,
+  WAMessageStatus,
   type WASocket,
-  type WAVersion
+  type WAVersion,
 } from "@whiskeysockets/baileys";
-import { mkdir, rm } from "node:fs/promises";
-import {
-  markReachoutRestricted,
-  refreshAccountHealth,
-  updateReachoutTimeLock,
-  type AccountHealthFetcher
-} from "../account-health.js";
-import { config } from "../config.js";
-import { baileysLogger, logger, maskIdentifier } from "../logger.js";
+import { config } from "../config/index.js";
+import { baileysLogger, logger, maskIdentifier } from "../infrastructure/logger.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
   recordOutboundAccepted,
-  recordOutboundRejected
-} from "../outbound-policy.js";
-import { getReconnectDelayMs, nextReconnectAttempt, resetReconnectAttempts, shouldScheduleReconnect } from "../reconnect-state.js";
-import { getRecentMessage, rememberRecentTextMessage } from "../recent-message-store.js";
+  recordOutboundRejected,
+} from "../policy/outbound-policy.js";
 import { toWhatsAppJid } from "../utils/phone.js";
-import { getLiveBaileysVersion } from "../wa-version.js";
+import {
+  type AccountHealthFetcher,
+  markReachoutRestricted,
+  refreshAccountHealth,
+  updateReachoutTimeLock,
+} from "./account-health.js";
 import {
   getConnectionStatus,
   getCurrentQrState,
@@ -33,11 +30,19 @@ import {
   markDisconnected,
   markQr,
   type WhatsAppStatus,
-  type WhatsAppStatusSnapshot
+  type WhatsAppStatusSnapshot,
 } from "./connection-state.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { getMessageStatus, rememberPendingMessageStatus, updateMessageStatus } from "./message-status-store.js";
+import { getRecentMessage, rememberRecentTextMessage } from "./recent-message-store.js";
 import { resolveRecipientJid } from "./recipient-cache.js";
+import {
+  getReconnectDelayMs,
+  nextReconnectAttempt,
+  resetReconnectAttempts,
+  shouldScheduleReconnect,
+} from "./reconnect-state.js";
+import { getLiveBaileysVersion } from "./wa-version.js";
 
 export type { WhatsAppStatus, WhatsAppStatusSnapshot };
 export { getMessageStatus };
@@ -79,7 +84,7 @@ function createNamedError(name: string, message: string): Error {
 function makeAccountHealthFetcher(activeSocket: WASocket): AccountHealthFetcher {
   return {
     fetchAccountReachoutTimelock: () => activeSocket.fetchAccountReachoutTimelock(),
-    fetchNewChatMessageCap: () => activeSocket.fetchNewChatMessageCap()
+    fetchNewChatMessageCap: () => activeSocket.fetchNewChatMessageCap(),
   };
 }
 
@@ -121,7 +126,7 @@ export async function initializeWhatsApp(): Promise<void> {
     const socketOptions: SocketOptions = {
       auth: state,
       getMessage: getRecentMessage,
-      logger: baileysLogger
+      logger: baileysLogger,
     };
 
     if (config.waVersionMode === "live") {
@@ -157,7 +162,7 @@ export async function initializeWhatsApp(): Promise<void> {
           logger.warn({
             event: "wa.message.rejected",
             messageId,
-            reason: mapped.error
+            reason: mapped.error,
           });
 
           if (mapped.error === "REACHOUT_RESTRICTED") {
@@ -168,14 +173,14 @@ export async function initializeWhatsApp(): Promise<void> {
           updateMessageStatus(messageId, {
             status: "rejected",
             error: mapped.error,
-            message: mapped.message
+            message: mapped.message,
           });
           continue;
         }
 
         if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
           updateMessageStatus(messageId, {
-            status: "accepted"
+            status: "accepted",
           });
         }
       }
@@ -190,7 +195,7 @@ export async function initializeWhatsApp(): Promise<void> {
         markQr(update.qr);
         logger.info({
           event: "wa.connection",
-          state: "qr"
+          state: "qr",
         });
       }
 
@@ -199,7 +204,7 @@ export async function initializeWhatsApp(): Promise<void> {
         reconnectAttempt = resetReconnectAttempts();
         logger.info({
           event: "wa.connection",
-          state: "connected"
+          state: "connected",
         });
         void refreshAccountHealth(makeAccountHealthFetcher(nextSocket), { force: true });
       }
@@ -209,7 +214,7 @@ export async function initializeWhatsApp(): Promise<void> {
         logger.warn({
           event: "wa.reachout_timelock",
           active: update.reachoutTimeLock.isActive,
-          retryAt: update.reachoutTimeLock.timeEnforcementEnds
+          retryAt: update.reachoutTimeLock.timeEnforcementEnds,
         });
       }
 
@@ -223,14 +228,14 @@ export async function initializeWhatsApp(): Promise<void> {
           event: "wa.connection",
           state: "disconnected",
           statusCode,
-          loggedOut
+          loggedOut,
         });
 
         if (
           shouldScheduleReconnect({
             loggedOut,
             rebindInProgress,
-            shuttingDown
+            shuttingDown,
           })
         ) {
           scheduleReconnect();
@@ -299,7 +304,7 @@ export async function shutdownWhatsApp(): Promise<void> {
 export async function sendTextMessage(
   to: string,
   text: string,
-  options: SendTextMessageOptions = {}
+  options: SendTextMessageOptions = {},
 ): Promise<SendTextMessageResult> {
   if (!socket || getConnectionStatus() !== "connected") {
     throw createNamedError("WHATSAPP_NOT_CONNECTED", "WhatsApp is not connected");
@@ -311,7 +316,7 @@ export async function sendTextMessage(
     jid,
     text,
     idempotencyKey: options.idempotencyKey,
-    accountHealthFetcher: makeAccountHealthFetcher(socket)
+    accountHealthFetcher: makeAccountHealthFetcher(socket),
   };
   const policyDecision = await checkOutboundPolicy(policyInput);
 
@@ -320,7 +325,7 @@ export async function sendTextMessage(
       event: "wa.outbound.blocked",
       reason: policyDecision.reason,
       to: maskIdentifier(jid),
-      retryAt: policyDecision.retryAt
+      retryAt: policyDecision.retryAt,
     });
     throw createOutboundPolicyError(policyDecision);
   }
@@ -330,7 +335,7 @@ export async function sendTextMessage(
   if (restrictedUntil && restrictedUntil > Date.now()) {
     throw createNamedError(
       "REACHOUT_RESTRICTED",
-      "WhatsApp recently rejected this chat as a restricted reach-out. Wait before trying this contact again."
+      "WhatsApp recently rejected this chat as a restricted reach-out. Wait before trying this contact again.",
     );
   }
 
@@ -343,13 +348,13 @@ export async function sendTextMessage(
       rememberRecentTextMessage(
         {
           id: messageId,
-          remoteJid: resolvedJid
+          remoteJid: resolvedJid,
         },
-        text
+        text,
       );
       rememberPendingMessageStatus({
         id: messageId,
-        to: resolvedJid
+        to: resolvedJid,
       });
     }
 
@@ -357,19 +362,19 @@ export async function sendTextMessage(
     logger.info({
       event: "wa.outbound.accepted",
       messageId,
-      to: maskIdentifier(resolvedJid)
+      to: maskIdentifier(resolvedJid),
     });
 
     return {
       messageId,
-      status: "pending"
+      status: "pending",
     };
   } catch (error) {
     recordOutboundRejected(policyInput, error);
     logger.warn({
       event: "wa.outbound.rejected",
       reason: error instanceof Error ? error.name : "UNKNOWN",
-      to: maskIdentifier(jid)
+      to: maskIdentifier(jid),
     });
 
     if (error instanceof Error && error.name === "REACHOUT_RESTRICTED") {

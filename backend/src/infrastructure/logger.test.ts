@@ -21,8 +21,8 @@ describe("redactLogFields", () => {
       recipientJid: "6281234567890@s.whatsapp.net",
       nested: {
         phone: "6289999999999",
-        ok: true
-      }
+        ok: true,
+      },
     });
 
     expect(redacted).toEqual({
@@ -33,8 +33,8 @@ describe("redactLogFields", () => {
       recipientJid: "62812***890@s.whatsapp.net",
       nested: {
         phone: "62899***999",
-        ok: true
-      }
+        ok: true,
+      },
     });
   });
 });

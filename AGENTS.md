@@ -227,7 +227,24 @@ or another HTTP client without requiring the frontend.
 
 Keep the project structure shallow.
 
-Recommended initial structure:
+Current backend structure:
+
+```text
+backend/src/
+  app.ts
+  index.ts
+  whatsapp.ts
+  config/
+  infrastructure/
+  middleware/
+  policy/
+  recipients/
+  routes/
+  utils/
+  whatsapp/
+```
+
+Original initial structure reference:
 
 ```text
 wa-gateway/
@@ -260,7 +277,7 @@ This is a recommendation, not a rigid architecture.
 
 Do not create directories containing only one trivial file unless they improve clarity.
 
-Do not create structures like:
+Do not create large layered structures like:
 
 ```text
 controllers/
@@ -272,7 +289,6 @@ entities/
 interfaces/
 adapters/
 ports/
-infrastructure/
 ```
 
 for a simple four-endpoint application.
@@ -1467,37 +1483,36 @@ Use pnpm for JavaScript and TypeScript package management in this repository.
 
 Do not add `package-lock.json` or `yarn.lock`.
 
-Keep pnpm scripts obvious.
+Root quality commands:
 
-Recommended:
-
-```json
-{
-  "packageManager": "pnpm@11.18.0",
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
-  }
-}
+```bash
+pnpm check
+pnpm check:fix
+pnpm test
+pnpm build
 ```
 
-Add linting or formatting only if the repository actually uses those tools.
+`pnpm check` runs Biome over backend and frontend source. Use `pnpm check:fix` for safe formatter/import/lint fixes, then review the diff before continuing.
+CI runs the same root commands plus a Docker build check, so local verification should match pull request verification.
 
-Avoid excessive tooling configuration.
+Package-level commands remain available when you only need one app:
+
+```bash
+pnpm --dir backend test
+pnpm --dir backend run build
+pnpm --dir frontend test
+pnpm --dir frontend run build
+```
+
+Keep pnpm scripts obvious and avoid adding overlapping formatter/linter stacks.
 
 ---
 
 # 45. Formatting
 
-Use consistent formatting.
+Use Biome as the repository formatter/linter.
 
-Prefer whichever formatter/linter is already configured.
-
-If no formatter exists, write conventional TypeScript formatting rather than adding several tools immediately.
-
-Do not make large formatting-only changes while implementing features.
+Do not make broad formatting-only changes outside the files relevant to the current iteration unless the iteration is specifically about tooling or formatting.
 
 ---
 

@@ -1,5 +1,5 @@
 import pino from "pino";
-import { config } from "./config.js";
+import { config } from "../config/index.js";
 
 const sensitiveFieldNames = new Set([
   "apiKey",
@@ -13,7 +13,7 @@ const sensitiveFieldNames = new Set([
   "dataDirectory",
   "settingsFile",
   "password",
-  "token"
+  "token",
 ]);
 
 export const logger = pino({
@@ -34,14 +34,14 @@ export const logger = pino({
       "authDirectory",
       "authPath",
       "dataDirectory",
-      "settingsFile"
+      "settingsFile",
     ],
-    censor: "[REDACTED]"
-  }
+    censor: "[REDACTED]",
+  },
 });
 
 export const baileysLogger = pino({
-  enabled: false
+  enabled: false,
 });
 
 export function maskIdentifier(value: string | null | undefined): string | undefined {

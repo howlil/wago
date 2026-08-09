@@ -1,5 +1,5 @@
 import { CheckCircle2, Link2Off, Loader2, RefreshCcw, Send, Server, Smartphone, WifiOff } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bootstrapApp,
   getAppInfo,
@@ -12,22 +12,19 @@ import {
   rebindWhatsApp,
   sendMessage,
   setStoredApiKey,
-  type WhatsAppStatus
+  type WhatsAppStatus,
 } from "./api.js";
 import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
 
 type HealthState = "checking" | "ok" | "error";
 
-type Notice =
-  | { type: "success"; message: string }
-  | { type: "error"; message: string }
-  | null;
+type Notice = { type: "success"; message: string } | { type: "error"; message: string } | null;
 
 const statusLabel: Record<WhatsAppStatus, string> = {
   connecting: "Connecting",
   qr: "Scan QR",
   connected: "Connected",
-  disconnected: "Disconnected"
+  disconnected: "Disconnected",
 };
 
 const panelClass = "mt-4 rounded-lg border border-[#d9e3df] bg-white p-5";
@@ -39,7 +36,7 @@ const visibleRefreshIntervalsMs: Record<WhatsAppStatus, number> = {
   connecting: 10000,
   qr: 10000,
   connected: 30000,
-  disconnected: 20000
+  disconnected: 20000,
 };
 const hiddenRefreshIntervalMs = 60000;
 const statusTextClass: Record<HealthState | WhatsAppStatus, string> = {
@@ -49,7 +46,7 @@ const statusTextClass: Record<HealthState | WhatsAppStatus, string> = {
   connecting: "text-[#8a5a00]",
   qr: "text-[#8a5a00]",
   connected: "text-[#176b55]",
-  disconnected: "text-[#a12d35]"
+  disconnected: "text-[#a12d35]",
 };
 
 export function App() {
@@ -77,7 +74,7 @@ export function App() {
 
   const canSend = useMemo(
     () => isAuthenticated && status === "connected" && Boolean(phone.trim()) && Boolean(message.trim()) && !isSending,
-    [isAuthenticated, isSending, message, phone, status]
+    [isAuthenticated, isSending, message, phone, status],
   );
 
   const loadAppInfo = useCallback(async () => {
@@ -158,7 +155,9 @@ export function App() {
     }
 
     function getNextRefreshDelay() {
-      return document.visibilityState === "hidden" ? hiddenRefreshIntervalMs : visibleRefreshIntervalsMs[statusRef.current];
+      return document.visibilityState === "hidden"
+        ? hiddenRefreshIntervalMs
+        : visibleRefreshIntervalsMs[statusRef.current];
     }
 
     function scheduleNextRefresh(delay = getNextRefreshDelay()) {
@@ -201,10 +200,10 @@ export function App() {
       .catch(() => undefined)
       .then(() => refresh({ showLoading: true }))
       .finally(() => {
-      if (!disposed) {
-        scheduleNextRefresh();
-      }
-    });
+        if (!disposed) {
+          scheduleNextRefresh();
+        }
+      });
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
@@ -240,7 +239,7 @@ export function App() {
 
         setNotice({
           type: "success",
-          message: result.messageId ? `Message ${messageStatus}. ID: ${result.messageId}` : `Message ${messageStatus}.`
+          message: result.messageId ? `Message ${messageStatus}. ID: ${result.messageId}` : `Message ${messageStatus}.`,
         });
         setMessage("");
       } else {
@@ -250,7 +249,7 @@ export function App() {
       const apiError = error as { message?: string; error?: string };
       setNotice({
         type: "error",
-        message: apiError.message ?? apiError.error ?? "Failed to send message"
+        message: apiError.message ?? apiError.error ?? "Failed to send message",
       });
     } finally {
       setIsSending(false);
@@ -277,7 +276,7 @@ export function App() {
       const apiError = error as { message?: string; error?: string };
       setNotice({
         type: "error",
-        message: apiError.message ?? apiError.error ?? "Failed to rebind WhatsApp session"
+        message: apiError.message ?? apiError.error ?? "Failed to rebind WhatsApp session",
       });
     } finally {
       setIsRebinding(false);
@@ -294,13 +293,13 @@ export function App() {
         type: info.authenticated ? "success" : "error",
         message: info.authenticated
           ? "API key saved and verified in this browser session."
-          : "API key saved, but backend rejected it. Check the key and try again."
+          : "API key saved, but backend rejected it. Check the key and try again.",
       });
       await refresh({ showLoading: true });
     } catch {
       setNotice({
         type: "error",
-        message: "API key saved, but the backend could not verify it."
+        message: "API key saved, but the backend could not verify it.",
       });
     }
   }
@@ -321,7 +320,7 @@ export function App() {
         setApiKeyInput(result.apiKey);
         setNotice({
           type: "success",
-          message: "App initialized. Auth cookie set. Copy the API key now if an external API client needs it."
+          message: "App initialized. Auth cookie set. Copy the API key now if an external API client needs it.",
         });
         await refresh({ showLoading: true });
       } else {
@@ -331,7 +330,7 @@ export function App() {
       const apiError = error as { message?: string; error?: string };
       setNotice({
         type: "error",
-        message: apiError.message ?? apiError.error ?? "Failed to initialize app"
+        message: apiError.message ?? apiError.error ?? "Failed to initialize app",
       });
     } finally {
       setIsBootstrapping(false);
@@ -366,7 +365,13 @@ export function App() {
           </div>
         </div>
         <div className="flex min-h-[72px] items-center gap-3 rounded-lg border border-[#d9e3df] bg-white p-4">
-          {status === "connected" ? <CheckCircle2 size={18} /> : status === "disconnected" ? <WifiOff size={18} /> : <Smartphone size={18} />}
+          {status === "connected" ? (
+            <CheckCircle2 size={18} />
+          ) : status === "disconnected" ? (
+            <WifiOff size={18} />
+          ) : (
+            <Smartphone size={18} />
+          )}
           <div>
             <span className="block text-[13px] text-[#667972]">WhatsApp</span>
             <strong className={`mt-0.5 block ${statusTextClass[status]}`}>{statusLabel[status]}</strong>
@@ -374,7 +379,9 @@ export function App() {
         </div>
       </section>
 
-      <section className={`${panelClass} grid grid-cols-[minmax(0,1fr)_minmax(220px,320px)_auto] items-end gap-4 max-[680px]:flex max-[680px]:flex-col max-[680px]:items-start`}>
+      <section
+        className={`${panelClass} grid grid-cols-[minmax(0,1fr)_minmax(220px,320px)_auto] items-end gap-4 max-[680px]:flex max-[680px]:flex-col max-[680px]:items-start`}
+      >
         <div>
           <h2 className="mb-2 text-xl">Gateway</h2>
           <p className="mb-0 text-[#667972]">
@@ -408,10 +415,14 @@ export function App() {
       ) : null}
 
       {setupRequired ? (
-        <section className={`${panelClass} flex items-center justify-between gap-4 border-[#e4c46d] bg-[#fff8e1] max-[680px]:flex-col max-[680px]:items-start`}>
+        <section
+          className={`${panelClass} flex items-center justify-between gap-4 border-[#e4c46d] bg-[#fff8e1] max-[680px]:flex-col max-[680px]:items-start`}
+        >
           <div>
             <h2 className="mb-2 text-xl">Initial Setup</h2>
-            <p className="mb-0 text-[#6f5a14]">Generate an API key in this app before binding WhatsApp or sending messages.</p>
+            <p className="mb-0 text-[#6f5a14]">
+              Generate an API key in this app before binding WhatsApp or sending messages.
+            </p>
           </div>
           <button
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#176b55] px-3.5 text-white disabled:cursor-not-allowed disabled:bg-[#91aaa0] disabled:text-[#ecf1ef]"
@@ -425,10 +436,14 @@ export function App() {
         </section>
       ) : null}
 
-      <section className={`${panelClass} flex items-center justify-between gap-4 max-[680px]:flex-col max-[680px]:items-start`}>
+      <section
+        className={`${panelClass} flex items-center justify-between gap-4 max-[680px]:flex-col max-[680px]:items-start`}
+      >
         <div>
           <h2 className="mb-2 text-xl">Session</h2>
-          <p className="mb-0 text-[#667972]">Clear the current WhatsApp binding and scan a new QR for another account.</p>
+          <p className="mb-0 text-[#667972]">
+            Clear the current WhatsApp binding and scan a new QR for another account.
+          </p>
         </div>
         <button
           className={`${secondaryButtonClass} border-[#e9b7bd] text-[#842029]`}
@@ -442,7 +457,9 @@ export function App() {
       </section>
 
       {hasQr && qrImage && status !== "connected" ? (
-        <section className={`${panelClass} grid grid-cols-[minmax(0,1fr)_220px] items-center gap-5 max-[680px]:grid-cols-1`}>
+        <section
+          className={`${panelClass} grid grid-cols-[minmax(0,1fr)_220px] items-center gap-5 max-[680px]:grid-cols-1`}
+        >
           <div>
             <h2 className="mb-2 text-xl">QR Authentication</h2>
             <p className="mb-0 text-[#667972]">Open WhatsApp linked devices and scan this code.</p>
@@ -459,7 +476,9 @@ export function App() {
         <div>
           <h2 className="mb-2 text-xl">Send Message</h2>
           <p className="mb-0 text-[#667972]">
-            {status === "connected" ? "Ready to send through the connected session." : "Connect WhatsApp before sending."}
+            {status === "connected"
+              ? "Ready to send through the connected session."
+              : "Connect WhatsApp before sending."}
           </p>
         </div>
 

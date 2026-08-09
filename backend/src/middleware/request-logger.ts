@@ -1,7 +1,7 @@
-import type { RequestHandler } from "express";
 import { randomUUID } from "node:crypto";
-import { config } from "../config.js";
-import { logger } from "../logger.js";
+import type { RequestHandler } from "express";
+import { config } from "../config/index.js";
+import { logger } from "../infrastructure/logger.js";
 
 function getRouteName(req: Parameters<RequestHandler>[0]): string {
   const routePath = req.route?.path;
@@ -31,7 +31,7 @@ export const requestLogger: RequestHandler = (req, res, next) => {
       method: req.method,
       route: getRouteName(req),
       status: res.statusCode,
-      durationMs
+      durationMs,
     });
   });
 

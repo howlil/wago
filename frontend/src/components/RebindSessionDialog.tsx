@@ -1,5 +1,5 @@
 import { AlertTriangle, Link2Off, Loader2, X } from "lucide-react";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 type RebindSessionDialogProps = {
   isOpen: boolean;
@@ -12,10 +12,12 @@ const confirmationText = "RE BIND";
 
 export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }: RebindSessionDialogProps) {
   const [confirmation, setConfirmation] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useLayoutEffect(() => {
     if (isOpen) {
       setConfirmation("");
+      inputRef.current?.focus();
     }
   }, [isOpen]);
 
@@ -26,17 +28,16 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
   const canConfirm = confirmation === confirmationText && !isRebinding;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f2a32]/55 px-4 py-6"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !isRebinding) {
-          onCancel();
-        }
-      }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f2a32]/55 px-4 py-6">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        onClick={onCancel}
+        disabled={isRebinding}
+        aria-label="Close rebind dialog"
+      />
       <section
-        className="w-full max-w-[460px] rounded-lg border border-[#d9e3df] bg-white p-5 shadow-[0_18px_48px_rgb(31_42_50_/_22%)]"
+        className="relative w-full max-w-[460px] rounded-lg border border-[#d9e3df] bg-white p-5 shadow-[0_18px_48px_rgb(31_42_50_/_22%)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="rebind-dialog-title"
@@ -70,12 +71,12 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
         <label className="mt-5 block">
           <span className="mb-1.5 block text-sm font-bold text-[#405149]">Type RE BIND to continue</span>
           <input
+            ref={inputRef}
             className="w-full rounded-lg border border-[#cdd9d5] bg-white px-3 py-2.5 text-[#1f2a32] outline-none focus:border-[#2f8f71] focus:ring-3 focus:ring-[#cde9df]"
             value={confirmation}
             onInput={(event) => setConfirmation(event.currentTarget.value)}
             placeholder={confirmationText}
             autoComplete="off"
-            autoFocus
           />
         </label>
 

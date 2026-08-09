@@ -3,7 +3,7 @@ import {
   getReconnectDelayMs,
   nextReconnectAttempt,
   resetReconnectAttempts,
-  shouldScheduleReconnect
+  shouldScheduleReconnect,
 } from "./reconnect-state.js";
 
 describe("reconnect state", () => {

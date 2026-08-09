@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { config } from "../config.js";
+import { config } from "../config/index.js";
 import { normalizePhone, toWhatsAppJid } from "./phone.js";
 
 describe("normalizePhone", () => {

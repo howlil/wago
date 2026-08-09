@@ -1,4 +1,4 @@
-import { proto, type WAMessageKey } from "@whiskeysockets/baileys";
+import type { proto, WAMessageKey } from "@whiskeysockets/baileys";
 
 const RECENT_MESSAGE_TTL_MS = 1000 * 60 * 60;
 const RECENT_MESSAGE_MAX_ENTRIES = 500;
@@ -49,9 +49,9 @@ export function rememberRecentTextMessage(key: Pick<WAMessageKey, "id" | "remote
   pruneExpiredMessages(now);
   recentMessages.set(storeKey, {
     message: {
-      conversation: text
+      conversation: text,
     },
-    expiresAt: now + RECENT_MESSAGE_TTL_MS
+    expiresAt: now + RECENT_MESSAGE_TTL_MS,
   });
   pruneOverflow();
 }

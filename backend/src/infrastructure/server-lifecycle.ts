@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
+import { initializeWhatsApp, shutdownWhatsApp } from "../whatsapp.js";
 import { logger } from "./logger.js";
-import { initializeWhatsApp, shutdownWhatsApp } from "./whatsapp.js";
 
 export type LifecycleDependencies = {
   exit: (code: number) => void;
@@ -17,8 +17,8 @@ export function createShutdownHandler(
   server: Server,
   dependencies: LifecycleDependencies = {
     exit: process.exit,
-    shutdownWhatsApp
-  }
+    shutdownWhatsApp,
+  },
 ): (signal: NodeJS.Signals) => Promise<void> {
   let shutdownStarted = false;
 
@@ -30,7 +30,7 @@ export function createShutdownHandler(
     shutdownStarted = true;
     logger.info({
       event: "app.shutdown",
-      signal
+      signal,
     });
 
     await dependencies.shutdownWhatsApp();

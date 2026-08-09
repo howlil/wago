@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Request, RequestHandler } from "express";
-import { config } from "../config.js";
+import { config } from "../config/index.js";
 
 function parseCookieHeader(header: string | undefined): Record<string, string> {
   if (!header) {
@@ -12,7 +12,7 @@ function parseCookieHeader(header: string | undefined): Record<string, string> {
       .split(";")
       .map((part) => part.trim().split("="))
       .filter(([key, value]) => Boolean(key) && value !== undefined)
-      .map(([key, value]) => [key, decodeURIComponent(value)])
+      .map(([key, value]) => [key, decodeURIComponent(value)]),
   );
 }
 
@@ -60,7 +60,7 @@ export const requireApiKey: RequestHandler = (req, res, next) => {
     return res.status(403).json({
       success: false,
       error: "API_KEY_REQUIRED",
-      message: "Initialize the app from the web UI or set API_KEY on the backend before using this operation"
+      message: "Initialize the app from the web UI or set API_KEY on the backend before using this operation",
     });
   }
 
@@ -68,7 +68,7 @@ export const requireApiKey: RequestHandler = (req, res, next) => {
     return res.status(401).json({
       success: false,
       error: "UNAUTHORIZED",
-      message: "Invalid API key"
+      message: "Invalid API key",
     });
   }
 

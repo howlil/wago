@@ -11,18 +11,18 @@ describe("recent message store", () => {
     rememberRecentTextMessage(
       {
         id: "message-1",
-        remoteJid: "6281234567890@s.whatsapp.net"
+        remoteJid: "6281234567890@s.whatsapp.net",
       },
-      "Hello"
+      "Hello",
     );
 
     await expect(
       getRecentMessage({
         id: "message-1",
-        remoteJid: "6281234567890@s.whatsapp.net"
-      })
+        remoteJid: "6281234567890@s.whatsapp.net",
+      }),
     ).resolves.toEqual({
-      conversation: "Hello"
+      conversation: "Hello",
     });
   });
 
@@ -33,9 +33,9 @@ describe("recent message store", () => {
     rememberRecentTextMessage(
       {
         id: "message-1",
-        remoteJid: "6281234567890@s.whatsapp.net"
+        remoteJid: "6281234567890@s.whatsapp.net",
       },
-      "Hello"
+      "Hello",
     );
 
     vi.setSystemTime(new Date("2026-08-09T01:00:01.000Z"));
@@ -43,8 +43,8 @@ describe("recent message store", () => {
     await expect(
       getRecentMessage({
         id: "message-1",
-        remoteJid: "6281234567890@s.whatsapp.net"
-      })
+        remoteJid: "6281234567890@s.whatsapp.net",
+      }),
     ).resolves.toBeUndefined();
   });
 });

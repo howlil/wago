@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  type AccountHealthFetcher,
   checkAccountHealth,
   getAccountHealthSnapshot,
   markReachoutRestricted,
   refreshAccountHealth,
   resetAccountHealthForTest,
   updateReachoutTimeLock,
-  type AccountHealthFetcher
 } from "./account-health.js";
 
 function makeFetcher(overrides: Partial<AccountHealthFetcher> = {}): AccountHealthFetcher {
   return {
     fetchAccountReachoutTimelock: vi.fn(async () => undefined),
     fetchNewChatMessageCap: vi.fn(async () => undefined),
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -29,8 +29,8 @@ describe("account health", () => {
       fetchAccountReachoutTimelock: vi.fn(async () => ({
         isActive: true,
         timeEnforcementEnds: retryAt,
-        enforcementType: "WEB_COMPANION_ONLY"
-      }))
+        enforcementType: "WEB_COMPANION_ONLY",
+      })),
     });
 
     const decision = await checkAccountHealth(fetcher, { isNewRecipient: false });
@@ -39,7 +39,7 @@ describe("account health", () => {
       allowed: false,
       reason: "WA_REACHOUT_RESTRICTED",
       message: "WhatsApp reports this account is restricted from starting outbound reach-outs",
-      retryAt
+      retryAt,
     });
   });
 
@@ -47,7 +47,7 @@ describe("account health", () => {
     const retryAt = new Date(Date.now() + 60_000);
     updateReachoutTimeLock({
       isActive: true,
-      timeEnforcementEnds: retryAt
+      timeEnforcementEnds: retryAt,
     });
 
     const decision = await checkAccountHealth(undefined, { isNewRecipient: false });
@@ -62,8 +62,8 @@ describe("account health", () => {
   it("blocks new-chat capped accounts", async () => {
     const fetcher = makeFetcher({
       fetchNewChatMessageCap: vi.fn(async () => ({
-        capping_status: "CAPPED"
-      }))
+        capping_status: "CAPPED",
+      })),
     });
 
     const decision = await checkAccountHealth(fetcher, { isNewRecipient: false });
@@ -71,21 +71,21 @@ describe("account health", () => {
     expect(decision).toEqual({
       allowed: false,
       reason: "WA_NEW_CHAT_CAPPED",
-      message: "WhatsApp reports this account has reached its new-chat cap"
+      message: "WhatsApp reports this account has reached its new-chat cap",
     });
   });
 
   it("blocks new recipients on new-chat warning but allows known recipients", async () => {
     const fetcher = makeFetcher({
       fetchNewChatMessageCap: vi.fn(async () => ({
-        capping_status: "FIRST_WARNING"
-      }))
+        capping_status: "FIRST_WARNING",
+      })),
     });
 
     await expect(checkAccountHealth(fetcher, { isNewRecipient: true })).resolves.toEqual({
       allowed: false,
       reason: "NEW_CHAT_RATE_LIMITED",
-      message: "WhatsApp reports a new-chat warning, so new recipient sends are paused"
+      message: "WhatsApp reports a new-chat warning, so new recipient sends are paused",
     });
     await expect(checkAccountHealth(fetcher, { isNewRecipient: false })).resolves.toEqual({ allowed: true });
   });
@@ -104,7 +104,7 @@ describe("account health", () => {
     const fetcher = makeFetcher({
       fetchAccountReachoutTimelock: vi.fn(async () => {
         throw new Error("boom");
-      })
+      }),
     });
 
     const decision = await checkAccountHealth(fetcher, { isNewRecipient: true });
@@ -122,7 +122,7 @@ describe("account health", () => {
     expect(getAccountHealthSnapshot().reachoutTimeLock).toEqual({
       isActive: true,
       retryAt: "2026-08-09T00:30:00.000Z",
-      enforcementType: "UNKNOWN"
+      enforcementType: "UNKNOWN",
     });
   });
 });

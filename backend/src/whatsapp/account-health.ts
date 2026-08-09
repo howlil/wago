@@ -64,7 +64,7 @@ function normalizeReachoutState(state?: ReachoutTimelockState): ReachoutTimelock
 
   return {
     ...state,
-    timeEnforcementEnds: parseDate(state.timeEnforcementEnds)
+    timeEnforcementEnds: parseDate(state.timeEnforcementEnds),
   };
 }
 
@@ -80,7 +80,10 @@ function isFetchErrorCoolingDown(now: number): boolean {
   return Boolean(lastFetchErrorAt) && now - lastFetchErrorAt < HEALTH_ERROR_TTL_MS;
 }
 
-export async function refreshAccountHealth(fetcher: AccountHealthFetcher, options: { force?: boolean } = {}): Promise<void> {
+export async function refreshAccountHealth(
+  fetcher: AccountHealthFetcher,
+  options: { force?: boolean } = {},
+): Promise<void> {
   const now = Date.now();
 
   if (!options.force && (!isCacheStale(now) || isFetchErrorCoolingDown(now))) {
@@ -90,7 +93,7 @@ export async function refreshAccountHealth(fetcher: AccountHealthFetcher, option
   try {
     const [nextReachoutTimeLock, nextNewChatCap] = await Promise.all([
       fetcher.fetchAccountReachoutTimelock(),
-      fetcher.fetchNewChatMessageCap()
+      fetcher.fetchNewChatMessageCap(),
     ]);
 
     reachoutTimeLock = normalizeReachoutState(nextReachoutTimeLock);
@@ -110,13 +113,13 @@ export function markReachoutRestricted(retryAt = new Date(Date.now() + FALLBACK_
   reachoutTimeLock = {
     isActive: true,
     timeEnforcementEnds: retryAt,
-    enforcementType: "UNKNOWN"
+    enforcementType: "UNKNOWN",
   };
 }
 
 export async function checkAccountHealth(
   fetcher: AccountHealthFetcher | undefined,
-  options: { isNewRecipient: boolean }
+  options: { isNewRecipient: boolean },
 ): Promise<AccountHealthDecision> {
   if (fetcher) {
     await refreshAccountHealth(fetcher);
@@ -129,14 +132,14 @@ export async function checkAccountHealth(
       allowed: false,
       reason: "WA_REACHOUT_RESTRICTED",
       message: "WhatsApp reports this account is restricted from starting outbound reach-outs",
-      retryAt
+      retryAt,
     };
   }
 
   if (reachoutTimeLock?.isActive && retryAt && retryAt <= new Date()) {
     reachoutTimeLock = {
       ...reachoutTimeLock,
-      isActive: false
+      isActive: false,
     };
   }
 
@@ -144,7 +147,7 @@ export async function checkAccountHealth(
     return {
       allowed: false,
       reason: "WA_NEW_CHAT_CAPPED",
-      message: "WhatsApp reports this account has reached its new-chat cap"
+      message: "WhatsApp reports this account has reached its new-chat cap",
     };
   }
 
@@ -155,7 +158,7 @@ export async function checkAccountHealth(
     return {
       allowed: false,
       reason: "NEW_CHAT_RATE_LIMITED",
-      message: "WhatsApp reports a new-chat warning, so new recipient sends are paused"
+      message: "WhatsApp reports a new-chat warning, so new recipient sends are paused",
     };
   }
 
@@ -170,12 +173,12 @@ export function getAccountHealthSnapshot(): AccountHealthSnapshot {
       ? {
           isActive: Boolean(reachoutTimeLock.isActive),
           retryAt: retryAt?.toISOString(),
-          enforcementType: reachoutTimeLock.enforcementType
+          enforcementType: reachoutTimeLock.enforcementType,
         }
       : undefined,
     newChatCap,
     lastFetchedAt: lastFetchedAt ? new Date(lastFetchedAt).toISOString() : undefined,
-    lastFetchErrorAt: lastFetchErrorAt ? new Date(lastFetchErrorAt).toISOString() : undefined
+    lastFetchErrorAt: lastFetchErrorAt ? new Date(lastFetchErrorAt).toISOString() : undefined,
   };
 }
 

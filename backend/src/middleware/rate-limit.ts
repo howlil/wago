@@ -55,7 +55,7 @@ export function createRateLimit({ limit, windowMs, maxEntries = 1000 }: RateLimi
       return res.status(429).json({
         success: false,
         error: "RATE_LIMITED",
-        message: "Too many requests. Try again later."
+        message: "Too many requests. Try again later.",
       });
     }
 

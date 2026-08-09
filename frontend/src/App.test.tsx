@@ -2,8 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
-import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
 import { bootstrapApp, getAppInfo, getCurrentQr, getHealth, setStoredApiKey } from "./api.js";
+import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
 
 vi.mock("./api.js", () => ({
   getAppInfo: vi.fn(async () => ({
@@ -13,18 +13,18 @@ vi.mock("./api.js", () => ({
     apiKeyConfigured: true,
     apiKeySource: "generated",
     authenticated: true,
-    setupRequired: false
+    setupRequired: false,
   })),
   bootstrapApp: vi.fn(async () => ({
     success: true,
     appId: "wa-gateway-test",
     apiKey: "wa_test",
-    message: "App initialized"
+    message: "App initialized",
   })),
   getCurrentQr: vi.fn(async () => ({
     success: true,
     qr: null,
-    status: "connecting"
+    status: "connecting",
   })),
   getHealth: vi.fn(async () => ({ status: "ok" })),
   getMessageStatus: vi.fn(),
@@ -32,21 +32,21 @@ vi.mock("./api.js", () => ({
   getStoredApiKey: vi.fn(() => ""),
   getWhatsAppStatus: vi.fn(async () => ({
     success: true,
-    status: "connecting"
+    status: "connecting",
   })),
   rebindWhatsApp: vi.fn(async () => ({
     success: true,
     message: "Rebind started",
-    status: "qr"
+    status: "qr",
   })),
   sendMessage: vi.fn(),
-  setStoredApiKey: vi.fn()
+  setStoredApiKey: vi.fn(),
 }));
 
 beforeEach(() => {
   Object.defineProperty(document, "visibilityState", {
     configurable: true,
-    value: "visible"
+    value: "visible",
   });
 });
 
@@ -94,7 +94,7 @@ describe("App rebind flow", () => {
     vi.useFakeTimers();
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
-      value: "hidden"
+      value: "hidden",
     });
 
     render(<App />);
@@ -116,7 +116,7 @@ describe("App rebind flow", () => {
       apiKeyConfigured: false,
       apiKeySource: "unset",
       authenticated: false,
-      setupRequired: true
+      setupRequired: true,
     });
     const user = userEvent.setup();
 
@@ -139,7 +139,7 @@ describe("App rebind flow", () => {
       apiKeyConfigured: true,
       apiKeySource: "generated",
       authenticated: false,
-      setupRequired: false
+      setupRequired: false,
     });
 
     render(<App />);

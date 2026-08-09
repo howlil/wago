@@ -1,10 +1,10 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { config } from "./config.js";
-import { validateRuntimeConfig } from "./config-validation.js";
+import { config } from "./config/index.js";
+import { validateRuntimeConfig } from "./config/validation.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { appRouter } from "./routes/app.routes.js";
 import { messageRouter } from "./routes/message.routes.js";
@@ -18,7 +18,7 @@ const configErrors = validateRuntimeConfig({
   allowWebBootstrap: config.allowWebBootstrap,
   apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
   authCookieSecure: config.authCookieSecure,
-  corsOrigin: config.corsOrigin
+  corsOrigin: config.corsOrigin,
 });
 
 if (configErrors.length > 0) {
@@ -34,16 +34,16 @@ app.use(
         connectSrc: ["'self'", config.corsOrigin === "*" ? "*" : config.corsOrigin],
         imgSrc: ["'self'", "data:"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"]
-      }
-    }
-  })
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
+  }),
 );
 app.use(
   cors({
     origin: config.corsOrigin === "*" ? "*" : config.corsOrigin,
-    credentials: config.corsOrigin !== "*"
-  })
+    credentials: config.corsOrigin !== "*",
+  }),
 );
 app.use(express.json({ limit: config.bodyLimit }));
 app.use(requestLogger);
@@ -53,11 +53,17 @@ app.use((req, res, next) => {
   const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
   const origin = req.header("origin");
 
-  if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && config.corsOrigin !== "*" && origin !== config.corsOrigin) {
+  if (
+    stateChangingMethods.has(req.method) &&
+    hasCookieAuth &&
+    origin &&
+    config.corsOrigin !== "*" &&
+    origin !== config.corsOrigin
+  ) {
     return res.status(403).json({
       success: false,
       error: "INVALID_ORIGIN",
-      message: "Cookie-authenticated requests must come from the configured origin"
+      message: "Cookie-authenticated requests must come from the configured origin",
     });
   }
 
@@ -72,7 +78,7 @@ app.get("/ready", (_req, res) => {
   res.json({
     status: "ok",
     appId: config.appId,
-    apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash)
+    apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
   });
 });
 
@@ -81,10 +87,12 @@ app.use("/recipients", recipientRouter);
 app.use("/whatsapp", whatsappRouter);
 app.use("/messages", messageRouter);
 
-if (config.frontendDirectory && existsSync(config.frontendDirectory)) {
-  app.use(express.static(config.frontendDirectory));
+const frontendDirectory = config.frontendDirectory;
+
+if (frontendDirectory && existsSync(frontendDirectory)) {
+  app.use(express.static(frontendDirectory));
   app.get(/.*/, (_req, res) => {
-    res.sendFile(join(config.frontendDirectory!, "index.html"));
+    res.sendFile(join(frontendDirectory, "index.html"));
   });
 }
 
@@ -93,7 +101,7 @@ const jsonErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
     return res.status(400).json({
       success: false,
       error: "INVALID_JSON",
-      message: "Request body must be valid JSON"
+      message: "Request body must be valid JSON",
     });
   }
 
@@ -101,7 +109,7 @@ const jsonErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
     return res.status(413).json({
       success: false,
       error: "PAYLOAD_TOO_LARGE",
-      message: "Request body is too large"
+      message: "Request body is too large",
     });
   }
 

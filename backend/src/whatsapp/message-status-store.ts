@@ -34,7 +34,7 @@ export function rememberPendingMessageStatus(input: { id: string; to: string }):
     id: input.id,
     to: input.to,
     status: "pending",
-    updatedAt: nowIso()
+    updatedAt: nowIso(),
   });
 }
 
@@ -48,7 +48,7 @@ export function updateMessageStatus(messageId: string, update: Partial<Omit<Stor
   rememberMessageStatus({
     ...existing,
     ...update,
-    updatedAt: nowIso()
+    updatedAt: nowIso(),
   });
 }
 

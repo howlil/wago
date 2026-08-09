@@ -5,8 +5,8 @@ import {
   listRecipients,
   optOutRecipient,
   rememberRecipientResolution,
-  resetRecipientStoreForTest
-} from "./recipient-store.js";
+  resetRecipientStoreForTest,
+} from "./store.js";
 
 describe("recipient store", () => {
   beforeEach(async () => {
@@ -24,7 +24,7 @@ describe("recipient store", () => {
       jid: "6281234567890@s.whatsapp.net",
       label: "Customer A",
       allowed: true,
-      optedOut: false
+      optedOut: false,
     });
     await expect(listRecipients()).resolves.toHaveLength(1);
   });
@@ -37,7 +37,7 @@ describe("recipient store", () => {
     expect(recipient).toMatchObject({
       jid: "6281234567890@s.whatsapp.net",
       allowed: true,
-      optedOut: true
+      optedOut: true,
     });
   });
 
@@ -46,7 +46,7 @@ describe("recipient store", () => {
     await rememberRecipientResolution("6281234567890@s.whatsapp.net", "lid-user@s.whatsapp.net");
 
     await expect(getRecipientByJid("6281234567890@s.whatsapp.net")).resolves.toMatchObject({
-      resolvedJid: "lid-user@s.whatsapp.net"
+      resolvedJid: "lid-user@s.whatsapp.net",
     });
   });
 });

@@ -1,13 +1,13 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
-import { config, hashApiKey } from "./config.js";
-import { resetRecipientStoreForTest } from "./recipient-store.js";
+import { config, hashApiKey } from "./config/index.js";
+import { resetRecipientStoreForTest } from "./recipients/store.js";
 
 const apiKeyRequiredResponse = {
   success: false,
   error: "API_KEY_REQUIRED",
-  message: "Initialize the app from the web UI or set API_KEY on the backend before using this operation"
+  message: "Initialize the app from the web UI or set API_KEY on the backend before using this operation",
 };
 
 describe("app", () => {
@@ -58,7 +58,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       status: "ok",
       appId: config.appId,
-      apiKeyConfigured: true
+      apiKeyConfigured: true,
     });
   });
 
@@ -71,7 +71,7 @@ describe("app", () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       status: "ok",
-      apiKeyConfigured: true
+      apiKeyConfigured: true,
     });
   });
 
@@ -93,7 +93,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "INVALID_JSON",
-      message: "Request body must be valid JSON"
+      message: "Request body must be valid JSON",
     });
   });
 
@@ -103,21 +103,21 @@ describe("app", () => {
       .set("Content-Type", "application/json")
       .send({
         to: "081234567890",
-        text: "x".repeat(40_000)
+        text: "x".repeat(40_000),
       });
 
     expect(response.status).toBe(413);
     expect(response.body).toEqual({
       success: false,
       error: "PAYLOAD_TOO_LARGE",
-      message: "Request body is too large"
+      message: "Request body is too large",
     });
   });
 
   it("protects send-message when API_KEY is not configured", async () => {
     const response = await request(app).post("/messages/send").send({
       to: "081234567890",
-      text: "Connectivity check"
+      text: "Connectivity check",
     });
 
     expect(response.status).toBe(403);
@@ -142,20 +142,17 @@ describe("app", () => {
     config.apiKey = "test-key";
     config.apiKeySource = "env";
 
-    const allowResponse = await request(app)
-      .post("/recipients/allow")
-      .set("Authorization", "Bearer test-key")
-      .send({
-        phone: "081234567890",
-        label: "Customer A"
-      });
+    const allowResponse = await request(app).post("/recipients/allow").set("Authorization", "Bearer test-key").send({
+      phone: "081234567890",
+      label: "Customer A",
+    });
 
     expect(allowResponse.status).toBe(201);
     expect(allowResponse.body.recipient).toMatchObject({
       jid: "6281234567890@s.whatsapp.net",
       label: "Customer A",
       allowed: true,
-      optedOut: false
+      optedOut: false,
     });
 
     const listResponse = await request(app).get("/recipients").set("Authorization", "Bearer test-key");
@@ -171,7 +168,7 @@ describe("app", () => {
     expect(optOutResponse.body.recipient).toMatchObject({
       jid: "6281234567890@s.whatsapp.net",
       allowed: true,
-      optedOut: true
+      optedOut: true,
     });
   });
 
@@ -207,14 +204,14 @@ describe("app", () => {
       .set("Origin", "https://evil.example.com")
       .set("Cookie", `${config.authCookieName}=generated-key`)
       .send({
-        phone: "6281234567890"
+        phone: "6281234567890",
       });
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       success: false,
       error: "INVALID_ORIGIN",
-      message: "Cookie-authenticated requests must come from the configured origin"
+      message: "Cookie-authenticated requests must come from the configured origin",
     });
   });
 
@@ -227,7 +224,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
-      message: "Web bootstrap is disabled. Set API_KEY or enable ALLOW_WEB_BOOTSTRAP for initial setup."
+      message: "Web bootstrap is disabled. Set API_KEY or enable ALLOW_WEB_BOOTSTRAP for initial setup.",
     });
   });
 
@@ -241,7 +238,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "APP_ALREADY_INITIALIZED",
-      message: "This app is already initialized. Use the existing API key or auth cookie."
+      message: "This app is already initialized. Use the existing API key or auth cookie.",
     });
   });
 });

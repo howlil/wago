@@ -10,7 +10,7 @@ function createServerMock(): Server & { closeMock: ReturnType<typeof vi.fn> } {
 
   return {
     close: closeMock,
-    closeMock
+    closeMock,
   } as unknown as Server & { closeMock: ReturnType<typeof vi.fn> };
 }
 
@@ -34,7 +34,7 @@ describe("createShutdownHandler", () => {
     const shutdownWhatsApp = vi.fn(async () => undefined);
     const shutdown = createShutdownHandler(server, {
       exit,
-      shutdownWhatsApp
+      shutdownWhatsApp,
     });
 
     await shutdown("SIGTERM");

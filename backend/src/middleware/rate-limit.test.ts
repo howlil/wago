@@ -6,15 +6,15 @@ function createRequest(ip: string): Request {
   return {
     ip,
     socket: {
-      remoteAddress: ip
-    }
+      remoteAddress: ip,
+    },
   } as Request;
 }
 
 function createResponse(): Response {
   return {
     status: vi.fn().mockReturnThis(),
-    json: vi.fn().mockReturnThis()
+    json: vi.fn().mockReturnThis(),
   } as unknown as Response;
 }
 
@@ -36,7 +36,7 @@ describe("createRateLimit", () => {
     expect(response.json).toHaveBeenCalledWith({
       success: false,
       error: "RATE_LIMITED",
-      message: "Too many requests. Try again later."
+      message: "Too many requests. Try again later.",
     });
   });
 

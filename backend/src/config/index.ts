@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const defaultDataDirectory =
-  process.env.NODE_ENV === "test" ? resolve(moduleDirectory, "..", "data-test") : resolve(moduleDirectory, "..", "data");
+  process.env.NODE_ENV === "test"
+    ? resolve(moduleDirectory, "..", "..", "data-test")
+    : resolve(moduleDirectory, "..", "..", "data");
 const dataDirectory = process.env.DATA_DIR?.trim() || defaultDataDirectory;
 const settingsFile = process.env.APP_SETTINGS_FILE?.trim() || resolve(dataDirectory, "app-settings.json");
 const envAppId = process.env.APP_ID?.trim();
@@ -48,14 +50,15 @@ export function hashApiKey(apiKey: string): string {
 
 const persistedSettings = readSettings();
 const initialAppId = envAppId || persistedSettings.appId || `wa-gateway-${randomUUID().slice(0, 8)}`;
-const persistedApiKeyHash = persistedSettings.apiKeyHash || (persistedSettings.apiKey ? hashApiKey(persistedSettings.apiKey) : null);
+const persistedApiKeyHash =
+  persistedSettings.apiKeyHash || (persistedSettings.apiKey ? hashApiKey(persistedSettings.apiKey) : null);
 
 if ((!envAppId && !persistedSettings.appId) || (persistedSettings.apiKey && !persistedSettings.apiKeyHash)) {
   writeSettings({
     ...persistedSettings,
     appId: initialAppId,
     apiKey: undefined,
-    apiKeyHash: persistedApiKeyHash ?? undefined
+    apiKeyHash: persistedApiKeyHash ?? undefined,
   });
 }
 
@@ -77,14 +80,16 @@ export const config = {
   trustProxy,
   defaultCountryCode,
   logLevel,
-  waVersionMode
+  waVersionMode,
 };
 
-export function bootstrapApiKey(): { success: true; appId: string; apiKey: string } | { success: false; message: string } {
+export function bootstrapApiKey():
+  | { success: true; appId: string; apiKey: string }
+  | { success: false; message: string } {
   if (config.apiKey || config.apiKeyHash) {
     return {
       success: false,
-      message: "This app is already initialized. Use the existing API key or auth cookie."
+      message: "This app is already initialized. Use the existing API key or auth cookie.",
     };
   }
 
@@ -94,7 +99,7 @@ export function bootstrapApiKey(): { success: true; appId: string; apiKey: strin
     ...readSettings(),
     appId: config.appId,
     apiKeyHash: hashApiKey(apiKey),
-    generatedAt: new Date().toISOString()
+    generatedAt: new Date().toISOString(),
   });
 
   config.apiKey = null;
@@ -104,6 +109,6 @@ export function bootstrapApiKey(): { success: true; appId: string; apiKey: strin
   return {
     success: true,
     appId: config.appId,
-    apiKey
+    apiKey,
   };
 }

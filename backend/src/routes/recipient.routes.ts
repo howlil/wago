@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireApiKey } from "../middleware/auth.js";
-import { allowRecipient, listRecipients, optOutRecipient } from "../recipient-store.js";
+import { allowRecipient, listRecipients, optOutRecipient } from "../recipients/store.js";
 
 export const recipientRouter = Router();
 
@@ -9,7 +9,7 @@ recipientRouter.get("/", requireApiKey, async (_req, res) => {
 
   return res.json({
     success: true,
-    recipients
+    recipients,
   });
 });
 
@@ -20,7 +20,7 @@ recipientRouter.post("/allow", requireApiKey, async (req, res) => {
     return res.status(400).json({
       success: false,
       error: "INVALID_REQUEST",
-      message: "phone is required"
+      message: "phone is required",
     });
   }
 
@@ -28,7 +28,7 @@ recipientRouter.post("/allow", requireApiKey, async (req, res) => {
     return res.status(400).json({
       success: false,
       error: "INVALID_REQUEST",
-      message: "label must be a string when provided"
+      message: "label must be a string when provided",
     });
   }
 
@@ -37,14 +37,14 @@ recipientRouter.post("/allow", requireApiKey, async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      recipient
+      recipient,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("Phone number")) {
       return res.status(400).json({
         success: false,
         error: "INVALID_PHONE",
-        message: error.message
+        message: error.message,
       });
     }
 
@@ -59,7 +59,7 @@ recipientRouter.post("/:phone/opt-out", requireApiKey, async (req, res) => {
     return res.status(400).json({
       success: false,
       error: "INVALID_PHONE",
-      message: "phone is required"
+      message: "phone is required",
     });
   }
 
@@ -68,14 +68,14 @@ recipientRouter.post("/:phone/opt-out", requireApiKey, async (req, res) => {
 
     return res.json({
       success: true,
-      recipient
+      recipient,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("Phone number")) {
       return res.status(400).json({
         success: false,
         error: "INVALID_PHONE",
-        message: error.message
+        message: error.message,
       });
     }
 

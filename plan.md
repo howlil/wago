@@ -375,26 +375,26 @@ Goal: make self-hosting secure-by-default.
 
 Tasks:
 
-- [ ] Add production compose file using an image, not build context.
-- [ ] Default bind address to `127.0.0.1`.
-- [ ] Use named volume `wago_data`.
-- [ ] Set `restart: unless-stopped`.
-- [ ] Add `read_only: true`, `/tmp` tmpfs, `cap_drop: [ALL]`, and `no-new-privileges`.
-- [ ] Keep development compose/build path separate.
-- [ ] Document backup/restore for `wago_data`.
-- [ ] Warn never to use `docker compose down -v` for upgrade.
+- [x] Add production compose file using an image, not build context.
+- [x] Default bind address to `127.0.0.1`.
+- [x] Use named volume `wago_data`.
+- [x] Set `restart: unless-stopped`.
+- [x] Add `read_only: true`, `/tmp` tmpfs, `cap_drop: [ALL]`, and `no-new-privileges`.
+- [x] Keep development compose/build path separate.
+- [x] Document backup/restore for `wago_data`.
+- [x] Warn never to use `docker compose down -v` for upgrade.
 
 Acceptance:
 
-- [ ] A production operator can deploy with `docker compose pull && docker compose up -d`.
-- [ ] Data persists through container replacement.
-- [ ] Public exposure requires deliberate bind/reverse-proxy config.
+- [x] A production operator can deploy with `docker compose pull && docker compose up -d`.
+- [x] Data persists through container replacement.
+- [x] Public exposure requires deliberate bind/reverse-proxy config.
 
 Verification:
 
-- [ ] Docker build.
-- [ ] Compose config validation.
-- [ ] Local smoke test for `/health`.
+- [x] Docker build.
+- [x] Compose config validation.
+- [x] Local smoke test for `/health`.
 
 ## Milestone 3: OSS, CI, and Release Engineering
 
@@ -406,22 +406,22 @@ Goal: add one practical formatter/linter without tool sprawl.
 
 Tasks:
 
-- [ ] Add Biome.
-- [ ] Add root scripts: `pnpm check`, `pnpm check:fix`, `pnpm test`, `pnpm build`.
-- [ ] Ensure backend and frontend use pnpm consistently.
-- [ ] Run Biome and fix only relevant formatting issues.
-- [ ] Document local quality commands in `AGENTS.md` and README.
+- [x] Add Biome.
+- [x] Add root scripts: `pnpm check`, `pnpm check:fix`, `pnpm test`, `pnpm build`.
+- [x] Ensure backend and frontend use pnpm consistently.
+- [x] Run Biome and fix only relevant formatting issues.
+- [x] Document local quality commands in `AGENTS.md` and README.
 
 Acceptance:
 
-- [ ] One command verifies formatting/lint basics.
-- [ ] CI can run the same commands locally.
+- [x] One command verifies formatting/lint basics.
+- [x] CI can run the same commands locally.
 
 Verification:
 
-- [ ] `pnpm check`.
-- [ ] `pnpm test`.
-- [ ] `pnpm build`.
+- [x] `pnpm check`.
+- [x] `pnpm test`.
+- [x] `pnpm build`.
 
 ### Iteration 14: CI and Dependency Updates
 
@@ -429,20 +429,20 @@ Goal: prevent regressions before merge.
 
 Tasks:
 
-- [ ] Add GitHub Actions CI for backend test/build and frontend test/build.
-- [ ] Add Docker image build check without push.
-- [ ] Add CodeQL workflow.
-- [ ] Add Dependabot for pnpm, Docker, and GitHub Actions.
-- [ ] Ensure Baileys upgrades open PRs but are not auto-deployed.
+- [x] Add GitHub Actions CI for backend test/build and frontend test/build.
+- [x] Add Docker image build check without push.
+- [x] Add CodeQL workflow.
+- [x] Add Dependabot for pnpm, Docker, and GitHub Actions.
+- [x] Ensure Baileys upgrades open PRs but are not auto-deployed.
 
 Acceptance:
 
-- [ ] PRs fail if tests/build/Docker build fail.
-- [ ] Security/dependency updates are visible and reviewable.
+- [x] PRs fail if tests/build/Docker build fail.
+- [x] Security/dependency updates are visible and reviewable.
 
 Verification:
 
-- [ ] Validate workflows syntax.
+- [x] Validate workflows syntax.
 - [ ] First CI run passes.
 
 ### Iteration 15: GHCR Release Pipeline
@@ -451,22 +451,22 @@ Goal: publish versioned Docker images for production installs.
 
 Tasks:
 
-- [ ] Add release workflow triggered by `v*` tags.
-- [ ] Build multi-arch images: `linux/amd64` and `linux/arm64`.
-- [ ] Push to `ghcr.io/howlil/wago-simple`.
-- [ ] Add OCI labels for source, revision, version, and license.
-- [ ] Generate SBOM and provenance.
-- [ ] Tag images as full semver, minor, and latest.
-- [ ] Document rollback by changing `WAGO_VERSION`.
+- [x] Add release workflow triggered by `v*` tags.
+- [x] Build multi-arch images: `linux/amd64` and `linux/arm64`.
+- [x] Push to `ghcr.io/howlil/wago-simple`.
+- [x] Add OCI labels for source, revision, version, and license.
+- [x] Generate SBOM and provenance.
+- [x] Tag images as full semver, minor, and latest.
+- [x] Document rollback by changing `WAGO_VERSION`.
 
 Acceptance:
 
-- [ ] Tagging `v0.x.y` produces GHCR images.
-- [ ] Users do not need to clone the repo to deploy production.
+- [x] Tagging `v0.x.y` produces GHCR images.
+- [x] Users do not need to clone the repo to deploy production.
 
 Verification:
 
-- [ ] Dry-run workflow review.
+- [x] Dry-run workflow review.
 - [ ] First tagged release smoke test.
 
 ### Iteration 16: OSS Governance and Docs
@@ -475,28 +475,28 @@ Goal: make repository boundaries clear for contributors and users.
 
 Tasks:
 
-- [ ] Add MIT `LICENSE`.
-- [ ] Add `SECURITY.md` with private vulnerability reporting guidance.
-- [ ] Add `CONTRIBUTING.md`.
-- [ ] Add `CODE_OF_CONDUCT.md`.
-- [ ] Add `CHANGELOG.md`.
-- [ ] Add issue templates for bug and feature requests.
-- [ ] Add pull request template.
-- [ ] Update README support boundary.
-- [ ] Document supported and unsupported deployment modes.
-- [ ] Document upgrade, backup, restore, and rollback.
-- [ ] Document that Baileys transport is unofficial and not guaranteed ban-safe.
+- [x] Add MIT `LICENSE`.
+- [x] Add `SECURITY.md` with private vulnerability reporting guidance.
+- [x] Add `CONTRIBUTING.md`.
+- [x] Add `CODE_OF_CONDUCT.md`.
+- [x] Add `CHANGELOG.md`.
+- [x] Add issue templates for bug and feature requests.
+- [x] Add pull request template.
+- [x] Update README support boundary.
+- [x] Document supported and unsupported deployment modes.
+- [x] Document upgrade, backup, restore, and rollback.
+- [x] Document that Baileys transport is unofficial and not guaranteed ban-safe.
 
 Acceptance:
 
-- [ ] Users know what the project supports.
-- [ ] Users know not to paste auth state, QR payloads, API keys, or full logs into issues.
-- [ ] Contributors have clear test/build expectations.
+- [x] Users know what the project supports.
+- [x] Users know not to paste auth state, QR payloads, API keys, or full logs into issues.
+- [x] Contributors have clear test/build expectations.
 
 Verification:
 
-- [ ] Docs review.
-- [ ] Link checks where practical.
+- [x] Docs review.
+- [x] Link checks where practical.
 
 ## Final Definition of Done
 

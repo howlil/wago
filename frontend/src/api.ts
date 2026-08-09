@@ -93,7 +93,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers
+    headers,
   });
   const contentType = response.headers.get("content-type") ?? "";
   const data = contentType.includes("application/json")
@@ -101,7 +101,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     : ({
         success: false,
         error: "NON_JSON_RESPONSE",
-        message: await response.text()
+        message: await response.text(),
       } as T);
 
   if (!response.ok) {
@@ -141,7 +141,7 @@ export function getAppInfo(): Promise<AppInfoResponse> {
 
 export function bootstrapApp(): Promise<BootstrapAppResponse> {
   return requestJson<BootstrapAppResponse>("/app/bootstrap", {
-    method: "POST"
+    method: "POST",
   });
 }
 
@@ -165,9 +165,9 @@ export function sendMessage(to: string, text: string): Promise<SendMessageRespon
   return requestJson<SendMessageResponse>("/messages/send", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ to, text })
+    body: JSON.stringify({ to, text }),
   });
 }
 
@@ -177,6 +177,6 @@ export function getMessageStatus(messageId: string): Promise<MessageStatusRespon
 
 export function rebindWhatsApp(): Promise<RebindResponse> {
   return requestJson<RebindResponse>("/whatsapp/rebind", {
-    method: "POST"
+    method: "POST",
   });
 }

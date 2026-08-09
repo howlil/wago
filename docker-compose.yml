@@ -1,22 +1,45 @@
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  wago:
+    image: ghcr.io/howlil/wago-simple:${WAGO_VERSION:-latest}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
     environment:
+      NODE_ENV: production
       PORT: 3000
       HOST: 0.0.0.0
-      APP_ID: ${APP_ID:-wa-gateway}
+      APP_ID: ${APP_ID:-wa-gateway-prod}
       DATA_DIR: /app/data
       AUTH_DIR: /app/data/auth
       API_KEY: ${API_KEY:-}
       ALLOW_WEB_BOOTSTRAP: ${ALLOW_WEB_BOOTSTRAP:-false}
-      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
       BODY_LIMIT: ${BODY_LIMIT:-32kb}
-      CORS_ORIGIN: "${CORS_ORIGIN:-*}"
+      CORS_ORIGIN: ${CORS_ORIGIN:?Set CORS_ORIGIN to your public origin, for example https://wago.example.com}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      DEFAULT_COUNTRY_CODE: ${DEFAULT_COUNTRY_CODE:-62}
+      WA_VERSION_MODE: ${WA_VERSION_MODE:-default}
+      REQUEST_LOGGING: ${REQUEST_LOGGING:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       FRONTEND_DIST: /app/public
     ports:
-      - "${HOST_PORT:-3000}:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-3000}:3000"
     volumes:
-      - ./backend/data:/app/data
-    restart: unless-stopped
+      - wago_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  wago_data:

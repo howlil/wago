@@ -1,4 +1,4 @@
-import { getAccountHealthSnapshot, type AccountHealthSnapshot } from "../account-health.js";
+import { type AccountHealthSnapshot, getAccountHealthSnapshot } from "./account-health.js";
 
 export type WhatsAppStatus = "connecting" | "qr" | "connected" | "disconnected";
 
@@ -40,7 +40,7 @@ export function getConnectionStatus(): WhatsAppStatus {
 export function getWhatsAppStatusSnapshot(): WhatsAppStatusSnapshot {
   return {
     status,
-    accountHealth: getAccountHealthSnapshot()
+    accountHealth: getAccountHealthSnapshot(),
   };
 }
 

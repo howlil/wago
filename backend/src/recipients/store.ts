@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { config } from "./config.js";
-import { toWhatsAppJid } from "./utils/phone.js";
+import { config } from "../config/index.js";
+import { toWhatsAppJid } from "../utils/phone.js";
 
 export type RecipientRecord = {
   jid: string;
@@ -80,7 +80,7 @@ export async function allowRecipientJid(jid: string, label?: string): Promise<Re
     allowed: true,
     optedOut: false,
     createdAt: existing?.createdAt ?? timestamp,
-    updatedAt: timestamp
+    updatedAt: timestamp,
   };
 
   recipients[jid] = record;
@@ -101,7 +101,7 @@ export async function optOutRecipient(phone: string): Promise<RecipientRecord> {
     allowed: existing?.allowed ?? false,
     optedOut: true,
     createdAt: existing?.createdAt ?? timestamp,
-    updatedAt: timestamp
+    updatedAt: timestamp,
   };
 
   recipients[jid] = record;
@@ -121,7 +121,7 @@ export async function rememberRecipientResolution(jid: string, resolvedJid: stri
   recipients[jid] = {
     ...existing,
     resolvedJid,
-    updatedAt: nowIso()
+    updatedAt: nowIso(),
   };
   await writeRecipientFile(recipients);
 }
