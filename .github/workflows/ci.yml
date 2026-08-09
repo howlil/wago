@@ -4,9 +4,13 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
   push:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
 
 permissions:
   contents: read
@@ -17,20 +21,19 @@ concurrency:
 
 jobs:
   quality:
-    name: Check, Test, Build
+    name: Check, Test, Build Core
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node
-        uses: actions/setup-node@v5
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
         with:
-          node-version: 26
-          package-manager-cache: false
-
-      - name: Setup pnpm
-        run: npm install --global pnpm@11.18.0
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+          install: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -41,11 +44,11 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Build apps
+      - name: Build core apps
         run: pnpm build
 
   docker-build:
-    name: Docker Build
+    name: Docker Build Core
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

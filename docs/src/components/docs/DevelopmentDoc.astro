@@ -13,32 +13,39 @@ const id = lang === 'id';
   <PageHeader
     eyebrow="Contributors"
     title={id ? 'Development workflow' : 'Development workflow'}
-    description={id ? 'Workflow lokal untuk backend, frontend, docs, test, lint/format, dan kontribusi.' : 'Local workflow for backend, frontend, docs, tests, lint/format, and contributions.'}
+    description={id ? 'Workflow lokal untuk core backend/frontend dan docs site yang dipelihara secara terpisah.' : 'Local workflow for the backend/frontend core and the separately maintained docs site.'}
   />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Toolchain</h2>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
     <li>Node.js 26</li>
-    <li>pnpm 11.18.0</li>
+    <li>pnpm 11.21.0</li>
     <li>{id ? 'Backend: TypeScript, Express, Baileys, Vitest.' : 'Backend: TypeScript, Express, Baileys, Vitest.'}</li>
     <li>{id ? 'Frontend: React, Vite, Tailwind CSS, Vitest.' : 'Frontend: React, Vite, Tailwind CSS, Vitest.'}</li>
     <li>{id ? 'Docs: Astro + React islands + Tailwind CSS.' : 'Docs: Astro + React islands + Tailwind CSS.'}</li>
     <li>Biome</li>
   </ul>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Struktur repo' : 'Repository layout'}</h2>
-  <CodeBlock label="tree" code={`backend/        Express API, policy, Baileys integration, tests\nfrontend/       Gateway dashboard\ndocs/           Astro documentation site\n.github/        CI, CodeQL, release, issue/PR templates\nDockerfile      Production multi-stage image\ndocker-compose.yml\nREADME.md\nCONTRIBUTING.md\nSECURITY.md\nCODE_OF_CONDUCT.md\nCHANGELOG.md\nLICENSE`} />
+  <Callout title={id ? 'Docs bukan runtime artifact' : 'Docs are not a runtime artifact'}>
+    {id ? 'Folder docs dipelihara dan di-host terpisah oleh project owner. Docker/GHCR dan core build hanya membawa backend + frontend.' : 'The docs folder is maintained and hosted separately by the project owner. Docker/GHCR and the core build contain only backend + frontend.'}
+  </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Install dan quality gates' : 'Install and quality gates'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Struktur repo' : 'Repository layout'}</h2>
+  <CodeBlock label="tree" code={`backend/        Express API, policy, Baileys integration, tests\nfrontend/       Gateway dashboard\ndocs/           Separately hosted Astro docs/branding site\n.github/        CI, CodeQL, release, issue/PR templates\nDockerfile      Production core image\ndocker-compose.yml\nREADME.md\nCONTRIBUTING.md\nSECURITY.md\nCODE_OF_CONDUCT.md\nCHANGELOG.md\nLICENSE`} />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Install dan quality gates core' : 'Install and core quality gates'}</h2>
   <CodeBlock label="shell" code={`pnpm install\npnpm check\npnpm test\npnpm build`} />
-  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'pnpm build membangun backend, frontend, dan docs. CI harus gagal jika salah satu tidak compile.' : 'pnpm build builds backend, frontend, and docs. CI should fail if any of them does not compile.'}</p>
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'pnpm build membangun backend dan frontend saja. Ini adalah boundary distributable core.' : 'pnpm build builds backend and frontend only. This is the distributable core boundary.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Menjalankan aplikasi' : 'Running locally'}</h2>
-  <CodeBlock label="terminals" code={`pnpm --dir backend dev\npnpm --dir frontend dev\npnpm --dir docs dev`} />
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Validasi docs secara terpisah' : 'Validate docs separately'}</h2>
+  <CodeBlock label="shell" code={`pnpm build:docs\npnpm --dir docs dev`} />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Menjalankan core' : 'Running the core locally'}</h2>
+  <CodeBlock label="terminals" code={`pnpm --dir backend dev\npnpm --dir frontend dev`} />
   <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Jika frontend memakai backend non-default, set VITE_API_BASE_URL sebelum dev/build frontend.' : 'If the frontend targets a non-default backend origin, set VITE_API_BASE_URL before frontend dev/build.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Targeted commands' : 'Targeted commands'}</h2>
-  <CodeBlock label="shell" code={`pnpm --dir backend test\npnpm --dir frontend test\npnpm --dir docs build\npnpm check:fix`} />
+  <CodeBlock label="shell" code={`pnpm --dir backend test\npnpm --dir frontend test\npnpm --dir backend build\npnpm --dir frontend build\npnpm check:fix`} />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Testing philosophy</h2>
   <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Test behavior Wago, bukan internals Baileys. Fokus pada wrapper, policy decisions, validation, routes, cache/store, dan lifecycle behavior.' : 'Test Wago behavior rather than Baileys internals. Focus on wrappers, policy decisions, validation, routes, caches/stores, and lifecycle behavior.'}</p>
@@ -51,7 +58,7 @@ const id = lang === 'id';
     <li>{id ? 'Jelaskan behavior yang berubah dan alasan.' : 'Describe the changed behavior and why.'}</li>
     <li>{id ? 'Tambahkan/ubah test atau jelaskan mengapa tidak relevan.' : 'Add/update tests or explain why they are not applicable.'}</li>
     <li>{id ? 'Cantumkan verification commands.' : 'List verification commands.'}</li>
-    <li>{id ? 'Sertakan screenshot untuk perubahan UI/docs visual bila relevan.' : 'Include screenshots for relevant UI/docs visual changes.'}</li>
+    <li>{id ? 'Sertakan screenshot untuk perubahan UI bila relevan.' : 'Include screenshots for relevant UI changes.'}</li>
     <li>{id ? 'Jangan lampirkan QR live, auth files, API key, full number/JID, message text, atau production logs mentah.' : 'Never attach live QR codes, auth files, API keys, full phone/JIDs, message text, or raw production logs.'}</li>
   </ul>
 </DocsLayout>

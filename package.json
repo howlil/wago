@@ -2,13 +2,14 @@
   "name": "wago-simple",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.18.0",
+  "packageManager": "pnpm@11.21.0",
   "type": "module",
   "scripts": {
     "check": "biome check",
     "check:fix": "biome check --write",
     "test": "pnpm --dir backend test && pnpm --dir frontend test",
-    "build": "pnpm --dir backend run build && pnpm --dir frontend run build && pnpm --dir docs run build",
+    "build": "pnpm run build:core",
+    "build:core": "pnpm --dir backend run build && pnpm --dir frontend run build",
     "build:docs": "pnpm --dir docs run build"
   },
   "devDependencies": {

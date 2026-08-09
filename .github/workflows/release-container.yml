@@ -6,6 +6,12 @@ on:
       - main
     tags:
       - "v*"
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/release-container.yml"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +29,7 @@ env:
 
 jobs:
   publish:
-    name: Publish GHCR Image
+    name: Publish Core GHCR Image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -56,13 +62,13 @@ jobs:
             type=raw,value=latest
           labels: |
             org.opencontainers.image.title=Wago Simple
-            org.opencontainers.image.description=Single-account self-hosted WhatsApp gateway
+            org.opencontainers.image.description=Single-account self-hosted WhatsApp gateway core
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ github.ref_name }}
             org.opencontainers.image.licenses=MIT
 
-      - name: Build and push image
+      - name: Build and push core image
         id: build
         uses: docker/build-push-action@v7
         with:

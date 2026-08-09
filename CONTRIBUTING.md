@@ -4,13 +4,23 @@
 
 Wago is a single-account, self-hosted WhatsApp gateway. Keep changes aligned with that scope. Do not add multi-tenant, campaign, bulk sender, Redis, database, Kubernetes, or anti-detection features unless the project scope explicitly changes.
 
+The distributable core is `backend/` + `frontend/`. The `docs/` site is maintained and hosted separately by the project owner and is not part of the runtime/container artifact.
+
 ## Local Setup
+
+Requirements: Node.js 26 and pnpm 11.21.0.
 
 ```bash
 pnpm install
 pnpm check
 pnpm test
 pnpm build
+```
+
+`pnpm build` verifies the distributable core only. When intentionally working on the documentation site, validate it separately:
+
+```bash
+pnpm build:docs
 ```
 
 Run app-specific commands when working in one area:

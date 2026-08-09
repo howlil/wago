@@ -1,6 +1,8 @@
-FROM node:26-alpine AS frontend-deps
+FROM node:26-alpine AS pnpm-base
+RUN npm install --global pnpm@11.21.0
+
+FROM pnpm-base AS frontend-deps
 WORKDIR /app/frontend
-RUN npm install --global pnpm@11.18.0
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
@@ -8,9 +10,8 @@ FROM frontend-deps AS frontend-build
 COPY frontend/ ./
 RUN pnpm run build
 
-FROM node:26-alpine AS backend-deps
+FROM pnpm-base AS backend-deps
 WORKDIR /app/backend
-RUN npm install --global pnpm@11.18.0
 COPY backend/package.json backend/pnpm-lock.yaml backend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
@@ -18,11 +19,10 @@ FROM backend-deps AS backend-build
 COPY backend/ ./
 RUN pnpm run build
 
-FROM node:26-alpine AS runtime
+FROM pnpm-base AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN npm install --global pnpm@11.18.0
 COPY backend/package.json backend/pnpm-lock.yaml backend/pnpm-workspace.yaml ./backend/
 WORKDIR /app/backend
 RUN pnpm install --frozen-lockfile --prod

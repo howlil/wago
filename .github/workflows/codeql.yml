@@ -4,9 +4,13 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
   push:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
   schedule:
     - cron: "24 3 * * 1"
 
@@ -20,7 +24,7 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze JavaScript and TypeScript
+    name: Analyze Core JavaScript and TypeScript
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,20 +34,20 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
+          config-file: ./.github/codeql-config.yml
 
-      - name: Setup Node
-        uses: actions/setup-node@v5
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
         with:
-          node-version: 26
-          package-manager-cache: false
-
-      - name: Setup pnpm
-        run: npm install --global pnpm@11.18.0
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+          install: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build apps
+      - name: Build core apps
         run: pnpm build
 
       - name: Perform CodeQL analysis

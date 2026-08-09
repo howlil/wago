@@ -7,7 +7,7 @@
 
 A lightweight, self-hosted, single-account WhatsApp gateway with a small HTTP API and web dashboard.
 
-Built with **Node.js**, **TypeScript**, **Express**, **React**, and **Baileys**, and distributed as one Docker image.
+Built with **Node.js**, **TypeScript**, **Express**, **React**, **Baileys**, and **pnpm**, and distributed as one Docker image containing only the gateway core.
 
 > [!IMPORTANT]
 > Wago Simple uses Baileys, an unofficial WhatsApp Web client. It is not affiliated with, endorsed by, or supported by WhatsApp or Meta. This project does not guarantee account safety or ban prevention.
@@ -34,6 +34,28 @@ It is **not** a bulk sender, campaign platform, multi-tenant SaaS, scraping tool
 - Hardened Docker Compose deployment
 - `linux/amd64` and `linux/arm64` GHCR images
 - CI, CodeQL, SBOM, and provenance
+
+## Distribution Boundary
+
+The distributable Wago core is strictly:
+
+```text
+backend/
+frontend/
+```
+
+The repository also contains `docs/`, an Astro documentation/branding site maintained and hosted separately by the project owner. It is **not part of the Wago runtime artifact**.
+
+The project enforces this boundary in several places:
+
+- Docker build context excludes `docs/`
+- GHCR publishing only reacts to core/container changes
+- `pnpm build` builds backend + frontend only
+- `pnpm build:docs` is an explicit separate docs build
+- `pnpm pack` excludes `docs/` through `.npmignore`
+- `git archive` excludes `docs/` through `.gitattributes`
+
+Because this is a public repository, the `docs/` source is still visible in GitHub. The exclusion applies to distributed build/runtime artifacts, not repository visibility.
 
 ## Quick Start
 
@@ -176,17 +198,25 @@ Images are published to:
 ghcr.io/howlil/wago-simple
 ```
 
-`main` publishes `latest`, `main`, and `sha-<short-sha>`. Git tags matching `v*` additionally publish version-oriented tags. For reproducible deployment, edit the image tag in `docker-compose.yml` to the release or `sha-*` tag you want.
+Core-affecting pushes to `main` publish `latest`, `main`, and `sha-<short-sha>`. Git tags matching `v*` additionally publish version-oriented tags. Changes that only touch `docs/` do not publish a new core image.
+
+For reproducible deployment, edit the image tag in `docker-compose.yml` to the release or `sha-*` tag you want.
 
 ## Local Development
 
-Requirements: Node.js 26 and pnpm 11.18.0.
+Requirements: Node.js 26 and pnpm 11.21.0.
 
 ```bash
 pnpm install
 pnpm check
 pnpm test
 pnpm build
+```
+
+`pnpm build` verifies only the distributable backend/frontend core. The documentation site is intentionally separate:
+
+```bash
+pnpm build:docs
 ```
 
 Run applications separately when needed:
@@ -209,7 +239,7 @@ Read [SECURITY.md](SECURITY.md) before reporting a vulnerability. Never publish 
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md). Before opening a pull request, run:
+Read [CONTRIBUTING.md](CONTRIBUTING.md). Before opening a core pull request, run:
 
 ```bash
 pnpm check
@@ -217,7 +247,7 @@ pnpm test
 pnpm build
 ```
 
-See the documentation portal under `/docs` for architecture, API, deployment, operations, development, and OSS project policy.
+The documentation/branding site under `/docs` is maintained and hosted separately from the distributable core.
 
 ## License
 
