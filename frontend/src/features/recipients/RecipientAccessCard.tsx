@@ -115,13 +115,11 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
   }
 
   return (
-    <section className={cardBodyClass}>
+    <section className={`${cardBodyClass} h-full`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className={sectionTitleClass}>Recipient access</h2>
-          <p className={sectionDescriptionClass}>
-            Manage who can receive outbound messages. Opt-outs remain blocked until explicitly restored.
-          </p>
+          <p className={sectionDescriptionClass}>Control who is approved for outbound messages.</p>
         </div>
         {enabled ? <span className="text-xs text-[#7b8680]">{recipients.length} saved</span> : null}
       </div>
@@ -132,7 +130,7 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
         </p>
       ) : (
         <>
-          <div className="mt-4">
+          <div className="mt-3">
             <RecipientForm
               phone={phone}
               label={label}

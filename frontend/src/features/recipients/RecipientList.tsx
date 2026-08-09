@@ -29,7 +29,7 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
   }
 
   return (
-    <div className="mt-3 overflow-hidden rounded-md border border-wago-line">
+    <div className="mt-3 max-h-[330px] overflow-y-auto rounded-md border border-wago-line">
       <div className="divide-y divide-[#e8ece9]">
         {recipients.map((recipient) => {
           const recipientPhone = phoneFromJid(recipient.jid);

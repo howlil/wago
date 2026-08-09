@@ -8,11 +8,13 @@ import {
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
 import type { HealthState } from "../dashboard/types.js";
+import { QrPairingCard } from "./QrPairingCard.js";
 
 type WhatsAppBindingCardProps = {
   health: HealthState;
   status: WhatsAppStatus;
   binding: WhatsAppBinding;
+  qrImage: string | null;
   connectionDescription: string;
   canStartPairing: boolean;
   pairingInProgress: boolean;
@@ -32,6 +34,7 @@ export function WhatsAppBindingCard({
   health,
   status,
   binding,
+  qrImage,
   connectionDescription,
   canStartPairing,
   pairingInProgress,
@@ -41,6 +44,8 @@ export function WhatsAppBindingCard({
   onPair,
   onChangeAccount,
 }: WhatsAppBindingCardProps) {
+  const qrReady = Boolean(qrImage && status === "qr");
+
   return (
     <section className={cardBodyClass}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -49,7 +54,12 @@ export function WhatsAppBindingCard({
           <p className={sectionDescriptionClass}>{connectionDescription}</p>
         </div>
 
-        {canStartPairing ? (
+        {qrReady ? (
+          <span className="inline-flex min-h-8 items-center gap-2 rounded-md bg-[#edf5f1] px-2.5 text-xs font-medium text-[#35614f]">
+            <QrCode size={14} />
+            Scan QR below
+          </span>
+        ) : canStartPairing ? (
           <button
             className={primaryButtonClass}
             type="button"
@@ -76,8 +86,14 @@ export function WhatsAppBindingCard({
         ) : null}
       </div>
 
+      {qrImage && status !== "connected" ? (
+        <div className="mt-3 border-t border-[#e7ebe8] pt-3">
+          <QrPairingCard qrImage={qrImage} />
+        </div>
+      ) : null}
+
       {binding.state === "bound" ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#2f8b67]" />
             <strong className="font-mono text-sm font-semibold text-[#285f49]">{binding.phone}</strong>

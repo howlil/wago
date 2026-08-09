@@ -7,13 +7,13 @@ import { MessageStatusCard } from "../messages/MessageStatusCard.js";
 import { SendMessageCard } from "../messages/SendMessageCard.js";
 import { RecipientAccessCard } from "../recipients/RecipientAccessCard.js";
 import { AccountHealthCard } from "../whatsapp/AccountHealthCard.js";
-import { QrPairingCard } from "../whatsapp/QrPairingCard.js";
 import { RebindSessionDialog } from "../whatsapp/RebindSessionDialog.js";
 import { WhatsAppBindingCard } from "../whatsapp/WhatsAppBindingCard.js";
 import { useDashboardController } from "./useDashboardController.js";
 
 export function DashboardPage() {
   const dashboard = useDashboardController();
+  const activeQrImage = dashboard.hasQr && dashboard.status !== "connected" ? dashboard.qrImage : null;
 
   return (
     <DashboardShell
@@ -27,12 +27,13 @@ export function DashboardPage() {
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
       <NoticeBanner notice={dashboard.notice} />
 
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-8">
+      <div className="mt-3 grid items-start gap-3 xl:grid-cols-12">
+        <div className="xl:col-span-8">
           <WhatsAppBindingCard
             health={dashboard.health}
             status={dashboard.status}
             binding={dashboard.binding}
+            qrImage={activeQrImage}
             connectionDescription={dashboard.connectionDescription}
             canStartPairing={dashboard.canStartPairing}
             pairingInProgress={dashboard.pairingInProgress}
@@ -44,7 +45,7 @@ export function DashboardPage() {
           />
         </div>
 
-        <div className="lg:col-span-4">
+        <div className="xl:col-span-4">
           <GatewayCredentialsCard
             appId={dashboard.appId}
             apiKeyConfigured={dashboard.apiKeyConfigured}
@@ -63,28 +64,28 @@ export function DashboardPage() {
           />
         </div>
 
-        {dashboard.hasQr && dashboard.qrImage && dashboard.status !== "connected" ? (
-          <div className="lg:col-span-8">
-            <QrPairingCard qrImage={dashboard.qrImage} />
-          </div>
-        ) : null}
+        <div className="xl:col-span-8">
+          <div className="grid gap-3">
+            <SendMessageCard
+              status={dashboard.status}
+              phone={dashboard.phone}
+              message={dashboard.message}
+              isSending={dashboard.isSending}
+              canSend={dashboard.canSend}
+              approvalRequired={dashboard.approvalRequired}
+              onPhoneChange={dashboard.handlePhoneChange}
+              onMessageChange={dashboard.setMessage}
+              onSubmit={dashboard.handleSubmit}
+              onAllowAndSend={dashboard.allowAndSend}
+            />
 
-        <div className="lg:col-span-8">
-          <SendMessageCard
-            status={dashboard.status}
-            phone={dashboard.phone}
-            message={dashboard.message}
-            isSending={dashboard.isSending}
-            canSend={dashboard.canSend}
-            approvalRequired={dashboard.approvalRequired}
-            onPhoneChange={dashboard.handlePhoneChange}
-            onMessageChange={dashboard.setMessage}
-            onSubmit={dashboard.handleSubmit}
-            onAllowAndSend={dashboard.allowAndSend}
-          />
+            {dashboard.lastMessage ? (
+              <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
+            ) : null}
+          </div>
         </div>
 
-        <div className="lg:col-span-4">
+        <div className="xl:col-span-4">
           {dashboard.isAuthenticated ? (
             <AccountHealthCard accountHealth={dashboard.accountHealth} />
           ) : (
@@ -94,13 +95,7 @@ export function DashboardPage() {
           )}
         </div>
 
-        {dashboard.lastMessage ? (
-          <div className="lg:col-span-8">
-            <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
-          </div>
-        ) : null}
-
-        <div className="lg:col-span-12">
+        <div className="xl:col-span-5">
           <RecipientAccessCard
             enabled={dashboard.isAuthenticated}
             refreshKey={dashboard.recipientRefreshKey}
@@ -109,7 +104,7 @@ export function DashboardPage() {
           />
         </div>
 
-        <div className="lg:col-span-12">
+        <div className="xl:col-span-7">
           <ActivityLogPanel enabled={dashboard.isAuthenticated} />
         </div>
       </div>
