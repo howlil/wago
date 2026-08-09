@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { config } from "../config.js";
 
@@ -27,8 +27,24 @@ function constantTimeEquals(left: string, right: string): boolean {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function hashApiKeyCandidate(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function isTokenValid(token: string): boolean {
+  if (config.apiKey && constantTimeEquals(token, config.apiKey)) {
+    return true;
+  }
+
+  if (config.apiKeyHash && constantTimeEquals(hashApiKeyCandidate(token), config.apiKeyHash)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function requestHasValidApiKey(req: Request): boolean {
-  if (!config.apiKey) {
+  if (!config.apiKey && !config.apiKeyHash) {
     return false;
   }
 
@@ -36,11 +52,11 @@ export function requestHasValidApiKey(req: Request): boolean {
   const bearerToken = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
   const cookieToken = parseCookieHeader(req.header("cookie"))[config.authCookieName];
 
-  return [bearerToken, cookieToken].some((token) => token && constantTimeEquals(token, config.apiKey!));
+  return [bearerToken, cookieToken].some((token) => token && isTokenValid(token));
 }
 
 export const requireApiKey: RequestHandler = (req, res, next) => {
-  if (!config.apiKey) {
+  if (!config.apiKey && !config.apiKeyHash) {
     return res.status(403).json({
       success: false,
       error: "API_KEY_REQUIRED",

@@ -1,16 +1,44 @@
 import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
+import helmet from "helmet";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { config } from "./config.js";
+import { validateRuntimeConfig } from "./config-validation.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { appRouter } from "./routes/app.routes.js";
 import { messageRouter } from "./routes/message.routes.js";
+import { recipientRouter } from "./routes/recipient.routes.js";
 import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();
 
-app.set("trust proxy", 1);
+const configErrors = validateRuntimeConfig({
+  nodeEnv: config.nodeEnv,
+  allowWebBootstrap: config.allowWebBootstrap,
+  apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
+  authCookieSecure: config.authCookieSecure,
+  corsOrigin: config.corsOrigin
+});
+
+if (configErrors.length > 0) {
+  throw new Error(`Invalid production configuration: ${configErrors.join(" ")}`);
+}
+
+app.set("trust proxy", config.trustProxy ? 1 : false);
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'", config.corsOrigin === "*" ? "*" : config.corsOrigin],
+        imgSrc: ["'self'", "data:"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"]
+      }
+    }
+  })
+);
 app.use(
   cors({
     origin: config.corsOrigin === "*" ? "*" : config.corsOrigin,
@@ -20,6 +48,22 @@ app.use(
 app.use(express.json({ limit: config.bodyLimit }));
 app.use(requestLogger);
 
+app.use((req, res, next) => {
+  const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+  const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
+  const origin = req.header("origin");
+
+  if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && config.corsOrigin !== "*" && origin !== config.corsOrigin) {
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_ORIGIN",
+      message: "Cookie-authenticated requests must come from the configured origin"
+    });
+  }
+
+  return next();
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
@@ -28,11 +72,12 @@ app.get("/ready", (_req, res) => {
   res.json({
     status: "ok",
     appId: config.appId,
-    apiKeyConfigured: Boolean(config.apiKey)
+    apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash)
   });
 });
 
 app.use("/app", appRouter);
+app.use("/recipients", recipientRouter);
 app.use("/whatsapp", whatsappRouter);
 app.use("/messages", messageRouter);
 

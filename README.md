@@ -24,7 +24,7 @@ If the backend is running on another port:
 VITE_API_BASE_URL=http://localhost:3100 pnpm run dev
 ```
 
-On first run, open the frontend and click `Initialize app`. The backend generates an API key, stores it in `backend/data/app-settings.json`, sets an auth cookie for the browser, and the UI can then bind WhatsApp. You can still set `API_KEY` manually for API clients or locked-down deployments.
+On first run, open the frontend and click `Initialize app`. The backend generates an API key, stores only its SHA-256 digest in `backend/data/app-settings.json`, sets an auth cookie for the browser, and the UI can then bind WhatsApp. Copy the raw key at setup time if an external API client needs it. You can still set `API_KEY` manually for locked-down deployments.
 
 Default server:
 
@@ -55,6 +55,7 @@ Open `http://localhost:3000/whatsapp/qr/image` in a browser to scan the WhatsApp
 ## Production Docker
 
 This repository includes a root `Dockerfile` that builds the frontend and backend into one container. The backend serves the frontend static files and API from the same host.
+The HTTP server starts before WhatsApp finishes connecting, so `/health`, `/ready`, and the dashboard remain available while the socket is pairing or reconnecting.
 
 Required production environment:
 
@@ -66,6 +67,11 @@ AUTH_DIR=/app/data/auth
 ALLOW_WEB_BOOTSTRAP=false
 AUTH_COOKIE_SECURE=true
 BODY_LIMIT=32kb
+WA_VERSION_MODE=default
+TRUST_PROXY=false
+DEFAULT_COUNTRY_CODE=62
+REQUEST_LOGGING=true
+LOG_LEVEL=info
 PORT=3000
 HOST=0.0.0.0
 CORS_ORIGIN=https://your-app.example.com
@@ -85,6 +91,10 @@ ALLOW_WEB_BOOTSTRAP=true docker compose up --build
 ```
 
 For public deployments, prefer setting `API_KEY` yourself or enable web bootstrap only while the app is private.
+When `NODE_ENV=production`, the backend fails fast unless web bootstrap is disabled, secure auth cookies are enabled, an API key or generated key exists, and `CORS_ORIGIN` is not `*`.
+Set `TRUST_PROXY=true` only when the app is behind a trusted reverse proxy that sets client IP headers.
+Phone numbers should be sent in international format, for example `6281234567890`; local numbers starting with `0` use `DEFAULT_COUNTRY_CODE` and default to `62`.
+Logs are structured JSON. Keep `LOG_LEVEL=info` in production unless debugging, and do not paste logs containing auth, QR, or message metadata into public issues.
 
 If local port `3000` is occupied:
 
@@ -113,10 +123,15 @@ curl -X POST http://localhost:3000/messages/send \
   -d "{\"to\":\"628xxxxxxxxxx\",\"text\":\"Hello from WhatsApp Gateway\"}"
 ```
 
-The send endpoint returns `status: "accepted"` when WhatsApp accepts the outbound message request. This is not a read receipt. If WhatsApp rejects the message quickly, the API returns `MESSAGE_REJECTED`.
+The send endpoint returns `status: "pending"` after Baileys accepts the outbound message request and returns a message ID. This is not a read receipt.
 Poll `GET /messages/:id/status` for the in-memory status while it is retained by the backend.
 
-Use `POST /whatsapp/rebind` or the frontend session action to clear the current WhatsApp auth files and scan a new account QR. The frontend asks for the API key and stores it only in the browser session.
-If the app was initialized from the UI, the browser auth cookie is enough for frontend actions. The generated API key is also shown in the UI field so it can be reused by API clients.
+Use `POST /whatsapp/rebind` or the frontend session action to clear the current WhatsApp auth files and scan a new account QR. If the app was initialized from the UI, the browser auth cookie is enough for frontend actions. The frontend can accept a Bearer API key for the current tab, but it does not persist that key in browser storage.
+Cookie-authenticated state-changing requests are rejected when their `Origin` does not match the configured `CORS_ORIGIN`.
+Ordinary shutdowns, including `docker stop`, close the Baileys socket without logging out. Rebind is the intentional unlink path.
 
 Runtime settings are stored in `backend/data/app-settings.json`; WhatsApp authentication files are stored in `backend/data/auth`. Do not commit either.
+
+`WA_VERSION_MODE=default` uses the WhatsApp Web version bundled with the installed Baileys release. Use `WA_VERSION_MODE=live` only for troubleshooting pairing/version issues; it fetches the live version once per process and reuses it for reconnects.
+
+This project intentionally uses Baileys filesystem auth state for the single-account self-hosted profile. Treat `backend/data/auth` like a private key: mount it as persistent storage, back it up carefully, and do not share it between multiple running replicas.

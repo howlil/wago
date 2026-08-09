@@ -1,7 +1,7 @@
 FROM node:22-alpine AS frontend-deps
 WORKDIR /app/frontend
 RUN corepack enable
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM frontend-deps AS frontend-build

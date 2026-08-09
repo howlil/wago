@@ -1,8 +1,10 @@
+import { config } from "../config.js";
+
 export function normalizePhone(input: string): string {
   const stripped = input.replace(/[\s+-]/g, "");
 
   if (stripped.startsWith("0")) {
-    return `62${stripped.slice(1)}`;
+    return `${config.defaultCountryCode}${stripped.slice(1)}`;
   }
 
   return stripped;

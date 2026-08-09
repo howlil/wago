@@ -1,6 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const API_KEY_STORAGE = "wa_gateway_api_key";
-let apiKey = sessionStorage.getItem(API_KEY_STORAGE)?.trim() || "";
+let apiKey = "";
 
 export type AppInfoResponse = {
   success: true;
@@ -34,6 +33,7 @@ export type WhatsAppStatus = "connecting" | "qr" | "connected" | "disconnected";
 export type StatusResponse = {
   success: true;
   status: WhatsAppStatus;
+  accountHealth?: unknown;
 };
 
 export type QrResponse = {
@@ -47,7 +47,7 @@ export type SendMessageResponse =
   | {
       success: true;
       messageId: string | null;
-      status: "accepted";
+      status: "pending";
     }
   | {
       success: false;
@@ -133,12 +133,6 @@ export function getStoredApiKey(): string {
 
 export function setStoredApiKey(value: string): void {
   apiKey = value.trim();
-
-  if (apiKey) {
-    sessionStorage.setItem(API_KEY_STORAGE, apiKey);
-  } else {
-    sessionStorage.removeItem(API_KEY_STORAGE);
-  }
 }
 
 export function getAppInfo(): Promise<AppInfoResponse> {

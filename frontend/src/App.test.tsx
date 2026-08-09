@@ -126,8 +126,9 @@ describe("App rebind flow", () => {
 
     await waitFor(() => {
       expect(bootstrapApp).toHaveBeenCalledTimes(1);
-      expect(setStoredApiKey).toHaveBeenCalledWith("wa_test");
+      expect(setStoredApiKey).not.toHaveBeenCalled();
     });
+    expect(screen.getByDisplayValue("wa_test")).toBeTruthy();
   });
 
   it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {

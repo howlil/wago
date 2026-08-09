@@ -9,7 +9,7 @@ appRouter.get("/info", (req, res) => {
     success: true,
     appId: config.appId,
     apiKeyRequired: true,
-    apiKeyConfigured: Boolean(config.apiKey),
+    apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
     apiKeySource: config.apiKeySource,
     authenticated: requestHasValidApiKey(req),
     setupRequired: !config.apiKey

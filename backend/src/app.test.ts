@@ -1,7 +1,8 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
-import { config } from "./config.js";
+import { config, hashApiKey } from "./config.js";
+import { resetRecipientStoreForTest } from "./recipient-store.js";
 
 const apiKeyRequiredResponse = {
   success: false,
@@ -10,11 +11,14 @@ const apiKeyRequiredResponse = {
 };
 
 describe("app", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     config.allowWebBootstrap = true;
     config.apiKey = null;
+    config.apiKeyHash = null;
     config.apiKeySource = "unset";
     config.requestLogging = false;
+    config.corsOrigin = "*";
+    await resetRecipientStoreForTest();
   });
 
   it("returns health status", async () => {
@@ -22,6 +26,26 @@ describe("app", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok" });
+  });
+
+  it("does not trust proxy headers unless configured at startup", () => {
+    expect(app.get("trust proxy")).toBe(false);
+  });
+
+  it("returns a request id header when request logging is enabled", async () => {
+    config.requestLogging = true;
+
+    const response = await request(app).get("/health").set("X-Request-Id", "test-request-id");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["x-request-id"]).toBe("test-request-id");
+  });
+
+  it("sets baseline security headers", async () => {
+    const response = await request(app).get("/health");
+
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBe("SAMEORIGIN");
   });
 
   it("returns readiness status", async () => {
@@ -34,6 +58,19 @@ describe("app", () => {
     expect(response.body).toEqual({
       status: "ok",
       appId: config.appId,
+      apiKeyConfigured: true
+    });
+  });
+
+  it("treats generated API key hashes as ready", async () => {
+    config.apiKeyHash = hashApiKey("ready-key");
+    config.apiKeySource = "generated";
+
+    const response = await request(app).get("/ready");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      status: "ok",
       apiKeyConfigured: true
     });
   });
@@ -101,6 +138,43 @@ describe("app", () => {
     expect(response.body).toEqual(apiKeyRequiredResponse);
   });
 
+  it("allows, lists, and opts out recipients through protected routes", async () => {
+    config.apiKey = "test-key";
+    config.apiKeySource = "env";
+
+    const allowResponse = await request(app)
+      .post("/recipients/allow")
+      .set("Authorization", "Bearer test-key")
+      .send({
+        phone: "081234567890",
+        label: "Customer A"
+      });
+
+    expect(allowResponse.status).toBe(201);
+    expect(allowResponse.body.recipient).toMatchObject({
+      jid: "6281234567890@s.whatsapp.net",
+      label: "Customer A",
+      allowed: true,
+      optedOut: false
+    });
+
+    const listResponse = await request(app).get("/recipients").set("Authorization", "Bearer test-key");
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.recipients).toHaveLength(1);
+
+    const optOutResponse = await request(app)
+      .post("/recipients/6281234567890/opt-out")
+      .set("Authorization", "Bearer test-key");
+
+    expect(optOutResponse.status).toBe(200);
+    expect(optOutResponse.body.recipient).toMatchObject({
+      jid: "6281234567890@s.whatsapp.net",
+      allowed: true,
+      optedOut: true
+    });
+  });
+
   it("bootstraps a generated API key when the app has not been initialized", async () => {
     const response = await request(app).post("/app/bootstrap");
 
@@ -109,8 +183,39 @@ describe("app", () => {
     expect(response.body.appId).toBe(config.appId);
     expect(response.body.apiKey).toMatch(/^wa_/);
     expect(response.headers["set-cookie"]?.[0]).toContain(config.authCookieName);
-    expect(config.apiKey).toBe(response.body.apiKey);
+    expect(config.apiKey).toBeNull();
+    expect(config.apiKeyHash).toBe(hashApiKey(response.body.apiKey));
     expect(config.apiKeySource).toBe("generated");
+  });
+
+  it("authenticates generated API keys by persisted hash", async () => {
+    config.apiKeyHash = hashApiKey("generated-key");
+    config.apiKeySource = "generated";
+
+    const response = await request(app).get("/recipients").set("Authorization", "Bearer generated-key");
+
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects cookie-authenticated state changes from a different configured origin", async () => {
+    config.apiKeyHash = hashApiKey("generated-key");
+    config.apiKeySource = "generated";
+    config.corsOrigin = "https://app.example.com";
+
+    const response = await request(app)
+      .post("/recipients/allow")
+      .set("Origin", "https://evil.example.com")
+      .set("Cookie", `${config.authCookieName}=generated-key`)
+      .send({
+        phone: "6281234567890"
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_ORIGIN",
+      message: "Cookie-authenticated requests must come from the configured origin"
+    });
   });
 
   it("rejects web bootstrap when disabled", async () => {

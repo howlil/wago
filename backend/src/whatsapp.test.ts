@@ -1,0 +1,298 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const baileysMock = vi.hoisted(() => {
+  type Handler = (...args: unknown[]) => void;
+  const handlers = new Map<string, Set<Handler>>();
+  const ev = {
+    emit(event: string, ...args: unknown[]): void {
+      for (const handler of handlers.get(event) ?? []) {
+        handler(...args);
+      }
+    },
+    off(event: string, handler: Handler): void {
+      handlers.get(event)?.delete(handler);
+    },
+    on(event: string, handler: Handler): void {
+      let eventHandlers = handlers.get(event);
+
+      if (!eventHandlers) {
+        eventHandlers = new Set();
+        handlers.set(event, eventHandlers);
+      }
+
+      eventHandlers.add(handler);
+    },
+    removeAllListeners(): void {
+      handlers.clear();
+    }
+  };
+
+  return {
+    ev,
+    fetchLatestBaileysVersion: vi.fn(async () => ({ version: [2, 3000, 0] })),
+    makeWASocket: vi.fn(),
+    onWhatsApp: vi.fn(),
+    saveCreds: vi.fn(),
+    sendMessage: vi.fn(),
+    end: vi.fn(),
+    logout: vi.fn(),
+    fetchAccountReachoutTimelock: vi.fn(),
+    fetchNewChatMessageCap: vi.fn(),
+    useMultiFileAuthState: vi.fn()
+  };
+});
+
+vi.mock("@whiskeysockets/baileys", () => ({
+  default: baileysMock.makeWASocket,
+  DisconnectReason: {
+    loggedOut: 401
+  },
+  fetchLatestBaileysVersion: baileysMock.fetchLatestBaileysVersion,
+  useMultiFileAuthState: baileysMock.useMultiFileAuthState,
+  WAMessageStatus: {
+    ERROR: 0,
+    SERVER_ACK: 1
+  }
+}));
+
+describe("whatsapp send semantics", () => {
+  beforeEach(async () => {
+    vi.useRealTimers();
+    vi.resetModules();
+    delete process.env.WA_VERSION_MODE;
+    baileysMock.ev.removeAllListeners();
+    baileysMock.fetchLatestBaileysVersion.mockClear();
+    baileysMock.makeWASocket.mockClear();
+    baileysMock.onWhatsApp.mockReset();
+    baileysMock.saveCreds.mockReset();
+    baileysMock.sendMessage.mockReset();
+    baileysMock.end.mockReset();
+    baileysMock.logout.mockReset();
+    baileysMock.fetchAccountReachoutTimelock.mockReset();
+    baileysMock.fetchNewChatMessageCap.mockReset();
+    baileysMock.useMultiFileAuthState.mockReset();
+
+    baileysMock.useMultiFileAuthState.mockResolvedValue({
+      state: {},
+      saveCreds: baileysMock.saveCreds
+    });
+    baileysMock.makeWASocket.mockReturnValue({
+      ev: baileysMock.ev,
+      fetchAccountReachoutTimelock: baileysMock.fetchAccountReachoutTimelock,
+      fetchNewChatMessageCap: baileysMock.fetchNewChatMessageCap,
+      onWhatsApp: baileysMock.onWhatsApp,
+      sendMessage: baileysMock.sendMessage,
+      end: baileysMock.end,
+      logout: baileysMock.logout
+    });
+    baileysMock.fetchAccountReachoutTimelock.mockResolvedValue(undefined);
+    baileysMock.fetchNewChatMessageCap.mockResolvedValue(undefined);
+    baileysMock.onWhatsApp.mockResolvedValue([
+      {
+        exists: true,
+        jid: "6281234567890@s.whatsapp.net"
+      }
+    ]);
+    baileysMock.sendMessage.mockResolvedValue({
+      key: {
+        id: "message-1"
+      }
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns pending immediately after Baileys accepts the send request", async () => {
+    const { initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipient-store.js");
+
+    await resetRecipientStoreForTest();
+    await allowRecipient("6281234567890");
+    await initializeWhatsApp();
+    baileysMock.ev.emit("connection.update", { connection: "open" });
+
+    await expect(sendTextMessage("6281234567890", "Hello")).resolves.toEqual({
+      messageId: "message-1",
+      status: "pending"
+    });
+  });
+
+  it("keeps message status pending until a Baileys status update arrives", async () => {
+    const { getMessageStatus, initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipient-store.js");
+
+    await resetRecipientStoreForTest();
+    await allowRecipient("6281234567890");
+    await initializeWhatsApp();
+    baileysMock.ev.emit("connection.update", { connection: "open" });
+
+    const result = await sendTextMessage("6281234567890", "Hello");
+
+    expect(getMessageStatus(result.messageId!)).toMatchObject({
+      id: "message-1",
+      status: "pending"
+    });
+
+    baileysMock.ev.emit("messages.update", [
+      {
+        key: {
+          id: "message-1"
+        },
+        update: {
+          status: 1
+        }
+      }
+    ]);
+
+    expect(getMessageStatus(result.messageId!)).toMatchObject({
+      id: "message-1",
+      status: "accepted"
+    });
+  });
+
+  it("caches successful recipient lookup for repeated sends", async () => {
+    const { initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipient-store.js");
+
+    await resetRecipientStoreForTest();
+    await allowRecipient("6281234567890");
+    await initializeWhatsApp();
+    baileysMock.ev.emit("connection.update", { connection: "open" });
+
+    await sendTextMessage("6281234567890", "Hello");
+    await sendTextMessage("6281234567890", "Hello again");
+
+    expect(baileysMock.onWhatsApp).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates account health from connection reachout timelock", async () => {
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
+    const retryAt = new Date("2026-08-09T00:30:00.000Z");
+
+    await initializeWhatsApp();
+    baileysMock.ev.emit("connection.update", {
+      reachoutTimeLock: {
+        isActive: true,
+        timeEnforcementEnds: retryAt,
+        enforcementType: "WEB_COMPANION_ONLY"
+      }
+    });
+
+    expect(getWhatsAppStatus().accountHealth.reachoutTimeLock).toEqual({
+      isActive: true,
+      retryAt: "2026-08-09T00:30:00.000Z",
+      enforcementType: "WEB_COMPANION_ONLY"
+    });
+  });
+
+  it("schedules reconnect with backoff instead of reconnecting immediately", async () => {
+    vi.useFakeTimers();
+    const { initializeWhatsApp } = await import("./whatsapp.js");
+
+    await initializeWhatsApp();
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
+
+    baileysMock.ev.emit("connection.update", {
+      connection: "close",
+      lastDisconnect: {
+        error: {
+          output: {
+            statusCode: 428
+          }
+        }
+      }
+    });
+
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(2400);
+
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not schedule reconnect after logged-out close", async () => {
+    vi.useFakeTimers();
+    const { initializeWhatsApp } = await import("./whatsapp.js");
+
+    await initializeWhatsApp();
+
+    baileysMock.ev.emit("connection.update", {
+      connection: "close",
+      lastDisconnect: {
+        error: {
+          output: {
+            statusCode: 401
+          }
+        }
+      }
+    });
+
+    await vi.advanceTimersByTimeAsync(60000);
+
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the socket without logout during ordinary shutdown", async () => {
+    vi.useFakeTimers();
+    const { initializeWhatsApp, shutdownWhatsApp } = await import("./whatsapp.js");
+
+    await initializeWhatsApp();
+    await shutdownWhatsApp();
+
+    expect(baileysMock.end).toHaveBeenCalledTimes(1);
+    expect(baileysMock.logout).not.toHaveBeenCalled();
+
+    baileysMock.ev.emit("connection.update", {
+      connection: "close",
+      lastDisconnect: {
+        error: {
+          output: {
+            statusCode: 428
+          }
+        }
+      }
+    });
+
+    await vi.advanceTimersByTimeAsync(60000);
+
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns to disconnected when initialization fails", async () => {
+    baileysMock.useMultiFileAuthState.mockRejectedValueOnce(new Error("auth read failed"));
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
+
+    await expect(initializeWhatsApp()).rejects.toThrow("auth read failed");
+
+    expect(getWhatsAppStatus().status).toBe("disconnected");
+  });
+
+  it("uses bundled Baileys version by default", async () => {
+    const { initializeWhatsApp } = await import("./whatsapp.js");
+
+    await initializeWhatsApp();
+
+    expect(baileysMock.fetchLatestBaileysVersion).not.toHaveBeenCalled();
+    expect(baileysMock.makeWASocket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        getMessage: expect.any(Function)
+      })
+    );
+    expect(baileysMock.makeWASocket.mock.calls[0]?.[0]).not.toHaveProperty("version");
+  });
+
+  it("fetches live Baileys version once when WA_VERSION_MODE=live", async () => {
+    process.env.WA_VERSION_MODE = "live";
+    const { initializeWhatsApp } = await import("./whatsapp.js");
+
+    await initializeWhatsApp();
+    await initializeWhatsApp();
+
+    expect(baileysMock.fetchLatestBaileysVersion).toHaveBeenCalledTimes(1);
+    expect(baileysMock.makeWASocket.mock.calls[0]?.[0]).toMatchObject({
+      version: [2, 3000, 0]
+    });
+  });
+});

@@ -228,7 +228,7 @@ export function App() {
       const result = await sendMessage(phone, message);
 
       if (result.success) {
-        let messageStatus = "accepted by gateway";
+        let messageStatus: string = result.status;
 
         if (result.messageId) {
           const statusResult = await getMessageStatus(result.messageId).catch(() => null);
@@ -319,10 +319,9 @@ export function App() {
         setIsAuthenticated(true);
         hasApiAccess.current = true;
         setApiKeyInput(result.apiKey);
-        setStoredApiKey(result.apiKey);
         setNotice({
           type: "success",
-          message: "App initialized. API key generated, saved in this browser, and auth cookie set."
+          message: "App initialized. Auth cookie set. Copy the API key now if an external API client needs it."
         });
         await refresh({ showLoading: true });
       } else {
@@ -403,7 +402,7 @@ export function App() {
         <section className={`${panelClass} border-[#e4c46d] bg-[#fff8e1]`}>
           <h2 className="mb-2 text-xl">Authentication Required</h2>
           <p className="mb-0 text-[#6f5a14]">
-            This backend already has an API key. Paste the generated key above and save it, or open the same browser used for setup.
+            This backend already has an API key. Paste it above for this tab, or open the same browser used for setup.
           </p>
         </section>
       ) : null}

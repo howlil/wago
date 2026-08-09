@@ -1,320 +1,534 @@
-# Next Iteration Plan: WhatsApp Outbound Safety
+# Production Readiness Iteration Plan
 
-## Context
+## Target
 
-This project is a small self-hosted WhatsApp gateway using Baileys. The next production-grade step is not "anti-ban" behavior. There is no reliable or acceptable anti-ban implementation for an unofficial WhatsApp Web client.
+Make this repository a production-ready, single-account, self-hosted WhatsApp gateway:
 
-The engineering goal is to make outbound behavior conservative, explicit, and hard to misuse:
+- one process
+- one WhatsApp account
+- one persistent data volume
+- Docker-first deployment
+- conservative outbound behavior
+- no bulk/campaign/anti-detection features
 
-- no accidental spam
-- no retry storm
-- no arbitrary cold outreach
-- no repeated sends to the same recipient
-- no sends while WhatsApp reports reach-out restriction or new-chat cap
-- no duplicate sends caused by upstream HTTP retries
+Production-ready here does not mean zero WhatsApp enforcement risk. The transport is Baileys, an unofficial WhatsApp Web client, so the app must fail closed, avoid accidental abuse, and surface account health clearly.
 
-Keep the architecture shallow. Do not add Redis, BullMQ, Kafka, PostgreSQL, multi-user auth, or campaign-style features for this iteration.
+## Current Assessment
 
-## Current Baseline
+The codebase is a clean MVP, but not production-ready yet.
 
-Already implemented:
+Strong points:
 
-- Single WhatsApp session through Baileys.
-- Persistent auth and generated app settings in `backend/data`.
-- API key / auth cookie protection.
-- Docker self-hosting setup.
-- Basic HTTP rate limit for send/rebind routes.
-- In-memory message status tracking.
-- 463 error mapping to `REACHOUT_RESTRICTED`.
-- Frontend setup/auth flow.
-- Backend and frontend tests.
+- Shallow TypeScript architecture.
+- API key and auth-cookie foundation exist.
+- Docker setup is already close to usable.
+- Message status endpoint exists.
+- `outbound-policy.ts` now enforces idempotency, in-memory flood limits, known-recipient new-chat limits, and outbound pause.
+- `POST /messages/send` now returns `202 pending` without waiting for delivery updates.
+- WhatsApp account health now tracks reachout timelock and new-chat cap with defensive caching.
+- reconnect now uses bounded scheduled backoff instead of immediate recursion.
+- Baileys socket config defaults to the bundled version, supports cached live version mode, and provides `getMessage`.
+- `whatsapp.ts` is now a thin compatibility layer over focused WhatsApp modules.
 
-Main gap:
+Critical gaps:
 
-- There is no outbound policy layer between `POST /messages/send` and `socket.sendMessage()`.
+- reconnect uses bounded scheduled backoff after transient close.
+- Baileys version is no longer fetched on every initialize/reconnect.
+- 463 reachout restriction now marks account-level health, with the old per-recipient cooldown kept only as a fallback guard.
+- recipient consent/opt-out is persisted in `backend/data/recipients.json`.
+- `onWhatsApp()` now uses a bounded in-memory lookup cache after a recipient is allowed.
+- socket config has bounded recent-message `getMessage` support.
+- security hardening, structured logs, release pipeline, and OSS governance are incomplete.
 
 ## Non-Goals
 
-Do not implement:
+Do not add:
 
-- anti-ban fingerprinting, fake typing, random delays, proxy rotation, or message mutation
-- bulk sender, campaign manager, scheduler, queue, or retries
-- database-backed contact CRM
-- multi-session WhatsApp support
-- official WhatsApp Cloud API migration
+- Redis, BullMQ, Kafka, PostgreSQL, or a worker queue.
+- multi-session or multi-tenant architecture.
+- Kubernetes manifests.
+- bulk sender/campaign scheduler.
+- fake typing, random human delays, fingerprint rotation, proxy rotation, text mutation, or other anti-detection behavior.
+- custom WhatsApp protocol hacks.
 
-## Iteration 1: Outbound Policy Skeleton
+## Milestone 1: Core Correctness and Baileys Safety
 
-Goal: introduce one explicit policy boundary without changing the public send API more than necessary.
+This milestone fixes P0 runtime behavior without adding infrastructure.
+
+### Iteration 1: Real Outbound Policy
+
+Goal: make `outbound-policy.ts` enforce safety instead of returning allow-all.
 
 Tasks:
 
-- [x] Add `backend/src/outbound-policy.ts`.
-- [x] Define `OutboundPolicyDecision`.
-- [x] Define `OutboundPolicyInput` with `to`, `jid`, `text`, and optional `idempotencyKey`.
-- [x] Add `checkOutboundPolicy(input)`.
-- [x] Add `recordOutboundAccepted(input, messageId)`.
-- [x] Add `recordOutboundRejected(input, error)`.
-- [x] Call policy from `sendTextMessage()` before `socket.sendMessage()`.
-- [x] Map blocked decisions to stable HTTP errors in `message.routes.ts`.
+- [x] Replace no-op `checkOutboundPolicy()` with ordered checks.
+- [x] Add in-memory state for idempotency, account limits, recipient limits, known recipients, and outbound pause.
+- [x] Implement `recordOutboundAccepted()` and `recordOutboundRejected()`.
+- [x] Keep public decision reasons stable: `RECIPIENT_NOT_ALLOWED`, `RECIPIENT_OPTED_OUT`, `DUPLICATE_MESSAGE`, `RECIPIENT_RATE_LIMITED`, `ACCOUNT_RATE_LIMITED`, `NEW_CHAT_RATE_LIMITED`, `WA_REACHOUT_RESTRICTED`, `WA_NEW_CHAT_CAPPED`, `OUTBOUND_PAUSED`.
+- [x] Add focused unit tests for each decision branch.
 
 Acceptance:
 
-- [x] No send can bypass `OutboundPolicy`.
-- [x] Existing successful send behavior remains unchanged for allowed recipients at the policy layer.
-- [x] Unit tests cover allowed and blocked decisions.
+- [x] A send cannot bypass `OutboundPolicy`.
+- [x] Duplicate idempotency keys are blocked.
+- [x] Account and recipient flood limits are enforced.
+- [x] Policy tests prove allowed and blocked paths.
 
 Verification:
 
-- [x] `pnpm test` in backend.
-- [x] `pnpm run build` in backend.
+- [x] `pnpm test` in `backend`.
+- [x] `pnpm run build` in `backend`.
 
-## Iteration 2: Consent and Recipient Controls
+### Iteration 2: Honest Async Message Semantics
 
-Goal: prevent arbitrary outbound messages to unknown recipients.
+Goal: make send latency low and status truthful.
 
-Initial design:
+Tasks:
 
-- Use a simple file-backed allowlist in `backend/data/recipients.json`.
-- Keep it intentionally small and explicit.
-- Store normalized JID, label, allow status, opt-out status, timestamps.
+- [x] Change `sendTextMessage()` to return after `socket.sendMessage()` obtains a `messageId`.
+- [x] Return `202` with `status: "pending"` instead of waiting for ACK.
+- [x] Remove `waitForMessageOutcome()` from the HTTP request path.
+- [x] Keep `messages.update` responsible for `pending -> accepted` or `pending -> rejected`.
+- [x] Never convert timeout/no event into `accepted`.
+- [x] Keep immediate send failures mapped to stable HTTP errors.
 
-Proposed data shape:
+Acceptance:
 
-```json
-{
-  "6281234567890@s.whatsapp.net": {
-    "allowed": true,
-    "optedOut": false,
-    "label": "Customer A",
-    "createdAt": "2026-08-09T00:00:00.000Z",
-    "updatedAt": "2026-08-09T00:00:00.000Z"
-  }
-}
+- [x] `POST /messages/send` does not wait up to 8 seconds for delivery updates.
+- [x] New message status starts as `pending`.
+- [x] `GET /messages/:id/status` is the source of durable status.
+
+Verification:
+
+- [x] Backend unit test for async `pending` send semantics.
+- [x] Backend test proves message status is updated by `messages.update`.
+- [x] `pnpm test` in `backend`.
+- [x] `pnpm run build` in `backend`.
+- [x] `pnpm test` in `frontend`.
+- [x] `pnpm run build` in `frontend`.
+
+### Iteration 3: Recipient Consent, Opt-Out, and Lookup Cache
+
+Goal: prevent arbitrary cold outreach and reduce repeated `onWhatsApp()` calls.
+
+Tasks:
+
+- [x] Add file-backed recipient store at `backend/data/recipients.json`.
+- [x] Store normalized JID, resolved JID, label, allowed flag, opted-out flag, and timestamps.
+- [x] Add protected routes: `GET /recipients`, `POST /recipients/allow`, `POST /recipients/:phone/opt-out`.
+- [x] Block unknown recipients by default.
+- [x] Cache positive `onWhatsApp()` result with longer TTL.
+- [x] Cache negative result with shorter TTL.
+- [x] Use canonical/resolved JID internally after lookup.
+- [x] Document that lookup cache must not be used for phone-number enumeration.
+
+Acceptance:
+
+- [x] Unknown recipient returns `403 RECIPIENT_NOT_ALLOWED`.
+- [x] Opted-out recipient returns `403 RECIPIENT_OPTED_OUT`.
+- [x] Allowed recipient can be sent without repeated network lookup while cache is valid.
+- [x] Recipient store persists across restart.
+
+Verification:
+
+- [x] Unit tests for recipient store.
+- [x] HTTP tests for allow, opt-out, and recipient listing.
+- [x] Policy tests for unknown and opted-out recipients.
+- [x] WhatsApp unit test proves successful lookup is cached.
+- [x] `pnpm test` in `backend`.
+- [x] `pnpm run build` in `backend`.
+
+### Iteration 4: WhatsApp Account Health State
+
+Goal: respect Baileys reachout timelock and new-chat cap as account-level health.
+
+Tasks:
+
+- [x] Add account health state with cached reachout timelock and new-chat cap.
+- [x] Integrate `socket.fetchAccountReachoutTimelock()` with TTL.
+- [x] Integrate `socket.fetchNewChatMessageCap()` with TTL and defensive error handling.
+- [x] Read `connection.update.reachoutTimeLock` when Baileys emits it.
+- [x] On 463, mark account restricted and refresh health state.
+- [x] Replace per-JID 30-minute restriction as the primary enforcement.
+- [x] Block active timelock with `WA_REACHOUT_RESTRICTED` and `retryAt`.
+- [x] Block `CAPPED` new-chat state with `WA_NEW_CHAT_CAPPED`.
+- [x] Treat warning states conservatively for new recipients.
+- [x] Expose health state through protected `/whatsapp/status`.
+
+Acceptance:
+
+- [x] 463 pauses account-level outbound instead of only one JID.
+- [x] Policy does not retry/flood health fetches when Baileys health calls fail.
+- [x] Operators can see restriction/cap status.
+
+Verification:
+
+- [x] Unit tests using narrow mocked Baileys health responses.
+- [x] Policy tests for timelock and new-chat cap mapping.
+- [x] WhatsApp test for `connection.update.reachoutTimeLock`.
+- [x] `pnpm test` in `backend`.
+- [x] `pnpm run build` in `backend`.
+
+### Iteration 5: Reconnect State Machine
+
+Goal: remove immediate reconnect loops and avoid accidental unlink/pairing churn.
+
+Tasks:
+
+- [x] Replace recursive immediate reconnect with scheduled backoff.
+- [x] Use bounded delays: 2s, 5s, 15s, 30s, 60s max.
+- [x] Add small jitter.
+- [x] Reset attempts after stable `open`.
+- [x] Do not reconnect after logged-out until operator rebinds.
+- [x] Ensure `rebindWhatsApp()` still uses generation guards.
+- [x] Add shutdown flag so SIGTERM does not schedule reconnect.
+
+Acceptance:
+
+- [x] Transient close does not create a tight reconnect loop.
+- [x] logged-out state becomes pairing-needed, not aggressive reconnect.
+- [x] rebind still clears current session intentionally.
+
+Verification:
+
+- [x] Unit tests for backoff calculation.
+- [x] Unit tests for reconnect decisions.
+- [x] WhatsApp tests for scheduled reconnect and logged-out close.
+- [x] `pnpm test` in `backend`.
+- [x] `pnpm run build` in `backend`.
+
+### Iteration 6: Baileys Socket Configuration
+
+Goal: align socket setup with production guidance while staying simple.
+
+Tasks:
+
+- [x] Stop calling `fetchLatestBaileysVersion()` on every initialize.
+- [x] Add `WA_VERSION_MODE=default|live`, defaulting to `default`.
+- [x] If `live`, fetch once per process and cache the value for reconnects.
+- [x] Pin Baileys dependency exactly: `7.0.0-rc14`.
+- [x] Add bounded recent message store for outbound proto messages.
+- [x] Configure Baileys `getMessage` using the recent message store.
+- [x] Keep `useMultiFileAuthState` for single-account deployment and document the scope.
+
+Acceptance:
+
+- [x] Reconnect does not fetch WA version repeatedly.
+- [x] Message retry can retrieve recent outbound messages.
+- [x] Dependency upgrades are explicit and testable.
+
+Verification:
+
+- [x] Backend build.
+- [x] Tests for version strategy and recent message store.
+- [x] WhatsApp tests for default bundled version and cached live version.
+- [x] Lockfile updated after dependency pin.
+
+### Iteration 7: Split `whatsapp.ts` by Concern
+
+Goal: reduce risk in the largest backend module without adding heavy architecture.
+
+Target structure:
+
+```text
+backend/src/whatsapp/
+|-- client.ts
+|-- connection-state.ts
+|-- message-status-store.ts
+`-- recipient-cache.ts
+
+backend/src/
+|-- account-health.ts
+`-- recent-message-store.ts
 ```
 
 Tasks:
 
-- [ ] Add recipient store helper with safe JSON read/write.
-- [ ] Add `POST /recipients/allow` protected by API key.
-- [ ] Add `POST /recipients/:phone/opt-out` protected by API key.
-- [ ] Add `GET /recipients` protected by API key.
-- [ ] Policy blocks `RECIPIENT_NOT_ALLOWED`.
-- [ ] Policy blocks `RECIPIENT_OPTED_OUT`.
-- [ ] Frontend can show a minimal allow/blocked state later, but not required in this iteration.
+- [x] Move connection lifecycle into `whatsapp/client.ts`.
+- [x] Move QR/status generation state into `connection-state.ts`.
+- [x] Move message status map into `message-status-store.ts`.
+- [x] Move lookup cache into `recipient-cache.ts`.
+- [x] Move Baileys `getMessage` cache into `recent-message-store.ts`.
+- [x] Keep route imports stable through a small barrel or compatibility exports.
 
 Acceptance:
 
-- [ ] Sending to a recipient not on allowlist returns `403 RECIPIENT_NOT_ALLOWED`.
-- [ ] Sending to opted-out recipient returns `403 RECIPIENT_OPTED_OUT`.
-- [ ] Allowlist persists across process/container restart.
+- [x] Behavior remains unchanged after split.
+- [x] Each module has focused tests where practical.
+- [x] `whatsapp.ts` is either removed or becomes a thin compatibility layer.
 
 Verification:
 
-- [ ] Unit tests for recipient store.
-- [ ] HTTP tests for allow, opt-out, and blocked send.
+- [x] Backend tests.
+- [x] Backend build.
 
-## Iteration 3: Idempotency and Dedupe
+## Milestone 2: Production and Security Hardening
 
-Goal: prevent duplicate sends from client retry behavior.
+This milestone makes the app safer to run on a public server behind a reverse proxy.
 
-Design:
+### Iteration 8: API Key, Cookie, CSRF, and Headers
 
-- Accept `Idempotency-Key` header or optional `idempotencyKey` body field.
-- Store recent keys in memory for now.
-- TTL: 1 hour.
-- Scope key by recipient JID plus key.
+Goal: reduce credential exposure and browser-origin risk.
 
 Tasks:
 
-- [ ] Parse idempotency key in `POST /messages/send`.
-- [ ] Pass it into outbound policy.
-- [ ] Block duplicate pending/completed keys with `409 DUPLICATE_MESSAGE`.
-- [ ] Return previous known message status when possible.
-- [ ] Add tests for duplicate send prevention.
+- [x] Persist generated API key as SHA-256 digest only.
+- [x] Return generated raw key only once during bootstrap.
+- [x] Keep env `API_KEY` as preferred production path.
+- [x] Make admin UI use HttpOnly cookie auth instead of storing raw API key in `sessionStorage`.
+- [x] Keep Bearer API key for machine clients.
+- [x] Add Origin validation for cookie-authenticated state-changing requests.
+- [x] Add `helmet` with conservative defaults.
+- [x] Add minimal CSP that supports the frontend build.
 
 Acceptance:
 
-- [ ] Same idempotency key to same recipient does not create a second WhatsApp send.
-- [ ] Different recipient or different key can proceed.
-- [ ] Behavior is documented as in-memory and lost on restart.
+- [x] Raw generated API key is not persisted.
+- [x] Admin UI can operate without JavaScript-readable secret.
+- [x] Cross-site cookie-authenticated POST is rejected.
 
-## Iteration 4: Account and Recipient Rate Limits
+Verification:
 
-Goal: replace IP-only thinking with WhatsApp-account-aware safety limits.
+- [x] Backend auth tests.
+- [x] Frontend auth tests.
+- [x] Backend and frontend builds.
 
-Initial conservative defaults:
+### Iteration 9: Config Validation and Runtime Safety
 
-- Global account sends: 10 per minute.
-- Per-recipient sends: 2 per minute.
-- New-recipient sends: 3 per hour.
-
-Keep these configurable through env only if needed:
-
-- `OUTBOUND_ACCOUNT_LIMIT_PER_MINUTE`
-- `OUTBOUND_RECIPIENT_LIMIT_PER_MINUTE`
-- `OUTBOUND_NEW_CHAT_LIMIT_PER_HOUR`
+Goal: make unsafe production config visible or fail fast.
 
 Tasks:
 
-- [ ] Add in-memory account limiter.
-- [ ] Add in-memory per-recipient limiter.
-- [ ] Track whether a recipient has been sent to before during current runtime.
-- [ ] Block with `ACCOUNT_RATE_LIMITED`.
-- [ ] Block with `RECIPIENT_RATE_LIMITED`.
-- [ ] Block new-chat bursts with `NEW_CHAT_RATE_LIMITED`.
+- [x] Add config validation for `NODE_ENV=production`.
+- [x] Make `TRUST_PROXY` explicit; default false.
+- [x] Warn or fail on production `CORS_ORIGIN=*`.
+- [x] Warn or fail on production `AUTH_COOKIE_SECURE=false`.
+- [x] Warn or fail on missing `API_KEY` when web bootstrap is disabled.
+- [x] Add `DEFAULT_COUNTRY_CODE` or require international phone format explicitly.
+- [x] Bound in-memory HTTP rate-limit storage cleanup.
+- [x] Keep `/health` as process health and `/ready` as app readiness.
 
 Acceptance:
 
-- [ ] One upstream service cannot send many messages quickly through one WhatsApp account.
-- [ ] A loop bug cannot spam one recipient.
-- [ ] Tests cover each limiter independently.
+- [x] Production starts only with deliberate security choices.
+- [x] IP-based middleware does not trust proxy headers unless configured.
+- [x] Rate-limit memory does not grow without cleanup.
 
-## Iteration 5: WhatsApp Restriction Awareness
+Verification:
 
-Goal: respect WhatsApp-side reach-out and new-chat restrictions instead of hard-coded cooldowns.
+- [x] Config unit tests.
+- [x] HTTP tests for ready/health semantics.
 
-Baileys v7 capabilities to integrate:
+### Iteration 10: Structured Redacted Logging
 
-- `socket.fetchAccountReachoutTimelock()`
-- `socket.fetchNewChatMessageCap()`
-- `connection.update.reachoutTimeLock`
+Goal: make production behavior diagnosable without leaking secrets.
 
 Tasks:
 
-- [ ] Add cached account restriction state to `outbound-policy.ts` or `whatsapp.ts`.
-- [ ] On send policy check, fetch restriction state when cache is stale.
-- [ ] If `isActive`, block with `WA_REACHOUT_RESTRICTED` and `retryAt`.
-- [ ] On `connection.update.reachoutTimeLock`, update cached restriction immediately.
-- [ ] Fetch new-chat cap when cache is stale.
-- [ ] If cap status is `CAPPED`, block with `WA_NEW_CHAT_CAPPED`.
-- [ ] If cap status is `FIRST_WARNING` or `SECOND_WARNING`, block new-recipient sends but allow known/consented recipients.
-- [ ] Replace hard-coded account restriction behavior where possible.
+- [x] Introduce `pino` logger.
+- [x] Add request IDs.
+- [x] Log HTTP method, route, status, duration, and request ID.
+- [x] Log WhatsApp connection state changes.
+- [x] Log outbound policy blocks by reason.
+- [x] Redact API keys, cookies, QR payloads, auth paths, full phone numbers, JIDs, and message text.
+- [x] Add helper for masked phone/JID or hash.
 
 Acceptance:
 
-- [ ] 463 no longer maps only to per-JID 30-minute cooldown.
-- [ ] Account-level restriction pauses outbound.
-- [ ] Restriction/cap status appears in a protected status endpoint or `/ready` extension.
+- [x] Logs are structured JSON in production.
+- [x] Sensitive values are not printed.
+- [x] Policy/reconnect/restriction events are visible.
 
-Risk:
+Verification:
 
-- Baileys APIs may have imperfect type coverage. Use narrow local types and defensive runtime checks.
+- [x] Unit tests for redaction helpers.
+- [x] HTTP smoke test confirms request ID output.
 
-## Iteration 6: Circuit Breaker
+### Iteration 11: Startup and Graceful Shutdown
 
-Goal: stop outbound immediately when the account appears restricted or unhealthy.
+Goal: keep HTTP visible during WhatsApp startup and shut down without unlinking device.
 
 Tasks:
 
-- [ ] Add `outboundPausedUntil` and `outboundPauseReason`.
-- [ ] Set pause on `REACHOUT_RESTRICTED`, cap `CAPPED`, repeated send failures, or active reachout timelock.
-- [ ] Add protected `POST /messages/outbound/resume` for manual resume.
-- [ ] Add protected `GET /messages/outbound/status`.
-- [ ] Frontend shows paused state if present.
+- [x] Start HTTP server before WhatsApp initialization finishes.
+- [x] Initialize WhatsApp asynchronously.
+- [x] Add SIGTERM/SIGINT handling.
+- [x] Stop accepting HTTP on shutdown.
+- [x] Disable reconnect scheduling during shutdown.
+- [x] Close socket without `logout()` on ordinary shutdown.
+- [x] Preserve rebind as the only intentional unlink path.
 
 Acceptance:
 
-- [ ] Once paused, all sends fail closed until `retryAt` passes or manual resume occurs.
-- [ ] Pause reason is visible to operators.
-- [ ] There is no automatic retry storm.
+- [x] Container can expose dashboard while WhatsApp is connecting.
+- [x] `docker stop` does not unlink WhatsApp.
+- [x] Shutdown exits cleanly.
 
-## Iteration 7: Reconnect Backoff
+Verification:
 
-Goal: prevent aggressive reconnect loops.
+- [x] Unit tests for lifecycle flags where possible.
+- [x] Manual Docker stop/start smoke test.
+
+### Iteration 12: Production Docker Compose
+
+Goal: make self-hosting secure-by-default.
 
 Tasks:
 
-- [ ] Replace immediate recursive reconnect with bounded backoff.
-- [ ] Use delays: 2s, 5s, 15s, 30s, then stay disconnected until next scheduled attempt.
-- [ ] Reset attempts after successful `open`.
-- [ ] Do not reconnect after logged-out.
-- [ ] Keep generation guard already present.
-- [ ] Add unit-level tests around delay calculation.
+- [ ] Add production compose file using an image, not build context.
+- [ ] Default bind address to `127.0.0.1`.
+- [ ] Use named volume `wago_data`.
+- [ ] Set `restart: unless-stopped`.
+- [ ] Add `read_only: true`, `/tmp` tmpfs, `cap_drop: [ALL]`, and `no-new-privileges`.
+- [ ] Keep development compose/build path separate.
+- [ ] Document backup/restore for `wago_data`.
+- [ ] Warn never to use `docker compose down -v` for upgrade.
 
 Acceptance:
 
-- [ ] Disconnect does not trigger a tight reconnect loop.
-- [ ] Rebind still works.
-- [ ] Logged-out state does not delete auth automatically.
+- [ ] A production operator can deploy with `docker compose pull && docker compose up -d`.
+- [ ] Data persists through container replacement.
+- [ ] Public exposure requires deliberate bind/reverse-proxy config.
 
-## Iteration 8: Dependency and Storage Hygiene
+Verification:
 
-Goal: reduce deployment drift and credential risk.
+- [ ] Docker build.
+- [ ] Compose config validation.
+- [ ] Local smoke test for `/health`.
+
+## Milestone 3: OSS, CI, and Release Engineering
+
+This milestone makes the repository maintainable and distributable.
+
+### Iteration 13: Code Quality Tooling
+
+Goal: add one practical formatter/linter without tool sprawl.
 
 Tasks:
 
-- [ ] Pin Baileys exactly: `"@whiskeysockets/baileys": "7.0.0-rc14"`.
-- [ ] Run `pnpm install` to update lockfile.
-- [ ] Confirm `.gitignore` and `.dockerignore` exclude all runtime credential data.
-- [ ] Document `useMultiFileAuthState` as acceptable MVP storage but not ideal for high-volume production.
-- [ ] Add backup note for `backend/data`.
+- [ ] Add Biome.
+- [ ] Add root scripts: `pnpm check`, `pnpm check:fix`, `pnpm test`, `pnpm build`.
+- [ ] Ensure backend and frontend use pnpm consistently.
+- [ ] Run Biome and fix only relevant formatting issues.
+- [ ] Document local quality commands in `AGENTS.md` and README.
 
 Acceptance:
 
-- [ ] Production deploys do not silently pick a newer Baileys release.
-- [ ] Credential data is not included in Git or Docker build context.
+- [ ] One command verifies formatting/lint basics.
+- [ ] CI can run the same commands locally.
 
-## Suggested Implementation Order
+Verification:
 
-Implement in this order:
+- [ ] `pnpm check`.
+- [ ] `pnpm test`.
+- [ ] `pnpm build`.
 
-1. Outbound policy skeleton.
-2. Allowlist/opt-out.
-3. Idempotency.
-4. Account/per-recipient limits.
-5. Baileys reachout timelock/new-chat cap.
-6. Circuit breaker.
-7. Reconnect backoff.
-8. Dependency pinning/docs.
+### Iteration 14: CI and Dependency Updates
 
-Reasoning:
+Goal: prevent regressions before merge.
 
-- Policy boundary must exist before adding rules.
-- Consent/allowlist is the highest-value safety rule.
-- Idempotency prevents duplicate sends before adding more complex state.
-- WhatsApp restriction checks become cleaner once policy decisions already exist.
-- Reconnect backoff is important but independent of outbound policy, so it can be later.
+Tasks:
 
-## Definition of Done
+- [ ] Add GitHub Actions CI for backend test/build and frontend test/build.
+- [ ] Add Docker image build check without push.
+- [ ] Add CodeQL workflow.
+- [ ] Add Dependabot for pnpm, Docker, and GitHub Actions.
+- [ ] Ensure Baileys upgrades open PRs but are not auto-deployed.
 
-The next iteration is complete when:
+Acceptance:
 
-- [ ] All sends pass through `OutboundPolicy`.
-- [ ] Unknown recipients are blocked by default.
-- [ ] Opt-out is enforced.
-- [ ] Duplicate sends can be blocked with idempotency key.
-- [ ] Account and recipient rate limits exist.
-- [ ] WhatsApp reachout timelock/new-chat cap are respected when Baileys exposes them.
-- [ ] Account-level outbound pause is visible and enforceable.
-- [ ] Reconnect uses bounded backoff.
+- [ ] PRs fail if tests/build/Docker build fail.
+- [ ] Security/dependency updates are visible and reviewable.
+
+Verification:
+
+- [ ] Validate workflows syntax.
+- [ ] First CI run passes.
+
+### Iteration 15: GHCR Release Pipeline
+
+Goal: publish versioned Docker images for production installs.
+
+Tasks:
+
+- [ ] Add release workflow triggered by `v*` tags.
+- [ ] Build multi-arch images: `linux/amd64` and `linux/arm64`.
+- [ ] Push to `ghcr.io/howlil/wago-simple`.
+- [ ] Add OCI labels for source, revision, version, and license.
+- [ ] Generate SBOM and provenance.
+- [ ] Tag images as full semver, minor, and latest.
+- [ ] Document rollback by changing `WAGO_VERSION`.
+
+Acceptance:
+
+- [ ] Tagging `v0.x.y` produces GHCR images.
+- [ ] Users do not need to clone the repo to deploy production.
+
+Verification:
+
+- [ ] Dry-run workflow review.
+- [ ] First tagged release smoke test.
+
+### Iteration 16: OSS Governance and Docs
+
+Goal: make repository boundaries clear for contributors and users.
+
+Tasks:
+
+- [ ] Add MIT `LICENSE`.
+- [ ] Add `SECURITY.md` with private vulnerability reporting guidance.
+- [ ] Add `CONTRIBUTING.md`.
+- [ ] Add `CODE_OF_CONDUCT.md`.
+- [ ] Add `CHANGELOG.md`.
+- [ ] Add issue templates for bug and feature requests.
+- [ ] Add pull request template.
+- [ ] Update README support boundary.
+- [ ] Document supported and unsupported deployment modes.
+- [ ] Document upgrade, backup, restore, and rollback.
+- [ ] Document that Baileys transport is unofficial and not guaranteed ban-safe.
+
+Acceptance:
+
+- [ ] Users know what the project supports.
+- [ ] Users know not to paste auth state, QR payloads, API keys, or full logs into issues.
+- [ ] Contributors have clear test/build expectations.
+
+Verification:
+
+- [ ] Docs review.
+- [ ] Link checks where practical.
+
+## Final Definition of Done
+
+The project can be called production-ready for single-account self-hosting when:
+
+- [ ] Outbound policy enforces consent, opt-out, idempotency, rate limits, pause, reachout timelock, and new-chat cap.
+- [ ] Send API returns quickly with truthful `pending` status.
+- [ ] Account restriction is account-level, not only per recipient.
+- [ ] Reconnect uses bounded backoff and never logs out unless rebind is requested.
+- [ ] Baileys version strategy is explicit.
+- [ ] `getMessage` has a bounded recent-message store.
+- [ ] `whatsapp.ts` is split into focused modules.
+- [ ] API key persistence, admin cookie flow, Origin checks, Helmet, and config validation are implemented.
+- [ ] Logs are structured and redacted.
+- [ ] Startup and shutdown lifecycle are safe.
+- [ ] Production compose is secure-by-default.
+- [ ] CI, CodeQL, Dependabot, GHCR release, SBOM, and provenance exist.
+- [ ] OSS docs and security policy are present.
 - [ ] Backend tests pass.
 - [ ] Frontend tests pass.
 - [ ] Backend and frontend builds pass.
 - [ ] Docker build passes.
+- [ ] Manual Docker volume persistence smoke test passes.
+- [ ] Manual WhatsApp pairing/send smoke test passes before release.
 
-## Manual Verification Checklist
+## Implementation Rules
 
-Before calling this complete:
-
-- [ ] Start backend with an initialized WhatsApp session.
-- [ ] Add one allowed recipient.
-- [ ] Send to allowed recipient successfully.
-- [ ] Send to unknown recipient and confirm blocked.
-- [ ] Opt out allowed recipient and confirm blocked.
-- [ ] Send same idempotency key twice and confirm second does not send.
-- [ ] Exceed per-recipient limit and confirm blocked.
-- [ ] Exceed account limit and confirm blocked.
-- [ ] Rebind still clears session and shows QR.
-- [ ] Restart process and confirm allowlist persists.
-
-## Engineering Rules for This Iteration
-
+- Prefer explicit failure over retry loops.
+- Do not unit-test Baileys internals; test wrapper decisions.
+- Keep all state in memory or `backend/data` files unless scope changes.
 - Keep one WhatsApp account per process.
-- Keep direct HTTP send; do not add a queue.
-- Keep persistent app data file-backed for now.
-- Use unit tests for policy logic.
-- Do not unit-test Baileys internals.
-- Do not add anti-ban behavior that tries to disguise automation.
-- Prefer explicit failures over silent retries.
-- Keep public API errors stable and documented.
+- Treat `backend/data/auth` as a private key.
+- Do not log QR data, auth data, API keys, full phone numbers, JIDs, or message text.
+- Do not deploy uninitialized public instances with `ALLOW_WEB_BOOTSTRAP=true`.
+- Do not run multiple replicas against the same auth directory.

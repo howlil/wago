@@ -1,18 +1,31 @@
 import { app } from "./app.js";
-import { initializeWhatsApp } from "./whatsapp.js";
+import { logger } from "./logger.js";
+import { createShutdownHandler, startWhatsAppInBackground } from "./server-lifecycle.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 
 async function start(): Promise<void> {
-  await initializeWhatsApp();
+  const server = app.listen(port, host, () => {
+    logger.info({
+      event: "app.listen",
+      host,
+      port
+    });
+  });
 
-  app.listen(port, host, () => {
-    console.log(`Backend listening on http://${host}:${port}`);
+  startWhatsAppInBackground();
+  const shutdown = createShutdownHandler(server);
+
+  process.once("SIGTERM", (signal) => {
+    void shutdown(signal);
+  });
+  process.once("SIGINT", (signal) => {
+    void shutdown(signal);
   });
 }
 
 start().catch((error: unknown) => {
-  console.error("Failed to start backend", error);
+  logger.error({ event: "app.start_failed", error }, "Failed to start backend");
   process.exit(1);
 });
