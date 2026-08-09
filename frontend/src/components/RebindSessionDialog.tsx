@@ -1,5 +1,4 @@
 import { AlertTriangle, Link2Off, Loader2, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
 
 type RebindSessionDialogProps = {
   isOpen: boolean;
@@ -8,24 +7,10 @@ type RebindSessionDialogProps = {
   onConfirm: () => void;
 };
 
-const confirmationText = "RE BIND";
-
 export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }: RebindSessionDialogProps) {
-  const [confirmation, setConfirmation] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useLayoutEffect(() => {
-    if (isOpen) {
-      setConfirmation("");
-      inputRef.current?.focus();
-    }
-  }, [isOpen]);
-
   if (!isOpen) {
     return null;
   }
-
-  const canConfirm = confirmation === confirmationText && !isRebinding;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f2a32]/55 px-4 py-6">
@@ -34,14 +19,14 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
         className="absolute inset-0 cursor-default"
         onClick={onCancel}
         disabled={isRebinding}
-        aria-label="Close rebind dialog"
+        aria-label="Close pairing dialog"
       />
       <section
         className="relative w-full max-w-[460px] rounded-lg border border-[#d9e3df] bg-white p-5 shadow-[0_18px_48px_rgb(31_42_50_/_22%)]"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="rebind-dialog-title"
-        aria-describedby="rebind-dialog-description"
+        aria-labelledby="pairing-dialog-title"
+        aria-describedby="pairing-dialog-description"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -49,11 +34,11 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
               <AlertTriangle size={20} />
             </span>
             <div>
-              <h2 id="rebind-dialog-title" className="mb-1 text-xl">
-                Bind Another Account
+              <h2 id="pairing-dialog-title" className="mb-1 text-xl">
+                Start a New Pairing Session?
               </h2>
-              <p id="rebind-dialog-description" className="m-0 text-sm text-[#667972]">
-                Current WhatsApp session will be logged out and local auth files will be deleted.
+              <p id="pairing-dialog-description" className="m-0 text-sm text-[#667972]">
+                The current WhatsApp session will be cleared. You will need to scan a new QR code.
               </p>
             </div>
           </div>
@@ -62,23 +47,11 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
             type="button"
             onClick={onCancel}
             disabled={isRebinding}
-            aria-label="Close rebind dialog"
+            aria-label="Close pairing dialog"
           >
             <X size={17} />
           </button>
         </div>
-
-        <label className="mt-5 block">
-          <span className="mb-1.5 block text-sm font-bold text-[#405149]">Type RE BIND to continue</span>
-          <input
-            ref={inputRef}
-            className="w-full rounded-lg border border-[#cdd9d5] bg-white px-3 py-2.5 text-[#1f2a32] outline-none focus:border-[#2f8f71] focus:ring-3 focus:ring-[#cde9df]"
-            value={confirmation}
-            onInput={(event) => setConfirmation(event.currentTarget.value)}
-            placeholder={confirmationText}
-            autoComplete="off"
-          />
-        </label>
 
         <div className="mt-5 flex justify-end gap-3 max-[520px]:flex-col-reverse">
           <button
@@ -93,10 +66,10 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#842029] px-3.5 text-white disabled:cursor-not-allowed disabled:bg-[#d7a1a8] disabled:text-[#fff4f5]"
             type="button"
             onClick={onConfirm}
-            disabled={!canConfirm}
+            disabled={isRebinding}
           >
             {isRebinding ? <Loader2 className="animate-spin" size={18} /> : <Link2Off size={18} />}
-            <span>{isRebinding ? "Rebinding" : "Rebind session"}</span>
+            <span>{isRebinding ? "Starting" : "Start new pairing"}</span>
           </button>
         </div>
       </section>

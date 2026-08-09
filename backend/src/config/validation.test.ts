@@ -3,7 +3,6 @@ import { validateRuntimeConfig } from "./validation.js";
 
 const validProductionConfig = {
   nodeEnv: "production",
-  apiKeyConfigured: true,
   corsOrigin: "https://app.example.com",
 };
 
@@ -12,23 +11,21 @@ describe("validateRuntimeConfig", () => {
     expect(
       validateRuntimeConfig({
         nodeEnv: "development",
-        apiKeyConfigured: false,
         corsOrigin: "*",
       }),
     ).toEqual([]);
   });
 
-  it("accepts the two required production settings", () => {
+  it("accepts production with first-run API key setup", () => {
     expect(validateRuntimeConfig(validProductionConfig)).toEqual([]);
   });
 
-  it("fails closed when either production setting is missing", () => {
+  it("still requires an explicit production browser origin", () => {
     expect(
       validateRuntimeConfig({
         nodeEnv: "production",
-        apiKeyConfigured: false,
         corsOrigin: "*",
       }),
-    ).toEqual(["API_KEY is required in production.", "CORS_ORIGIN is required in production and must not be *."]);
+    ).toEqual(["CORS_ORIGIN is required in production and must not be *."]);
   });
 });

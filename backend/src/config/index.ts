@@ -61,7 +61,7 @@ if (!persistedSettings.appId || (persistedSettings.apiKey && !persistedSettings.
 
 export const config = {
   appId: initialAppId,
-  allowWebBootstrap: nodeEnv !== "production",
+  allowWebBootstrap: !envApiKey && !persistedApiKeyHash,
   apiKey: envApiKey || null,
   apiKeyHash: envApiKey ? null : persistedApiKeyHash,
   apiKeySource: (envApiKey ? "env" : persistedApiKeyHash ? "generated" : "unset") as ApiKeySource,
@@ -90,17 +90,19 @@ export function bootstrapApiKey():
   }
 
   const apiKey = generateApiKey();
+  const apiKeyHash = hashApiKey(apiKey);
 
   writeSettings({
     ...readSettings(),
     appId: config.appId,
-    apiKeyHash: hashApiKey(apiKey),
+    apiKeyHash,
     generatedAt: new Date().toISOString(),
   });
 
   config.apiKey = null;
-  config.apiKeyHash = hashApiKey(apiKey);
+  config.apiKeyHash = apiKeyHash;
   config.apiKeySource = "generated";
+  config.allowWebBootstrap = false;
 
   return {
     success: true,

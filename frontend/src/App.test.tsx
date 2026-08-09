@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
@@ -36,7 +36,7 @@ vi.mock("./api.js", () => ({
   })),
   rebindWhatsApp: vi.fn(async () => ({
     success: true,
-    message: "Rebind started",
+    message: "Pairing started",
     status: "qr",
   })),
   sendMessage: vi.fn(),
@@ -56,36 +56,26 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("App rebind flow", () => {
-  it("opens the rebind dialog from the session button even while connecting", async () => {
+describe("App pairing flow", () => {
+  it("opens the new pairing dialog while authenticated", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    const openButton = await screen.findByRole("button", { name: /bind another account/i });
-
+    const openButton = await screen.findByRole("button", { name: /start new pairing/i });
     expect((openButton as HTMLButtonElement).disabled).toBe(false);
 
     await user.click(openButton);
 
-    expect(await screen.findByRole("dialog", { name: /bind another account/i })).toBeTruthy();
-    expect((screen.getByRole("button", { name: /rebind session/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect(await screen.findByRole("dialog", { name: /start a new pairing session/i })).toBeTruthy();
   });
 
-  it("requires typed confirmation before calling confirm", async () => {
+  it("confirms a new pairing session with one explicit click", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
 
     render(<RebindSessionDialog isOpen isRebinding={false} onCancel={vi.fn()} onConfirm={onConfirm} />);
 
-    fireEvent.input(screen.getByLabelText(/type re bind/i), { target: { value: "RE BIND" } });
-
-    const confirmButton = screen.getByRole("button", { name: /rebind session/i });
-
-    await waitFor(() => {
-      expect((confirmButton as HTMLButtonElement).disabled).toBe(false);
-    });
-
-    await user.click(confirmButton);
+    await user.click(screen.getByRole("button", { name: /start new pairing/i }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
@@ -100,16 +90,14 @@ describe("App rebind flow", () => {
     render(<App />);
 
     await vi.runOnlyPendingTimersAsync();
-
     expect(getHealth).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(60000);
-
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("bootstraps the app from the UI when setup is required", async () => {
-    vi.mocked(getAppInfo).mockResolvedValueOnce({
+  it("generates credentials automatically when the user starts first pairing", async () => {
+    vi.mocked(getAppInfo).mockResolvedValue({
       success: true,
       appId: "wa-gateway-test",
       apiKeyRequired: true,
@@ -122,17 +110,19 @@ describe("App rebind flow", () => {
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /initialize app/i }));
+    await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
 
     await waitFor(() => {
       expect(bootstrapApp).toHaveBeenCalledTimes(1);
-      expect(setStoredApiKey).not.toHaveBeenCalled();
+      expect(setStoredApiKey).toHaveBeenCalledWith("wa_test");
     });
-    expect(screen.getByDisplayValue("wa_test")).toBeTruthy();
+
+    expect((screen.getByLabelText(/api key/i) as HTMLInputElement).value).toBe("wa_test");
+    expect(screen.getAllByRole("button", { name: /^copy$/i }).length).toBeGreaterThanOrEqual(2);
   });
 
   it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {
-    vi.mocked(getAppInfo).mockResolvedValueOnce({
+    vi.mocked(getAppInfo).mockResolvedValue({
       success: true,
       appId: "wa-gateway-test",
       apiKeyRequired: true,
@@ -144,7 +134,15 @@ describe("App rebind flow", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(/authentication required/i)).toBeTruthy();
+    expect(await screen.findByText(/enter the existing api key above/i)).toBeTruthy();
     expect(getCurrentQr).not.toHaveBeenCalled();
+  });
+
+  it("shows why pairing is unavailable when the backend is down", async () => {
+    vi.mocked(getHealth).mockRejectedValueOnce(new Error("offline"));
+
+    render(<App />);
+
+    expect(await screen.findByText(/backend is unavailable/i)).toBeTruthy();
   });
 });

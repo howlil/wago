@@ -16,12 +16,28 @@ appRouter.get("/info", (req, res) => {
   });
 });
 
-appRouter.post("/bootstrap", (_req, res) => {
+appRouter.post("/bootstrap", (req, res) => {
+  if (config.apiKey || config.apiKeyHash) {
+    return res.status(409).json({
+      success: false,
+      error: "APP_ALREADY_INITIALIZED",
+      message: "This app is already initialized. Use the existing API key or auth cookie.",
+    });
+  }
+
   if (!config.allowWebBootstrap) {
     return res.status(403).json({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
-      message: "Web bootstrap is disabled in production. Configure API_KEY before starting Wago.",
+      message: "First-run web setup is disabled for this gateway.",
+    });
+  }
+
+  if (config.nodeEnv === "production" && req.header("origin") !== config.corsOrigin) {
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_SETUP_ORIGIN",
+      message: "First-run setup must come from the configured CORS_ORIGIN.",
     });
   }
 
@@ -46,6 +62,6 @@ appRouter.post("/bootstrap", (_req, res) => {
     success: true,
     appId: result.appId,
     apiKey: result.apiKey,
-    message: "App initialized. The API key was generated and saved in this browser.",
+    message: "Gateway credentials generated. Copy the API key and continue with WhatsApp pairing.",
   });
 });

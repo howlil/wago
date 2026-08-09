@@ -15,7 +15,6 @@ export const app = express();
 
 const configErrors = validateRuntimeConfig({
   nodeEnv: config.nodeEnv,
-  apiKeyConfigured: Boolean(config.apiKey),
   corsOrigin: config.corsOrigin,
 });
 

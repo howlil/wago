@@ -1,5 +1,15 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-let apiKey = "";
+const API_KEY_SESSION_STORAGE_KEY = "wago.apiKey";
+
+function readSessionApiKey(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.sessionStorage.getItem(API_KEY_SESSION_STORAGE_KEY)?.trim() ?? "";
+}
+
+let apiKey = readSessionApiKey();
 
 export type AppInfoResponse = {
   success: true;
@@ -133,6 +143,17 @@ export function getStoredApiKey(): string {
 
 export function setStoredApiKey(value: string): void {
   apiKey = value.trim();
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (apiKey) {
+    window.sessionStorage.setItem(API_KEY_SESSION_STORAGE_KEY, apiKey);
+    return;
+  }
+
+  window.sessionStorage.removeItem(API_KEY_SESSION_STORAGE_KEY);
 }
 
 export function getAppInfo(): Promise<AppInfoResponse> {

@@ -3,8 +3,8 @@ services:
     image: ghcr.io/howlil/wago-simple:latest
     restart: unless-stopped
     environment:
-      API_KEY: ${API_KEY:?Set API_KEY in .env}
       CORS_ORIGIN: ${CORS_ORIGIN:?Set CORS_ORIGIN in .env, for example https://wago.example.com}
+      API_KEY: ${API_KEY:-}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

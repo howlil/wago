@@ -21,7 +21,10 @@ It is **not** a bulk sender, campaign platform, multi-tenant SaaS, scraping tool
 ## Features
 
 - Single WhatsApp account per instance
-- QR-based pairing and session rebind
+- One-click first-run pairing flow
+- Automatically generated App ID and API key
+- Copyable gateway credentials in the dashboard
+- QR-based pairing and account changes
 - REST API for text messages and retained message status
 - Web dashboard for status, QR pairing, and manual sending
 - Recipient allowlist and opt-out state
@@ -65,27 +68,23 @@ Because this is a public repository, the `docs/` source is still visible in GitH
 - Docker Compose v2
 - HTTPS reverse proxy or PaaS routing for public deployments
 
-### 1. Configure exactly two production values
+### 1. Configure the public origin
 
 ```bash
 git clone https://github.com/howlil/wago-simple.git
 cd wago-simple
 cp .env.production.example .env
-openssl rand -hex 32
 ```
 
-`.env` contains only:
+Set the public dashboard origin:
 
 ```env
-API_KEY=replace-with-a-long-random-secret
 CORS_ORIGIN=https://wago.example.com
 ```
 
-`API_KEY` protects the dashboard and REST API. `CORS_ORIGIN` is the public browser origin allowed to call Wago.
+`CORS_ORIGIN` is the browser origin allowed to call Wago. Production rejects `*`.
 
-Everything else is an internal default: HTTP port `3000`, host publish `127.0.0.1:3000`, `/app/data` persistence, secure production cookies, disabled production bootstrap, `32kb` JSON limit, country code `62`, structured request logging, and the default Baileys WhatsApp version strategy.
-
-Production fails fast if either required value is missing or if `CORS_ORIGIN=*` is used.
+`API_KEY` is optional. If omitted, Wago starts in one-time first-run setup mode and generates the API key from the dashboard when you start WhatsApp pairing. If you prefer to pre-provision authentication, set `API_KEY` in `.env` before starting the container.
 
 ### 2. Start Wago
 
@@ -105,9 +104,26 @@ Compose intentionally binds Wago to `127.0.0.1:3000`. Put Caddy, Traefik, Nginx,
 
 ### 3. Pair WhatsApp
 
-Open the dashboard through `CORS_ORIGIN`, enter the API key, then scan the QR from **WhatsApp → Linked devices → Link a device**.
+Open the dashboard through `CORS_ORIGIN` and click **Pair WhatsApp**.
 
-The session is persisted under `/app/data/auth`, so normal container restarts do not require pairing again.
+On a fresh gateway Wago will automatically:
+
+1. generate the App ID if one does not already exist
+2. generate a cryptographically random API key
+3. authenticate the current browser session
+4. show the App ID and API key with Copy buttons
+5. display the WhatsApp QR when Baileys provides it
+
+Then open **WhatsApp → Linked devices → Link a device** and scan the QR.
+
+The API key and WhatsApp QR are separate credentials. Wago creates the API key as part of the pairing workflow for convenience; it is not derived from WhatsApp QR material.
+
+The generated API key is persisted by hash only on the backend. The dashboard keeps the raw value in browser session storage so it can be copied during the current browser session. Save it if an external API client needs it.
+
+> [!IMPORTANT]
+> A gateway without an existing API key is in first-run claim mode. Complete setup immediately after deployment. For environments where the public URL may be exposed before the owner can open it, pre-provision `API_KEY` instead.
+
+The WhatsApp session is persisted under `/app/data/auth`, so normal container restarts do not require pairing again.
 
 ### 4. Allow a recipient
 
@@ -148,27 +164,27 @@ Authorization: Bearer <API_KEY>
 | `GET` | `/health` | Public | Process health |
 | `GET` | `/ready` | Public | Readiness metadata |
 | `GET` | `/app/info` | Public | App/authentication state |
-| `POST` | `/app/bootstrap` | Development only | Generate a development API key |
+| `POST` | `/app/bootstrap` | First run only | Generate gateway credentials and browser auth |
 | `GET` | `/recipients` | API key | List recipient records |
 | `POST` | `/recipients/allow` | API key | Allow a recipient |
 | `POST` | `/recipients/:phone/opt-out` | API key | Mark recipient opted out |
 | `GET` | `/whatsapp/status` | API key | WhatsApp connection state |
 | `GET` | `/whatsapp/qr` | API key | Current QR payload/status |
 | `GET` | `/whatsapp/qr/image` | API key | Current QR as SVG |
-| `POST` | `/whatsapp/rebind` | API key | Clear auth and pair another account |
+| `POST` | `/whatsapp/rebind` | API key | Clear auth and start a new pairing session |
 | `POST` | `/messages/send` | API key | Send text |
 | `GET` | `/messages/:id/status` | API key | Read retained status |
 
 ## Production Configuration
 
-Wago deliberately exposes only two operator-controlled production environment variables:
+Wago keeps production configuration intentionally small:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `API_KEY` | Yes | Bearer secret for protected operations |
 | `CORS_ORIGIN` | Yes | Public browser origin; `*` is rejected |
+| `API_KEY` | No | Optional pre-provisioned bearer secret; otherwise generated during first-run pairing |
 
-Runtime details such as ports, filesystem paths, secure-cookie policy, logging, body limit, bootstrap policy, country code, and WhatsApp version strategy are fixed internal defaults. This keeps deployment predictable and prevents a simple gateway from turning into a configuration matrix.
+Runtime details such as ports, filesystem paths, secure-cookie policy, logging, body limit, country code, and WhatsApp version strategy are fixed internal defaults. This keeps deployment predictable and prevents a simple gateway from turning into a configuration matrix.
 
 ## Outbound Safety
 
@@ -222,8 +238,8 @@ pnpm build:docs
 Run applications separately when needed:
 
 ```bash
-pnpm --dir backend dev
-pnpm --dir frontend dev
+pnpm --dir backend dev   # http://127.0.0.1:3000
+pnpm --dir frontend dev  # http://127.0.0.1:5173, proxied to backend :3000
 pnpm --dir docs dev
 ```
 

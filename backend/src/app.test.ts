@@ -44,15 +44,13 @@ describe("app", () => {
     expect(response.headers["x-frame-options"]).toBe("SAMEORIGIN");
   });
 
-  it("returns readiness status", async () => {
-    config.apiKey = "ready-key";
-    config.apiKeySource = "env";
+  it("returns readiness status before first-run setup", async () => {
     const response = await request(app).get("/ready");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: "ok", appId: config.appId, apiKeyConfigured: true });
+    expect(response.body).toEqual({ status: "ok", appId: config.appId, apiKeyConfigured: false });
   });
 
-  it("treats generated API key hashes as ready in development", async () => {
+  it("treats generated API key hashes as ready", async () => {
     config.apiKeyHash = hashApiKey("ready-key");
     config.apiKeySource = "generated";
     const response = await request(app).get("/ready");
@@ -92,13 +90,13 @@ describe("app", () => {
     expect(response.body).toEqual({ success: false, error: "PAYLOAD_TOO_LARGE", message: "Request body is too large" });
   });
 
-  it("protects send-message when API_KEY is not configured", async () => {
+  it("protects send-message before first-run setup", async () => {
     const response = await request(app).post("/messages/send").send({ to: "081234567890", text: "Connectivity check" });
     expect(response.status).toBe(403);
     expect(response.body).toEqual(apiKeyRequiredResponse);
   });
 
-  it("protects destructive WhatsApp rebind when API_KEY is not configured", async () => {
+  it("protects destructive WhatsApp rebind before first-run setup", async () => {
     const response = await request(app).post("/whatsapp/rebind");
     expect(response.status).toBe(403);
     expect(response.body).toEqual(apiKeyRequiredResponse);
@@ -141,7 +139,7 @@ describe("app", () => {
     });
   });
 
-  it("bootstraps a generated API key in development", async () => {
+  it("bootstraps a generated API key from first-run web setup", async () => {
     const response = await request(app).post("/app/bootstrap");
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
@@ -151,6 +149,7 @@ describe("app", () => {
     expect(config.apiKey).toBeNull();
     expect(config.apiKeyHash).toBe(hashApiKey(response.body.apiKey));
     expect(config.apiKeySource).toBe("generated");
+    expect(config.allowWebBootstrap).toBe(false);
   });
 
   it("authenticates generated API keys by persisted hash", async () => {
@@ -179,14 +178,14 @@ describe("app", () => {
     });
   });
 
-  it("rejects web bootstrap when disabled", async () => {
+  it("rejects web bootstrap when explicitly disabled", async () => {
     config.allowWebBootstrap = false;
     const response = await request(app).post("/app/bootstrap");
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
-      message: "Web bootstrap is disabled in production. Configure API_KEY before starting Wago.",
+      message: "First-run web setup is disabled for this gateway.",
     });
   });
 

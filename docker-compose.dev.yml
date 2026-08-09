@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      API_KEY: ${API_KEY:-dev-only-key}
+      API_KEY: ${API_KEY:-}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     ports:
       - "127.0.0.1:3000:3000"
