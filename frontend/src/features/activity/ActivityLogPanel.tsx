@@ -1,7 +1,12 @@
 import { ChevronDown, Loader2, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listActivity, type ActivityCategory, type ActivityEvent, type ActivityLevel } from "../../api.js";
-import { cardBodyClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import { type ActivityCategory, type ActivityEvent, type ActivityLevel, listActivity } from "../../api.js";
+import {
+  cardBodyClass,
+  secondaryButtonClass,
+  sectionDescriptionClass,
+  sectionTitleClass,
+} from "../../shared/ui/classes.js";
 
 type ActivityLogPanelProps = {
   enabled: boolean;
@@ -54,29 +59,32 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (showLoading = false) => {
-    if (!enabled) {
-      setEvents([]);
-      return;
-    }
-
-    if (showLoading) {
-      setLoading(true);
-    }
-
-    try {
-      const result = await listActivity(150);
-      setEvents(result.events);
-      setError(null);
-    } catch (caught) {
-      const apiError = caught as { message?: string };
-      setError(apiError.message ?? "Could not load gateway activity.");
-    } finally {
-      if (showLoading) {
-        setLoading(false);
+  const load = useCallback(
+    async (showLoading = false) => {
+      if (!enabled) {
+        setEvents([]);
+        return;
       }
-    }
-  }, [enabled]);
+
+      if (showLoading) {
+        setLoading(true);
+      }
+
+      try {
+        const result = await listActivity(150);
+        setEvents(result.events);
+        setError(null);
+      } catch (caught) {
+        const apiError = caught as { message?: string };
+        setError(apiError.message ?? "Could not load gateway activity.");
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [enabled],
+  );
 
   useEffect(() => {
     void load(true);
@@ -153,7 +161,12 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
             </select>
             <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
           </label>
-          <button className={secondaryButtonClass} type="button" onClick={() => void load(true)} disabled={!enabled || loading}>
+          <button
+            className={secondaryButtonClass}
+            type="button"
+            onClick={() => void load(true)}
+            disabled={!enabled || loading}
+          >
             {loading ? <Loader2 className="animate-spin" size={14} /> : <RefreshCcw size={14} />}
             Refresh
           </button>
@@ -176,10 +189,15 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
         <div className="mt-4 overflow-hidden rounded-md border border-wago-line">
           <div className="max-h-[520px] divide-y divide-[#e8ece9] overflow-y-auto bg-white">
             {filteredEvents.map((event) => {
-              const metadata = Object.entries(event.metadata ?? {}).filter(([, value]) => value !== undefined && value !== null);
+              const metadata = Object.entries(event.metadata ?? {}).filter(
+                ([, value]) => value !== undefined && value !== null,
+              );
 
               return (
-                <article key={event.id} className="grid gap-2 px-3 py-3 sm:grid-cols-[112px_10px_minmax(0,1fr)_90px] sm:items-start sm:gap-3">
+                <article
+                  key={event.id}
+                  className="grid gap-2 px-3 py-3 sm:grid-cols-[112px_10px_minmax(0,1fr)_90px] sm:items-start sm:gap-3"
+                >
                   <time className="text-[11px] leading-5 text-[#818b86]" dateTime={event.timestamp}>
                     {formatTime(event.timestamp)}
                   </time>
@@ -194,12 +212,18 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
                     </div>
                     {metadata.length > 0 ? (
                       <details className="mt-1.5 text-[11px] text-[#718079]">
-                        <summary className="w-fit cursor-pointer select-none font-medium hover:text-wago-brand">Technical details</summary>
+                        <summary className="w-fit cursor-pointer select-none font-medium hover:text-wago-brand">
+                          Technical details
+                        </summary>
                         <dl className="mb-0 mt-2 grid gap-x-4 gap-y-1 rounded-md bg-[#f6f7f5] px-3 py-2 sm:grid-cols-2">
                           {metadata.map(([key, value]) => (
                             <div key={key} className="min-w-0">
-                              <dt className="text-[10px] uppercase tracking-[0.05em] text-[#8a948f]">{humanizeKey(key)}</dt>
-                              <dd className="mb-0 mt-0.5 break-all font-mono text-[11px] text-[#56645d]">{String(value)}</dd>
+                              <dt className="text-[10px] uppercase tracking-[0.05em] text-[#8a948f]">
+                                {humanizeKey(key)}
+                              </dt>
+                              <dd className="mb-0 mt-0.5 break-all font-mono text-[11px] text-[#56645d]">
+                                {String(value)}
+                              </dd>
                             </div>
                           ))}
                         </dl>

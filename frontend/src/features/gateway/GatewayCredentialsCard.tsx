@@ -1,6 +1,13 @@
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import type { AppInfoResponse } from "../../api.js";
-import { cardBodyClass, fieldLabelClass, inputClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import {
+  cardBodyClass,
+  fieldLabelClass,
+  inputClass,
+  secondaryButtonClass,
+  sectionDescriptionClass,
+  sectionTitleClass,
+} from "../../shared/ui/classes.js";
 import type { CopiedField } from "../dashboard/types.js";
 
 type GatewayCredentialsCardProps = {
@@ -98,7 +105,12 @@ export function GatewayCredentialsCard({
                 Use key
               </button>
             ) : (
-              <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onCopyApiKey} disabled={!apiKeyInput}>
+              <button
+                className={`${secondaryButtonClass} shrink-0`}
+                type="button"
+                onClick={onCopyApiKey}
+                disabled={!apiKeyInput}
+              >
                 {copiedField === "apiKey" ? <Check size={14} /> : <Copy size={14} />}
                 {copiedField === "apiKey" ? "Copied" : "Copy"}
               </button>

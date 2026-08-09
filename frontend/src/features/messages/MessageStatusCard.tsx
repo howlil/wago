@@ -1,7 +1,12 @@
 import { CheckCircle2, Clock3, Loader2, RefreshCcw, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { getMessageStatus, type MessageStatusResponse } from "../../api.js";
-import { cardBodyClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import {
+  cardBodyClass,
+  secondaryButtonClass,
+  sectionDescriptionClass,
+  sectionTitleClass,
+} from "../../shared/ui/classes.js";
 
 type DeliveryStatus = Extract<MessageStatusResponse, { success: true }>;
 
@@ -99,7 +104,14 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
     }
   }
 
-  const icon = delivery.status === "accepted" ? <CheckCircle2 size={15} /> : delivery.status === "rejected" ? <XCircle size={15} /> : <Clock3 size={15} />;
+  const icon =
+    delivery.status === "accepted" ? (
+      <CheckCircle2 size={15} />
+    ) : delivery.status === "rejected" ? (
+      <XCircle size={15} />
+    ) : (
+      <Clock3 size={15} />
+    );
 
   return (
     <section className={cardBodyClass}>
@@ -108,7 +120,12 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
           <h2 className={sectionTitleClass}>Last message status</h2>
           <p className={sectionDescriptionClass}>Gateway acknowledgement status, not a WhatsApp read receipt.</p>
         </div>
-        <button className={secondaryButtonClass} type="button" onClick={() => void handleRefresh()} disabled={refreshing}>
+        <button
+          className={secondaryButtonClass}
+          type="button"
+          onClick={() => void handleRefresh()}
+          disabled={refreshing}
+        >
           {refreshing ? <Loader2 className="animate-spin" size={13} /> : <RefreshCcw size={13} />}
           Refresh
         </button>

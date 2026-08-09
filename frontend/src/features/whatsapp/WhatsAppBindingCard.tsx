@@ -1,6 +1,12 @@
 import { Link2Off, Loader2, QrCode } from "lucide-react";
 import type { WhatsAppBinding, WhatsAppStatus } from "../../api.js";
-import { cardBodyClass, dangerButtonClass, primaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import {
+  cardBodyClass,
+  dangerButtonClass,
+  primaryButtonClass,
+  sectionDescriptionClass,
+  sectionTitleClass,
+} from "../../shared/ui/classes.js";
 import type { HealthState } from "../dashboard/types.js";
 
 type WhatsAppBindingCardProps = {
@@ -58,7 +64,12 @@ export function WhatsAppBindingCard({
             {pairButtonLabel}
           </button>
         ) : binding.state === "bound" ? (
-          <button className={dangerButtonClass} type="button" onClick={onChangeAccount} disabled={health !== "ok" || isRebinding}>
+          <button
+            className={dangerButtonClass}
+            type="button"
+            onClick={onChangeAccount}
+            disabled={health !== "ok" || isRebinding}
+          >
             {isRebinding ? <Loader2 className="animate-spin" size={15} /> : <Link2Off size={15} />}
             Change account
           </button>

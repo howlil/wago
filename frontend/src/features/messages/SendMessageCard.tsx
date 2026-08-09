@@ -1,7 +1,15 @@
 import { Check, Loader2, Send } from "lucide-react";
 import type { FormEvent } from "react";
 import type { WhatsAppStatus } from "../../api.js";
-import { cardBodyClass, fieldLabelClass, inputClass, primaryButtonClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import {
+  cardBodyClass,
+  fieldLabelClass,
+  inputClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  sectionDescriptionClass,
+  sectionTitleClass,
+} from "../../shared/ui/classes.js";
 
 type SendMessageCardProps = {
   status: WhatsAppStatus;
@@ -66,7 +74,8 @@ export function SendMessageCard({
 
         {approvalRequired ? (
           <div className="rounded-md border border-[#ead6a2] bg-wago-warning-soft px-3 py-2.5 text-xs leading-5 text-[#6f5200]">
-            This number is not allowed yet. Use <strong>Allow &amp; Send</strong> only after confirming recipient permission.
+            This number is not allowed yet. Use <strong>Allow &amp; Send</strong> only after confirming recipient
+            permission.
           </div>
         ) : null}
 

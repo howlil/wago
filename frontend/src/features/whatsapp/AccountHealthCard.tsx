@@ -41,30 +41,42 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         <div className="py-3">
           <div className="flex items-center justify-between gap-2">
             <dt className="text-xs font-medium text-[#52615a]">Reach-out</dt>
-            <dd className={`mb-0 text-xs font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-brand"}`}>
+            <dd
+              className={`mb-0 text-xs font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-brand"}`}
+            >
               {reachoutRestricted ? "Limited" : "Available"}
             </dd>
           </div>
           <p className="mb-0 mt-1 text-[11px] leading-4 text-[#7c8781]">
-            {reachoutRestricted ? "Only new recipients are blocked by Wago while this timelock is active." : "No reach-out timelock is active."}
+            {reachoutRestricted
+              ? "Only new recipients are blocked by Wago while this timelock is active."
+              : "No reach-out timelock is active."}
           </p>
           {reachoutRestricted && reachout?.retryAt ? (
-            <p className="mb-0 mt-1 text-[11px] font-medium text-wago-warning">Retry new chats after {formatDate(reachout.retryAt)}</p>
+            <p className="mb-0 mt-1 text-[11px] font-medium text-wago-warning">
+              Retry new chats after {formatDate(reachout.retryAt)}
+            </p>
           ) : null}
         </div>
 
         <div className="py-3">
           <div className="flex items-center justify-between gap-2">
             <dt className="text-xs font-medium text-[#52615a]">New chats</dt>
-            <dd className={`mb-0 text-xs font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-brand"}`}>
+            <dd
+              className={`mb-0 text-xs font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-brand"}`}
+            >
               {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "Normal"}
             </dd>
           </div>
           <p className="mb-0 mt-1 text-[11px] leading-4 text-[#7c8781]">
-            {capRestricted || capWarning ? "New-recipient sends are paused; known recipients are evaluated normally." : "No new-chat warning or cap is reported."}
+            {capRestricted || capWarning
+              ? "New-recipient sends are paused; known recipients are evaluated normally."
+              : "No new-chat warning or cap is reported."}
           </p>
           {showQuota ? (
-            <p className="mb-0 mt-1 text-[11px] text-[#7c8781]">{cap?.used_quota ?? 0} / {cap?.total_quota} used</p>
+            <p className="mb-0 mt-1 text-[11px] text-[#7c8781]">
+              {cap?.used_quota ?? 0} / {cap?.total_quota} used
+            </p>
           ) : null}
         </div>
       </dl>

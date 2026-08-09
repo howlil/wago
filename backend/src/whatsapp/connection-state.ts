@@ -66,7 +66,8 @@ export function markDisconnected(): void {
       category: "connection",
       code: "whatsapp.disconnected",
       title: "WhatsApp disconnected",
-      description: "The linked WhatsApp session is currently offline. The gateway may attempt to reconnect automatically.",
+      description:
+        "The linked WhatsApp session is currently offline. The gateway may attempt to reconnect automatically.",
     });
   }
 

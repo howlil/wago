@@ -174,7 +174,10 @@ describe("dashboard", () => {
 
   it("lets the operator allow and resend a recipient blocked by policy", async () => {
     vi.mocked(sendMessage)
-      .mockRejectedValueOnce({ error: "RECIPIENT_NOT_ALLOWED", message: "Recipient is not allowed for outbound messages" })
+      .mockRejectedValueOnce({
+        error: "RECIPIENT_NOT_ALLOWED",
+        message: "Recipient is not allowed for outbound messages",
+      })
       .mockResolvedValueOnce({ success: true, messageId: "message-1", status: "pending" });
     const user = userEvent.setup();
     render(<App />);

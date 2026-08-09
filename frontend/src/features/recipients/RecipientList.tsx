@@ -21,7 +21,11 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
   }
 
   if (recipients.length === 0) {
-    return <p className="mb-0 mt-3 rounded-md border border-dashed border-wago-line px-3 py-4 text-xs text-wago-muted">No recipients have been added yet.</p>;
+    return (
+      <p className="mb-0 mt-3 rounded-md border border-dashed border-wago-line px-3 py-4 text-xs text-wago-muted">
+        No recipients have been added yet.
+      </p>
+    );
   }
 
   return (
@@ -33,13 +37,20 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
           const busy = busyPhone === recipientPhone;
 
           return (
-            <div key={recipient.jid} className="flex items-center justify-between gap-3 bg-white px-3 py-2.5 max-[620px]:flex-col max-[620px]:items-start">
+            <div
+              key={recipient.jid}
+              className="flex items-center justify-between gap-3 bg-white px-3 py-2.5 max-[620px]:flex-col max-[620px]:items-start"
+            >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <strong className="font-mono text-xs font-semibold text-[#26362f]">{recipientPhone}</strong>
-                  <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${status.className}`}>{status.label}</span>
+                  <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${status.className}`}>
+                    {status.label}
+                  </span>
                 </div>
-                {recipient.label ? <span className="mt-0.5 block text-[11px] text-[#7b8680]">{recipient.label}</span> : null}
+                {recipient.label ? (
+                  <span className="mt-0.5 block text-[11px] text-[#7b8680]">{recipient.label}</span>
+                ) : null}
               </div>
 
               {recipient.allowed && !recipient.optedOut ? (
@@ -48,7 +59,12 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
                   Opt out
                 </button>
               ) : (
-                <button className={secondaryButtonClass} type="button" onClick={() => onReallow(recipient)} disabled={busy}>
+                <button
+                  className={secondaryButtonClass}
+                  type="button"
+                  onClick={() => onReallow(recipient)}
+                  disabled={busy}
+                >
                   {busy ? <Loader2 className="animate-spin" size={13} /> : <Check size={13} />}
                   Allow again
                 </button>

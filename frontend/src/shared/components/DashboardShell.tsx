@@ -72,7 +72,9 @@ export function DashboardShell({
           <div className="mx-auto flex max-w-[1220px] items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-7">
             <div className="min-w-0">
               <div className="mb-1 flex items-center gap-2 lg:hidden">
-                <span className="flex h-6 w-6 items-center justify-center rounded bg-wago-brand text-[11px] font-bold text-white">W</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded bg-wago-brand text-[11px] font-bold text-white">
+                  W
+                </span>
                 <span className="text-xs font-semibold text-wago-brand-strong">Wago</span>
               </div>
               <h1 className="m-0 text-xl font-semibold tracking-[-0.025em]">Control</h1>

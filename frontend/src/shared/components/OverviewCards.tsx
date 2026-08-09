@@ -49,7 +49,12 @@ function policyMetric(accountHealth?: AccountHealthSnapshot): Metric {
   const capStatus = accountHealth?.newChatCap?.capping_status;
 
   if (reachoutActive) {
-    return { label: "Outbound", value: "New chats limited", detail: "Known recipients remain eligible", tone: "warning" };
+    return {
+      label: "Outbound",
+      value: "New chats limited",
+      detail: "Known recipients remain eligible",
+      tone: "warning",
+    };
   }
   if (capStatus === "CAPPED") {
     return { label: "Outbound", value: "New chats capped", detail: "New recipients paused", tone: "warning" };

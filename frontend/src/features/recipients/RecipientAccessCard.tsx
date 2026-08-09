@@ -119,7 +119,9 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className={sectionTitleClass}>Recipient access</h2>
-          <p className={sectionDescriptionClass}>Manage who can receive outbound messages. Opt-outs remain blocked until explicitly restored.</p>
+          <p className={sectionDescriptionClass}>
+            Manage who can receive outbound messages. Opt-outs remain blocked until explicitly restored.
+          </p>
         </div>
         {enabled ? <span className="text-xs text-[#7b8680]">{recipients.length} saved</span> : null}
       </div>
@@ -142,7 +144,9 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
           </div>
 
           {notice ? (
-            <p className={`mb-0 mt-2 rounded-md px-3 py-2 text-xs ${notice.type === "success" ? "bg-[#edf7f2] text-[#255c48]" : "bg-wago-danger-soft text-wago-danger"}`}>
+            <p
+              className={`mb-0 mt-2 rounded-md px-3 py-2 text-xs ${notice.type === "success" ? "bg-[#edf7f2] text-[#255c48]" : "bg-wago-danger-soft text-wago-danger"}`}
+            >
               {notice.message}
             </p>
           ) : null}

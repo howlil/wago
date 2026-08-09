@@ -13,7 +13,10 @@ type RecipientFormProps = {
 
 export function RecipientForm({ phone, label, busy, onPhoneChange, onLabelChange, onSubmit }: RecipientFormProps) {
   return (
-    <form onSubmit={onSubmit} className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-2 max-[720px]:grid-cols-1">
+    <form
+      onSubmit={onSubmit}
+      className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-2 max-[720px]:grid-cols-1"
+    >
       <input
         className={inputClass}
         value={phone}
