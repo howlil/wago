@@ -211,7 +211,10 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
               );
 
               return (
-                <article key={event.id} className="grid gap-2 px-3 py-2.5 sm:grid-cols-[90px_8px_minmax(0,1fr)_76px] sm:gap-2.5">
+                <article
+                  key={event.id}
+                  className="grid gap-2 px-3 py-2.5 sm:grid-cols-[90px_8px_minmax(0,1fr)_76px] sm:gap-2.5"
+                >
                   <time className="text-[10px] leading-5 text-[#818b86]" dateTime={event.timestamp}>
                     {formatTime(event.timestamp)}
                   </time>
@@ -232,7 +235,9 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
                         <dl className="mb-0 mt-1.5 grid gap-x-3 gap-y-1 rounded-md bg-[#f6f7f5] px-2.5 py-2 sm:grid-cols-2">
                           {metadata.map(([key, value]) => (
                             <div key={key} className="min-w-0">
-                              <dt className="text-[9px] uppercase tracking-[0.05em] text-[#8a948f]">{humanizeKey(key)}</dt>
+                              <dt className="text-[9px] uppercase tracking-[0.05em] text-[#8a948f]">
+                                {humanizeKey(key)}
+                              </dt>
                               <dd className="mb-0 mt-0.5 break-all font-mono text-[10px] text-[#56645d]">
                                 {String(value)}
                               </dd>
