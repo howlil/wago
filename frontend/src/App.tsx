@@ -142,33 +142,49 @@ export function App() {
       }
 
       try {
-        const healthResult = await getHealth();
-        const backendHealthy = healthResult.status === "ok";
-        setHealth(backendHealthy ? "ok" : "error");
+        try {
+          const healthResult = await getHealth();
+          const backendHealthy = healthResult.status === "ok";
+          setHealth(backendHealthy ? "ok" : "error");
 
-        if (!backendHealthy) {
+          if (!backendHealthy) {
+            hasApiAccess.current = false;
+            clearWhatsAppView();
+            return;
+          }
+        } catch {
+          setHealth("error");
           hasApiAccess.current = false;
           clearWhatsAppView();
           return;
         }
 
-        const info = await loadAppInfo();
+        let info;
+
+        try {
+          info = await loadAppInfo();
+        } catch {
+          setHealth("error");
+          hasApiAccess.current = false;
+          clearWhatsAppView();
+          return;
+        }
 
         if (!info.authenticated) {
           clearWhatsAppView();
           return;
         }
 
-        const [statusResult, qrResult] = await Promise.all([getWhatsAppStatus(), getCurrentQr()]);
+        try {
+          const [statusResult, qrResult] = await Promise.all([getWhatsAppStatus(), getCurrentQr()]);
 
-        statusRef.current = statusResult.status;
-        setStatus(statusResult.status);
-        setHasQr(Boolean(qrResult.qr));
-        setQrImage(qrResult.qr ? await getQrImageSvg() : null);
-      } catch {
-        setHealth("error");
-        hasApiAccess.current = false;
-        clearWhatsAppView();
+          statusRef.current = statusResult.status;
+          setStatus(statusResult.status);
+          setHasQr(Boolean(qrResult.qr));
+          setQrImage(qrResult.qr ? await getQrImageSvg() : null);
+        } catch {
+          clearWhatsAppView();
+        }
       } finally {
         isRefreshInFlight.current = false;
 
@@ -479,7 +495,9 @@ export function App() {
           </span>
           <div>
             <h2 className="mb-1 text-xl">Gateway Credentials</h2>
-            <p className="m-0 text-sm text-[#667972]">Generated once for this gateway and independent from WhatsApp auth.</p>
+            <p className="m-0 text-sm text-[#667972]">
+              Generated once for this gateway and independent from WhatsApp auth.
+            </p>
           </div>
         </div>
 
@@ -548,14 +566,21 @@ export function App() {
         </div>
       </section>
 
-      <section className={`${panelClass} flex items-center justify-between gap-4 max-[680px]:flex-col max-[680px]:items-start`}>
+      <section
+        className={`${panelClass} flex items-center justify-between gap-4 max-[680px]:flex-col max-[680px]:items-start`}
+      >
         <div>
           <h2 className="mb-2 text-xl">{setupRequired ? "Connect WhatsApp" : "WhatsApp Connection"}</h2>
           <p className="mb-0 text-[#667972]">{connectionDescription}</p>
         </div>
 
         {setupRequired ? (
-          <button className={primaryButtonClass} type="button" onClick={() => void handlePair()} disabled={health !== "ok" || isPairing}>
+          <button
+            className={primaryButtonClass}
+            type="button"
+            onClick={() => void handlePair()}
+            disabled={health !== "ok" || isPairing}
+          >
             {isPairing ? <Loader2 className="animate-spin" size={18} /> : <QrCode size={18} />}
             <span>{isPairing ? "Preparing QR" : "Pair WhatsApp"}</span>
           </button>
@@ -573,7 +598,9 @@ export function App() {
       </section>
 
       {hasQr && qrImage && status !== "connected" ? (
-        <section className={`${panelClass} grid grid-cols-[minmax(0,1fr)_220px] items-center gap-5 max-[680px]:grid-cols-1`}>
+        <section
+          className={`${panelClass} grid grid-cols-[minmax(0,1fr)_220px] items-center gap-5 max-[680px]:grid-cols-1`}
+        >
           <div>
             <h2 className="mb-2 text-xl">Scan WhatsApp QR</h2>
             <p className="mb-0 text-[#667972]">Open WhatsApp → Linked devices → Link a device, then scan this code.</p>
@@ -590,7 +617,9 @@ export function App() {
         <div>
           <h2 className="mb-2 text-xl">Send Message</h2>
           <p className="mb-0 text-[#667972]">
-            {status === "connected" ? "Ready to send through the connected session." : "Connect WhatsApp before sending."}
+            {status === "connected"
+              ? "Ready to send through the connected session."
+              : "Connect WhatsApp before sending."}
           </p>
         </div>
 
@@ -617,7 +646,11 @@ export function App() {
             />
           </label>
 
-          <button className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-lg bg-[#176b55] px-4 text-white disabled:cursor-not-allowed disabled:bg-[#91aaa0] disabled:text-[#ecf1ef]" type="submit" disabled={!canSend}>
+          <button
+            className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-lg bg-[#176b55] px-4 text-white disabled:cursor-not-allowed disabled:bg-[#91aaa0] disabled:text-[#ecf1ef]"
+            type="submit"
+            disabled={!canSend}
+          >
             {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
             <span>{isSending ? "Sending" : "Send"}</span>
           </button>
