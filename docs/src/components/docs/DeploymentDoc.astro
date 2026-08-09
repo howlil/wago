@@ -21,9 +21,10 @@ const id = lang === 'id';
   <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Workflow release membangun linux/amd64 dan linux/arm64, menghasilkan SBOM/provenance, lalu push manifest ke GHCR.' : 'The release workflow builds linux/amd64 and linux/arm64, generates SBOM/provenance, and pushes the manifest to GHCR.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Docker Compose</h2>
-  <CodeBlock label="shell" code={`cp .env.production.example .env\ndocker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f wago`} />
-  <Callout title={id ? 'Default aman untuk host' : 'Safer host default'}>
-    {id ? 'Compose mempublish port ke 127.0.0.1 secara default. Pertahankan ini ketika memakai Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS.' : 'Compose publishes the port on 127.0.0.1 by default. Keep this when using Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router.'}
+  <CodeBlock label=".env" code={`API_KEY=replace-with-a-long-random-secret\nCORS_ORIGIN=https://wago.example.com`} />
+  <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f wago`} />
+  <Callout title={id ? 'Network default sengaja tetap' : 'Network default is intentionally fixed'}>
+    {id ? 'Compose publish 127.0.0.1:3000. Letakkan Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS di depannya.' : 'Compose publishes 127.0.0.1:3000. Put Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router in front of it.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Hardening container' : 'Container hardening'}</h2>
@@ -36,13 +37,12 @@ const id = lang === 'id';
   </ul>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Reverse proxy dan TLS' : 'Reverse proxy and TLS'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. Set CORS_ORIGIN ke origin tersebut. Set TRUST_PROXY=true hanya ketika proxy yang dipercaya berada tepat di depan Wago.' : 'Prefer one HTTPS origin for both dashboard and API. Set CORS_ORIGIN to that origin. Set TRUST_PROXY=true only when a trusted proxy is directly in front of Wago.'}</p>
-  <CodeBlock label="example .env" code={`CORS_ORIGIN=https://wago.example.com\nTRUST_PROXY=true\nBIND_ADDRESS=127.0.0.1\nHOST_PORT=3000`} />
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. CORS_ORIGIN harus sama dengan origin publik tersebut.' : 'Prefer one HTTPS origin for both dashboard and API. CORS_ORIGIN should match that public origin.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Persistence' : 'Persistence'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Persistence</h2>
   <div class="border border-[#262626] rounded-lg divide-y divide-[#262626] text-sm mb-8">
     <div class="p-4"><code class="text-[#fafafa]">/app/data/auth</code><p class="text-[#71717a] mt-1">{id ? 'Credential/session Baileys. Perlakukan seperti private key.' : 'Baileys credential/session state. Treat it like a private key.'}</p></div>
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'App ID dan generated API-key hash.' : 'App ID and generated API-key hash.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'Generated app ID dan development bootstrap key hash.' : 'Generated app ID and development bootstrap key hash.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/recipients.json</code><p class="text-[#71717a] mt-1">{id ? 'Allowlist/opt-out recipient.' : 'Recipient allowlist/opt-out records.'}</p></div>
   </div>
 
@@ -52,7 +52,7 @@ const id = lang === 'id';
     {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan sesi pairing serta recipient records.' : 'docker compose down -v removes the named volume and can delete pairing state and recipient records.'}
   </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade dan rollback' : 'Upgrade and rollback'}</h2>
-  <CodeBlock label="shell" code={`# upgrade\ndocker compose pull\ndocker compose up -d\n\n# reproducible deployment\n# set WAGO_VERSION to a release/sha tag, then:\ndocker compose pull\ndocker compose up -d`} />
-  <p class="text-sm text-[#71717a]">{id ? 'Untuk production yang dapat direproduksi, pin WAGO_VERSION ke tag release atau sha-* alih-alih latest.' : 'For reproducible production deployments, pin WAGO_VERSION to a release or sha-* tag instead of latest.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade' : 'Upgrade'}</h2>
+  <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d`} />
+  <p class="text-sm text-[#71717a]">{id ? 'Compose default memakai latest. Jika perlu deployment reproducible, edit tag image di docker-compose.yml ke release atau sha-* yang diinginkan.' : 'Compose defaults to latest. For a reproducible deployment, edit the image tag in docker-compose.yml to the desired release or sha-* tag.'}</p>
 </DocsLayout>

@@ -11,9 +11,9 @@ const id = lang === 'id';
 
 <DocsLayout title={id ? 'Memulai' : 'Getting Started'}>
   <PageHeader
-    eyebrow={id ? 'Quick start' : 'Quick start'}
+    eyebrow="Quick start"
     title={id ? 'Dari container sampai pesan pertama' : 'From container to first message'}
-    description={id ? 'Jalur production paling pendek menggunakan image GHCR resmi proyek dan Docker Compose.' : 'The shortest production path using the project GHCR image and Docker Compose.'}
+    description={id ? 'Jalur production paling pendek menggunakan image GHCR resmi proyek dan hanya dua konfigurasi.' : 'The shortest production path using the project GHCR image and only two settings.'}
   />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">1. {id ? 'Prasyarat' : 'Prerequisites'}</h2>
@@ -23,28 +23,26 @@ const id = lang === 'id';
     <li>{id ? 'HTTPS reverse proxy jika service diekspos melalui internet.' : 'An HTTPS reverse proxy when exposing the service to the internet.'}</li>
   </ul>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">2. {id ? 'Siapkan konfigurasi' : 'Prepare configuration'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">2. {id ? 'Siapkan dua nilai' : 'Prepare two values'}</h2>
   <CodeBlock label="shell" code={`git clone https://github.com/howlil/wago-simple.git\ncd wago-simple\ncp .env.production.example .env\nopenssl rand -hex 32`} />
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-3">{id ? 'Masukkan secret hasil generator ke API_KEY dan isi origin publik aplikasi.' : 'Put the generated secret in API_KEY and set the public application origin.'}</p>
-  <CodeBlock label=".env" code={`WAGO_VERSION=latest\nAPI_KEY=replace-with-a-long-random-secret\nCORS_ORIGIN=https://wago.example.com`} />
-  <Callout title={id ? 'Production fail-fast' : 'Production fail-fast'}>
-    {id ? 'Production menolak startup jika API key belum tersedia, ALLOW_WEB_BOOTSTRAP aktif, AUTH_COOKIE_SECURE tidak true, atau CORS_ORIGIN menggunakan *.' : 'Production refuses to start when no API key is available, ALLOW_WEB_BOOTSTRAP is enabled, AUTH_COOKIE_SECURE is not true, or CORS_ORIGIN is *.'}
+  <CodeBlock label=".env" code={`API_KEY=replace-with-a-long-random-secret\nCORS_ORIGIN=https://wago.example.com`} />
+  <Callout title={id ? 'Itu saja' : 'That is all'}>
+    {id ? 'Port, data path, cookie security, logging, bootstrap mode, country code, dan runtime defaults lain tidak perlu dikonfigurasi.' : 'Port, data paths, cookie security, logging, bootstrap mode, country code, and other runtime defaults do not need configuration.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">3. {id ? 'Jalankan service' : 'Start the service'}</h2>
   <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d\ndocker compose ps\ncurl http://127.0.0.1:3000/health`} />
-  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Compose default hanya bind ke 127.0.0.1:3000. Gunakan reverse proxy/PaaS router untuk akses publik.' : 'Compose binds to 127.0.0.1:3000 by default. Use a reverse proxy or PaaS router for public access.'}</p>
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Compose selalu bind ke 127.0.0.1:3000. Gunakan reverse proxy/PaaS router untuk akses publik.' : 'Compose always binds to 127.0.0.1:3000. Use a reverse proxy or PaaS router for public access.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">4. {id ? 'Pair WhatsApp' : 'Pair WhatsApp'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">4. Pair WhatsApp</h2>
   <ol class="list-decimal pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
-    <li>{id ? 'Buka dashboard Wago di origin yang sudah dikonfigurasi.' : 'Open the Wago dashboard at the configured origin.'}</li>
+    <li>{id ? 'Buka dashboard Wago pada CORS_ORIGIN yang dikonfigurasi.' : 'Open the Wago dashboard at the configured CORS_ORIGIN.'}</li>
     <li>{id ? 'Masukkan API key.' : 'Enter the API key.'}</li>
     <li>{id ? 'Buka WhatsApp → Linked devices → Link a device.' : 'Open WhatsApp → Linked devices → Link a device.'}</li>
     <li>{id ? 'Scan QR yang ditampilkan dashboard.' : 'Scan the QR shown by the dashboard.'}</li>
   </ol>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">5. {id ? 'Izinkan recipient' : 'Allow a recipient'}</h2>
-  <p class="text-sm text-[#a1a1aa] mb-3">{id ? 'Wago tidak mengirim ke nomor yang belum ada di allowlist.' : 'Wago does not send to numbers that are not explicitly allowlisted.'}</p>
   <CodeBlock label="cURL" code={`export WAGO_URL="https://wago.example.com"\nexport WAGO_API_KEY="your-api-key"\n\ncurl -X POST "$WAGO_URL/recipients/allow" \\\n  -H "Authorization: Bearer $WAGO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"phone":"6281234567890","label":"Demo recipient"}'`} />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">6. {id ? 'Kirim pesan' : 'Send a message'}</h2>

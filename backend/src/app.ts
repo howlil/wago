@@ -15,9 +15,7 @@ export const app = express();
 
 const configErrors = validateRuntimeConfig({
   nodeEnv: config.nodeEnv,
-  allowWebBootstrap: config.allowWebBootstrap,
-  apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
-  authCookieSecure: config.authCookieSecure,
+  apiKeyConfigured: Boolean(config.apiKey),
   corsOrigin: config.corsOrigin,
 });
 

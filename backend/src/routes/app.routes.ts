@@ -12,7 +12,7 @@ appRouter.get("/info", (req, res) => {
     apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
     apiKeySource: config.apiKeySource,
     authenticated: requestHasValidApiKey(req),
-    setupRequired: !config.apiKey,
+    setupRequired: !config.apiKey && !config.apiKeyHash,
   });
 });
 
@@ -21,7 +21,7 @@ appRouter.post("/bootstrap", (_req, res) => {
     return res.status(403).json({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
-      message: "Web bootstrap is disabled. Set API_KEY or enable ALLOW_WEB_BOOTSTRAP for initial setup.",
+      message: "Web bootstrap is disabled in production. Configure API_KEY before starting Wago.",
     });
   }
 

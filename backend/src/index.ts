@@ -2,8 +2,8 @@ import { app } from "./app.js";
 import { logger } from "./infrastructure/logger.js";
 import { createShutdownHandler, startWhatsAppInBackground } from "./infrastructure/server-lifecycle.js";
 
-const port = Number(process.env.PORT ?? 3000);
-const host = process.env.HOST ?? "0.0.0.0";
+const port = 3000;
+const host = "0.0.0.0";
 
 async function start(): Promise<void> {
   const server = app.listen(port, host, () => {
