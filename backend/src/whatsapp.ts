@@ -1,3 +1,4 @@
+export type { WhatsAppBinding } from "./whatsapp/binding-store.js";
 export {
   getCurrentQr,
   getMessageStatus,
@@ -13,6 +14,4 @@ export {
   type WhatsAppStatus,
   type WhatsAppStatusSnapshot,
 } from "./whatsapp/client.js";
-
-export type { WhatsAppBinding } from "./whatsapp/binding-store.js";
 export type { MessageDeliveryStatus, StoredMessageStatus } from "./whatsapp/message-status-store.js";
