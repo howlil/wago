@@ -1,0 +1,22 @@
+---
+import { getLangFromUrl, useTranslations } from '../utils/i18n';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const basePrefix = lang === 'en' ? '/en' : '/id';
+---
+
+<footer class="border-t border-[#1a1a1a] py-10 mt-20">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <p class="text-sm text-[#52525b]">
+        Wago &mdash; Express, TypeScript & Baileys.
+      </p>
+      <nav class="flex items-center gap-5 text-sm text-[#52525b]">
+        <a href={`${basePrefix}/docs`} class="hover:text-[#a1a1aa] transition-colors">{t.navDocs}</a>
+        <a href={`${basePrefix}/docs/api`} class="hover:text-[#a1a1aa] transition-colors">{t.navApi}</a>
+        <a href={`${basePrefix}/docs/deployment`} class="hover:text-[#a1a1aa] transition-colors">{t.navDeploy}</a>
+      </nav>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,185 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+import { CodePlayground } from '../../../components/CodePlayground';
+---
+
+<DocsLayout title="API Reference">
+  <h1 class="text-3xl font-bold text-[#fafafa] mb-2">API Reference</h1>
+  <p class="text-[#a1a1aa] leading-relaxed mb-4">
+    All endpoints accept and return JSON. Protected endpoints require <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">Authorization: Bearer &lt;API_KEY&gt;</code>.
+  </p>
+  <p class="text-sm text-[#52525b] mb-8">
+    Base URL: <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">http://localhost:3000</code>
+  </p>
+
+  <CodePlayground lang="en" client:load />
+
+  <hr class="border-[#1a1a1a] my-10" />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-6">System</h2>
+
+  <!-- GET /health -->
+  <div class="border border-[#1a1a1a] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-[#10b981]">GET</span>
+      <code class="text-sm text-[#fafafa]">/health</code>
+      <span class="text-xs text-[#52525b] ml-auto">Public</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a] mb-3">Returns 200 when the process is running.</p>
+      <pre class="bg-[#111] border border-[#1a1a1a] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto"><code>{`{ "status": "ok" }`}</code></pre>
+    </div>
+  </div>
+
+  <!-- GET /ready -->
+  <div class="border border-[#1a1a1a] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-[#10b981]">GET</span>
+      <code class="text-sm text-[#fafafa]">/ready</code>
+      <span class="text-xs text-[#52525b] ml-auto">Public</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a] mb-3">Reports App ID and API key configuration status.</p>
+      <pre class="bg-[#111] border border-[#1a1a1a] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto"><code>{`{
+  "status": "ok",
+  "appId": "wa-gateway-prod",
+  "apiKeyConfigured": true
+}`}</code></pre>
+    </div>
+  </div>
+
+  <!-- POST /app/bootstrap -->
+  <div class="border border-[#1a1a1a] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">POST</span>
+      <code class="text-sm text-[#fafafa]">/app/bootstrap</code>
+      <span class="text-xs text-[#52525b] ml-auto">Setup only</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a] mb-3">Initial setup. Active when <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">ALLOW_WEB_BOOTSTRAP=true</code> and no API key exists. Generates key and sets HttpOnly cookie.</p>
+      <pre class="bg-[#111] border border-[#1a1a1a] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto"><code>{`{
+  "success": true,
+  "appId": "wa-gateway",
+  "apiKey": "gw_sec_...",
+  "message": "App initialized."
+}`}</code></pre>
+    </div>
+  </div>
+
+  <hr class="border-[#1a1a1a] my-10" />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-6">WhatsApp Session</h2>
+
+  <!-- GET /whatsapp/status -->
+  <div class="border border-[#1a1a1a] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-[#10b981]">GET</span>
+      <code class="text-sm text-[#fafafa]">/whatsapp/status</code>
+      <span class="text-xs text-[#52525b] ml-auto">Authenticated</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a] mb-3">Returns <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">connecting</code>, <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">qr</code>, <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">connected</code>, or <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">disconnected</code>.</p>
+      <pre class="bg-[#111] border border-[#1a1a1a] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto"><code>{`{ "success": true, "status": "connected" }`}</code></pre>
+    </div>
+  </div>
+
+  <!-- GET /whatsapp/qr/image -->
+  <div class="border border-[#1a1a1a] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-[#10b981]">GET</span>
+      <code class="text-sm text-[#fafafa]">/whatsapp/qr/image</code>
+      <span class="text-xs text-[#52525b] ml-auto">Authenticated</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a]">Returns the login QR code as <code class="text-[#a1a1aa] bg-[#1a1a1a] px-1.5 py-0.5 rounded text-xs">image/svg+xml</code>.</p>
+    </div>
+  </div>
+
+  <!-- POST /whatsapp/rebind -->
+  <div class="border border-[#1a1a1a] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-amber-500/10 text-amber-400">POST</span>
+      <code class="text-sm text-[#fafafa]">/whatsapp/rebind</code>
+      <span class="text-xs text-[#52525b] ml-auto">Authenticated</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a]">Clears auth state and triggers fresh QR generation for a new account.</p>
+    </div>
+  </div>
+
+  <hr class="border-[#1a1a1a] my-10" />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-6">Messages</h2>
+
+  <!-- POST /messages/send -->
+  <div class="border border-[#262626] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">POST</span>
+      <code class="text-sm text-[#fafafa]">/messages/send</code>
+      <span class="text-xs text-[#52525b] ml-auto">Authenticated</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a] mb-3">Send a text message to a phone number.</p>
+      <p class="text-xs text-[#52525b] mb-2">Request body</p>
+      <pre class="bg-[#111] border border-[#1a1a1a] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto mb-4"><code>{`{
+  "to": "6281234567890",
+  "text": "Hello from Wago"
+}`}</code></pre>
+      <p class="text-xs text-[#52525b] mb-2">Response</p>
+      <pre class="bg-[#111] border border-[#1a1a1a] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto"><code>{`{
+  "success": true,
+  "status": "accepted",
+  "messageId": "3EB0ABC123456789"
+}`}</code></pre>
+    </div>
+  </div>
+
+  <!-- GET /messages/:id/status -->
+  <div class="border border-[#1a1a1a] rounded-lg mb-4 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      <span class="text-xs font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-[#10b981]">GET</span>
+      <code class="text-sm text-[#fafafa]">/messages/:id/status</code>
+      <span class="text-xs text-[#52525b] ml-auto">Authenticated</span>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-sm text-[#71717a]">Query in-memory status for a message ID.</p>
+    </div>
+  </div>
+
+  <hr class="border-[#1a1a1a] my-10" />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">Error Codes</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left">
+      <thead>
+        <tr class="border-b border-[#262626] text-[#71717a]">
+          <th class="py-2.5 pr-4 font-medium">Status</th>
+          <th class="py-2.5 pr-4 font-medium">Code</th>
+          <th class="py-2.5 font-medium">Description</th>
+        </tr>
+      </thead>
+      <tbody class="text-[#a1a1aa]">
+        <tr class="border-b border-[#1a1a1a]">
+          <td class="py-2.5 pr-4 text-[#fafafa]">400</td>
+          <td class="py-2.5 pr-4">INVALID_REQUEST</td>
+          <td class="py-2.5">Missing required fields.</td>
+        </tr>
+        <tr class="border-b border-[#1a1a1a]">
+          <td class="py-2.5 pr-4 text-[#fafafa]">401</td>
+          <td class="py-2.5 pr-4">UNAUTHORIZED</td>
+          <td class="py-2.5">Invalid or missing API key.</td>
+        </tr>
+        <tr class="border-b border-[#1a1a1a]">
+          <td class="py-2.5 pr-4 text-[#fafafa]">409</td>
+          <td class="py-2.5 pr-4">BOOTSTRAP_LOCKED</td>
+          <td class="py-2.5">App already initialized.</td>
+        </tr>
+        <tr>
+          <td class="py-2.5 pr-4 text-[#fafafa]">503</td>
+          <td class="py-2.5 pr-4">WHATSAPP_NOT_CONNECTED</td>
+          <td class="py-2.5">WhatsApp is disconnected.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</DocsLayout>

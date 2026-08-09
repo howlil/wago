@@ -1,0 +1,64 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import { CodePlayground } from '../../components/CodePlayground';
+import { useTranslations } from '../../utils/i18n';
+
+const t = useTranslations('en');
+---
+
+<MainLayout title={t.siteTitle} description={t.heroDescription}>
+  <section class="pt-24 pb-20">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-2xl">
+        <p class="text-sm text-[#10b981] font-medium mb-4">Open-source WhatsApp API</p>
+        <h1 class="text-4xl sm:text-5xl font-bold text-[#fafafa] leading-[1.15] tracking-tight">
+          Send WhatsApp messages with a simple REST API
+        </h1>
+        <p class="mt-5 text-lg text-[#71717a] leading-relaxed">
+          {t.heroDescription}
+        </p>
+        <div class="mt-8 flex items-center gap-3">
+          <a
+            href="/en/docs"
+            class="px-5 py-2.5 rounded-lg text-sm font-medium text-[#0a0a0a] bg-[#fafafa] hover:bg-[#e4e4e7] transition-colors"
+          >
+            {t.btnDocs}
+          </a>
+          <a
+            href="/en/docs/api"
+            class="px-5 py-2.5 rounded-lg text-sm font-medium text-[#a1a1aa] border border-[#262626] hover:border-[#3f3f46] hover:text-[#fafafa] transition-colors"
+          >
+            API Reference
+          </a>
+        </div>
+      </div>
+
+      <div class="mt-16">
+        <CodePlayground lang="en" client:load />
+      </div>
+    </div>
+  </section>
+
+  <section class="py-20 border-t border-[#1a1a1a]">
+    <div class="max-w-6xl mx-auto px-6">
+      <h2 class="text-2xl font-bold text-[#fafafa] mb-2">{t.featuresTitle}</h2>
+      <p class="text-[#71717a] text-sm mb-10">{t.featuresSubtitle}</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[#1a1a1a] border border-[#1a1a1a] rounded-xl overflow-hidden">
+        {[
+          { title: t.feat1Title, desc: t.feat1Desc },
+          { title: t.feat2Title, desc: t.feat2Desc },
+          { title: t.feat3Title, desc: t.feat3Desc },
+          { title: t.feat4Title, desc: t.feat4Desc },
+          { title: t.feat5Title, desc: t.feat5Desc },
+          { title: t.feat6Title, desc: t.feat6Desc },
+        ].map(feat => (
+          <div class="bg-[#0a0a0a] p-6">
+            <h3 class="text-[15px] font-semibold text-[#fafafa] mb-2">{feat.title}</h3>
+            <p class="text-sm text-[#71717a] leading-relaxed">{feat.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</MainLayout>

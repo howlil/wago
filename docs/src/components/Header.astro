@@ -1,0 +1,72 @@
+---
+import { getLangFromUrl, useTranslations } from '../utils/i18n';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+const currentPath = Astro.url.pathname;
+const targetLang = lang === 'en' ? 'id' : 'en';
+
+let targetUrl = currentPath;
+if (lang === 'en') {
+  if (currentPath === '/' || currentPath === '/en' || currentPath === '/en/') {
+    targetUrl = '/id';
+  } else if (currentPath.startsWith('/en/')) {
+    targetUrl = currentPath.replace('/en/', '/id/');
+  } else {
+    targetUrl = `/id${currentPath}`;
+  }
+} else {
+  if (currentPath === '/id' || currentPath === '/id/') {
+    targetUrl = '/en';
+  } else if (currentPath.startsWith('/id/')) {
+    targetUrl = currentPath.replace('/id/', '/en/');
+  } else {
+    targetUrl = `/en${currentPath}`;
+  }
+}
+
+const basePrefix = lang === 'en' ? '/en' : '/id';
+
+function isActive(path: string) {
+  if (path === basePrefix) return currentPath === basePrefix || currentPath === basePrefix + '/' || currentPath === '/';
+  return currentPath.startsWith(path);
+}
+---
+
+<header class="sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-[#262626]">
+  <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+    <a href={basePrefix} class="text-[#fafafa] font-semibold text-[15px] tracking-tight hover:opacity-80 transition-opacity">
+      Wago
+    </a>
+
+    <nav class="hidden md:flex items-center gap-1">
+      <a
+        href={`${basePrefix}/docs`}
+        class={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+          currentPath.includes('/docs')
+            ? 'text-[#fafafa] bg-[#1a1a1a]'
+            : 'text-[#71717a] hover:text-[#a1a1aa]'
+        }`}
+      >
+        {t.navDocs}
+      </a>
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <a
+        href={targetUrl}
+        class="px-2.5 py-1 rounded-md text-xs text-[#71717a] hover:text-[#a1a1aa] hover:bg-[#1a1a1a] transition-colors"
+      >
+        {targetLang.toUpperCase()}
+      </a>
+      <a
+        href="http://localhost:3000"
+        target="_blank"
+        class="px-3 py-1.5 rounded-md text-sm font-medium text-[#0a0a0a] bg-[#fafafa] hover:bg-[#e4e4e7] transition-colors"
+      >
+        {lang === 'id' ? 'Buka Aplikasi' : 'Open App'}
+      </a>
+    </div>
+  </div>
+</header>

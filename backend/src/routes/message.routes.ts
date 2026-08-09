@@ -1,12 +1,21 @@
 import { Router } from "express";
 import { requireApiKey } from "../middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
+import {
+  getOutboundPolicyHttpStatus,
+  isOutboundPolicyError,
+  type OutboundPolicyBlockReason
+} from "../outbound-policy.js";
 import { getMessageStatus, sendTextMessage } from "../whatsapp.js";
 
 export const messageRouter = Router();
 
 messageRouter.post("/send", requireApiKey, createRateLimit({ limit: 30, windowMs: 60_000 }), async (req, res) => {
-  const { to, text } = req.body as { to?: unknown; text?: unknown };
+  const { to, text, idempotencyKey: bodyIdempotencyKey } = req.body as {
+    to?: unknown;
+    text?: unknown;
+    idempotencyKey?: unknown;
+  };
 
   if (typeof to !== "string" || typeof text !== "string" || !to.trim() || !text.trim()) {
     return res.status(400).json({
@@ -17,13 +26,25 @@ messageRouter.post("/send", requireApiKey, createRateLimit({ limit: 30, windowMs
   }
 
   try {
-    const result = await sendTextMessage(to, text);
+    const headerIdempotencyKey = req.header("idempotency-key")?.trim();
+    const idempotencyKey =
+      headerIdempotencyKey ||
+      (typeof bodyIdempotencyKey === "string" && bodyIdempotencyKey.trim() ? bodyIdempotencyKey.trim() : undefined);
+    const result = await sendTextMessage(to, text, { idempotencyKey });
 
     return res.status(202).json({
       success: true,
       ...result
     });
   } catch (error) {
+    if (isOutboundPolicyError(error)) {
+      return res.status(getOutboundPolicyHttpStatus(error.name as OutboundPolicyBlockReason)).json({
+        success: false,
+        error: error.name,
+        message: error.message
+      });
+    }
+
     if (error instanceof Error && error.name === "WHATSAPP_NOT_CONNECTED") {
       return res.status(503).json({
         success: false,

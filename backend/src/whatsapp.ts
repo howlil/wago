@@ -7,6 +7,12 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 import { mkdir, rm } from "node:fs/promises";
 import { config } from "./config.js";
+import {
+  checkOutboundPolicy,
+  createOutboundPolicyError,
+  recordOutboundAccepted,
+  recordOutboundRejected
+} from "./outbound-policy.js";
 import { toWhatsAppJid } from "./utils/phone.js";
 
 export type WhatsAppStatus = "connecting" | "qr" | "connected" | "disconnected";
@@ -18,6 +24,9 @@ export type StoredMessageStatus = {
   error?: string;
   message?: string;
   updatedAt: string;
+};
+export type SendTextMessageOptions = {
+  idempotencyKey?: string;
 };
 
 const MESSAGE_STATUS_TTL_MS = 1000 * 60 * 60;
@@ -257,12 +266,28 @@ function waitForMessageOutcome(messageId: string, timeoutMs = 8000): Promise<"ac
   });
 }
 
-export async function sendTextMessage(to: string, text: string): Promise<{ messageId: string | null; status: "accepted" }> {
+export async function sendTextMessage(
+  to: string,
+  text: string,
+  options: SendTextMessageOptions = {}
+): Promise<{ messageId: string | null; status: "accepted" }> {
   if (!socket || status !== "connected") {
     throw createNamedError("WHATSAPP_NOT_CONNECTED", "WhatsApp is not connected");
   }
 
   const jid = toWhatsAppJid(to);
+  const policyInput = {
+    to,
+    jid,
+    text,
+    idempotencyKey: options.idempotencyKey
+  };
+  const policyDecision = await checkOutboundPolicy(policyInput);
+
+  if (!policyDecision.allowed) {
+    throw createOutboundPolicyError(policyDecision);
+  }
+
   const restrictedUntil = reachoutRestrictedUntil.get(jid);
 
   if (restrictedUntil && restrictedUntil > Date.now()) {
@@ -272,38 +297,42 @@ export async function sendTextMessage(to: string, text: string): Promise<{ messa
     );
   }
 
-  const [contact] = (await socket.onWhatsApp(jid)) ?? [];
+  try {
+    const [contact] = (await socket.onWhatsApp(jid)) ?? [];
 
-  if (!contact?.exists) {
-    throw createNamedError("PHONE_NOT_ON_WHATSAPP", "Phone number is not registered on WhatsApp");
-  }
-
-  const result = await socket.sendMessage(contact.jid, { text });
-  const messageId = result?.key?.id ?? null;
-
-  if (messageId) {
-    rememberMessageStatus({
-      id: messageId,
-      to: contact.jid,
-      status: "pending",
-      updatedAt: nowIso()
-    });
-
-    try {
-      await waitForMessageOutcome(messageId);
-    } catch (error) {
-      if (error instanceof Error && error.name === "REACHOUT_RESTRICTED") {
-        reachoutRestrictedUntil.set(jid, Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS);
-      }
-
-      throw error;
+    if (!contact?.exists) {
+      throw createNamedError("PHONE_NOT_ON_WHATSAPP", "Phone number is not registered on WhatsApp");
     }
-  }
 
-  return {
-    messageId,
-    status: "accepted"
-  };
+    const result = await socket.sendMessage(contact.jid, { text });
+    const messageId = result?.key?.id ?? null;
+
+    if (messageId) {
+      rememberMessageStatus({
+        id: messageId,
+        to: contact.jid,
+        status: "pending",
+        updatedAt: nowIso()
+      });
+
+      await waitForMessageOutcome(messageId);
+    }
+
+    recordOutboundAccepted(policyInput, messageId);
+
+    return {
+      messageId,
+      status: "accepted"
+    };
+  } catch (error) {
+    recordOutboundRejected(policyInput, error);
+
+    if (error instanceof Error && error.name === "REACHOUT_RESTRICTED") {
+      reachoutRestrictedUntil.set(jid, Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS);
+    }
+
+    throw error;
+  }
 }
 
 export function getMessageStatus(messageId: string): StoredMessageStatus | null {
