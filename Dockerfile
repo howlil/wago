@@ -1,4 +1,4 @@
-FROM node:22-alpine AS frontend-deps
+FROM node:26-alpine AS frontend-deps
 WORKDIR /app/frontend
 RUN corepack enable
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
@@ -8,7 +8,7 @@ FROM frontend-deps AS frontend-build
 COPY frontend/ ./
 RUN pnpm run build
 
-FROM node:22-alpine AS backend-deps
+FROM node:26-alpine AS backend-deps
 WORKDIR /app/backend
 RUN corepack enable
 COPY backend/package.json backend/pnpm-lock.yaml backend/pnpm-workspace.yaml ./
@@ -18,7 +18,7 @@ FROM backend-deps AS backend-build
 COPY backend/ ./
 RUN pnpm run build
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
