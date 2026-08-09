@@ -10,6 +10,20 @@ pnpm install
 pnpm run dev
 ```
 
+## Frontend
+
+```bash
+cd frontend
+pnpm install
+pnpm run dev
+```
+
+If the backend is running on another port:
+
+```bash
+VITE_API_BASE_URL=http://localhost:3100 pnpm run dev
+```
+
 Default server:
 
 ```text
@@ -27,6 +41,18 @@ POST /messages/send
 ```
 
 Open `http://localhost:3000/whatsapp/qr/image` in a browser to scan the WhatsApp login QR when authentication is required.
+
+Run with Docker:
+
+```bash
+docker compose up --build
+```
+
+If local port `3000` is occupied:
+
+```bash
+HOST_PORT=3101 docker compose up --build
+```
 
 Send a message:
 

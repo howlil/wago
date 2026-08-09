@@ -38,6 +38,22 @@ messageRouter.post("/send", async (req, res) => {
       });
     }
 
+    if (error instanceof Error && error.name === "PHONE_NOT_ON_WHATSAPP") {
+      return res.status(404).json({
+        success: false,
+        error: "PHONE_NOT_ON_WHATSAPP",
+        message: error.message
+      });
+    }
+
+    if (error instanceof Error && error.name === "MESSAGE_REJECTED") {
+      return res.status(502).json({
+        success: false,
+        error: "MESSAGE_REJECTED",
+        message: error.message
+      });
+    }
+
     return res.status(500).json({
       success: false,
       error: "SEND_MESSAGE_FAILED",

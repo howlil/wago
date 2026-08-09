@@ -10,6 +10,13 @@ describe("app", () => {
     expect(response.body).toEqual({ status: "ok" });
   });
 
+  it("allows browser clients to consume the API during local development", async () => {
+    const response = await request(app).get("/whatsapp/status").set("Origin", "http://127.0.0.1:5173");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("*");
+  });
+
   it("returns a JSON API error for malformed JSON bodies", async () => {
     const response = await request(app)
       .post("/messages/send")
