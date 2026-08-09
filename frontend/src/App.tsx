@@ -159,7 +159,7 @@ export function App() {
           return;
         }
 
-        let info;
+        let info: Awaited<ReturnType<typeof loadAppInfo>>;
 
         try {
           info = await loadAppInfo();
