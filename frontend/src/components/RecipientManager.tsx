@@ -61,7 +61,9 @@ export function RecipientManager({ enabled, refreshKey = 0, suggestedPhone, onAl
   }, [enabled]);
 
   useEffect(() => {
-    void loadRecipients();
+    if (refreshKey >= 0) {
+      void loadRecipients();
+    }
   }, [loadRecipients, refreshKey]);
 
   useEffect(() => {
@@ -153,7 +155,10 @@ export function RecipientManager({ enabled, refreshKey = 0, suggestedPhone, onAl
         </p>
       ) : (
         <>
-          <form onSubmit={handleAllow} className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] gap-2 max-[720px]:grid-cols-1">
+          <form
+            onSubmit={handleAllow}
+            className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] gap-2 max-[720px]:grid-cols-1"
+          >
             <input
               className={inputClass}
               value={phone}
@@ -169,7 +174,11 @@ export function RecipientManager({ enabled, refreshKey = 0, suggestedPhone, onAl
               aria-label="Recipient label"
             />
             <button className={primaryButtonClass} type="submit" disabled={Boolean(busyPhone)}>
-              {busyPhone === phone.trim() && busyPhone ? <Loader2 className="animate-spin" size={17} /> : <UserPlus size={17} />}
+              {busyPhone === phone.trim() && busyPhone ? (
+                <Loader2 className="animate-spin" size={17} />
+              ) : (
+                <UserPlus size={17} />
+              )}
               Allow
             </button>
           </form>
@@ -206,9 +215,13 @@ export function RecipientManager({ enabled, refreshKey = 0, suggestedPhone, onAl
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <strong className="font-mono text-sm text-[#1f2a32]">{recipientPhone}</strong>
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${status.className}`}>{status.label}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${status.className}`}>
+                            {status.label}
+                          </span>
                         </div>
-                        {recipient.label ? <span className="mt-1 block text-xs text-[#667972]">{recipient.label}</span> : null}
+                        {recipient.label ? (
+                          <span className="mt-1 block text-xs text-[#667972]">{recipient.label}</span>
+                        ) : null}
                       </div>
 
                       {recipient.allowed && !recipient.optedOut ? (

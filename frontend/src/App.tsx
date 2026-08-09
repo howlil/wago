@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  type AccountHealthSnapshot,
+  type AppInfoResponse,
   allowRecipient,
   bootstrapApp,
   createApiKeyCandidate,
@@ -29,8 +31,6 @@ import {
   rebindWhatsApp,
   sendMessage,
   setStoredApiKey,
-  type AccountHealthSnapshot,
-  type AppInfoResponse,
   type WhatsAppBinding,
   type WhatsAppStatus,
 } from "./api.js";
