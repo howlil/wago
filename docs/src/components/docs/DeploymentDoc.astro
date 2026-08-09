@@ -1,0 +1,58 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+import CodeBlock from './CodeBlock.astro';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+---
+
+<DocsLayout title="Deployment">
+  <PageHeader
+    eyebrow="Docker / GHCR"
+    title={id ? 'Deployment production' : 'Production deployment'}
+    description={id ? 'Image production menggabungkan backend Express dan build React menjadi satu container non-root yang dipublish melalui GHCR.' : 'The production image combines the Express backend and compiled React frontend into one non-root container published through GHCR.'}
+  />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">GHCR</h2>
+  <CodeBlock label="image" code={`ghcr.io/howlil/wago-simple:latest\nghcr.io/howlil/wago-simple:main\nghcr.io/howlil/wago-simple:sha-<short-sha>`} />
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Workflow release membangun linux/amd64 dan linux/arm64, menghasilkan SBOM/provenance, lalu push manifest ke GHCR.' : 'The release workflow builds linux/amd64 and linux/arm64, generates SBOM/provenance, and pushes the manifest to GHCR.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Docker Compose</h2>
+  <CodeBlock label="shell" code={`cp .env.production.example .env\ndocker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f wago`} />
+  <Callout title={id ? 'Default aman untuk host' : 'Safer host default'}>
+    {id ? 'Compose mempublish port ke 127.0.0.1 secara default. Pertahankan ini ketika memakai Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS.' : 'Compose publishes the port on 127.0.0.1 by default. Keep this when using Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router.'}
+  </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Hardening container' : 'Container hardening'}</h2>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
+    <li>{id ? 'Runtime berjalan sebagai user node, bukan root.' : 'Runtime runs as the node user, not root.'}</li>
+    <li>{id ? 'Root filesystem read-only; /tmp memakai tmpfs.' : 'Read-only root filesystem with /tmp on tmpfs.'}</li>
+    <li>{id ? 'Semua Linux capabilities di-drop.' : 'All Linux capabilities are dropped.'}</li>
+    <li><code>no-new-privileges:true</code></li>
+    <li>{id ? 'Data persisten hanya melalui named volume wago_data.' : 'Persistent data goes through the wago_data named volume.'}</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Reverse proxy dan TLS' : 'Reverse proxy and TLS'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. Set CORS_ORIGIN ke origin tersebut. Set TRUST_PROXY=true hanya ketika proxy yang dipercaya berada tepat di depan Wago.' : 'Prefer one HTTPS origin for both dashboard and API. Set CORS_ORIGIN to that origin. Set TRUST_PROXY=true only when a trusted proxy is directly in front of Wago.'}</p>
+  <CodeBlock label="example .env" code={`CORS_ORIGIN=https://wago.example.com\nTRUST_PROXY=true\nBIND_ADDRESS=127.0.0.1\nHOST_PORT=3000`} />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Persistence' : 'Persistence'}</h2>
+  <div class="border border-[#262626] rounded-lg divide-y divide-[#262626] text-sm mb-8">
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/auth</code><p class="text-[#71717a] mt-1">{id ? 'Credential/session Baileys. Perlakukan seperti private key.' : 'Baileys credential/session state. Treat it like a private key.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'App ID dan generated API-key hash.' : 'App ID and generated API-key hash.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/recipients.json</code><p class="text-[#71717a] mt-1">{id ? 'Allowlist/opt-out recipient.' : 'Recipient allowlist/opt-out records.'}</p></div>
+  </div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Backup</h2>
+  <CodeBlock label="shell" code={`docker run --rm \\\n  -v wago_data:/data \\\n  -v "$PWD:/backup" \\\n  alpine \\\n  tar czf /backup/wago_data-backup.tgz -C /data .`} />
+  <Callout title={id ? 'Jangan hapus volume saat upgrade' : 'Do not delete the volume during upgrades'} tone="danger">
+    {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan sesi pairing serta recipient records.' : 'docker compose down -v removes the named volume and can delete pairing state and recipient records.'}
+  </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade dan rollback' : 'Upgrade and rollback'}</h2>
+  <CodeBlock label="shell" code={`# upgrade\ndocker compose pull\ndocker compose up -d\n\n# reproducible deployment\n# set WAGO_VERSION to a release/sha tag, then:\ndocker compose pull\ndocker compose up -d`} />
+  <p class="text-sm text-[#71717a]">{id ? 'Untuk production yang dapat direproduksi, pin WAGO_VERSION ke tag release atau sha-* alih-alih latest.' : 'For reproducible production deployments, pin WAGO_VERSION to a release or sha-* tag instead of latest.'}</p>
+</DocsLayout>

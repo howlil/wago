@@ -1,0 +1,72 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+import CodeBlock from './CodeBlock.astro';
+import { CodePlayground } from '../CodePlayground';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+---
+
+<DocsLayout title={id ? 'Referensi API' : 'API Reference'}>
+  <PageHeader
+    eyebrow="HTTP API"
+    title={id ? 'Referensi API' : 'API reference'}
+    description={id ? 'Kontrak HTTP yang benar-benar diekspos backend saat ini.' : 'The HTTP contract currently exposed by the backend.'}
+  />
+
+  <Callout title={id ? 'Autentikasi' : 'Authentication'}>
+    <span>{id ? 'Endpoint terproteksi menerima ' : 'Protected endpoints accept '}</span><code>Authorization: Bearer &lt;API_KEY&gt;</code><span>{id ? '. Dashboard juga dapat menggunakan cookie HttpOnly hasil bootstrap pada flow non-production.' : '. The dashboard can also use the HttpOnly cookie created by bootstrap in non-production flows.'}</span>
+  </Callout>
+
+  <CodePlayground lang={lang} client:load />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">{id ? 'Endpoint' : 'Endpoints'}</h2>
+  <div class="overflow-x-auto mb-9"><table class="w-full text-sm text-left"><thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Method</th><th class="py-2.5 pr-4">Path</th><th class="py-2.5 pr-4">Auth</th><th class="py-2.5">{id ? 'Tujuan' : 'Purpose'}</th></tr></thead><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/health</code></td><td>Public</td><td>{id ? 'Liveness proses.' : 'Process liveness.'}</td></tr>
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/ready</code></td><td>Public</td><td>{id ? 'Readiness metadata dan API-key state.' : 'Readiness metadata and API-key state.'}</td></tr>
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/app/info</code></td><td>Public</td><td>{id ? 'App ID, setup, dan auth state request.' : 'App ID, setup, and request auth state.'}</td></tr>
+    <tr><td class="py-3 text-blue-400">POST</td><td><code>/app/bootstrap</code></td><td>{id ? 'Kondisional' : 'Conditional'}</td><td>{id ? 'Generate API key sekali ketika bootstrap diizinkan.' : 'Generate a one-time API key when bootstrap is allowed.'}</td></tr>
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/recipients</code></td><td>API key</td><td>{id ? 'Daftar recipient policy records.' : 'List recipient policy records.'}</td></tr>
+    <tr><td class="py-3 text-blue-400">POST</td><td><code>/recipients/allow</code></td><td>API key</td><td>{id ? 'Allow/reset opt-out recipient.' : 'Allow/reset opt-out for a recipient.'}</td></tr>
+    <tr><td class="py-3 text-blue-400">POST</td><td><code>/recipients/:phone/opt-out</code></td><td>API key</td><td>{id ? 'Blok outbound untuk recipient.' : 'Block outbound to a recipient.'}</td></tr>
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/whatsapp/status</code></td><td>API key</td><td>{id ? 'Status koneksi dan metadata health bila tersedia.' : 'Connection status and health metadata when available.'}</td></tr>
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/whatsapp/qr</code></td><td>API key</td><td>{id ? 'QR payload/status.' : 'QR payload/status.'}</td></tr>
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/whatsapp/qr/image</code></td><td>API key</td><td>{id ? 'QR SVG.' : 'QR SVG.'}</td></tr>
+    <tr><td class="py-3 text-blue-400">POST</td><td><code>/whatsapp/rebind</code></td><td>API key</td><td>{id ? 'Hapus binding saat ini dan buat QR baru.' : 'Clear current binding and create a fresh QR.'}</td></tr>
+    <tr><td class="py-3 text-blue-400">POST</td><td><code>/messages/send</code></td><td>API key</td><td>{id ? 'Kirim text message.' : 'Send a text message.'}</td></tr>
+    <tr><td class="py-3 text-emerald-400">GET</td><td><code>/messages/:id/status</code></td><td>API key</td><td>{id ? 'Status retained in-memory.' : 'Retained in-memory status.'}</td></tr>
+  </tbody></table></div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">POST /recipients/allow</h2>
+  <CodeBlock label="request" code={`{\n  "phone": "6281234567890",\n  "label": "Demo recipient"\n}`} />
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Phone dinormalisasi menjadi JID. Nomor lokal yang diawali 0 menggunakan DEFAULT_COUNTRY_CODE.' : 'The phone is normalized into a JID. Local numbers starting with 0 use DEFAULT_COUNTRY_CODE.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">POST /messages/send</h2>
+  <CodeBlock label="request" code={`{\n  "to": "6281234567890",\n  "text": "Hello",\n  "idempotencyKey": "optional-body-key"\n}`} />
+  <p class="text-sm text-[#a1a1aa] mb-3">{id ? 'Idempotency key dapat dikirim sebagai header Idempotency-Key atau field body. Header diprioritaskan.' : 'The idempotency key can be sent through the Idempotency-Key header or body field. The header takes precedence.'}</p>
+  <CodeBlock label="202 response" code={`{\n  "success": true,\n  "messageId": "...",\n  "status": "pending"\n}`} />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">{id ? 'Outbound policy limits' : 'Outbound policy limits'}</h2>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-9">
+    <li>{id ? 'Recipient wajib allowed dan tidak opted out.' : 'Recipient must be allowed and not opted out.'}</li>
+    <li>{id ? 'Idempotency key disimpan 1 jam setelah send diterima.' : 'Accepted idempotency keys are retained for 1 hour.'}</li>
+    <li>{id ? 'Account: maksimal 30 accepted sends per 60 detik.' : 'Account: max 30 accepted sends per 60 seconds.'}</li>
+    <li>{id ? 'Per recipient: maksimal 5 accepted sends per 60 detik.' : 'Per recipient: max 5 accepted sends per 60 seconds.'}</li>
+    <li>{id ? 'New chat: maksimal 10 recipient baru per 1 jam.' : 'New chat: max 10 new recipients per hour.'}</li>
+    <li>{id ? 'Route /messages/send juga memiliki request limiter 30 request/menit.' : 'The /messages/send route also has a 30-request/minute HTTP limiter.'}</li>
+    <li>{id ? 'Route /whatsapp/rebind dibatasi 5 request/menit.' : 'The /whatsapp/rebind route is limited to 5 requests/minute.'}</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Error penting' : 'Important errors'}</h2>
+  <div class="overflow-x-auto"><table class="w-full text-sm"><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">
+    <tr><td class="py-3 pr-4 text-[#fafafa]">400</td><td class="pr-4"><code>INVALID_REQUEST / INVALID_PHONE / INVALID_JSON</code></td><td>{id ? 'Input tidak valid.' : 'Invalid input.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">401</td><td class="pr-4"><code>UNAUTHORIZED</code></td><td>{id ? 'API key hilang atau salah.' : 'Missing or invalid API key.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">403</td><td class="pr-4"><code>RECIPIENT_NOT_ALLOWED / RECIPIENT_OPTED_OUT</code></td><td>{id ? 'Policy consent memblokir send.' : 'Consent policy blocked the send.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">409</td><td class="pr-4"><code>DUPLICATE_MESSAGE / APP_ALREADY_INITIALIZED</code></td><td>{id ? 'Duplicate idempotency atau bootstrap ulang.' : 'Duplicate idempotency or repeated bootstrap.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">429</td><td class="pr-4"><code>*_RATE_LIMITED / REACHOUT_RESTRICTED</code></td><td>{id ? 'Limit Wago/WhatsApp aktif.' : 'Wago/WhatsApp limits are active.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">503</td><td class="pr-4"><code>WHATSAPP_NOT_CONNECTED / OUTBOUND_PAUSED</code></td><td>{id ? 'Gateway belum siap mengirim.' : 'Gateway is not ready to send.'}</td></tr>
+  </tbody></table></div>
+</DocsLayout>

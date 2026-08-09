@@ -1,0 +1,30 @@
+---
+import GettingStartedDoc from '../../../components/docs/GettingStartedDoc.astro';
+import ArchitectureDoc from '../../../components/docs/ArchitectureDoc.astro';
+import ApiDoc from '../../../components/docs/ApiDoc.astro';
+import ConfigurationDoc from '../../../components/docs/ConfigurationDoc.astro';
+import DeploymentDoc from '../../../components/docs/DeploymentDoc.astro';
+import OperationsDoc from '../../../components/docs/OperationsDoc.astro';
+import DevelopmentDoc from '../../../components/docs/DevelopmentDoc.astro';
+import ProjectDoc from '../../../components/docs/ProjectDoc.astro';
+
+const pages = {
+  'getting-started': GettingStartedDoc,
+  architecture: ArchitectureDoc,
+  api: ApiDoc,
+  configuration: ConfigurationDoc,
+  deployment: DeploymentDoc,
+  operations: OperationsDoc,
+  development: DevelopmentDoc,
+  project: ProjectDoc,
+};
+
+export function getStaticPaths() {
+  return Object.keys(pages).map((slug) => ({ params: { slug } }));
+}
+
+const slug = Astro.params.slug as keyof typeof pages;
+const Page = pages[slug];
+---
+
+<Page lang="en" />

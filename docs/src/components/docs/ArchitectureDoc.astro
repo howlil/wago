@@ -1,0 +1,64 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+---
+
+<DocsLayout title={id ? 'Arsitektur' : 'Architecture'}>
+  <PageHeader
+    eyebrow={id ? 'Internals' : 'Internals'}
+    title={id ? 'Arsitektur aplikasi' : 'Application architecture'}
+    description={id ? 'Wago sengaja memakai satu proses Node.js untuk API, dashboard statis, policy outbound, dan satu koneksi Baileys.' : 'Wago deliberately uses one Node.js process for the API, static dashboard, outbound policy, and one Baileys connection.'}
+  />
+
+  <pre class="bg-[#111] border border-[#262626] rounded-lg p-5 text-sm text-[#d4d4d8] overflow-x-auto mb-9"><code>{`┌──────────────┐        ┌──────────────────────────────────────┐
+│ Browser / API│  HTTP  │ Express application                  │
+│ client       ├───────►│ helmet · CORS · auth · rate limiting│
+└──────────────┘        └──────────────┬───────────────────────┘
+                                      │
+                     ┌────────────────┼─────────────────┐
+                     ▼                ▼                 ▼
+                Route layer     Outbound policy    React dist
+                     │                │
+                     └────────┬───────┘
+                              ▼
+                         Baileys client
+                              │
+                              ▼
+                         WhatsApp Web
+
+Persistent: /app/data/auth, app-settings.json, recipients.json
+Transient: rate-limit windows, idempotency, known recipients, message status`}</code></pre>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">Backend</h2>
+  <div class="overflow-x-auto mb-9"><table class="w-full text-sm"><tbody class="divide-y divide-[#1a1a1a]">
+    <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">config/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Environment, persisted app ID/API-key hash, validasi production.' : 'Environment parsing, persisted app ID/API-key hash, production validation.'}</td></tr>
+    <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">middleware/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Auth, request logging, dan route-level rate limiting.' : 'Authentication, request logging, and route-level rate limiting.'}</td></tr>
+    <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">routes/</td><td class="py-3 text-[#a1a1aa]">{id ? 'HTTP contract untuk app, recipients, WhatsApp, dan messages.' : 'HTTP contracts for app, recipients, WhatsApp, and messages.'}</td></tr>
+    <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">policy/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Consent/allowlist, opt-out, idempotency, account/recipient/new-chat limits.' : 'Consent/allowlist, opt-out, idempotency, and account/recipient/new-chat limits.'}</td></tr>
+    <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">recipients/</td><td class="py-3 text-[#a1a1aa]">{id ? 'File-backed recipient policy records dengan atomic rename.' : 'File-backed recipient policy records written using atomic rename.'}</td></tr>
+    <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">whatsapp/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Socket lifecycle, reconnect, account health, recipient resolution, message status.' : 'Socket lifecycle, reconnect, account health, recipient resolution, and message status.'}</td></tr>
+  </tbody></table></div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">Frontend</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-5">{id ? 'Frontend React memakai API relatif secara default sehingga build production dapat disajikan dari Express yang sama. API key hanya disimpan pada memory tab browser; request juga mengirim cookie HttpOnly jika tersedia.' : 'The React frontend uses a relative API base by default so the production build can be served by the same Express process. The entered API key is kept in browser-tab memory; requests also include the HttpOnly auth cookie when available.'}</p>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-9">
+    <li>{id ? 'Polling status adaptif: lebih jarang ketika tab tersembunyi.' : 'Adaptive status polling with slower refresh while the tab is hidden.'}</li>
+    <li>{id ? 'Dashboard menangani bootstrap development, API-key verification, QR, rebind, dan manual send.' : 'Dashboard handles development bootstrap, API-key verification, QR, rebind, and manual send.'}</li>
+    <li>{id ? 'Recipient allowlist saat ini dikelola melalui REST API, bukan UI dashboard.' : 'Recipient allowlist management currently lives in the REST API, not the dashboard UI.'}</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Persistent vs transient state' : 'Persistent vs transient state'}</h2>
+  <div class="grid sm:grid-cols-2 gap-4 mb-8">
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="font-semibold text-sm text-[#fafafa] mb-2">Persistent</h3><ul class="text-sm text-[#71717a] space-y-1.5"><li>/app/data/auth</li><li>/app/data/app-settings.json</li><li>/app/data/recipients.json</li></ul></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="font-semibold text-sm text-[#fafafa] mb-2">Transient</h3><ul class="text-sm text-[#71717a] space-y-1.5"><li>{id ? 'idempotency keys (1 jam)' : 'idempotency keys (1 hour)'}</li><li>{id ? 'send/new-chat windows' : 'send/new-chat windows'}</li><li>{id ? 'known-recipient memory' : 'known-recipient memory'}</li><li>{id ? 'message status (1 jam)' : 'message status (1 hour)'}</li></ul></div>
+  </div>
+
+  <Callout title={id ? 'Skalabilitas sengaja dibatasi' : 'Scaling is intentionally constrained'} tone="warning">
+    {id ? 'Jangan menjalankan beberapa replica menggunakan auth directory yang sama. Arsitektur ini tidak dirancang untuk horizontal scaling, distributed rate limits, atau multi-session.' : 'Do not run multiple replicas against the same auth directory. This architecture is not designed for horizontal scaling, distributed rate limits, or multiple sessions.'}
+  </Callout>
+</DocsLayout>

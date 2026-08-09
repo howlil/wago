@@ -1,0 +1,66 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+import DocCard from './DocCard.astro';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+const base = id ? '/id' : '/en';
+---
+
+<DocsLayout
+  title={id ? 'Ringkasan' : 'Overview'}
+  description={id ? 'Peta lengkap kemampuan, batasan, dan dokumentasi Wago.' : 'A complete map of Wago capabilities, boundaries, and documentation.'}
+>
+  <PageHeader
+    eyebrow="Wago Simple"
+    title={id ? 'Gateway WhatsApp self-hosted yang sengaja dibuat sederhana' : 'A deliberately small, self-hosted WhatsApp gateway'}
+    description={id
+      ? 'Wago menghubungkan satu akun WhatsApp melalui Baileys, menyediakan REST API terautentikasi, dashboard web, penyimpanan sesi persisten, dan kontrol outbound untuk penggunaan integrasi yang terbatas.'
+      : 'Wago connects one WhatsApp account through Baileys and exposes an authenticated REST API, web dashboard, persistent session storage, and outbound controls for focused integrations.'}
+  />
+
+  <Callout title={id ? 'Batas produk' : 'Product boundary'} tone="warning">
+    {id
+      ? 'Wago bukan bulk sender, campaign platform, multi-tenant SaaS, scraper nomor, atau sistem anti-detection. Satu instance ditujukan untuk satu akun WhatsApp dan satu direktori auth.'
+      : 'Wago is not a bulk sender, campaign platform, multi-tenant SaaS, number scraper, or anti-detection system. One instance is designed for one WhatsApp account and one auth directory.'}
+  </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">{id ? 'Kemampuan inti' : 'Core capabilities'}</h2>
+  <div class="grid sm:grid-cols-2 gap-4 mb-10">
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">REST API</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Bearer API key, endpoint status, pairing, recipient policy, dan pengiriman teks.' : 'Bearer API key auth, status, pairing, recipient policy, and text-message endpoints.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Dashboard</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Status backend/WhatsApp, input API key, QR pairing, rebind, dan pengiriman manual.' : 'Backend/WhatsApp status, API-key entry, QR pairing, rebind, and manual sending.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Persistent state</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Auth Baileys, app settings, dan recipient records disimpan di /app/data.' : 'Baileys auth, app settings, and recipient records are stored under /app/data.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Outbound policy</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Allowlist recipient, opt-out, idempotency, rate limits, dan pemeriksaan health/reach-out.' : 'Recipient allowlist, opt-out, idempotency, rate limits, and account-health/reach-out checks.'}</p></div>
+  </div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Model sistem' : 'System model'}</h2>
+  <pre class="bg-[#111] border border-[#262626] rounded-lg p-5 text-sm text-[#d4d4d8] overflow-x-auto mb-10"><code>{`API client / Browser
+        │ HTTP
+        ▼
+┌──────────────────────────────┐
+│ Express API + React dashboard│
+│  auth · routes · policy      │
+└──────────────┬───────────────┘
+               │
+       ┌───────┴────────┐
+       ▼                ▼
+   Baileys          /app/data
+       │            auth/settings/
+       ▼            recipients
+ WhatsApp Web`}</code></pre>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Dokumentasi' : 'Documentation map'}</h2>
+  <div class="grid sm:grid-cols-2 gap-4">
+    <DocCard href={`${base}/docs/getting-started`} title={id ? 'Memulai' : 'Getting Started'} description={id ? 'Deploy, pairing, allow recipient, lalu kirim pesan pertama.' : 'Deploy, pair, allow a recipient, and send the first message.'} />
+    <DocCard href={`${base}/docs/architecture`} title={id ? 'Arsitektur' : 'Architecture'} description={id ? 'Komponen backend, frontend, state, dan lifecycle.' : 'Backend, frontend, state, and lifecycle internals.'} />
+    <DocCard href={`${base}/docs/api`} title={id ? 'Referensi API' : 'API Reference'} description={id ? 'Endpoint, autentikasi, payload, error, dan limit.' : 'Endpoints, authentication, payloads, errors, and limits.'} />
+    <DocCard href={`${base}/docs/configuration`} title={id ? 'Konfigurasi' : 'Configuration'} description={id ? 'Environment variable dan aturan konfigurasi production.' : 'Environment variables and production configuration rules.'} />
+    <DocCard href={`${base}/docs/deployment`} title="Deployment" description={id ? 'GHCR, Docker Compose, proxy, backup, dan rollback.' : 'GHCR, Docker Compose, proxying, backup, and rollback.'} />
+    <DocCard href={`${base}/docs/operations`} title={id ? 'Operasional' : 'Operations'} description={id ? 'Health, logs, session lifecycle, status pesan, troubleshooting.' : 'Health, logs, session lifecycle, message status, troubleshooting.'} />
+    <DocCard href={`${base}/docs/development`} title="Development" description={id ? 'Toolchain, local workflow, test, build, dan standar PR.' : 'Toolchain, local workflow, tests, builds, and PR standards.'} />
+    <DocCard href={`${base}/docs/project`} title={id ? 'Project & Community' : 'Project & Community'} description={id ? 'Security, kontribusi, release, support, license, dan conduct.' : 'Security, contributing, releases, support, license, and conduct.'} />
+  </div>
+</DocsLayout>

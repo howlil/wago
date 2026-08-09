@@ -1,6 +1,6 @@
 ---
 import MainLayout from './MainLayout.astro';
-import { getLangFromUrl, useTranslations } from '../utils/i18n';
+import { getLangFromUrl } from '../utils/i18n';
 
 interface Props {
   title: string;
@@ -9,51 +9,131 @@ interface Props {
 
 const { title, description } = Astro.props;
 const lang = getLangFromUrl(Astro.url);
-const t = useTranslations(lang);
 const basePrefix = lang === 'en' ? '/en' : '/id';
-const currentPath = Astro.url.pathname;
+const currentPath = Astro.url.pathname.replace(/\/$/, '');
 
-const navItems = [
-  { href: `${basePrefix}/docs`, label: t.docsOverviewTitle },
-  { href: `${basePrefix}/docs/api`, label: t.docsApiTitle },
-  { href: `${basePrefix}/docs/deployment`, label: t.docsDeployTitle },
-];
+const sections = lang === 'id'
+  ? [
+      {
+        label: 'Mulai',
+        items: [
+          { href: `${basePrefix}/docs`, label: 'Ringkasan' },
+          { href: `${basePrefix}/docs/getting-started`, label: 'Memulai' },
+        ],
+      },
+      {
+        label: 'Referensi',
+        items: [
+          { href: `${basePrefix}/docs/architecture`, label: 'Arsitektur' },
+          { href: `${basePrefix}/docs/api`, label: 'Referensi API' },
+          { href: `${basePrefix}/docs/configuration`, label: 'Konfigurasi' },
+        ],
+      },
+      {
+        label: 'Operasional',
+        items: [
+          { href: `${basePrefix}/docs/deployment`, label: 'Deployment' },
+          { href: `${basePrefix}/docs/operations`, label: 'Operasional & Troubleshooting' },
+        ],
+      },
+      {
+        label: 'Open Source',
+        items: [
+          { href: `${basePrefix}/docs/development`, label: 'Development' },
+          { href: `${basePrefix}/docs/project`, label: 'Project & Community' },
+        ],
+      },
+    ]
+  : [
+      {
+        label: 'Start',
+        items: [
+          { href: `${basePrefix}/docs`, label: 'Overview' },
+          { href: `${basePrefix}/docs/getting-started`, label: 'Getting Started' },
+        ],
+      },
+      {
+        label: 'Reference',
+        items: [
+          { href: `${basePrefix}/docs/architecture`, label: 'Architecture' },
+          { href: `${basePrefix}/docs/api`, label: 'API Reference' },
+          { href: `${basePrefix}/docs/configuration`, label: 'Configuration' },
+        ],
+      },
+      {
+        label: 'Operate',
+        items: [
+          { href: `${basePrefix}/docs/deployment`, label: 'Deployment' },
+          { href: `${basePrefix}/docs/operations`, label: 'Operations & Troubleshooting' },
+        ],
+      },
+      {
+        label: 'Open Source',
+        items: [
+          { href: `${basePrefix}/docs/development`, label: 'Development' },
+          { href: `${basePrefix}/docs/project`, label: 'Project & Community' },
+        ],
+      },
+    ];
 
 function isActive(href: string) {
-  const clean = currentPath.replace(/\/$/, '');
-  const target = href.replace(/\/$/, '');
-  return clean === target;
+  return currentPath === href.replace(/\/$/, '');
 }
 ---
 
 <MainLayout title={`${title} — Wago`} description={description}>
-  <div class="max-w-6xl mx-auto px-6 py-12">
-    <div class="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
+    <details class="lg:hidden mb-8 border border-[#262626] rounded-lg bg-[#111]">
+      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-[#fafafa]">
+        {lang === 'id' ? 'Navigasi dokumentasi' : 'Documentation navigation'}
+      </summary>
+      <div class="border-t border-[#262626] p-3 grid sm:grid-cols-2 gap-3">
+        {sections.map(section => (
+          <div>
+            <p class="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#52525b]">{section.label}</p>
+            {section.items.map(item => (
+              <a
+                href={item.href}
+                class={`block px-2 py-1.5 rounded-md text-sm ${isActive(item.href) ? 'bg-[#1f1f1f] text-[#fafafa]' : 'text-[#a1a1aa] hover:text-[#fafafa]'}`}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        ))}
+      </div>
+    </details>
 
+    <div class="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-10 xl:gap-14">
       <aside class="hidden lg:block">
-        <nav class="sticky top-20 space-y-0.5">
-          <p class="text-xs font-medium text-[#52525b] uppercase tracking-wider mb-3">
-            {lang === 'id' ? 'Dokumentasi' : 'Documentation'}
-          </p>
-          {navItems.map(item => (
-            <a
-              href={item.href}
-              class={`block px-3 py-2 rounded-md text-sm transition-colors ${
-                isActive(item.href)
-                  ? 'text-[#fafafa] bg-[#1a1a1a] font-medium'
-                  : 'text-[#71717a] hover:text-[#a1a1aa] hover:bg-[#141414]'
-              }`}
-            >
-              {item.label}
-            </a>
+        <nav class="sticky top-20 space-y-6">
+          {sections.map(section => (
+            <div>
+              <p class="px-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider mb-2">
+                {section.label}
+              </p>
+              <div class="space-y-0.5">
+                {section.items.map(item => (
+                  <a
+                    href={item.href}
+                    class={`block px-3 py-2 rounded-md text-sm transition-colors ${
+                      isActive(item.href)
+                        ? 'text-[#fafafa] bg-[#1a1a1a] font-medium'
+                        : 'text-[#71717a] hover:text-[#d4d4d8] hover:bg-[#141414]'
+                    }`}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
       </aside>
 
-      <article class="min-w-0">
+      <article class="min-w-0 max-w-4xl">
         <slot />
       </article>
-
     </div>
   </div>
 </MainLayout>

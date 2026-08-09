@@ -1,0 +1,57 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+import CodeBlock from './CodeBlock.astro';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+---
+
+<DocsLayout title="Development">
+  <PageHeader
+    eyebrow="Contributors"
+    title={id ? 'Development workflow' : 'Development workflow'}
+    description={id ? 'Workflow lokal untuk backend, frontend, docs, test, lint/format, dan kontribusi.' : 'Local workflow for backend, frontend, docs, tests, lint/format, and contributions.'}
+  />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Toolchain</h2>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
+    <li>Node.js 26</li>
+    <li>pnpm 11.18.0</li>
+    <li>{id ? 'Backend: TypeScript, Express, Baileys, Vitest.' : 'Backend: TypeScript, Express, Baileys, Vitest.'}</li>
+    <li>{id ? 'Frontend: React, Vite, Tailwind CSS, Vitest.' : 'Frontend: React, Vite, Tailwind CSS, Vitest.'}</li>
+    <li>{id ? 'Docs: Astro + React islands + Tailwind CSS.' : 'Docs: Astro + React islands + Tailwind CSS.'}</li>
+    <li>Biome</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Struktur repo' : 'Repository layout'}</h2>
+  <CodeBlock label="tree" code={`backend/        Express API, policy, Baileys integration, tests\nfrontend/       Gateway dashboard\ndocs/           Astro documentation site\n.github/        CI, CodeQL, release, issue/PR templates\nDockerfile      Production multi-stage image\ndocker-compose.yml\nREADME.md\nCONTRIBUTING.md\nSECURITY.md\nCODE_OF_CONDUCT.md\nCHANGELOG.md\nLICENSE`} />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Install dan quality gates' : 'Install and quality gates'}</h2>
+  <CodeBlock label="shell" code={`pnpm install\npnpm check\npnpm test\npnpm build`} />
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'pnpm build membangun backend, frontend, dan docs. CI harus gagal jika salah satu tidak compile.' : 'pnpm build builds backend, frontend, and docs. CI should fail if any of them does not compile.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Menjalankan aplikasi' : 'Running locally'}</h2>
+  <CodeBlock label="terminals" code={`pnpm --dir backend dev\npnpm --dir frontend dev\npnpm --dir docs dev`} />
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Jika frontend memakai backend non-default, set VITE_API_BASE_URL sebelum dev/build frontend.' : 'If the frontend targets a non-default backend origin, set VITE_API_BASE_URL before frontend dev/build.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Targeted commands' : 'Targeted commands'}</h2>
+  <CodeBlock label="shell" code={`pnpm --dir backend test\npnpm --dir frontend test\npnpm --dir docs build\npnpm check:fix`} />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Testing philosophy</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Test behavior Wago, bukan internals Baileys. Fokus pada wrapper, policy decisions, validation, routes, cache/store, dan lifecycle behavior.' : 'Test Wago behavior rather than Baileys internals. Focus on wrappers, policy decisions, validation, routes, caches/stores, and lifecycle behavior.'}</p>
+  <Callout title={id ? 'Perubahan policy wajib diuji' : 'Policy changes require tests'} tone="warning">
+    {id ? 'Perubahan consent, rate limits, idempotency, auth, phone normalization, atau reconnect harus membawa test yang memverifikasi behavior baru dan failure path.' : 'Changes to consent, rate limits, idempotency, auth, phone normalization, or reconnect behavior should include tests for the new behavior and failure paths.'}
+  </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Pull requests</h2>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2">
+    <li>{id ? 'Jelaskan behavior yang berubah dan alasan.' : 'Describe the changed behavior and why.'}</li>
+    <li>{id ? 'Tambahkan/ubah test atau jelaskan mengapa tidak relevan.' : 'Add/update tests or explain why they are not applicable.'}</li>
+    <li>{id ? 'Cantumkan verification commands.' : 'List verification commands.'}</li>
+    <li>{id ? 'Sertakan screenshot untuk perubahan UI/docs visual bila relevan.' : 'Include screenshots for relevant UI/docs visual changes.'}</li>
+    <li>{id ? 'Jangan lampirkan QR live, auth files, API key, full number/JID, message text, atau production logs mentah.' : 'Never attach live QR codes, auth files, API keys, full phone/JIDs, message text, or raw production logs.'}</li>
+  </ul>
+</DocsLayout>

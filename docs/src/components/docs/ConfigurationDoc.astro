@@ -1,0 +1,53 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+const rows = [
+  ['NODE_ENV', 'development', id ? 'Gunakan production pada deploy.' : 'Use production for deployments.'],
+  ['HOST', '0.0.0.0', id ? 'Bind address di dalam container.' : 'Bind address inside the container.'],
+  ['PORT', '3000', id ? 'HTTP server port.' : 'HTTP server port.'],
+  ['APP_ID', 'generated / wa-gateway-prod', id ? 'Identifier logis instance.' : 'Logical instance identifier.'],
+  ['DATA_DIR', 'backend/data or /app/data', id ? 'Root data persisten.' : 'Persistent data root.'],
+  ['APP_SETTINGS_FILE', '<DATA_DIR>/app-settings.json', id ? 'Override lokasi app settings.' : 'Override app-settings location.'],
+  ['AUTH_DIR', '<DATA_DIR>/auth', id ? 'Baileys auth storage.' : 'Baileys auth storage.'],
+  ['API_KEY', 'unset', id ? 'Bearer secret. Wajib tersedia pada production.' : 'Bearer secret. Must be available in production.'],
+  ['AUTH_COOKIE_NAME', 'wa_gateway_api_key', id ? 'Nama cookie auth dashboard.' : 'Dashboard auth cookie name.'],
+  ['AUTH_COOKIE_SECURE', 'false', id ? 'Wajib true pada production.' : 'Must be true in production.'],
+  ['ALLOW_WEB_BOOTSTRAP', 'true outside production', id ? 'Harus false pada production.' : 'Must be false in production.'],
+  ['CORS_ORIGIN', '*', id ? 'Origin browser. * dilarang pada production.' : 'Browser origin. * is rejected in production.'],
+  ['BODY_LIMIT', '32kb', id ? 'Maksimum JSON body.' : 'Maximum JSON body size.'],
+  ['TRUST_PROXY', 'false', id ? 'Percaya satu proxy hop ketika true.' : 'Trust one proxy hop when true.'],
+  ['DEFAULT_COUNTRY_CODE', '62', id ? 'Normalisasi nomor lokal.' : 'Local-number normalization.'],
+  ['REQUEST_LOGGING', 'true', id ? 'Structured HTTP request logs.' : 'Structured HTTP request logs.'],
+  ['LOG_LEVEL', 'debug/info', id ? 'Default debug dev, info production.' : 'Defaults to debug in dev, info in production.'],
+  ['WA_VERSION_MODE', 'default', id ? 'default atau live untuk troubleshooting.' : 'default or live for troubleshooting.'],
+  ['FRONTEND_DIST', 'unset / /app/public', id ? 'Lokasi build React yang dilayani Express.' : 'React build directory served by Express.'],
+  ['WAGO_VERSION', 'latest (Compose)', id ? 'Tag image GHCR yang ditarik Compose.' : 'GHCR image tag pulled by Compose.'],
+  ['BIND_ADDRESS', '127.0.0.1 (Compose)', id ? 'Host interface untuk published port.' : 'Host interface for the published port.'],
+  ['HOST_PORT', '3000 (Compose)', id ? 'Port host untuk service.' : 'Host port for the service.'],
+];
+---
+
+<DocsLayout title={id ? 'Konfigurasi' : 'Configuration'}>
+  <PageHeader
+    eyebrow="Environment"
+    title={id ? 'Konfigurasi runtime' : 'Runtime configuration'}
+    description={id ? 'Konfigurasi berasal dari environment variable, ditambah app settings persisten untuk generated app ID/API-key hash.' : 'Configuration comes from environment variables plus persisted app settings for generated app ID/API-key hash state.'}
+  />
+
+  <Callout title={id ? 'Aturan production' : 'Production invariants'} tone="warning">
+    {id ? 'NODE_ENV=production mewajibkan API key tersedia, ALLOW_WEB_BOOTSTRAP=false, AUTH_COOKIE_SECURE=true, dan CORS_ORIGIN bukan *.' : 'NODE_ENV=production requires an available API key, ALLOW_WEB_BOOTSTRAP=false, AUTH_COOKIE_SECURE=true, and a CORS_ORIGIN other than *.'}
+  </Callout>
+
+  <div class="overflow-x-auto mt-8"><table class="w-full text-sm text-left"><thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Variable</th><th class="py-2.5 pr-4">{id ? 'Default' : 'Default'}</th><th class="py-2.5">{id ? 'Keterangan' : 'Description'}</th></tr></thead><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">{rows.map(row => <tr><td class="py-3 pr-4 text-[#fafafa]"><code>{row[0]}</code></td><td class="py-3 pr-4 text-[#71717a]">{row[1]}</td><td class="py-3">{row[2]}</td></tr>)}</tbody></table></div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">{id ? 'API key sources' : 'API key sources'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Jika API_KEY di-set, source adalah env. Jika key dibuat oleh bootstrap, Wago hanya menyimpan SHA-256 hash di app-settings.json; secret asli hanya dikembalikan ketika key dibuat.' : 'When API_KEY is set, the source is env. When bootstrap generates a key, Wago stores only its SHA-256 hash in app-settings.json; the original secret is returned only at creation time.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">TRUST_PROXY</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed">{id ? 'Aktifkan hanya jika request selalu melewati reverse proxy yang Anda kontrol. Ketika true, Express mempercayai satu proxy hop.' : 'Enable this only when requests always pass through a reverse proxy you control. When true, Express trusts one proxy hop.'}</p>
+</DocsLayout>

@@ -19,56 +19,22 @@ export function CodePlayground({ lang = 'en' }: CodePlaygroundProps) {
   const [copied, setCopied] = useState(false);
 
   const snippets: Record<Tab, string> = {
-    curl: `curl -X POST http://localhost:3000/messages/send \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "to": "6281234567890",
-    "text": "Hello from Wago"
-  }'`,
-    javascript: `const response = await fetch("http://localhost:3000/messages/send", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer YOUR_API_KEY",
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    to: "6281234567890",
-    text: "Hello from Wago"
-  })
-});
-
-const data = await response.json();`,
-    python: `import requests
-
-response = requests.post(
-    "http://localhost:3000/messages/send",
-    json={"to": "6281234567890", "text": "Hello from Wago"},
-    headers={"Authorization": "Bearer YOUR_API_KEY"}
-)
-
-print(response.json())`,
-    nodejs: `import axios from 'axios';
-
-const { data } = await axios.post(
-  'http://localhost:3000/messages/send',
-  { to: '6281234567890', text: 'Hello from Wago' },
-  { headers: { Authorization: 'Bearer YOUR_API_KEY' } }
-);
-
-console.log(data);`
+    curl: `# Allow the recipient once\ncurl -X POST http://localhost:3000/recipients/allow \\\n  -H "Authorization: Bearer YOUR_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"phone":"6281234567890","label":"Demo"}'\n\n# Send with an idempotency key\ncurl -X POST http://localhost:3000/messages/send \\\n  -H "Authorization: Bearer YOUR_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -H "Idempotency-Key: demo-001" \\\n  -d '{"to":"6281234567890","text":"Hello from Wago"}'`,
+    javascript: `const headers = {\n  Authorization: "Bearer YOUR_API_KEY",\n  "Content-Type": "application/json"\n};\n\nawait fetch("http://localhost:3000/recipients/allow", {\n  method: "POST",\n  headers,\n  body: JSON.stringify({ phone: "6281234567890", label: "Demo" })\n});\n\nconst response = await fetch("http://localhost:3000/messages/send", {\n  method: "POST",\n  headers: { ...headers, "Idempotency-Key": "demo-001" },\n  body: JSON.stringify({ to: "6281234567890", text: "Hello from Wago" })\n});\n\nconsole.log(await response.json());`,
+    python: `import requests\n\nheaders = {"Authorization": "Bearer YOUR_API_KEY"}\n\nrequests.post(\n    "http://localhost:3000/recipients/allow",\n    json={"phone": "6281234567890", "label": "Demo"},\n    headers=headers,\n).raise_for_status()\n\nresponse = requests.post(\n    "http://localhost:3000/messages/send",\n    json={"to": "6281234567890", "text": "Hello from Wago"},\n    headers={**headers, "Idempotency-Key": "demo-001"},\n)\nprint(response.json())`,
+    nodejs: `import axios from 'axios';\n\nconst client = axios.create({\n  baseURL: 'http://localhost:3000',\n  headers: { Authorization: 'Bearer YOUR_API_KEY' }\n});\n\nawait client.post('/recipients/allow', {\n  phone: '6281234567890',\n  label: 'Demo'\n});\n\nconst { data } = await client.post(\n  '/messages/send',\n  { to: '6281234567890', text: 'Hello from Wago' },\n  { headers: { 'Idempotency-Key': 'demo-001' } }\n);\n\nconsole.log(data);`
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(snippets[tab]);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(snippets[tab]);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <div style={{ border: '1px solid #262626', borderRadius: '8px', overflow: 'hidden', background: '#111' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a1a1a', padding: '0 1px' }}>
-        <div style={{ display: 'flex' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a1a1a', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', minWidth: 'max-content' }}>
           {tabs.map(t => (
             <button
               key={t}
@@ -82,7 +48,6 @@ console.log(data);`
                 borderBottom: tab === t ? '2px solid #fafafa' : '2px solid transparent',
                 color: tab === t ? '#fafafa' : '#52525b',
                 cursor: 'pointer',
-                transition: 'color 0.15s',
               }}
             >
               {tabLabels[t]}
@@ -90,18 +55,18 @@ console.log(data);`
           ))}
         </div>
         <button
-          onClick={handleCopy}
+          onClick={() => void handleCopy()}
           style={{
             padding: '6px 12px',
-            marginRight: '8px',
+            margin: '0 8px',
             fontSize: '12px',
             fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#71717a',
+            color: '#a1a1aa',
             background: 'none',
             border: '1px solid #262626',
             borderRadius: '5px',
             cursor: 'pointer',
-            transition: 'color 0.15s',
+            whiteSpace: 'nowrap',
           }}
         >
           {copied ? (lang === 'id' ? 'Tersalin' : 'Copied') : (lang === 'id' ? 'Salin' : 'Copy')}

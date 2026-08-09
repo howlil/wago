@@ -1,0 +1,52 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+import DocCard from './DocCard.astro';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+const repo = 'https://github.com/howlil/wago-simple';
+---
+
+<DocsLayout title={id ? 'Project & Community' : 'Project & Community'}>
+  <PageHeader
+    eyebrow="Open Source"
+    title={id ? 'Project, security, dan community' : 'Project, security, and community'}
+    description={id ? 'Pusat kebijakan OSS: scope, kontribusi, vulnerability reporting, release, support, license, dan code of conduct.' : 'The OSS policy hub for scope, contributions, vulnerability reporting, releases, support, licensing, and conduct.'}
+  />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Dokumen OSS' : 'OSS documents'}</h2>
+  <div class="grid sm:grid-cols-2 gap-4 mb-10">
+    <DocCard href={`${repo}/blob/main/README.md`} title="README" description={id ? 'Landing page, quick start, feature dan support boundary.' : 'Landing page, quick start, features, and support boundary.'} />
+    <DocCard href={`${repo}/blob/main/CONTRIBUTING.md`} title="CONTRIBUTING.md" description={id ? 'Scope kontribusi, local setup, TDD, dan PR expectations.' : 'Contribution scope, local setup, TDD, and PR expectations.'} />
+    <DocCard href={`${repo}/blob/main/SECURITY.md`} title="SECURITY.md" description={id ? 'Supported scope dan private vulnerability reporting.' : 'Supported scope and private vulnerability reporting.'} />
+    <DocCard href={`${repo}/blob/main/CODE_OF_CONDUCT.md`} title="CODE_OF_CONDUCT.md" description={id ? 'Standar perilaku community.' : 'Community behavior expectations.'} />
+    <DocCard href={`${repo}/blob/main/CHANGELOG.md`} title="CHANGELOG.md" description={id ? 'Riwayat perubahan yang berarti untuk user/contributor.' : 'Meaningful user/contributor-facing changes.'} />
+    <DocCard href={`${repo}/blob/main/LICENSE`} title="MIT License" description={id ? 'Hak penggunaan dan redistribusi proyek.' : 'Project usage and redistribution rights.'} />
+  </div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Scope governance' : 'Scope governance'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Wago mempertahankan scope kecil: satu akun, satu instance, self-hosted, text messaging, recipient allowlist, dan REST API/dashboard sederhana. Fitur yang mengubah produk menjadi bulk sender, campaign tool, multi-tenant platform, scraping tool, atau anti-detection system berada di luar scope.' : 'Wago keeps a narrow scope: one account, one instance, self-hosted, text messaging, recipient allowlist, and a small REST API/dashboard. Features that turn it into a bulk sender, campaign tool, multi-tenant platform, scraping tool, or anti-detection system are out of scope.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Security</h2>
+  <Callout title={id ? 'Laporkan vulnerability secara private' : 'Report vulnerabilities privately'} tone="danger">
+    {id ? 'Jangan buka public issue untuk credential exposure, auth bypass, request-forgery, atau message-sending abuse path. Gunakan GitHub private security advisory bila tersedia.' : 'Do not open public issues for credential exposure, auth bypass, request-forgery, or message-sending abuse paths. Use GitHub private security advisories when available.'}
+  </Callout>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
+    <li>{id ? 'Jangan publikasikan /app/data/auth atau creds.json.' : 'Never publish /app/data/auth or creds.json.'}</li>
+    <li>{id ? 'Jangan publikasikan live QR payload/screenshot.' : 'Never publish live QR payloads/screenshots.'}</li>
+    <li>{id ? 'Mask API key, auth cookie, full phone/JID, dan message text.' : 'Mask API keys, auth cookies, full phone/JIDs, and message text.'}</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Release & versioning' : 'Releases & versioning'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-3">{id ? 'Push ke main menghasilkan latest, main, dan sha-* container tags. Tag Git v* dapat menghasilkan tag container versi/semver. Untuk production yang reproducible, prefer tag release atau sha-*.' : 'Pushes to main produce latest, main, and sha-* container tags. Git v* tags can additionally produce version/semver container tags. Prefer a release or sha-* tag for reproducible production.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Support</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-3">{id ? 'Gunakan GitHub Issues untuk bug yang reproducible dan feature request yang masih berada dalam scope. Sebelum membuka issue, cek docs Operations, existing issues, dan pastikan data sensitif sudah dihapus.' : 'Use GitHub Issues for reproducible bugs and in-scope feature requests. Before opening an issue, check Operations docs and existing issues, and remove sensitive data.'}</p>
+  <a href={`${repo}/issues`} target="_blank" rel="noreferrer" class="inline-flex mt-2 px-4 py-2 rounded-md border border-[#262626] text-sm text-[#d4d4d8] hover:border-[#3f3f46] hover:text-white transition-colors">GitHub Issues</a>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-3">Disclaimer</h2>
+  <p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Wago menggunakan Baileys, client WhatsApp Web tidak resmi. Proyek ini tidak berafiliasi, didukung, atau disahkan oleh WhatsApp/Meta dan tidak menjamin keamanan akun atau pencegahan ban. Operator bertanggung jawab atas consent, terms/policy, dan hukum yang berlaku.' : 'Wago uses Baileys, an unofficial WhatsApp Web client. This project is not affiliated with, supported by, or endorsed by WhatsApp/Meta and does not guarantee account safety or ban prevention. Operators are responsible for consent, applicable terms/policies, and local law.'}</p>
+</DocsLayout>
