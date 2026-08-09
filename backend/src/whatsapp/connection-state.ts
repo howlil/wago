@@ -1,4 +1,5 @@
 import { type AccountHealthSnapshot, getAccountHealthSnapshot } from "./account-health.js";
+import { getWhatsAppBinding, type WhatsAppBinding } from "./binding-store.js";
 
 export type WhatsAppStatus = "connecting" | "qr" | "connected" | "disconnected";
 
@@ -7,6 +8,7 @@ let currentQr: string | null = null;
 
 export type WhatsAppStatusSnapshot = {
   status: WhatsAppStatus;
+  binding: WhatsAppBinding;
   accountHealth: AccountHealthSnapshot;
 };
 
@@ -40,6 +42,7 @@ export function getConnectionStatus(): WhatsAppStatus {
 export function getWhatsAppStatusSnapshot(): WhatsAppStatusSnapshot {
   return {
     status,
+    binding: getWhatsAppBinding(),
     accountHealth: getAccountHealthSnapshot(),
   };
 }

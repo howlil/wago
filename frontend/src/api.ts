@@ -18,6 +18,7 @@ export type AppInfoResponse = {
   apiKeyConfigured: boolean;
   apiKeySource: "env" | "generated" | "unset";
   authenticated: boolean;
+  credentialSetupRequired: boolean;
   setupRequired: boolean;
 };
 
@@ -26,6 +27,7 @@ export type BootstrapAppResponse =
       success: true;
       appId: string;
       apiKey: string;
+      recovered: boolean;
       message: string;
     }
   | {
@@ -40,9 +42,24 @@ type HealthResponse = {
 
 export type WhatsAppStatus = "connecting" | "qr" | "connected" | "disconnected";
 
+export type WhatsAppBinding =
+  | {
+      state: "unbound";
+      jid: null;
+      phone: null;
+      boundAt: null;
+    }
+  | {
+      state: "bound";
+      jid: string;
+      phone: string;
+      boundAt: string;
+    };
+
 export type StatusResponse = {
   success: true;
   status: WhatsAppStatus;
+  binding: WhatsAppBinding;
   accountHealth?: unknown;
 };
 
@@ -52,6 +69,18 @@ export type QrResponse = {
   status: WhatsAppStatus;
   message?: string;
 };
+
+export type PairingResponse =
+  | {
+      success: true;
+      message: string;
+      status: WhatsAppStatus;
+    }
+  | {
+      success: false;
+      error: string;
+      message: string;
+    };
 
 export type SendMessageResponse =
   | {
@@ -81,17 +110,7 @@ export type MessageStatusResponse =
       message: string;
     };
 
-export type RebindResponse =
-  | {
-      success: true;
-      message: string;
-      status: WhatsAppStatus;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type RebindResponse = PairingResponse;
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -137,6 +156,14 @@ async function requestText(path: string): Promise<string> {
   return response.text();
 }
 
+export function createApiKeyCandidate(): string {
+  const bytes = new Uint8Array(32);
+  globalThis.crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+
+  return `wa_${hex}`;
+}
+
 export function getStoredApiKey(): string {
   return apiKey;
 }
@@ -160,9 +187,13 @@ export function getAppInfo(): Promise<AppInfoResponse> {
   return requestJson<AppInfoResponse>("/app/info");
 }
 
-export function bootstrapApp(): Promise<BootstrapAppResponse> {
+export function bootstrapApp(candidate: string): Promise<BootstrapAppResponse> {
   return requestJson<BootstrapAppResponse>("/app/bootstrap", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ apiKey: candidate }),
   });
 }
 
@@ -180,6 +211,12 @@ export function getCurrentQr(): Promise<QrResponse> {
 
 export function getQrImageSvg(): Promise<string> {
   return requestText("/whatsapp/qr/image");
+}
+
+export function pairWhatsApp(): Promise<PairingResponse> {
+  return requestJson<PairingResponse>("/whatsapp/pair", {
+    method: "POST",
+  });
 }
 
 export function sendMessage(to: string, text: string): Promise<SendMessageResponse> {

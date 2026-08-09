@@ -2,7 +2,7 @@ import { Router } from "express";
 import QRCode from "qrcode";
 import { requireApiKey } from "../middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
-import { getCurrentQr, getWhatsAppStatus, rebindWhatsApp } from "../whatsapp.js";
+import { getCurrentQr, getWhatsAppStatus, pairWhatsApp, rebindWhatsApp } from "../whatsapp.js";
 
 export const whatsappRouter = Router();
 
@@ -41,13 +41,41 @@ whatsappRouter.get("/qr/image", requireApiKey, async (_req, res) => {
   return res.type("image/svg+xml").send(svg);
 });
 
+whatsappRouter.post("/pair", requireApiKey, createRateLimit({ limit: 5, windowMs: 60_000 }), async (_req, res) => {
+  const current = getWhatsAppStatus();
+
+  if (current.binding.state === "bound") {
+    return res.status(409).json({
+      success: false,
+      error: "WHATSAPP_ALREADY_BOUND",
+      message: "This gateway is already bound to a WhatsApp account. Use Change account to replace it.",
+    });
+  }
+
+  try {
+    const result = await pairWhatsApp();
+
+    return res.json({
+      success: true,
+      message: result.status === "qr" ? "WhatsApp QR is ready to scan." : "WhatsApp pairing started.",
+      ...result,
+    });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      error: "PAIRING_FAILED",
+      message: "Failed to start WhatsApp pairing",
+    });
+  }
+});
+
 whatsappRouter.post("/rebind", requireApiKey, createRateLimit({ limit: 5, windowMs: 60_000 }), async (_req, res) => {
   try {
     const result = await rebindWhatsApp();
 
     return res.json({
       success: true,
-      message: "WhatsApp session was cleared. Scan the new QR to bind another account.",
+      message: "Previous WhatsApp binding was cleared. Scan the new QR to bind another account.",
       ...result,
     });
   } catch {

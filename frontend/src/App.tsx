@@ -17,6 +17,7 @@ import {
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bootstrapApp,
+  createApiKeyCandidate,
   getAppInfo,
   getCurrentQr,
   getHealth,
@@ -24,9 +25,11 @@ import {
   getQrImageSvg,
   getStoredApiKey,
   getWhatsAppStatus,
+  pairWhatsApp,
   rebindWhatsApp,
   sendMessage,
   setStoredApiKey,
+  type WhatsAppBinding,
   type WhatsAppStatus,
 } from "./api.js";
 import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
@@ -34,6 +37,13 @@ import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
 type HealthState = "checking" | "ok" | "error";
 type Notice = { type: "success"; message: string } | { type: "error"; message: string } | null;
 type CopiedField = "appId" | "apiKey" | null;
+
+const unboundBinding: WhatsAppBinding = {
+  state: "unbound",
+  jid: null,
+  phone: null,
+  boundAt: null,
+};
 
 const statusLabel: Record<WhatsAppStatus, string> = {
   connecting: "Connecting",
@@ -78,16 +88,27 @@ function fallbackCopy(value: string): void {
   textarea.remove();
 }
 
+function formatBoundAt(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+}
+
 export function App() {
   const [health, setHealth] = useState<HealthState>("checking");
   const [appId, setAppId] = useState("wa-gateway");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
-  const [setupRequired, setSetupRequired] = useState(false);
+  const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getStoredApiKey());
   const [showApiKey, setShowApiKey] = useState(false);
   const [copiedField, setCopiedField] = useState<CopiedField>(null);
-  const [status, setStatus] = useState<WhatsAppStatus>("connecting");
+  const [status, setStatus] = useState<WhatsAppStatus>("disconnected");
+  const [binding, setBinding] = useState<WhatsAppBinding>(unboundBinding);
   const [hasQr, setHasQr] = useState(false);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
@@ -100,22 +121,24 @@ export function App() {
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
   const isRefreshInFlight = useRef(false);
   const pollTimer = useRef<number | null>(null);
-  const statusRef = useRef<WhatsAppStatus>("connecting");
-  const hasApiAccess = useRef(false);
+  const statusRef = useRef<WhatsAppStatus>("disconnected");
 
   const canSend = useMemo(
     () => isAuthenticated && status === "connected" && Boolean(phone.trim()) && Boolean(message.trim()) && !isSending,
     [isAuthenticated, isSending, message, phone, status],
   );
 
+  const pairingInProgress =
+    isAuthenticated && binding.state === "unbound" && (status === "connecting" || status === "qr");
+  const canStartPairing = credentialSetupRequired || (isAuthenticated && binding.state === "unbound");
+
   const loadAppInfo = useCallback(async () => {
     const info = await getAppInfo();
 
     setAppId(info.appId);
     setApiKeyConfigured(info.apiKeyConfigured);
-    setSetupRequired(info.setupRequired);
+    setCredentialSetupRequired(info.credentialSetupRequired);
     setIsAuthenticated(info.authenticated);
-    hasApiAccess.current = info.authenticated;
 
     return info;
   }, []);
@@ -123,6 +146,7 @@ export function App() {
   const clearWhatsAppView = useCallback(() => {
     statusRef.current = "disconnected";
     setStatus("disconnected");
+    setBinding(unboundBinding);
     setHasQr(false);
     setQrImage(null);
   }, []);
@@ -148,13 +172,11 @@ export function App() {
           setHealth(backendHealthy ? "ok" : "error");
 
           if (!backendHealthy) {
-            hasApiAccess.current = false;
             clearWhatsAppView();
             return;
           }
         } catch {
           setHealth("error");
-          hasApiAccess.current = false;
           clearWhatsAppView();
           return;
         }
@@ -165,7 +187,6 @@ export function App() {
           info = await loadAppInfo();
         } catch {
           setHealth("error");
-          hasApiAccess.current = false;
           clearWhatsAppView();
           return;
         }
@@ -180,6 +201,7 @@ export function App() {
 
           statusRef.current = statusResult.status;
           setStatus(statusResult.status);
+          setBinding(statusResult.binding);
           setHasQr(Boolean(qrResult.qr));
           setQrImage(qrResult.qr ? await getQrImageSvg() : null);
         } catch {
@@ -290,23 +312,65 @@ export function App() {
     setNotice(null);
 
     try {
-      const result = await bootstrapApp();
+      if (!isAuthenticated) {
+        if (!credentialSetupRequired) {
+          setNotice({ type: "error", message: "Enter the existing API key before managing WhatsApp binding." });
+          return;
+        }
+
+        const candidate = getStoredApiKey() || createApiKeyCandidate();
+        setStoredApiKey(candidate);
+        setApiKeyInput(candidate);
+
+        try {
+          const result = await bootstrapApp(candidate);
+
+          if (!result.success) {
+            setNotice({ type: "error", message: result.message });
+            return;
+          }
+
+          setAppId(result.appId);
+          setApiKeyConfigured(true);
+          setCredentialSetupRequired(false);
+          setIsAuthenticated(true);
+        } catch (error) {
+          const apiError = error as { message?: string; error?: string };
+
+          if (apiError.error === "APP_ALREADY_INITIALIZED") {
+            const info = await loadAppInfo().catch(() => null);
+
+            if (!info?.authenticated) {
+              setStoredApiKey("");
+              setApiKeyInput("");
+              setNotice({
+                type: "error",
+                message: "Gateway credentials already exist. Enter the existing API key to continue.",
+              });
+              return;
+            }
+          } else {
+            setNotice({
+              type: "error",
+              message: apiError.message ?? "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.",
+            });
+            return;
+          }
+        }
+      }
+
+      const result = await pairWhatsApp();
 
       if (!result.success) {
         setNotice({ type: "error", message: result.message });
         return;
       }
 
-      setStoredApiKey(result.apiKey);
-      setApiKeyInput(result.apiKey);
-      setAppId(result.appId);
-      setApiKeyConfigured(true);
-      setSetupRequired(false);
-      setIsAuthenticated(true);
-      hasApiAccess.current = true;
+      statusRef.current = result.status;
+      setStatus(result.status);
       setNotice({
         type: "success",
-        message: "Gateway credentials generated. Copy the API key, then scan the WhatsApp QR below.",
+        message: result.status === "qr" ? "QR is ready. Scan it from WhatsApp Linked devices." : result.message,
       });
       await refresh({ showLoading: true });
     } catch (error) {
@@ -333,7 +397,6 @@ export function App() {
 
       if (!info.authenticated) {
         setStoredApiKey("");
-        hasApiAccess.current = false;
         setNotice({ type: "error", message: "The backend rejected this API key. Check it and try again." });
         return;
       }
@@ -357,7 +420,8 @@ export function App() {
         return;
       }
 
-      setNotice({ type: "success", message: "New pairing session started. Scan the new QR when it appears." });
+      setBinding(unboundBinding);
+      setNotice({ type: "success", message: "Previous account unbound. Scan the new QR when it appears." });
       statusRef.current = result.status;
       setStatus(result.status);
       setIsRebindDialogOpen(false);
@@ -413,10 +477,10 @@ export function App() {
     }
   }
 
-  const credentialHint = setupRequired
-    ? "Created automatically when you pair WhatsApp."
+  const credentialHint = credentialSetupRequired
+    ? "Created automatically once when you start the first WhatsApp pairing."
     : isAuthenticated && !apiKeyInput
-      ? "Authenticated by secure browser cookie. The raw key is not stored by the backend."
+      ? "Authenticated by secure browser cookie. The raw API key cannot be recovered from the server hash."
       : "Use this key for external REST API clients.";
 
   const connectionDescription =
@@ -424,17 +488,27 @@ export function App() {
       ? "Backend is unavailable. In local development, make sure the backend is running on port 3000."
       : health === "checking"
         ? "Checking backend before pairing."
-        : setupRequired
-          ? "Pairing creates the App ID and API key automatically, then shows the WhatsApp QR."
-          : !isAuthenticated
-            ? "Enter the existing API key above to manage this gateway."
-            : status === "connected"
-              ? "WhatsApp is connected and ready."
-              : status === "qr"
-                ? "Scan the QR below from WhatsApp → Linked devices."
-                : status === "connecting"
-                  ? "Preparing the WhatsApp session and QR."
-                  : "WhatsApp is disconnected. Start a new pairing session if you need a fresh QR.";
+        : !credentialSetupRequired && !isAuthenticated
+          ? "Enter the existing API key above to manage this gateway."
+          : binding.state === "bound"
+            ? status === "connected"
+              ? `Bound to ${binding.phone} and connected.`
+              : status === "connecting"
+                ? `Reconnecting the bound account ${binding.phone}.`
+                : `Bound to ${binding.phone}, but the session is currently disconnected.`
+            : status === "qr"
+              ? "Scan the QR below from WhatsApp → Linked devices."
+              : status === "connecting"
+                ? "Preparing a new WhatsApp pairing session."
+                : "No WhatsApp account is bound to this gateway yet.";
+
+  const pairButtonLabel = isPairing
+    ? "Preparing QR"
+    : pairingInProgress
+      ? status === "qr"
+        ? "QR ready"
+        : "Preparing QR"
+      : "Pair WhatsApp";
 
   return (
     <main className="mx-auto max-w-[920px] px-4 py-8 max-[680px]:px-3 max-[680px]:py-5">
@@ -496,7 +570,7 @@ export function App() {
           <div>
             <h2 className="mb-1 text-xl">Gateway Credentials</h2>
             <p className="m-0 text-sm text-[#667972]">
-              Generated once for this gateway and independent from WhatsApp auth.
+              Stable gateway identity. Changing the WhatsApp account does not rotate these credentials.
             </p>
           </div>
         </div>
@@ -522,14 +596,14 @@ export function App() {
                   value={apiKeyInput}
                   onChange={(event) => setApiKeyInput(event.target.value)}
                   placeholder={
-                    setupRequired
-                      ? "Generated automatically when pairing"
+                    credentialSetupRequired
+                      ? "Generated automatically on first pairing"
                       : isAuthenticated
                         ? "Hidden after setup"
                         : "Enter existing API key"
                   }
                   type={showApiKey ? "text" : "password"}
-                  readOnly={setupRequired || isAuthenticated}
+                  readOnly={credentialSetupRequired || isAuthenticated}
                   autoComplete="off"
                   aria-label="API Key"
                 />
@@ -569,22 +643,32 @@ export function App() {
       <section
         className={`${panelClass} flex items-center justify-between gap-4 max-[680px]:flex-col max-[680px]:items-start`}
       >
-        <div>
-          <h2 className="mb-2 text-xl">{setupRequired ? "Connect WhatsApp" : "WhatsApp Connection"}</h2>
+        <div className="min-w-0">
+          <h2 className="mb-2 text-xl">WhatsApp Binding</h2>
           <p className="mb-0 text-[#667972]">{connectionDescription}</p>
+          {binding.state === "bound" ? (
+            <div className="mt-3 rounded-lg bg-[#edf6f2] px-3.5 py-3 text-sm text-[#405149]">
+              <strong className="block font-mono text-[#176b55]">{binding.phone}</strong>
+              <span className="mt-1 block text-xs text-[#667972]">Bound {formatBoundAt(binding.boundAt)}</span>
+            </div>
+          ) : null}
         </div>
 
-        {setupRequired ? (
+        {canStartPairing ? (
           <button
             className={primaryButtonClass}
             type="button"
             onClick={() => void handlePair()}
-            disabled={health !== "ok" || isPairing}
+            disabled={health !== "ok" || isPairing || pairingInProgress}
           >
-            {isPairing ? <Loader2 className="animate-spin" size={18} /> : <QrCode size={18} />}
-            <span>{isPairing ? "Preparing QR" : "Pair WhatsApp"}</span>
+            {isPairing || (pairingInProgress && status === "connecting") ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <QrCode size={18} />
+            )}
+            <span>{pairButtonLabel}</span>
           </button>
-        ) : isAuthenticated ? (
+        ) : isAuthenticated && binding.state === "bound" ? (
           <button
             className={`${secondaryButtonClass} border-[#e9b7bd] text-[#842029]`}
             type="button"
@@ -592,7 +676,7 @@ export function App() {
             disabled={health !== "ok" || isRebinding}
           >
             {isRebinding ? <Loader2 className="animate-spin" size={18} /> : <Link2Off size={18} />}
-            <span>{status === "connected" ? "Change account" : "Start new pairing"}</span>
+            <span>Change account</span>
           </button>
         ) : null}
       </section>
@@ -619,7 +703,7 @@ export function App() {
           <p className="mb-0 text-[#667972]">
             {status === "connected"
               ? "Ready to send through the connected session."
-              : "Connect WhatsApp before sending."}
+              : "Bind and connect WhatsApp before sending."}
           </p>
         </div>
 

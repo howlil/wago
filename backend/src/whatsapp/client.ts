@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
+import { resolve } from "node:path";
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
@@ -20,6 +22,7 @@ import {
   refreshAccountHealth,
   updateReachoutTimeLock,
 } from "./account-health.js";
+import { bindWhatsAppAccount, clearWhatsAppBinding, getWhatsAppBinding } from "./binding-store.js";
 import {
   getConnectionStatus,
   getCurrentQrState,
@@ -56,6 +59,7 @@ export type SendTextMessageResult = {
 
 const REACHOUT_RESTRICTION_COOLDOWN_MS = 1000 * 60 * 30;
 const authDirectory = config.authDirectory;
+const credentialsFile = resolve(authDirectory, "creds.json");
 
 let socket: WASocket | undefined;
 let reconnecting = false;
@@ -185,6 +189,17 @@ export async function initializeWhatsApp(): Promise<void> {
       }
 
       if (update.connection === "open") {
+        const accountJid = nextSocket.user?.id;
+
+        if (accountJid) {
+          const binding = bindWhatsAppAccount(accountJid);
+          logger.info({
+            event: "wa.binding",
+            state: "bound",
+            account: maskIdentifier(binding.jid),
+          });
+        }
+
         markConnected();
         reconnectAttempt = resetReconnectAttempts();
         logger.info({
@@ -209,6 +224,11 @@ export async function initializeWhatsApp(): Promise<void> {
         const statusCode = (update.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output
           ?.statusCode;
         const loggedOut = statusCode === DisconnectReason.loggedOut;
+
+        if (loggedOut && !rebindInProgress) {
+          clearWhatsAppBinding();
+        }
+
         logger.warn({
           event: "wa.connection",
           state: "disconnected",
@@ -235,12 +255,37 @@ export async function initializeWhatsApp(): Promise<void> {
   }
 }
 
+export async function resumeWhatsAppSession(): Promise<void> {
+  if (!existsSync(credentialsFile)) {
+    markDisconnected();
+    return;
+  }
+
+  await initializeWhatsApp();
+}
+
 export function getWhatsAppStatus(): WhatsAppStatusSnapshot {
   return getWhatsAppStatusSnapshot();
 }
 
 export function getCurrentQr(): { qr: string | null; status: WhatsAppStatus } {
   return getCurrentQrState();
+}
+
+export async function pairWhatsApp(): Promise<{ status: WhatsAppStatus }> {
+  if (getWhatsAppBinding().state === "bound") {
+    return { status: getConnectionStatus() };
+  }
+
+  const currentStatus = getConnectionStatus();
+
+  if (reconnecting || currentStatus === "connecting" || currentStatus === "qr") {
+    return { status: currentStatus };
+  }
+
+  await initializeWhatsApp();
+
+  return { status: getConnectionStatus() };
 }
 
 export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
@@ -253,6 +298,7 @@ export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
   clearReconnectTimer();
   socketGeneration += 1;
   socket = undefined;
+  clearWhatsAppBinding();
   markConnecting();
 
   try {

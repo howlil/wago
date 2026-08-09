@@ -14,6 +14,7 @@ const dataDirectory =
 const settingsFile = resolve(dataDirectory, "app-settings.json");
 const envApiKey = process.env.API_KEY?.trim();
 const envCorsOrigin = process.env.CORS_ORIGIN?.trim();
+const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 
 type ApiKeySource = "env" | "generated" | "unset";
 
@@ -23,6 +24,10 @@ type PersistedSettings = {
   apiKeyHash?: string;
   generatedAt?: string;
 };
+
+export type BootstrapApiKeyResult =
+  | { success: true; appId: string; apiKey: string; recovered: boolean }
+  | { success: false; error: "APP_ALREADY_INITIALIZED" | "INVALID_API_KEY"; message: string };
 
 function readSettings(): PersistedSettings {
   if (!existsSync(settingsFile)) {
@@ -79,17 +84,40 @@ export const config = {
   logLevel: nodeEnv === "production" ? "info" : "debug",
 };
 
-export function bootstrapApiKey():
-  | { success: true; appId: string; apiKey: string }
-  | { success: false; message: string } {
+export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult {
+  const candidate = requestedApiKey?.trim();
+
+  if (candidate && !generatedApiKeyPattern.test(candidate)) {
+    return {
+      success: false,
+      error: "INVALID_API_KEY",
+      message: "Generated API keys must use the wa_ prefix and contain at least 32 bytes of random entropy.",
+    };
+  }
+
+  if (
+    candidate &&
+    config.apiKeySource === "generated" &&
+    config.apiKeyHash &&
+    hashApiKey(candidate) === config.apiKeyHash
+  ) {
+    return {
+      success: true,
+      appId: config.appId,
+      apiKey: candidate,
+      recovered: true,
+    };
+  }
+
   if (config.apiKey || config.apiKeyHash) {
     return {
       success: false,
+      error: "APP_ALREADY_INITIALIZED",
       message: "This app is already initialized. Use the existing API key or auth cookie.",
     };
   }
 
-  const apiKey = generateApiKey();
+  const apiKey = candidate || generateApiKey();
   const apiKeyHash = hashApiKey(apiKey);
 
   writeSettings({
@@ -108,5 +136,6 @@ export function bootstrapApiKey():
     success: true,
     appId: config.appId,
     apiKey,
+    recovered: false,
   };
 }

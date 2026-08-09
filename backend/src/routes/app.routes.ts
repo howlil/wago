@@ -5,27 +5,34 @@ import { requestHasValidApiKey } from "../middleware/auth.js";
 export const appRouter = Router();
 
 appRouter.get("/info", (req, res) => {
+  const credentialSetupRequired = !config.apiKey && !config.apiKeyHash;
+
   res.json({
     success: true,
     appId: config.appId,
     apiKeyRequired: true,
-    apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
+    apiKeyConfigured: !credentialSetupRequired,
     apiKeySource: config.apiKeySource,
     authenticated: requestHasValidApiKey(req),
-    setupRequired: !config.apiKey && !config.apiKeyHash,
+    credentialSetupRequired,
+    setupRequired: credentialSetupRequired,
   });
 });
 
 appRouter.post("/bootstrap", (req, res) => {
-  if (config.apiKey || config.apiKeyHash) {
-    return res.status(409).json({
+  const requestedApiKey = (req.body as { apiKey?: unknown } | undefined)?.apiKey;
+
+  if (requestedApiKey !== undefined && typeof requestedApiKey !== "string") {
+    return res.status(400).json({
       success: false,
-      error: "APP_ALREADY_INITIALIZED",
-      message: "This app is already initialized. Use the existing API key or auth cookie.",
+      error: "INVALID_API_KEY",
+      message: "apiKey must be a string when provided.",
     });
   }
 
-  if (!config.allowWebBootstrap) {
+  const hasCredential = Boolean(config.apiKey || config.apiKeyHash);
+
+  if (!config.allowWebBootstrap && !hasCredential) {
     return res.status(403).json({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
@@ -41,14 +48,10 @@ appRouter.post("/bootstrap", (req, res) => {
     });
   }
 
-  const result = bootstrapApiKey();
+  const result = bootstrapApiKey(requestedApiKey);
 
   if (!result.success) {
-    return res.status(409).json({
-      success: false,
-      error: "APP_ALREADY_INITIALIZED",
-      message: result.message,
-    });
+    return res.status(result.error === "INVALID_API_KEY" ? 400 : 409).json(result);
   }
 
   res.cookie(config.authCookieName, result.apiKey, {
@@ -58,10 +61,13 @@ appRouter.post("/bootstrap", (req, res) => {
     secure: config.authCookieSecure,
   });
 
-  return res.status(201).json({
+  return res.status(result.recovered ? 200 : 201).json({
     success: true,
     appId: result.appId,
     apiKey: result.apiKey,
-    message: "Gateway credentials generated. Copy the API key and continue with WhatsApp pairing.",
+    recovered: result.recovered,
+    message: result.recovered
+      ? "Gateway credentials recovered for this browser session."
+      : "Gateway credentials generated. Continue with WhatsApp pairing.",
   });
 });

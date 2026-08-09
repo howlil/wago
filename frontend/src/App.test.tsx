@@ -2,8 +2,18 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
-import { bootstrapApp, getAppInfo, getCurrentQr, getHealth, setStoredApiKey } from "./api.js";
+import {
+  bootstrapApp,
+  createApiKeyCandidate,
+  getAppInfo,
+  getCurrentQr,
+  getHealth,
+  pairWhatsApp,
+  setStoredApiKey,
+} from "./api.js";
 import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
+
+const generatedApiKey = `wa_${"a".repeat(64)}`;
 
 vi.mock("./api.js", () => ({
   getAppInfo: vi.fn(async () => ({
@@ -13,18 +23,21 @@ vi.mock("./api.js", () => ({
     apiKeyConfigured: true,
     apiKeySource: "generated",
     authenticated: true,
+    credentialSetupRequired: false,
     setupRequired: false,
   })),
-  bootstrapApp: vi.fn(async () => ({
+  bootstrapApp: vi.fn(async (candidate: string) => ({
     success: true,
     appId: "wa-gateway-test",
-    apiKey: "wa_test",
+    apiKey: candidate,
+    recovered: false,
     message: "App initialized",
   })),
+  createApiKeyCandidate: vi.fn(() => generatedApiKey),
   getCurrentQr: vi.fn(async () => ({
     success: true,
     qr: null,
-    status: "connecting",
+    status: "connected",
   })),
   getHealth: vi.fn(async () => ({ status: "ok" })),
   getMessageStatus: vi.fn(),
@@ -32,7 +45,18 @@ vi.mock("./api.js", () => ({
   getStoredApiKey: vi.fn(() => ""),
   getWhatsAppStatus: vi.fn(async () => ({
     success: true,
-    status: "connecting",
+    status: "connected",
+    binding: {
+      state: "bound",
+      jid: "6281234567890@s.whatsapp.net",
+      phone: "6281234567890",
+      boundAt: "2026-08-10T00:00:00.000Z",
+    },
+  })),
+  pairWhatsApp: vi.fn(async () => ({
+    success: true,
+    message: "Pairing started",
+    status: "qr",
   })),
   rebindWhatsApp: vi.fn(async () => ({
     success: true,
@@ -57,11 +81,11 @@ afterEach(() => {
 });
 
 describe("App pairing flow", () => {
-  it("opens the new pairing dialog while authenticated", async () => {
+  it("opens the change-account dialog for an existing binding", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    const openButton = await screen.findByRole("button", { name: /start new pairing/i });
+    const openButton = await screen.findByRole("button", { name: /change account/i });
     expect((openButton as HTMLButtonElement).disabled).toBe(false);
 
     await user.click(openButton);
@@ -96,14 +120,15 @@ describe("App pairing flow", () => {
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("generates credentials automatically when the user starts first pairing", async () => {
-    vi.mocked(getAppInfo).mockResolvedValue({
+  it("generates credentials first and then starts WhatsApp pairing", async () => {
+    vi.mocked(getAppInfo).mockResolvedValueOnce({
       success: true,
       appId: "wa-gateway-test",
       apiKeyRequired: true,
       apiKeyConfigured: false,
       apiKeySource: "unset",
       authenticated: false,
+      credentialSetupRequired: true,
       setupRequired: true,
     });
     const user = userEvent.setup();
@@ -113,22 +138,25 @@ describe("App pairing flow", () => {
     await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
 
     await waitFor(() => {
-      expect(bootstrapApp).toHaveBeenCalledTimes(1);
-      expect(setStoredApiKey).toHaveBeenCalledWith("wa_test");
+      expect(createApiKeyCandidate).toHaveBeenCalledTimes(1);
+      expect(setStoredApiKey).toHaveBeenCalledWith(generatedApiKey);
+      expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey);
+      expect(pairWhatsApp).toHaveBeenCalledTimes(1);
     });
 
-    expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe("wa_test");
+    expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe(generatedApiKey);
     expect(screen.getAllByRole("button", { name: /^copy$/i }).length).toBeGreaterThanOrEqual(2);
   });
 
   it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {
-    vi.mocked(getAppInfo).mockResolvedValue({
+    vi.mocked(getAppInfo).mockResolvedValueOnce({
       success: true,
       appId: "wa-gateway-test",
       apiKeyRequired: true,
       apiKeyConfigured: true,
       apiKeySource: "generated",
       authenticated: false,
+      credentialSetupRequired: false,
       setupRequired: false,
     });
 

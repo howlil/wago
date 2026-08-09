@@ -1,5 +1,5 @@
 import type { Server } from "node:http";
-import { initializeWhatsApp, shutdownWhatsApp } from "../whatsapp.js";
+import { resumeWhatsAppSession, shutdownWhatsApp } from "../whatsapp.js";
 import { logger } from "./logger.js";
 
 export type LifecycleDependencies = {
@@ -7,7 +7,7 @@ export type LifecycleDependencies = {
   shutdownWhatsApp: () => Promise<void>;
 };
 
-export function startWhatsAppInBackground(initialize: () => Promise<void> = initializeWhatsApp): void {
+export function startWhatsAppInBackground(initialize: () => Promise<void> = resumeWhatsAppSession): void {
   void initialize().catch((error: unknown) => {
     logger.error({ event: "wa.start_failed", error }, "Failed to initialize WhatsApp");
   });

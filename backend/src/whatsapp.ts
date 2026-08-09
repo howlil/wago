@@ -3,7 +3,9 @@ export {
   getMessageStatus,
   getWhatsAppStatus,
   initializeWhatsApp,
+  pairWhatsApp,
   rebindWhatsApp,
+  resumeWhatsAppSession,
   type SendTextMessageOptions,
   type SendTextMessageResult,
   sendTextMessage,
@@ -12,4 +14,5 @@ export {
   type WhatsAppStatusSnapshot,
 } from "./whatsapp/client.js";
 
+export type { WhatsAppBinding } from "./whatsapp/binding-store.js";
 export type { MessageDeliveryStatus, StoredMessageStatus } from "./whatsapp/message-status-store.js";
