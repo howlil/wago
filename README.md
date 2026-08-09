@@ -1,48 +1,325 @@
-# WhatsApp Gateway
+# Wago Simple
 
-Lightweight WhatsApp Gateway MVP built with Node.js, TypeScript, Express, and Baileys.
+[![CI](https://github.com/howlil/wago-simple/actions/workflows/ci.yml/badge.svg)](https://github.com/howlil/wago-simple/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/howlil/wago-simple/actions/workflows/codeql.yml/badge.svg)](https://github.com/howlil/wago-simple/actions/workflows/codeql.yml)
+[![Container](https://github.com/howlil/wago-simple/actions/workflows/release-container.yml/badge.svg)](https://github.com/howlil/wago-simple/actions/workflows/release-container.yml)
+[![License](https://img.shields.io/github/license/howlil/wago-simple)](LICENSE)
+
+A lightweight, self-hosted, single-account WhatsApp gateway with a small HTTP API and web dashboard.
+
+Wago Simple is built with **Node.js**, **TypeScript**, **Express**, **React**, and **Baileys**, and is distributed as a single Docker image for straightforward self-hosting.
+
+> [!IMPORTANT]
+> Wago Simple uses Baileys, an unofficial WhatsApp Web client. It is not affiliated with, endorsed by, or supported by WhatsApp or Meta. Using unofficial clients may be subject to WhatsApp technical or policy enforcement. This project does not guarantee account safety or ban prevention.
+
+## Overview
+
+Wago Simple intentionally keeps a narrow scope: one WhatsApp account, one running gateway instance, persistent local auth state, and a small API for controlled outbound messaging.
+
+It is designed for self-hosted integrations where recipients are explicitly allowed before messages can be sent. It is **not** intended to be a bulk sender, campaign platform, multi-tenant SaaS, scraping tool, or anti-detection system.
+
+### Features
+
+- Single WhatsApp account per Wago instance
+- QR-based WhatsApp pairing
+- REST API for text messages and message status
+- Web dashboard for session status, QR pairing, and manual sending
+- Recipient allowlist and opt-out state
+- API-key authentication for protected endpoints
+- Idempotency support for outbound requests
+- Built-in account, recipient, and new-chat safety limits
+- Persistent WhatsApp auth and application settings
+- Structured JSON logging
+- Health and readiness endpoints
+- Hardened production Docker Compose configuration
+- Multi-architecture container builds for `linux/amd64` and `linux/arm64`
+- CI, CodeQL, SBOM, and build provenance in GitHub Actions
 
 ## Support Boundary
 
-Supported:
+| Supported | Not supported |
+| --- | --- |
+| One WhatsApp account | Multiple WhatsApp sessions |
+| One running Wago instance | Multiple replicas sharing one auth directory |
+| Text message sending | Bulk messaging or campaigns |
+| Explicit recipient allowlist | Number scraping or enumeration |
+| Self-hosted Docker deployment | Multi-tenant SaaS architecture |
+| Reverse proxy / PaaS routing | Anti-detection or restriction bypass techniques |
+| Persistent filesystem auth | Horizontal scaling without session redesign |
 
-- single WhatsApp account
-- single Wago process/container
-- Docker self-hosting with one persistent data volume
-- text message sending through the API
-- recipient consent, opt-out, idempotency, and outbound safety limits
-- reverse proxy or PaaS routing in front of the container
+## Architecture
 
-Unsupported:
-
-- multiple running replicas sharing one auth directory
-- multi-tenant SaaS or multiple WhatsApp sessions
-- bulk messaging, campaigns, scraping, or number enumeration
-- guaranteed ban prevention
-- anti-detection behavior such as fake typing, proxy rotation, fingerprint rotation, or message mutation
-- horizontal scaling without redesigning session ownership and auth storage
-
-This project uses Baileys, an unofficial WhatsApp Web client. Wago is not affiliated with WhatsApp and cannot guarantee that an account will avoid WhatsApp technical or policy enforcement. For official business messaging requirements, evaluate WhatsApp Cloud API.
-
-## Backend
-
-```bash
-cd backend
-pnpm install
-pnpm run dev
+```mermaid
+flowchart LR
+    Client[API Client / Browser] -->|HTTP| App[Wago API + Dashboard]
+    App --> Policy[Outbound Policy]
+    Policy --> Baileys[Baileys]
+    Baileys --> WA[WhatsApp Web]
+    App --> Data[(Persistent /app/data)]
 ```
 
-## Frontend
+The frontend and backend are built into one production image. Express serves both the API and the compiled React application from the same HTTP server.
+
+## Quick Start
+
+### Requirements
+
+For production deployment:
+
+- Docker Engine
+- Docker Compose v2
+- A reverse proxy or PaaS providing HTTPS for public deployments
+
+### 1. Clone and configure
 
 ```bash
-cd frontend
-pnpm install
-pnpm run dev
+git clone https://github.com/howlil/wago-simple.git
+cd wago-simple
+cp .env.production.example .env
 ```
 
-## Quality Commands
+At minimum, review these values in `.env`:
 
-From the repository root:
+```env
+WAGO_VERSION=latest
+API_KEY=replace-with-a-long-random-secret
+CORS_ORIGIN=https://wago.example.com
+```
+
+Generate a strong API key with your preferred secret generator, for example:
+
+```bash
+openssl rand -hex 32
+```
+
+Production startup fails fast when the API key is missing, secure cookies are disabled, web bootstrap is enabled, or `CORS_ORIGIN=*` is used.
+
+### 2. Start Wago
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Check the service:
+
+```bash
+curl http://127.0.0.1:3000/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+By default, Docker Compose binds Wago to `127.0.0.1:3000`. Put Caddy, Traefik, Nginx, Cloudflare Tunnel, or your PaaS router in front of it when exposing the service publicly.
+
+### 3. Pair WhatsApp
+
+Open the dashboard at your configured public origin, enter the configured API key, and scan the QR code from:
+
+**WhatsApp → Linked devices → Link a device**
+
+The WhatsApp session is persisted under `/app/data/auth` inside the Docker volume, so ordinary container restarts do not require pairing again.
+
+### 4. Allow a recipient
+
+Outbound messages require the recipient to be explicitly allowed first.
+
+```bash
+export WAGO_URL="https://wago.example.com"
+export WAGO_API_KEY="your-api-key"
+
+curl -X POST "$WAGO_URL/recipients/allow" \
+  -H "Authorization: Bearer $WAGO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"6281234567890","label":"Example recipient"}'
+```
+
+Phone numbers should use international format without `+`, for example `6281234567890`. Numbers beginning with `0` are normalized using `DEFAULT_COUNTRY_CODE`, which defaults to `62`.
+
+### 5. Send a message
+
+```bash
+curl -X POST "$WAGO_URL/messages/send" \
+  -H "Authorization: Bearer $WAGO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: example-001" \
+  -d '{"to":"6281234567890","text":"Hello from Wago Simple"}'
+```
+
+A successful request returns HTTP `202` after Baileys accepts the outbound request. A `pending` result is not a delivery or read receipt.
+
+Message status can be queried while retained in memory:
+
+```bash
+curl "$WAGO_URL/messages/<message-id>/status" \
+  -H "Authorization: Bearer $WAGO_API_KEY"
+```
+
+## API
+
+Protected endpoints accept:
+
+```http
+Authorization: Bearer <API_KEY>
+```
+
+The browser dashboard can also authenticate using the secure HTTP-only cookie created during bootstrap in non-production development flows.
+
+| Method | Endpoint | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/health` | Public | Process health check |
+| `GET` | `/ready` | Public | Application readiness metadata |
+| `GET` | `/app/info` | Public | App ID and authentication state |
+| `POST` | `/app/bootstrap` | Conditional | Initial development bootstrap |
+| `GET` | `/recipients` | API key | List recipient policy records |
+| `POST` | `/recipients/allow` | API key | Allow a recipient |
+| `POST` | `/recipients/:phone/opt-out` | API key | Mark a recipient as opted out |
+| `GET` | `/whatsapp/status` | API key | WhatsApp connection status |
+| `GET` | `/whatsapp/qr` | API key | Current QR payload/status |
+| `GET` | `/whatsapp/qr/image` | API key | Current QR as SVG |
+| `POST` | `/whatsapp/rebind` | API key | Clear auth state and pair another account |
+| `POST` | `/messages/send` | API key | Send a text message |
+| `GET` | `/messages/:id/status` | API key | Read retained in-memory message status |
+
+## Outbound Safety Policy
+
+Wago applies application-level controls before calling Baileys. These controls are intended to prevent accidental or uncontrolled outbound behavior; they are not a mechanism for bypassing WhatsApp enforcement.
+
+Current controls include:
+
+- recipient must be explicitly allowed
+- opted-out recipients are blocked
+- duplicate idempotency keys are rejected
+- account-level send limits
+- per-recipient send limits
+- new-chat initiation limits
+- WhatsApp account-health/reach-out restrictions when reported by the client
+
+The policy state for rate limiting and idempotency is currently in memory. Restarting the process resets that transient state.
+
+## Configuration
+
+Production defaults are defined by `docker-compose.yml` and `.env.production.example`.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `APP_ID` | `wa-gateway-prod` | Logical instance identifier |
+| `WAGO_VERSION` | `latest` in Compose | Container tag to deploy |
+| `API_KEY` | — | Bearer token for protected endpoints |
+| `CORS_ORIGIN` | required | Public browser origin allowed by CORS |
+| `BIND_ADDRESS` | `127.0.0.1` | Host interface used by Docker port publishing |
+| `HOST_PORT` | `3000` | Host-side HTTP port |
+| `BODY_LIMIT` | `32kb` | Maximum JSON request body size |
+| `DEFAULT_COUNTRY_CODE` | `62` | Country code used for local phone numbers |
+| `TRUST_PROXY` | `false` | Trust the first reverse proxy hop |
+| `WA_VERSION_MODE` | `default` | WhatsApp Web version strategy |
+| `REQUEST_LOGGING` | `true` | Enable structured request logs |
+| `LOG_LEVEL` | `info` | Application log level |
+| `AUTH_COOKIE_SECURE` | `true` | Require secure browser auth cookies |
+| `ALLOW_WEB_BOOTSTRAP` | `false` | Allow one-time UI API-key generation outside production |
+
+Set `TRUST_PROXY=true` only when Wago is actually behind a trusted reverse proxy that controls forwarded client headers.
+
+`WA_VERSION_MODE=default` uses the WhatsApp Web version expected by the installed Baileys release. `live` should be treated as a troubleshooting option rather than a normal production setting.
+
+## Docker and Persistence
+
+The production Compose service includes several hardening defaults:
+
+- read-only root filesystem
+- all Linux capabilities dropped
+- `no-new-privileges`
+- temporary `/tmp` filesystem
+- named persistent data volume
+- loopback-only host binding by default
+- container health check
+- `restart: unless-stopped`
+
+Persistent application data is stored in the named Docker volume `wago_data` and mounted at `/app/data`.
+
+Important paths:
+
+```text
+/app/data/auth                 WhatsApp authentication state
+/app/data/app-settings.json    Runtime application settings
+```
+
+Treat the auth directory like a private key. Never commit it, publish it, or share it between multiple running replicas.
+
+### Backup
+
+```bash
+docker run --rm \
+  -v wago_data:/data \
+  -v "$PWD:/backup" \
+  alpine \
+  tar czf /backup/wago_data-backup.tgz -C /data .
+```
+
+### Restore
+
+Restore only into the intended Wago data volume:
+
+```bash
+docker run --rm \
+  -v wago_data:/data \
+  -v "$PWD:/backup" \
+  alpine \
+  sh -c "cd /data && tar xzf /backup/wago_data-backup.tgz"
+```
+
+Do not use `docker compose down -v` during normal upgrades. The `-v` flag removes the persistent volume and may delete the paired WhatsApp session.
+
+## Upgrading and Rollback
+
+Pull the configured image and recreate the service:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+For reproducible production deployments, pin `WAGO_VERSION` to a release tag instead of `latest` once versioned releases are available.
+
+Rollback by restoring the previous `WAGO_VERSION` and running the same commands.
+
+## Container Images
+
+Images are published to:
+
+```text
+ghcr.io/howlil/wago-simple
+```
+
+Pushes to `main` publish:
+
+```text
+latest
+main
+sha-<short-sha>
+```
+
+Git tags matching `v*` additionally publish version-oriented tags such as:
+
+```text
+v0.1.2
+0.1.2
+0.1
+```
+
+The release workflow builds both `linux/amd64` and `linux/arm64` images and requests SBOM and provenance attestations.
+
+## Local Development
+
+Requirements:
+
+- Node.js 26
+- pnpm 11.18.0
+
+Install the workspace and run the quality gates:
 
 ```bash
 pnpm install
@@ -51,179 +328,72 @@ pnpm test
 pnpm build
 ```
 
-`pnpm check` runs Biome formatting/import/lint checks for backend and frontend source. Use `pnpm check:fix` for safe automatic fixes.
-GitHub Actions runs the same root quality commands, a Docker image build, and CodeQL analysis on pushes and pull requests to `main`.
-
-If the backend is running on another port:
+Useful commands:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:3100 pnpm run dev
+pnpm check:fix
+pnpm --dir backend test
+pnpm --dir frontend test
 ```
 
-On first run, open the frontend and click `Initialize app`. The backend generates an API key, stores only its SHA-256 digest in `backend/data/app-settings.json`, sets an auth cookie for the browser, and the UI can then bind WhatsApp. Copy the raw key at setup time if an external API client needs it. You can still set `API_KEY` manually for locked-down deployments.
-
-Default server:
-
-```text
-http://localhost:3000
-```
-
-Available endpoints:
-
-```text
-GET  /health
-GET  /ready
-GET  /app/info
-POST /app/bootstrap
-GET  /whatsapp/status
-GET  /whatsapp/qr
-GET  /whatsapp/qr/image
-POST /whatsapp/rebind
-POST /messages/send
-GET  /messages/:id/status
-```
-
-`GET /app/info` is public and returns the configured App ID plus API key status. WhatsApp and message endpoints require `Authorization: Bearer <API_KEY>`.
-`POST /app/bootstrap` is available only when `ALLOW_WEB_BOOTSTRAP=true` and the app has no API key; after initialization it returns `409`.
-
-Open `http://localhost:3000/whatsapp/qr/image` in a browser to scan the WhatsApp login QR when authentication is required.
-
-## Production Docker
-
-This repository includes a root `Dockerfile` that builds the frontend and backend into one container. The backend serves the frontend static files and API from the same host.
-The HTTP server starts before WhatsApp finishes connecting, so `/health`, `/ready`, and the dashboard remain available while the socket is pairing or reconnecting.
-The default `docker-compose.yml` is production-oriented and uses a published image plus a named Docker volume. Use `docker-compose.dev.yml` when you want to build from local source.
-
-Required production environment:
-
-```env
-APP_ID=wa-gateway-prod
-WAGO_VERSION=v0.1.0
-API_KEY=
-DATA_DIR=/app/data
-AUTH_DIR=/app/data/auth
-ALLOW_WEB_BOOTSTRAP=false
-AUTH_COOKIE_SECURE=true
-BODY_LIMIT=32kb
-WA_VERSION_MODE=default
-TRUST_PROXY=false
-DEFAULT_COUNTRY_CODE=62
-REQUEST_LOGGING=true
-LOG_LEVEL=info
-PORT=3000
-HOST=0.0.0.0
-BIND_ADDRESS=127.0.0.1
-HOST_PORT=3000
-CORS_ORIGIN=https://your-app.example.com
-FRONTEND_DIST=/app/public
-```
-
-Production install:
+Run backend and frontend separately:
 
 ```bash
-cp .env.production.example .env
-# edit .env, set API_KEY and CORS_ORIGIN
-docker compose pull
-docker compose up -d
+pnpm --dir backend dev
+pnpm --dir frontend dev
 ```
 
-By default the production compose file binds to `127.0.0.1:${HOST_PORT:-3000}`. Put Caddy, Traefik, Nginx, or your PaaS router in front of it for public HTTPS. Set `BIND_ADDRESS=0.0.0.0` only when you intentionally want the container port exposed on every interface.
+If the backend uses a non-default URL:
 
-Run locally from source:
+```bash
+VITE_API_BASE_URL=http://localhost:3100 pnpm --dir frontend dev
+```
+
+Or build and run the local Docker development stack:
 
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-For first-run setup through the web UI, start with bootstrap enabled, initialize the app, then restart without it:
+## Security
+
+Read [SECURITY.md](SECURITY.md) before reporting a vulnerability.
+
+Do not post any of the following in public issues, discussions, screenshots, or logs:
+
+- WhatsApp auth files or `creds.json`
+- live QR codes or QR payloads
+- API keys, bearer tokens, or auth cookies
+- full phone numbers or JIDs
+- message content
+- unredacted production logs containing WhatsApp metadata
+
+For public deployments, terminate TLS in a trusted reverse proxy and keep the application port bound to loopback/private networking whenever possible.
+
+## Contributing
+
+Contributions are welcome when they stay within the project's intentionally small scope.
+
+Before opening a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md) and run:
 
 ```bash
-ALLOW_WEB_BOOTSTRAP=true docker compose -f docker-compose.dev.yml up --build
+pnpm check
+pnpm test
+pnpm build
 ```
 
-For public deployments, prefer setting `API_KEY` yourself or enable web bootstrap only while the app is private.
-When `NODE_ENV=production`, the backend fails fast unless web bootstrap is disabled, secure auth cookies are enabled, an API key or generated key exists, and `CORS_ORIGIN` is not `*`.
-Set `TRUST_PROXY=true` only when the app is behind a trusted reverse proxy that sets client IP headers.
-Phone numbers should be sent in international format, for example `6281234567890`; local numbers starting with `0` use `DEFAULT_COUNTRY_CODE` and default to `62`.
-Logs are structured JSON. Keep `LOG_LEVEL=info` in production unless debugging, and do not paste logs containing auth, QR, or message metadata into public issues.
+Pull requests should include the behavior being changed, relevant tests, verification performed, and screenshots for UI changes when applicable.
 
-If local port `3000` is occupied:
+## License
 
-```bash
-HOST_PORT=3101 docker compose -f docker-compose.dev.yml up --build
-```
+Wago Simple is available under the [MIT License](LICENSE).
 
-Build the production image directly:
+## Acknowledgements
 
-```bash
-docker build -t wa-gateway .
-docker run --rm -p 3000:3000 \
-  -e APP_ID=wa-gateway-prod \
-  -e ALLOW_WEB_BOOTSTRAP=true \
-  -e DATA_DIR=/app/data \
-  -e AUTH_DIR=/app/data/auth \
-  -v wa_data:/app/data \
-  wa-gateway
-```
+Wago Simple uses [Baileys](https://github.com/WhiskeySockets/Baileys) to communicate with WhatsApp Web.
 
-Send a message:
+## Disclaimer
 
-```bash
-curl -X POST http://localhost:3000/messages/send \
-  -H "Content-Type: application/json" \
-  -d "{\"to\":\"628xxxxxxxxxx\",\"text\":\"Hello from WhatsApp Gateway\"}"
-```
+This project is provided as-is for self-hosted integration and development use. You are responsible for how you operate it and for complying with applicable WhatsApp terms, policies, consent requirements, and local law.
 
-The send endpoint returns `status: "pending"` after Baileys accepts the outbound message request and returns a message ID. This is not a read receipt.
-Poll `GET /messages/:id/status` for the in-memory status while it is retained by the backend.
-
-Use `POST /whatsapp/rebind` or the frontend session action to clear the current WhatsApp auth files and scan a new account QR. If the app was initialized from the UI, the browser auth cookie is enough for frontend actions. The frontend can accept a Bearer API key for the current tab, but it does not persist that key in browser storage.
-Cookie-authenticated state-changing requests are rejected when their `Origin` does not match the configured `CORS_ORIGIN`.
-Ordinary shutdowns, including `docker stop`, close the Baileys socket without logging out. Rebind is the intentional unlink path.
-
-Runtime settings are stored in `backend/data/app-settings.json`; WhatsApp authentication files are stored in `backend/data/auth`. Do not commit either.
-
-`WA_VERSION_MODE=default` uses the WhatsApp Web version bundled with the installed Baileys release. Use `WA_VERSION_MODE=live` only for troubleshooting pairing/version issues; it fetches the live version once per process and reuses it for reconnects.
-
-This project intentionally uses Baileys filesystem auth state for the single-account self-hosted profile. Treat `backend/data/auth` like a private key: mount it as persistent storage, back it up carefully, and do not share it between multiple running replicas.
-Do not paste auth state, QR payloads, API keys, full phone numbers, full JIDs, message text, or raw production logs into public issues. See `SECURITY.md` for reporting guidance.
-
-Production compose stores data in the named volume `wago_data`. Upgrade by changing `WAGO_VERSION`, then run:
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-Rollback uses the same process with an older version:
-
-```env
-WAGO_VERSION=v0.1.1
-```
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-Do not run `docker compose down -v` for normal upgrades because `-v` removes `wago_data` and can delete the WhatsApp auth session.
-
-Release images are published to `ghcr.io/howlil/wago-simple` from Git tags matching `v*`, for example `v0.1.2`. Published tags include the full version tag, the minor tag such as `0.1`, and `latest`.
-
-Backup the production volume:
-
-```bash
-docker run --rm -v wago_data:/data -v "$PWD:/backup" alpine \
-  tar czf /backup/wago_data-backup.tgz -C /data .
-```
-
-Restore into an empty production volume:
-
-```bash
-docker run --rm -v wago_data:/data -v "$PWD:/backup" alpine \
-  sh -c "cd /data && tar xzf /backup/wago_data-backup.tgz"
-```
-
-## Contributing and Security
-
-Read `CONTRIBUTING.md` before opening a pull request and `SECURITY.md` before reporting sensitive issues. This project is MIT licensed.
+Wago Simple does not support spam, bulk outreach, restriction bypassing, account-ban evasion, fingerprint manipulation, proxy rotation, or other anti-detection behavior.
