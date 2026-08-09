@@ -117,7 +117,7 @@ describe("App pairing flow", () => {
       expect(setStoredApiKey).toHaveBeenCalledWith("wa_test");
     });
 
-    expect((screen.getByLabelText(/api key/i) as HTMLInputElement).value).toBe("wa_test");
+    expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe("wa_test");
     expect(screen.getAllByRole("button", { name: /^copy$/i }).length).toBeGreaterThanOrEqual(2);
   });
 
