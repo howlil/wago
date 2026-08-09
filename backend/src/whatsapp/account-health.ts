@@ -125,25 +125,26 @@ export async function checkAccountHealth(
     await refreshAccountHealth(fetcher);
   }
 
+  const now = new Date();
   const retryAt = parseDate(reachoutTimeLock?.timeEnforcementEnds);
 
-  if (reachoutTimeLock?.isActive && (!retryAt || retryAt > new Date())) {
-    return {
-      allowed: false,
-      reason: "WA_REACHOUT_RESTRICTED",
-      message: "WhatsApp reports this account is restricted from starting outbound reach-outs",
-      retryAt,
-    };
-  }
-
-  if (reachoutTimeLock?.isActive && retryAt && retryAt <= new Date()) {
+  if (reachoutTimeLock?.isActive && retryAt && retryAt <= now) {
     reachoutTimeLock = {
       ...reachoutTimeLock,
       isActive: false,
     };
   }
 
-  if (newChatCap?.capping_status === "CAPPED") {
+  if (options.isNewRecipient && reachoutTimeLock?.isActive && (!retryAt || retryAt > now)) {
+    return {
+      allowed: false,
+      reason: "WA_REACHOUT_RESTRICTED",
+      message: "WhatsApp reports this account is restricted from starting new outbound reach-outs",
+      retryAt,
+    };
+  }
+
+  if (options.isNewRecipient && newChatCap?.capping_status === "CAPPED") {
     return {
       allowed: false,
       reason: "WA_NEW_CHAT_CAPPED",

@@ -13,7 +13,7 @@ import {
   sendMessage,
   setStoredApiKey,
 } from "./api.js";
-import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
+import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
 
@@ -101,7 +101,15 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("App pairing flow", () => {
+describe("dashboard", () => {
+  it("renders feature-oriented dashboard navigation", async () => {
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Recipients" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Messaging" }).length).toBeGreaterThan(0);
+  });
+
   it("opens the change-account dialog for an existing binding", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -183,7 +191,7 @@ describe("App pairing flow", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(/enter the existing api key above/i)).toBeTruthy();
+    expect(await screen.findByText(/enter the existing api key in gateway credentials/i)).toBeTruthy();
     expect(getCurrentQr).not.toHaveBeenCalled();
   });
 
@@ -210,8 +218,8 @@ describe("App pairing flow", () => {
 
     render(<App />);
 
-    await user.type(await screen.findByPlaceholderText("628xxxxxxxxxx"), "6281275584870");
-    await user.type(screen.getByPlaceholderText("Hello"), "test");
+    await user.type(await screen.findByLabelText("Message recipient phone"), "6281275584870");
+    await user.type(screen.getByLabelText("Message text"), "test");
     await user.click(screen.getByRole("button", { name: /^send$/i }));
 
     const allowAndSend = await screen.findByRole("button", { name: /allow & send/i });

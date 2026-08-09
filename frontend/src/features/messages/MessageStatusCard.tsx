@@ -1,6 +1,12 @@
 import { CheckCircle2, Clock3, Loader2, RefreshCcw, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { getMessageStatus, type MessageStatusResponse } from "../api.js";
+import { getMessageStatus, type MessageStatusResponse } from "../../api.js";
+import {
+  cardBodyClass,
+  secondaryButtonClass,
+  sectionDescriptionClass,
+  sectionTitleClass,
+} from "../../shared/ui/classes.js";
 
 type DeliveryStatus = Extract<MessageStatusResponse, { success: true }>;
 
@@ -21,7 +27,7 @@ function statusClass(status: DeliveryStatus["status"]): string {
     return "text-[#a12d35]";
   }
 
-  return "text-[#8a5a00]";
+  return "text-[#916000]";
 }
 
 export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCardProps) {
@@ -108,42 +114,42 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
 
   const icon =
     delivery.status === "accepted" ? (
-      <CheckCircle2 size={18} />
+      <CheckCircle2 size={17} />
     ) : delivery.status === "rejected" ? (
-      <XCircle size={18} />
+      <XCircle size={17} />
     ) : (
-      <Clock3 size={18} />
+      <Clock3 size={17} />
     );
 
   return (
-    <section className="mt-4 rounded-lg border border-[#d9e3df] bg-white p-5">
+    <section className={cardBodyClass}>
       <div className="flex items-start justify-between gap-4 max-[560px]:flex-col">
         <div>
-          <h2 className="mb-1 text-xl">Last Message Status</h2>
-          <p className="m-0 text-sm text-[#667972]">
-            Tracks Baileys acceptance or rejection for the latest message. This is not a read receipt.
+          <h2 className={sectionTitleClass}>Last Message Status</h2>
+          <p className={sectionDescriptionClass}>
+            Tracks server acceptance or rejection. This is not a WhatsApp read receipt.
           </p>
         </div>
         <button
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#cdd9d5] bg-white px-3.5 text-[#1f2a32] disabled:cursor-not-allowed disabled:bg-[#eef3f1]"
+          className={secondaryButtonClass}
           type="button"
           onClick={() => void handleRefresh()}
           disabled={refreshing}
         >
-          {refreshing ? <Loader2 className="animate-spin" size={16} /> : <RefreshCcw size={16} />}
+          {refreshing ? <Loader2 className="animate-spin" size={15} /> : <RefreshCcw size={15} />}
           Refresh
         </button>
       </div>
 
-      <div className="mt-4 rounded-lg bg-[#f7faf9] p-3.5">
-        <div className={`flex items-center gap-2 font-bold ${statusClass(delivery.status)}`}>
+      <div className="mt-4 rounded-xl bg-[#f5f8f6] p-4">
+        <div className={`flex items-center gap-2 text-sm font-semibold ${statusClass(delivery.status)}`}>
           {icon}
           <span className="capitalize">{delivery.status}</span>
         </div>
-        <span className="mt-2 block break-all font-mono text-xs text-[#667972]">{messageId}</span>
-        {delivery.to ? <span className="mt-1 block text-xs text-[#667972]">To {delivery.to}</span> : null}
-        {delivery.message ? <span className="mt-1 block text-xs text-[#842029]">{delivery.message}</span> : null}
-        {error ? <span className="mt-1 block text-xs text-[#842029]">{error}</span> : null}
+        <span className="mt-2 block break-all font-mono text-[11px] text-[#718179]">{messageId}</span>
+        {delivery.to ? <span className="mt-1 block text-xs text-[#718179]">To {delivery.to}</span> : null}
+        {delivery.message ? <span className="mt-1 block text-xs text-[#9c2932]">{delivery.message}</span> : null}
+        {error ? <span className="mt-1 block text-xs text-[#9c2932]">{error}</span> : null}
       </div>
     </section>
   );

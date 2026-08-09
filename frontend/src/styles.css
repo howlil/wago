@@ -5,13 +5,22 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply m-0 min-h-screen min-w-80 bg-[#f4f7f6] text-[#1f2a32] antialiased;
+    @apply m-0 min-h-screen min-w-80 bg-[#f4f7f5] text-[#17231f] antialiased;
   }
 
   button,
   input,
   textarea {
     font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
   }
 }
