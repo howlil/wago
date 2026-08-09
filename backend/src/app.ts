@@ -6,6 +6,7 @@ import helmet from "helmet";
 import { config } from "./config/index.js";
 import { validateRuntimeConfig } from "./config/validation.js";
 import { requestLogger } from "./middleware/request-logger.js";
+import { activityRouter } from "./routes/activity.routes.js";
 import { appRouter } from "./routes/app.routes.js";
 import { messageRouter } from "./routes/message.routes.js";
 import { recipientRouter } from "./routes/recipient.routes.js";
@@ -80,6 +81,7 @@ app.get("/ready", (_req, res) => {
 });
 
 app.use("/app", appRouter);
+app.use("/activity", activityRouter);
 app.use("/recipients", recipientRouter);
 app.use("/whatsapp", whatsappRouter);
 app.use("/messages", messageRouter);

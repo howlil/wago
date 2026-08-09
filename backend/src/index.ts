@@ -1,3 +1,4 @@
+import { recordActivity } from "./activity/store.js";
 import { app } from "./app.js";
 import { logger } from "./infrastructure/logger.js";
 import { createShutdownHandler, startWhatsAppInBackground } from "./infrastructure/server-lifecycle.js";
@@ -11,6 +12,14 @@ async function start(): Promise<void> {
       event: "app.listen",
       host,
       port,
+    });
+
+    void recordActivity({
+      level: "info",
+      category: "system",
+      code: "gateway.started",
+      title: "Gateway started",
+      description: "The Wago backend started successfully and is ready to serve the dashboard and API.",
     });
   });
 

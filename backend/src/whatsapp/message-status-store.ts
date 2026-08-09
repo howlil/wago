@@ -1,3 +1,5 @@
+import { recordActivity } from "../activity/store.js";
+
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
 
 export type StoredMessageStatus = {
@@ -36,6 +38,18 @@ export function rememberPendingMessageStatus(input: { id: string; to: string }):
     status: "pending",
     updatedAt: nowIso(),
   });
+
+  void recordActivity({
+    level: "info",
+    category: "messaging",
+    code: "message.queued",
+    title: "Message queued",
+    description: "The gateway accepted an outbound message and is waiting for WhatsApp acknowledgement.",
+    metadata: {
+      messageId: input.id,
+      targetJid: input.to,
+    },
+  });
 }
 
 export function updateMessageStatus(messageId: string, update: Partial<Omit<StoredMessageStatus, "id" | "to">>): void {
@@ -45,11 +59,46 @@ export function updateMessageStatus(messageId: string, update: Partial<Omit<Stor
     return;
   }
 
-  rememberMessageStatus({
+  const next = {
     ...existing,
     ...update,
     updatedAt: nowIso(),
-  });
+  };
+  rememberMessageStatus(next);
+
+  if (next.status === existing.status) {
+    return;
+  }
+
+  if (next.status === "accepted") {
+    void recordActivity({
+      level: "success",
+      category: "messaging",
+      code: "message.accepted",
+      title: "Message accepted by WhatsApp",
+      description: "WhatsApp acknowledged the outbound message.",
+      metadata: {
+        messageId,
+        targetJid: existing.to,
+      },
+    });
+    return;
+  }
+
+  if (next.status === "rejected") {
+    void recordActivity({
+      level: "warning",
+      category: "messaging",
+      code: "message.rejected",
+      title: "Message rejected by WhatsApp",
+      description: "WhatsApp reported that the outbound message could not be accepted.",
+      metadata: {
+        messageId,
+        targetJid: existing.to,
+        reason: next.error ?? null,
+      },
+    });
+  }
 }
 
 export function getMessageStatus(messageId: string): StoredMessageStatus | null {

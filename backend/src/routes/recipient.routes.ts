@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { recordActivity } from "../activity/store.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { allowRecipient, listRecipients, optOutRecipient } from "../recipients/store.js";
 
@@ -35,6 +36,18 @@ recipientRouter.post("/allow", requireApiKey, async (req, res) => {
   try {
     const recipient = await allowRecipient(phone, typeof label === "string" ? label : undefined);
 
+    void recordActivity({
+      level: "success",
+      category: "recipient",
+      code: "recipient.allowed",
+      title: "Recipient allowed",
+      description: "This recipient can now receive outbound messages from the gateway.",
+      metadata: {
+        recipientJid: recipient.jid,
+        label: recipient.label ?? null,
+      },
+    });
+
     return res.status(201).json({
       success: true,
       recipient,
@@ -65,6 +78,18 @@ recipientRouter.post("/:phone/opt-out", requireApiKey, async (req, res) => {
 
   try {
     const recipient = await optOutRecipient(phone);
+
+    void recordActivity({
+      level: "warning",
+      category: "recipient",
+      code: "recipient.opted_out",
+      title: "Recipient opted out",
+      description: "Outbound messages to this recipient are blocked until permission is explicitly restored.",
+      metadata: {
+        recipientJid: recipient.jid,
+        label: recipient.label ?? null,
+      },
+    });
 
     return res.json({
       success: true,

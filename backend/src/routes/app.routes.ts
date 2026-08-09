@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { recordActivity } from "../activity/store.js";
 import { bootstrapApiKey, config } from "../config/index.js";
 import { requestHasValidApiKey } from "../middleware/auth.js";
 
@@ -59,6 +60,16 @@ appRouter.post("/bootstrap", (req, res) => {
     maxAge: 1000 * 60 * 60 * 24 * 180,
     sameSite: "lax",
     secure: config.authCookieSecure,
+  });
+
+  void recordActivity({
+    level: "success",
+    category: "security",
+    code: result.recovered ? "gateway.credentials.recovered" : "gateway.initialized",
+    title: result.recovered ? "Gateway access restored" : "Gateway initialized",
+    description: result.recovered
+      ? "The browser session recovered access using the existing gateway credentials."
+      : "Gateway credentials were created successfully. WhatsApp can now be paired.",
   });
 
   return res.status(result.recovered ? 200 : 201).json({

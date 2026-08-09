@@ -1,5 +1,6 @@
 import { Router } from "express";
 import QRCode from "qrcode";
+import { recordActivity } from "../activity/store.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
 import { getCurrentQr, getWhatsAppStatus, pairWhatsApp, rebindWhatsApp } from "../whatsapp.js";
@@ -46,6 +47,16 @@ whatsappRouter.post("/pair", requireApiKey, createRateLimit({ limit: 5, windowMs
     const before = getWhatsAppStatus();
     const result = await pairWhatsApp();
 
+    if (before.binding.state === "unbound") {
+      void recordActivity({
+        level: "info",
+        category: "connection",
+        code: "whatsapp.pairing.started",
+        title: "Pairing started",
+        description: "A WhatsApp linking session was started. Scan the QR code when it becomes available.",
+      });
+    }
+
     return res.json({
       success: true,
       message:
@@ -57,6 +68,14 @@ whatsappRouter.post("/pair", requireApiKey, createRateLimit({ limit: 5, windowMs
       ...result,
     });
   } catch {
+    void recordActivity({
+      level: "error",
+      category: "connection",
+      code: "whatsapp.pairing.failed",
+      title: "Pairing failed",
+      description: "The gateway could not start a WhatsApp pairing session.",
+    });
+
     return res.status(500).json({
       success: false,
       error: "PAIRING_FAILED",
@@ -69,12 +88,28 @@ whatsappRouter.post("/rebind", requireApiKey, createRateLimit({ limit: 5, window
   try {
     const result = await rebindWhatsApp();
 
+    void recordActivity({
+      level: "warning",
+      category: "connection",
+      code: "whatsapp.rebind.started",
+      title: "Account change started",
+      description: "The previous WhatsApp session was cleared. A new account must be linked with QR pairing.",
+    });
+
     return res.json({
       success: true,
       message: "Previous WhatsApp binding was cleared. Scan the new QR to bind another account.",
       ...result,
     });
   } catch {
+    void recordActivity({
+      level: "error",
+      category: "connection",
+      code: "whatsapp.rebind.failed",
+      title: "Account change failed",
+      description: "The gateway could not clear and restart the WhatsApp session.",
+    });
+
     return res.status(500).json({
       success: false,
       error: "REBIND_FAILED",

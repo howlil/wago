@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { recordActivity } from "../activity/store.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
 import {
@@ -42,6 +43,19 @@ messageRouter.post("/send", requireApiKey, createRateLimit({ limit: 30, windowMs
     });
   } catch (error) {
     if (isOutboundPolicyError(error)) {
+      void recordActivity({
+        level: "warning",
+        category: "messaging",
+        code: "message.policy_blocked",
+        title: "Message blocked by policy",
+        description: error.message,
+        metadata: {
+          targetPhone: to,
+          reason: error.name,
+          retryAt: (error as Error & { retryAt?: Date }).retryAt?.toISOString(),
+        },
+      });
+
       return res.status(getOutboundPolicyHttpStatus(error.name as OutboundPolicyBlockReason)).json({
         success: false,
         error: error.name,
@@ -50,6 +64,15 @@ messageRouter.post("/send", requireApiKey, createRateLimit({ limit: 30, windowMs
     }
 
     if (error instanceof Error && error.name === "WHATSAPP_NOT_CONNECTED") {
+      void recordActivity({
+        level: "warning",
+        category: "messaging",
+        code: "message.not_connected",
+        title: "Message could not be sent",
+        description: "WhatsApp is not connected. Reconnect the session before sending again.",
+        metadata: { targetPhone: to },
+      });
+
       return res.status(503).json({
         success: false,
         error: "WHATSAPP_NOT_CONNECTED",
@@ -58,6 +81,15 @@ messageRouter.post("/send", requireApiKey, createRateLimit({ limit: 30, windowMs
     }
 
     if (error instanceof Error && error.name === "PHONE_NOT_ON_WHATSAPP") {
+      void recordActivity({
+        level: "warning",
+        category: "messaging",
+        code: "message.phone_not_registered",
+        title: "Recipient not found on WhatsApp",
+        description: "WhatsApp reported that the destination number is not registered.",
+        metadata: { targetPhone: to },
+      });
+
       return res.status(404).json({
         success: false,
         error: "PHONE_NOT_ON_WHATSAPP",
@@ -82,12 +114,30 @@ messageRouter.post("/send", requireApiKey, createRateLimit({ limit: 30, windowMs
     }
 
     if (error instanceof Error && error.name === "REACHOUT_RESTRICTED") {
+      void recordActivity({
+        level: "warning",
+        category: "messaging",
+        code: "message.reachout_restricted",
+        title: "WhatsApp blocked this reach-out",
+        description: "WhatsApp temporarily rejected this destination as a restricted outbound reach-out.",
+        metadata: { targetPhone: to },
+      });
+
       return res.status(429).json({
         success: false,
         error: "REACHOUT_RESTRICTED",
         message: error.message,
       });
     }
+
+    void recordActivity({
+      level: "error",
+      category: "messaging",
+      code: "message.send_failed",
+      title: "Message send failed",
+      description: "The gateway encountered an unexpected error while sending the message.",
+      metadata: { targetPhone: to },
+    });
 
     return res.status(500).json({
       success: false,
