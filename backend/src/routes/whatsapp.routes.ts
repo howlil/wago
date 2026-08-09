@@ -1,24 +1,25 @@
 import { Router } from "express";
 import QRCode from "qrcode";
-import { getCurrentQr, getWhatsAppStatus } from "../whatsapp.js";
+import { requireApiKey } from "../middleware/auth.js";
+import { getCurrentQr, getWhatsAppStatus, rebindWhatsApp } from "../whatsapp.js";
 
 export const whatsappRouter = Router();
 
-whatsappRouter.get("/status", (_req, res) => {
+whatsappRouter.get("/status", requireApiKey, (_req, res) => {
   res.json({
     success: true,
     ...getWhatsAppStatus()
   });
 });
 
-whatsappRouter.get("/qr", (_req, res) => {
+whatsappRouter.get("/qr", requireApiKey, (_req, res) => {
   res.json({
     success: true,
     ...getCurrentQr()
   });
 });
 
-whatsappRouter.get("/qr/image", async (_req, res) => {
+whatsappRouter.get("/qr/image", requireApiKey, async (_req, res) => {
   const { qr, status } = getCurrentQr();
 
   if (!qr) {
@@ -37,4 +38,22 @@ whatsappRouter.get("/qr/image", async (_req, res) => {
   });
 
   return res.type("image/svg+xml").send(svg);
+});
+
+whatsappRouter.post("/rebind", requireApiKey, async (_req, res) => {
+  try {
+    const result = await rebindWhatsApp();
+
+    return res.json({
+      success: true,
+      message: "WhatsApp session was cleared. Scan the new QR to bind another account.",
+      ...result
+    });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      error: "REBIND_FAILED",
+      message: "Failed to rebind WhatsApp session"
+    });
+  }
 });

@@ -38,6 +38,7 @@ Verified now:
 - Frontend MVP is verified locally against the backend API.
 - Disconnected send-message behavior returns `503 WHATSAPP_NOT_CONNECTED`.
 - Malformed JSON returns a JSON `400 INVALID_JSON` response without exposing stack traces.
+- Send-message API no longer overclaims delivery; it returns `status: "accepted"` or `MESSAGE_REJECTED` when WhatsApp rejects quickly.
 
 Not yet verified:
 

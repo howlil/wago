@@ -3,8 +3,9 @@ dist/
 coverage/
 .env
 
-# WhatsApp session credentials
-backend/data/auth/
+# Runtime credentials and generated app settings
+backend/data/
+backend/data-test/
 
 # Logs and local OS/editor files
 *.log

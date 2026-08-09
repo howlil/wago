@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -p tsconfig.json && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run --environment jsdom --pool=threads"
   },
   "dependencies": {
     "lucide-react": "^1.30.0",
@@ -15,10 +16,16 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.5",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1"
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
   }
 }
