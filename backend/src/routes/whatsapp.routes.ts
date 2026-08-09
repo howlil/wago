@@ -42,22 +42,18 @@ whatsappRouter.get("/qr/image", requireApiKey, async (_req, res) => {
 });
 
 whatsappRouter.post("/pair", requireApiKey, createRateLimit({ limit: 5, windowMs: 60_000 }), async (_req, res) => {
-  const current = getWhatsAppStatus();
-
-  if (current.binding.state === "bound") {
-    return res.status(409).json({
-      success: false,
-      error: "WHATSAPP_ALREADY_BOUND",
-      message: "This gateway is already bound to a WhatsApp account. Use Change account to replace it.",
-    });
-  }
-
   try {
+    const before = getWhatsAppStatus();
     const result = await pairWhatsApp();
 
     return res.json({
       success: true,
-      message: result.status === "qr" ? "WhatsApp QR is ready to scan." : "WhatsApp pairing started.",
+      message:
+        before.binding.state === "bound"
+          ? "This gateway is already bound to its WhatsApp account."
+          : result.status === "qr"
+            ? "WhatsApp QR is ready to scan."
+            : "WhatsApp pairing started.",
       ...result,
     });
   } catch {
