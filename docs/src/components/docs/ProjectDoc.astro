@@ -14,7 +14,7 @@ const repo = 'https://github.com/howlil/wago-simple';
   <PageHeader
     eyebrow="Open Source"
     title={id ? 'Project, security, dan community' : 'Project, security, and community'}
-    description={id ? 'Pusat kebijakan OSS: scope, kontribusi, vulnerability reporting, release, support, license, dan code of conduct.' : 'The OSS policy hub for scope, contributions, vulnerability reporting, releases, support, licensing, and conduct.'}
+    description={id ? 'Pusat kebijakan OSS: scope, kontribusi, vulnerability reporting, release, support, license, code of conduct, dan workflow repository.' : 'The OSS policy hub for scope, contributions, vulnerability reporting, releases, support, licensing, conduct, and repository workflows.'}
   />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Dokumen OSS' : 'OSS documents'}</h2>
@@ -25,6 +25,16 @@ const repo = 'https://github.com/howlil/wago-simple';
     <DocCard href={`${repo}/blob/main/CODE_OF_CONDUCT.md`} title="CODE_OF_CONDUCT.md" description={id ? 'Standar perilaku community.' : 'Community behavior expectations.'} />
     <DocCard href={`${repo}/blob/main/CHANGELOG.md`} title="CHANGELOG.md" description={id ? 'Riwayat perubahan yang berarti untuk user/contributor.' : 'Meaningful user/contributor-facing changes.'} />
     <DocCard href={`${repo}/blob/main/LICENSE`} title="MIT License" description={id ? 'Hak penggunaan dan redistribusi proyek.' : 'Project usage and redistribution rights.'} />
+  </div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Workflow repository OSS' : 'OSS repository workflows'}</h2>
+  <div class="grid sm:grid-cols-2 gap-4 mb-10">
+    <DocCard href={`${repo}/issues/new/choose`} title={id ? 'Issue templates' : 'Issue templates'} description={id ? 'Form terstruktur untuk bug report dan feature request.' : 'Structured forms for bug reports and feature requests.'} />
+    <DocCard href={`${repo}/blob/main/.github/PULL_REQUEST_TEMPLATE.md`} title="Pull request template" description={id ? 'Checklist konsisten untuk perubahan yang diajukan contributor.' : 'A consistent checklist for contributor pull requests.'} />
+    <DocCard href={`${repo}/actions/workflows/ci.yml`} title="CI" description={id ? 'Lint/format check, backend dan frontend tests, app/docs build, serta Docker build.' : 'Lint/format checks, backend and frontend tests, app/docs builds, and Docker build.'} />
+    <DocCard href={`${repo}/actions/workflows/codeql.yml`} title="CodeQL" description={id ? 'Static security analysis untuk JavaScript dan TypeScript.' : 'Static security analysis for JavaScript and TypeScript.'} />
+    <DocCard href={`${repo}/blob/main/.github/dependabot.yml`} title="Dependabot" description={id ? 'Pemeliharaan dependency dan GitHub Actions secara otomatis.' : 'Automated dependency and GitHub Actions maintenance.'} />
+    <DocCard href={`${repo}/actions/workflows/release-container.yml`} title="Container release" description={id ? 'Build multi-architecture, GHCR publish, SBOM, dan provenance attestation.' : 'Multi-architecture builds, GHCR publishing, SBOM, and provenance attestation.'} />
   </div>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Scope governance' : 'Scope governance'}</h2>
