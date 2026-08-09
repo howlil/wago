@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
 import {
+  allowRecipient,
   bootstrapApp,
   createApiKeyCandidate,
   getAppInfo,
   getCurrentQr,
   getHealth,
   pairWhatsApp,
+  sendMessage,
   setStoredApiKey,
 } from "./api.js";
 import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
@@ -16,6 +18,16 @@ import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
 const generatedApiKey = `wa_${"a".repeat(64)}`;
 
 vi.mock("./api.js", () => ({
+  allowRecipient: vi.fn(async (phone: string) => ({
+    success: true,
+    recipient: {
+      jid: `${phone}@s.whatsapp.net`,
+      allowed: true,
+      optedOut: false,
+      createdAt: "2026-08-10T00:00:00.000Z",
+      updatedAt: "2026-08-10T00:00:00.000Z",
+    },
+  })),
   getAppInfo: vi.fn(async () => ({
     success: true,
     appId: "wa-gateway-test",
@@ -40,7 +52,13 @@ vi.mock("./api.js", () => ({
     status: "connected",
   })),
   getHealth: vi.fn(async () => ({ status: "ok" })),
-  getMessageStatus: vi.fn(),
+  getMessageStatus: vi.fn(async () => ({
+    success: true,
+    id: "message-1",
+    to: "6281234567890@s.whatsapp.net",
+    status: "pending",
+    updatedAt: "2026-08-10T00:00:00.000Z",
+  })),
   getQrImageSvg: vi.fn(async () => "<svg />"),
   getStoredApiKey: vi.fn(() => ""),
   getWhatsAppStatus: vi.fn(async () => ({
@@ -52,7 +70,10 @@ vi.mock("./api.js", () => ({
       phone: "6281234567890",
       boundAt: "2026-08-10T00:00:00.000Z",
     },
+    accountHealth: {},
   })),
+  listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
+  optOutRecipient: vi.fn(),
   pairWhatsApp: vi.fn(async () => ({
     success: true,
     message: "Pairing started",
@@ -172,5 +193,35 @@ describe("App pairing flow", () => {
     render(<App />);
 
     expect(await screen.findByText(/backend is unavailable/i)).toBeTruthy();
+  });
+
+  it("lets the operator allow and resend a recipient blocked by policy", async () => {
+    vi.mocked(sendMessage)
+      .mockRejectedValueOnce({
+        error: "RECIPIENT_NOT_ALLOWED",
+        message: "Recipient is not allowed for outbound messages",
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        messageId: "message-1",
+        status: "pending",
+      });
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.type(await screen.findByPlaceholderText("628xxxxxxxxxx"), "6281275584870");
+    await user.type(screen.getByPlaceholderText("Hello"), "test");
+    await user.click(screen.getByRole("button", { name: /^send$/i }));
+
+    const allowAndSend = await screen.findByRole("button", { name: /allow & send/i });
+    await user.click(allowAndSend);
+
+    await waitFor(() => {
+      expect(allowRecipient).toHaveBeenCalledWith("6281275584870");
+      expect(sendMessage).toHaveBeenCalledTimes(2);
+    });
+
+    expect(await screen.findByText(/last message status/i)).toBeTruthy();
   });
 });

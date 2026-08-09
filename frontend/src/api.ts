@@ -56,11 +56,29 @@ export type WhatsAppBinding =
       boundAt: string;
     };
 
+export type AccountHealthSnapshot = {
+  reachoutTimeLock?: {
+    isActive: boolean;
+    retryAt?: string;
+    enforcementType?: string;
+  };
+  newChatCap?: {
+    total_quota?: number;
+    used_quota?: number;
+    cycle_start_timestamp?: string;
+    cycle_end_timestamp?: string;
+    server_sent_timestamp?: string;
+    capping_status?: string;
+  };
+  lastFetchedAt?: string;
+  lastFetchErrorAt?: string;
+};
+
 export type StatusResponse = {
   success: true;
   status: WhatsAppStatus;
   binding: WhatsAppBinding;
-  accountHealth?: unknown;
+  accountHealth: AccountHealthSnapshot;
 };
 
 export type QrResponse = {
@@ -81,6 +99,26 @@ export type PairingResponse =
       error: string;
       message: string;
     };
+
+export type RecipientRecord = {
+  jid: string;
+  resolvedJid?: string;
+  label?: string;
+  allowed: boolean;
+  optedOut: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RecipientsResponse = {
+  success: true;
+  recipients: RecipientRecord[];
+};
+
+export type RecipientMutationResponse = {
+  success: true;
+  recipient: RecipientRecord;
+};
 
 export type SendMessageResponse =
   | {
@@ -219,11 +257,40 @@ export function pairWhatsApp(): Promise<PairingResponse> {
   });
 }
 
-export function sendMessage(to: string, text: string): Promise<SendMessageResponse> {
+export function listRecipients(): Promise<RecipientsResponse> {
+  return requestJson<RecipientsResponse>("/recipients");
+}
+
+export function allowRecipient(phone: string, label?: string): Promise<RecipientMutationResponse> {
+  return requestJson<RecipientMutationResponse>("/recipients/allow", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ phone, ...(label?.trim() ? { label: label.trim() } : {}) }),
+  });
+}
+
+export function optOutRecipient(phone: string): Promise<RecipientMutationResponse> {
+  return requestJson<RecipientMutationResponse>(`/recipients/${encodeURIComponent(phone)}/opt-out`, {
+    method: "POST",
+  });
+}
+
+export function createMessageIdempotencyKey(): string {
+  return globalThis.crypto.randomUUID();
+}
+
+export function sendMessage(
+  to: string,
+  text: string,
+  idempotencyKey = createMessageIdempotencyKey(),
+): Promise<SendMessageResponse> {
   return requestJson<SendMessageResponse>("/messages/send", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify({ to, text }),
   });

@@ -16,12 +16,12 @@ import {
 } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  allowRecipient,
   bootstrapApp,
   createApiKeyCandidate,
   getAppInfo,
   getCurrentQr,
   getHealth,
-  getMessageStatus,
   getQrImageSvg,
   getStoredApiKey,
   getWhatsAppStatus,
@@ -29,14 +29,24 @@ import {
   rebindWhatsApp,
   sendMessage,
   setStoredApiKey,
+  type AccountHealthSnapshot,
+  type AppInfoResponse,
   type WhatsAppBinding,
   type WhatsAppStatus,
 } from "./api.js";
+import { AccountHealthCard } from "./components/AccountHealthCard.js";
+import { MessageStatusCard } from "./components/MessageStatusCard.js";
 import { RebindSessionDialog } from "./components/RebindSessionDialog.js";
+import { RecipientManager } from "./components/RecipientManager.js";
 
 type HealthState = "checking" | "ok" | "error";
 type Notice = { type: "success"; message: string } | { type: "error"; message: string } | null;
 type CopiedField = "appId" | "apiKey" | null;
+
+type LastMessage = {
+  id: string;
+  status: "pending" | "accepted" | "rejected";
+};
 
 const unboundBinding: WhatsAppBinding = {
   state: "unbound",
@@ -102,6 +112,7 @@ export function App() {
   const [health, setHealth] = useState<HealthState>("checking");
   const [appId, setAppId] = useState("wa-gateway");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
   const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getStoredApiKey());
@@ -109,6 +120,7 @@ export function App() {
   const [copiedField, setCopiedField] = useState<CopiedField>(null);
   const [status, setStatus] = useState<WhatsAppStatus>("disconnected");
   const [binding, setBinding] = useState<WhatsAppBinding>(unboundBinding);
+  const [accountHealth, setAccountHealth] = useState<AccountHealthSnapshot | undefined>();
   const [hasQr, setHasQr] = useState(false);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
@@ -119,6 +131,9 @@ export function App() {
   const [isRebinding, setIsRebinding] = useState(false);
   const [isPairing, setIsPairing] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
+  const [recipientApprovalPhone, setRecipientApprovalPhone] = useState<string | null>(null);
+  const [recipientRefreshKey, setRecipientRefreshKey] = useState(0);
+  const [lastMessage, setLastMessage] = useState<LastMessage | null>(null);
   const isRefreshInFlight = useRef(false);
   const pollTimer = useRef<number | null>(null);
   const statusRef = useRef<WhatsAppStatus>("disconnected");
@@ -137,6 +152,7 @@ export function App() {
 
     setAppId(info.appId);
     setApiKeyConfigured(info.apiKeyConfigured);
+    setApiKeySource(info.apiKeySource);
     setCredentialSetupRequired(info.credentialSetupRequired);
     setIsAuthenticated(info.authenticated);
 
@@ -147,6 +163,7 @@ export function App() {
     statusRef.current = "disconnected";
     setStatus("disconnected");
     setBinding(unboundBinding);
+    setAccountHealth(undefined);
     setHasQr(false);
     setQrImage(null);
   }, []);
@@ -202,6 +219,7 @@ export function App() {
           statusRef.current = statusResult.status;
           setStatus(statusResult.status);
           setBinding(statusResult.binding);
+          setAccountHealth(statusResult.accountHealth);
           setHasQr(Boolean(qrResult.qr));
           setQrImage(qrResult.qr ? await getQrImageSvg() : null);
         } catch {
@@ -332,6 +350,7 @@ export function App() {
 
           setAppId(result.appId);
           setApiKeyConfigured(true);
+          setApiKeySource("generated");
           setCredentialSetupRequired(false);
           setIsAuthenticated(true);
         } catch (error) {
@@ -421,6 +440,7 @@ export function App() {
       }
 
       setBinding(unboundBinding);
+      setAccountHealth(undefined);
       setNotice({ type: "success", message: "Previous account unbound. Scan the new QR when it appears." });
       statusRef.current = result.status;
       setStatus(result.status);
@@ -437,10 +457,11 @@ export function App() {
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function sendCurrentMessage(allowFirst = false) {
+    const target = phone.trim();
+    const text = message.trim();
 
-    if (!canSend) {
+    if (!target || !text || !isAuthenticated || status !== "connected" || isSending) {
       return;
     }
 
@@ -448,33 +469,58 @@ export function App() {
     setNotice(null);
 
     try {
-      const result = await sendMessage(phone, message);
+      if (allowFirst) {
+        await allowRecipient(target);
+        setRecipientApprovalPhone(null);
+        setRecipientRefreshKey((value) => value + 1);
+      }
+
+      const result = await sendMessage(target, text);
 
       if (result.success) {
-        let messageStatus: string = result.status;
-
         if (result.messageId) {
-          const statusResult = await getMessageStatus(result.messageId).catch(() => null);
-          if (statusResult?.success) {
-            messageStatus = statusResult.status;
-          }
+          setLastMessage({ id: result.messageId, status: result.status });
+          setNotice({
+            type: "success",
+            message: "Message accepted by the gateway. Live message status is tracked below.",
+          });
+        } else {
+          setNotice({ type: "success", message: `Message ${result.status}.` });
         }
 
-        setNotice({
-          type: "success",
-          message: result.messageId ? `Message ${messageStatus}. ID: ${result.messageId}` : `Message ${messageStatus}.`,
-        });
+        setRecipientApprovalPhone(null);
         setMessage("");
       } else {
         setNotice({ type: "error", message: result.message });
       }
     } catch (error) {
       const apiError = error as { message?: string; error?: string };
-      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to send message" });
+
+      if (apiError.error === "RECIPIENT_NOT_ALLOWED") {
+        setRecipientApprovalPhone(target);
+        setNotice({
+          type: "error",
+          message: "This recipient is not allowed yet. Confirm permission below, then use Allow & Send.",
+        });
+      } else if (apiError.error === "RECIPIENT_OPTED_OUT") {
+        setRecipientApprovalPhone(null);
+        setNotice({
+          type: "error",
+          message: "This recipient has opted out. Re-allow them from Recipient Access only after renewed permission.",
+        });
+      } else {
+        setRecipientApprovalPhone(null);
+        setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to send message" });
+      }
     } finally {
       setIsSending(false);
       await refresh({ showLoading: false });
     }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await sendCurrentMessage(false);
   }
 
   const credentialHint = credentialSetupRequired
@@ -588,7 +634,14 @@ export function App() {
           </label>
 
           <label>
-            <span className="mb-1.5 block text-sm font-bold text-[#405149]">API Key</span>
+            <span className="mb-1.5 flex items-center gap-2 text-sm font-bold text-[#405149]">
+              API Key
+              {apiKeyConfigured ? (
+                <span className="rounded-full bg-[#f0f4f2] px-2 py-0.5 text-[10px] font-bold uppercase text-[#667972]">
+                  {apiKeySource}
+                </span>
+              ) : null}
+            </span>
             <div className="flex gap-2 max-[560px]:flex-col">
               <div className="relative min-w-0 flex-1">
                 <input
@@ -697,12 +750,25 @@ export function App() {
         </section>
       ) : null}
 
+      {isAuthenticated ? <AccountHealthCard accountHealth={accountHealth} /> : null}
+
+      <RecipientManager
+        enabled={isAuthenticated}
+        refreshKey={recipientRefreshKey}
+        suggestedPhone={recipientApprovalPhone}
+        onAllowed={(allowedPhone) => {
+          if (recipientApprovalPhone === allowedPhone) {
+            setRecipientApprovalPhone(null);
+          }
+        }}
+      />
+
       <section className={panelClass}>
         <div>
           <h2 className="mb-2 text-xl">Send Message</h2>
           <p className="mb-0 text-[#667972]">
             {status === "connected"
-              ? "Ready to send through the connected session."
+              ? "Ready to send through the connected session. Recipients must be explicitly allowed."
               : "Bind and connect WhatsApp before sending."}
           </p>
         </div>
@@ -713,7 +779,12 @@ export function App() {
             <input
               className={inputClass}
               value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              onChange={(event) => {
+                setPhone(event.target.value);
+                if (recipientApprovalPhone && recipientApprovalPhone !== event.target.value.trim()) {
+                  setRecipientApprovalPhone(null);
+                }
+              }}
               placeholder="628xxxxxxxxxx"
               autoComplete="tel"
             />
@@ -730,16 +801,38 @@ export function App() {
             />
           </label>
 
-          <button
-            className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-lg bg-[#176b55] px-4 text-white disabled:cursor-not-allowed disabled:bg-[#91aaa0] disabled:text-[#ecf1ef]"
-            type="submit"
-            disabled={!canSend}
-          >
-            {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-            <span>{isSending ? "Sending" : "Send"}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-lg bg-[#176b55] px-4 text-white disabled:cursor-not-allowed disabled:bg-[#91aaa0] disabled:text-[#ecf1ef]"
+              type="submit"
+              disabled={!canSend}
+            >
+              {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+              <span>{isSending ? "Sending" : "Send"}</span>
+            </button>
+
+            {recipientApprovalPhone === phone.trim() && recipientApprovalPhone ? (
+              <button
+                className={secondaryButtonClass}
+                type="button"
+                onClick={() => void sendCurrentMessage(true)}
+                disabled={!canSend}
+              >
+                {isSending ? <Loader2 className="animate-spin" size={17} /> : <Check size={17} />}
+                Allow & Send
+              </button>
+            ) : null}
+          </div>
+
+          {recipientApprovalPhone === phone.trim() && recipientApprovalPhone ? (
+            <p className="m-0 rounded-lg bg-[#fff3cd] px-3.5 py-3 text-sm text-[#664d03]">
+              Only use Allow & Send when this recipient has given permission to receive outbound messages.
+            </p>
+          ) : null}
         </form>
       </section>
+
+      {lastMessage ? <MessageStatusCard messageId={lastMessage.id} initialStatus={lastMessage.status} /> : null}
 
       <RebindSessionDialog
         isOpen={isRebindDialogOpen}
