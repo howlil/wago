@@ -46,11 +46,7 @@ vi.mock("./api.js", () => ({
     message: "App initialized",
   })),
   createApiKeyCandidate: vi.fn(() => generatedApiKey),
-  getCurrentQr: vi.fn(async () => ({
-    success: true,
-    qr: null,
-    status: "connected",
-  })),
+  getCurrentQr: vi.fn(async () => ({ success: true, qr: null, status: "connected" })),
   getHealth: vi.fn(async () => ({ status: "ok" })),
   getMessageStatus: vi.fn(async () => ({
     success: true,
@@ -72,27 +68,17 @@ vi.mock("./api.js", () => ({
     },
     accountHealth: {},
   })),
+  listActivity: vi.fn(async () => ({ success: true, events: [] })),
   listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
   optOutRecipient: vi.fn(),
-  pairWhatsApp: vi.fn(async () => ({
-    success: true,
-    message: "Pairing started",
-    status: "qr",
-  })),
-  rebindWhatsApp: vi.fn(async () => ({
-    success: true,
-    message: "Pairing started",
-    status: "qr",
-  })),
+  pairWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
+  rebindWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
   sendMessage: vi.fn(),
   setStoredApiKey: vi.fn(),
 }));
 
 beforeEach(() => {
-  Object.defineProperty(document, "visibilityState", {
-    configurable: true,
-    value: "visible",
-  });
+  Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
 });
 
 afterEach(() => {
@@ -102,12 +88,12 @@ afterEach(() => {
 });
 
 describe("dashboard", () => {
-  it("renders feature-oriented dashboard navigation", async () => {
+  it("renders a single-page control navigation and activity log", async () => {
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: "Recipients" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: "Messaging" }).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("heading", { name: "Control" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Control" })).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Activity Log" })).toBeTruthy();
   });
 
   it("opens the change-account dialog for an existing binding", async () => {
@@ -116,35 +102,24 @@ describe("dashboard", () => {
 
     const openButton = await screen.findByRole("button", { name: /change account/i });
     expect((openButton as HTMLButtonElement).disabled).toBe(false);
-
     await user.click(openButton);
-
     expect(await screen.findByRole("dialog", { name: /start a new pairing session/i })).toBeTruthy();
   });
 
   it("confirms a new pairing session with one explicit click", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
-
     render(<RebindSessionDialog isOpen isRebinding={false} onCancel={vi.fn()} onConfirm={onConfirm} />);
-
     await user.click(screen.getByRole("button", { name: /start new pairing/i }));
-
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it("does not poll the backend while the tab is hidden", async () => {
     vi.useFakeTimers();
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "hidden",
-    });
-
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
     render(<App />);
-
     await vi.runOnlyPendingTimersAsync();
     expect(getHealth).toHaveBeenCalledTimes(1);
-
     await vi.advanceTimersByTimeAsync(60000);
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
@@ -161,9 +136,7 @@ describe("dashboard", () => {
       setupRequired: true,
     });
     const user = userEvent.setup();
-
     render(<App />);
-
     await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
 
     await waitFor(() => {
@@ -188,40 +161,27 @@ describe("dashboard", () => {
       credentialSetupRequired: false,
       setupRequired: false,
     });
-
     render(<App />);
-
     expect(await screen.findByText(/enter the existing api key in gateway credentials/i)).toBeTruthy();
     expect(getCurrentQr).not.toHaveBeenCalled();
   });
 
   it("shows why pairing is unavailable when the backend is down", async () => {
     vi.mocked(getHealth).mockRejectedValueOnce(new Error("offline"));
-
     render(<App />);
-
     expect(await screen.findByText(/backend is unavailable/i)).toBeTruthy();
   });
 
   it("lets the operator allow and resend a recipient blocked by policy", async () => {
     vi.mocked(sendMessage)
-      .mockRejectedValueOnce({
-        error: "RECIPIENT_NOT_ALLOWED",
-        message: "Recipient is not allowed for outbound messages",
-      })
-      .mockResolvedValueOnce({
-        success: true,
-        messageId: "message-1",
-        status: "pending",
-      });
+      .mockRejectedValueOnce({ error: "RECIPIENT_NOT_ALLOWED", message: "Recipient is not allowed for outbound messages" })
+      .mockResolvedValueOnce({ success: true, messageId: "message-1", status: "pending" });
     const user = userEvent.setup();
-
     render(<App />);
 
     await user.type(await screen.findByLabelText("Message recipient phone"), "6281275584870");
     await user.type(screen.getByLabelText("Message text"), "test");
     await user.click(screen.getByRole("button", { name: /^send$/i }));
-
     const allowAndSend = await screen.findByRole("button", { name: /allow & send/i });
     await user.click(allowAndSend);
 

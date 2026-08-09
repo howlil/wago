@@ -1,12 +1,6 @@
-import { Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import type { AppInfoResponse } from "../../api.js";
-import {
-  cardBodyClass,
-  inputClass,
-  secondaryButtonClass,
-  sectionDescriptionClass,
-  sectionTitleClass,
-} from "../../shared/ui/classes.js";
+import { cardBodyClass, fieldLabelClass, inputClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 import type { CopiedField } from "../dashboard/types.js";
 
 type GatewayCredentialsCardProps = {
@@ -43,49 +37,42 @@ export function GatewayCredentialsCard({
   onUseApiKey,
 }: GatewayCredentialsCardProps) {
   return (
-    <section id="credentials" className={`${cardBodyClass} scroll-mt-28`}>
-      <div className="mb-5 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e9f4ef] text-[#176b55]">
-          <KeyRound size={19} />
-        </span>
+    <section className={cardBodyClass}>
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className={sectionTitleClass}>Gateway Credentials</h2>
-          <p className={sectionDescriptionClass}>
-            Stable gateway identity. Changing the WhatsApp account does not rotate it.
-          </p>
+          <h2 className={sectionTitleClass}>Gateway credentials</h2>
+          <p className={sectionDescriptionClass}>Stable identity for API clients.</p>
         </div>
+        {apiKeyConfigured ? (
+          <span className="rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
+            {apiKeySource}
+          </span>
+        ) : null}
       </div>
 
-      <div className="grid gap-4">
+      <div className="mt-4 grid gap-3">
         <label>
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.06em] text-[#5d7067]">App ID</span>
-          <div className="flex gap-2 max-[560px]:flex-col">
-            <input className={`${inputClass} font-mono text-sm`} value={appId} readOnly aria-label="App ID" />
-            <button className={secondaryButtonClass} type="button" onClick={onCopyAppId}>
-              {copiedField === "appId" ? <Check size={16} /> : <Copy size={16} />}
+          <span className={fieldLabelClass}>App ID</span>
+          <div className="flex gap-2">
+            <input className={`${inputClass} min-w-0 font-mono text-xs`} value={appId} readOnly aria-label="App ID" />
+            <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onCopyAppId}>
+              {copiedField === "appId" ? <Check size={14} /> : <Copy size={14} />}
               {copiedField === "appId" ? "Copied" : "Copy"}
             </button>
           </div>
         </label>
 
         <label>
-          <span className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.06em] text-[#5d7067]">
-            API Key
-            {apiKeyConfigured ? (
-              <span className="rounded-md bg-[#eef3f1] px-1.5 py-0.5 text-[9px] tracking-[0.04em] text-[#6c7d75]">
-                {apiKeySource}
-              </span>
-            ) : null}
-          </span>
-          <div className="flex gap-2 max-[560px]:flex-col">
+          <span className={fieldLabelClass}>API key</span>
+          <div className="flex gap-2">
             <div className="relative min-w-0 flex-1">
               <input
-                className={`${inputClass} pr-11 font-mono text-sm`}
+                className={`${inputClass} pr-9 font-mono text-xs`}
                 value={apiKeyInput}
                 onChange={(event) => onApiKeyChange(event.target.value)}
                 placeholder={
                   credentialSetupRequired
-                    ? "Generated automatically on first pairing"
+                    ? "Generated on first pairing"
                     : isAuthenticated
                       ? "Hidden after setup"
                       : "Enter existing API key"
@@ -97,28 +84,27 @@ export function GatewayCredentialsCard({
               />
               {apiKeyInput ? (
                 <button
-                  className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-[#687970]"
+                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-[#758079]"
                   type="button"
                   onClick={onToggleApiKey}
                   aria-label={showApiKey ? "Hide API key" : "Show API key"}
                 >
-                  {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               ) : null}
             </div>
-
             {!isAuthenticated && apiKeyConfigured ? (
-              <button className={secondaryButtonClass} type="button" onClick={onUseApiKey}>
+              <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onUseApiKey}>
                 Use key
               </button>
             ) : (
-              <button className={secondaryButtonClass} type="button" onClick={onCopyApiKey} disabled={!apiKeyInput}>
-                {copiedField === "apiKey" ? <Check size={16} /> : <Copy size={16} />}
+              <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onCopyApiKey} disabled={!apiKeyInput}>
+                {copiedField === "apiKey" ? <Check size={14} /> : <Copy size={14} />}
                 {copiedField === "apiKey" ? "Copied" : "Copy"}
               </button>
             )}
           </div>
-          <span className="mt-1.5 block text-xs leading-5 text-[#718179]">{credentialHint}</span>
+          <span className="mt-1.5 block text-[11px] leading-4 text-[#7b8680]">{credentialHint}</span>
         </label>
       </div>
     </section>

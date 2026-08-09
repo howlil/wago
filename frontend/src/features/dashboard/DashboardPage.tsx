@@ -1,6 +1,7 @@
 import { DashboardShell } from "../../shared/components/DashboardShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 import { OverviewCards } from "../../shared/components/OverviewCards.js";
+import { ActivityLogPanel } from "../activity/ActivityLogPanel.js";
 import { GatewayCredentialsCard } from "../gateway/GatewayCredentialsCard.js";
 import { MessageStatusCard } from "../messages/MessageStatusCard.js";
 import { SendMessageCard } from "../messages/SendMessageCard.js";
@@ -17,14 +18,17 @@ export function DashboardPage() {
   return (
     <DashboardShell
       appId={dashboard.appId}
+      health={dashboard.health}
+      status={dashboard.status}
+      binding={dashboard.binding}
       isRefreshing={dashboard.isRefreshing}
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
     >
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
       <NoticeBanner notice={dashboard.notice} />
 
-      <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.8fr)]">
-        <div className="grid gap-5">
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-8">
           <WhatsAppBindingCard
             health={dashboard.health}
             status={dashboard.status}
@@ -38,37 +42,9 @@ export function DashboardPage() {
             onPair={() => void dashboard.handlePair()}
             onChangeAccount={dashboard.openRebindDialog}
           />
-
-          {dashboard.hasQr && dashboard.qrImage && dashboard.status !== "connected" ? (
-            <QrPairingCard qrImage={dashboard.qrImage} />
-          ) : null}
-
-          <RecipientAccessCard
-            enabled={dashboard.isAuthenticated}
-            refreshKey={dashboard.recipientRefreshKey}
-            suggestedPhone={dashboard.recipientApprovalPhone}
-            onAllowed={dashboard.handleRecipientAllowed}
-          />
-
-          <SendMessageCard
-            status={dashboard.status}
-            phone={dashboard.phone}
-            message={dashboard.message}
-            isSending={dashboard.isSending}
-            canSend={dashboard.canSend}
-            approvalRequired={dashboard.approvalRequired}
-            onPhoneChange={dashboard.handlePhoneChange}
-            onMessageChange={dashboard.setMessage}
-            onSubmit={dashboard.handleSubmit}
-            onAllowAndSend={dashboard.allowAndSend}
-          />
-
-          {dashboard.lastMessage ? (
-            <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
-          ) : null}
         </div>
 
-        <aside className="grid gap-5 xl:sticky xl:top-28">
+        <div className="lg:col-span-4">
           <GatewayCredentialsCard
             appId={dashboard.appId}
             apiKeyConfigured={dashboard.apiKeyConfigured}
@@ -85,9 +61,57 @@ export function DashboardPage() {
             onCopyApiKey={dashboard.copyApiKey}
             onUseApiKey={() => void dashboard.handleSaveApiKey()}
           />
+        </div>
 
-          {dashboard.isAuthenticated ? <AccountHealthCard accountHealth={dashboard.accountHealth} /> : null}
-        </aside>
+        {dashboard.hasQr && dashboard.qrImage && dashboard.status !== "connected" ? (
+          <div className="lg:col-span-8">
+            <QrPairingCard qrImage={dashboard.qrImage} />
+          </div>
+        ) : null}
+
+        <div className="lg:col-span-8">
+          <SendMessageCard
+            status={dashboard.status}
+            phone={dashboard.phone}
+            message={dashboard.message}
+            isSending={dashboard.isSending}
+            canSend={dashboard.canSend}
+            approvalRequired={dashboard.approvalRequired}
+            onPhoneChange={dashboard.handlePhoneChange}
+            onMessageChange={dashboard.setMessage}
+            onSubmit={dashboard.handleSubmit}
+            onAllowAndSend={dashboard.allowAndSend}
+          />
+        </div>
+
+        <div className="lg:col-span-4">
+          {dashboard.isAuthenticated ? (
+            <AccountHealthCard accountHealth={dashboard.accountHealth} />
+          ) : (
+            <div className="rounded-lg border border-dashed border-wago-line bg-white/50 p-4 text-sm text-wago-muted">
+              Account health appears after the gateway is authenticated.
+            </div>
+          )}
+        </div>
+
+        {dashboard.lastMessage ? (
+          <div className="lg:col-span-8">
+            <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
+          </div>
+        ) : null}
+
+        <div className="lg:col-span-12">
+          <RecipientAccessCard
+            enabled={dashboard.isAuthenticated}
+            refreshKey={dashboard.recipientRefreshKey}
+            suggestedPhone={dashboard.recipientApprovalPhone}
+            onAllowed={dashboard.handleRecipientAllowed}
+          />
+        </div>
+
+        <div className="lg:col-span-12">
+          <ActivityLogPanel enabled={dashboard.isAuthenticated} />
+        </div>
       </div>
 
       <RebindSessionDialog

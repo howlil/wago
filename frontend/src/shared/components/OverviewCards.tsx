@@ -1,8 +1,5 @@
-import { AlertTriangle, CheckCircle2, Server, ShieldCheck, Smartphone, WifiOff } from "lucide-react";
-import type { ReactNode } from "react";
 import type { AccountHealthSnapshot, WhatsAppStatus } from "../../api.js";
 import type { HealthState } from "../../features/dashboard/types.js";
-import { cardClass } from "../ui/classes.js";
 
 type OverviewCardsProps = {
   health: HealthState;
@@ -10,146 +7,80 @@ type OverviewCardsProps = {
   accountHealth?: AccountHealthSnapshot;
 };
 
-type Tone = "ok" | "warning" | "error" | "muted";
-
-const toneClass: Record<Tone, string> = {
-  ok: "text-[#176b55]",
-  warning: "text-[#916000]",
-  error: "text-[#a12d35]",
-  muted: "text-[#687970]",
+type Metric = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "ok" | "warning" | "error" | "muted";
 };
 
-const statusLabel: Record<WhatsAppStatus, string> = {
-  connecting: "Connecting",
-  qr: "Scan QR",
-  connected: "Connected",
-  disconnected: "Disconnected",
+const toneDot: Record<Metric["tone"], string> = {
+  ok: "bg-[#2f8b67]",
+  warning: "bg-[#c08a2e]",
+  error: "bg-[#bd4a52]",
+  muted: "bg-[#9aa49f]",
 };
 
-function backendSummary(health: HealthState): { value: string; tone: Tone; description: string } {
+function backendMetric(health: HealthState): Metric {
   if (health === "ok") {
-    return { value: "Healthy", tone: "ok", description: "HTTP API is responding normally." };
+    return { label: "Gateway", value: "Healthy", detail: "API responding", tone: "ok" };
   }
-
   if (health === "checking") {
-    return { value: "Checking", tone: "muted", description: "Waiting for the backend health check." };
+    return { label: "Gateway", value: "Checking", detail: "Health check running", tone: "muted" };
   }
-
-  return { value: "Unavailable", tone: "error", description: "The dashboard cannot reach the backend." };
+  return { label: "Gateway", value: "Unavailable", detail: "Backend unreachable", tone: "error" };
 }
 
-function whatsappSummary(status: WhatsAppStatus): { value: string; tone: Tone; description: string } {
+function whatsappMetric(status: WhatsAppStatus): Metric {
   if (status === "connected") {
-    return { value: statusLabel[status], tone: "ok", description: "The bound account is ready for messaging." };
+    return { label: "WhatsApp", value: "Connected", detail: "Session ready", tone: "ok" };
   }
-
-  if (status === "qr" || status === "connecting") {
-    return {
-      value: statusLabel[status],
-      tone: "warning",
-      description: "The WhatsApp session is still being prepared.",
-    };
+  if (status === "qr") {
+    return { label: "WhatsApp", value: "Pairing", detail: "Scan QR to continue", tone: "warning" };
   }
-
-  return { value: statusLabel[status], tone: "error", description: "No active WhatsApp connection is available." };
+  if (status === "connecting") {
+    return { label: "WhatsApp", value: "Connecting", detail: "Restoring session", tone: "warning" };
+  }
+  return { label: "WhatsApp", value: "Disconnected", detail: "No active session", tone: "error" };
 }
 
-function policySummary(accountHealth?: AccountHealthSnapshot): { value: string; tone: Tone; description: string } {
+function policyMetric(accountHealth?: AccountHealthSnapshot): Metric {
   const reachoutActive = Boolean(accountHealth?.reachoutTimeLock?.isActive);
   const capStatus = accountHealth?.newChatCap?.capping_status;
 
   if (reachoutActive) {
-    return {
-      value: "New reach-outs limited",
-      tone: "warning",
-      description: "WhatsApp is limiting new outbound conversations. Existing recipients are not globally blocked.",
-    };
+    return { label: "Outbound", value: "New chats limited", detail: "Known recipients remain eligible", tone: "warning" };
   }
-
   if (capStatus === "CAPPED") {
-    return {
-      value: "New chats capped",
-      tone: "warning",
-      description: "WhatsApp reports that new conversations have reached their current cap.",
-    };
+    return { label: "Outbound", value: "New chats capped", detail: "New recipients paused", tone: "warning" };
   }
-
   if (capStatus === "FIRST_WARNING" || capStatus === "SECOND_WARNING") {
-    return {
-      value: "New-chat warning",
-      tone: "warning",
-      description: "Wago pauses new recipient sends while WhatsApp reports this warning.",
-    };
+    return { label: "Outbound", value: "Warning", detail: "New recipients paused", tone: "warning" };
   }
-
-  return { value: "Normal", tone: "ok", description: "No active outbound restriction is currently reported." };
+  return { label: "Outbound", value: "Normal", detail: "No active restriction", tone: "ok" };
 }
 
-function SummaryCard({
-  label,
-  value,
-  description,
-  tone,
-  icon,
-}: {
-  label: string;
-  value: string;
-  description: string;
-  tone: Tone;
-  icon: ReactNode;
-}) {
+function StatusMetric({ metric }: { metric: Metric }) {
   return (
-    <article className={`${cardClass} p-4 sm:p-5`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#73827b]">{label}</span>
-          <strong className={`mt-1.5 block text-lg ${toneClass[tone]}`}>{value}</strong>
+    <div className="flex min-w-0 items-center gap-3 px-4 py-3.5">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${toneDot[metric.tone]}`} />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-wago-muted">{metric.label}</span>
+          <strong className="text-sm font-semibold text-wago-ink">{metric.value}</strong>
         </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#edf5f1] text-[#45685a]">
-          {icon}
-        </span>
+        <span className="mt-0.5 block truncate text-xs text-[#818b86]">{metric.detail}</span>
       </div>
-      <p className="mb-0 mt-3 text-sm leading-5 text-[#6a7972]">{description}</p>
-    </article>
+    </div>
   );
 }
 
 export function OverviewCards({ health, status, accountHealth }: OverviewCardsProps) {
-  const backend = backendSummary(health);
-  const whatsapp = whatsappSummary(status);
-  const policy = policySummary(accountHealth);
-  const whatsappIcon =
-    status === "connected" ? (
-      <CheckCircle2 size={18} />
-    ) : status === "disconnected" ? (
-      <WifiOff size={18} />
-    ) : (
-      <Smartphone size={18} />
-    );
-
   return (
-    <section id="overview" className="grid scroll-mt-28 gap-3 md:grid-cols-3">
-      <SummaryCard
-        label="Backend"
-        value={backend.value}
-        description={backend.description}
-        tone={backend.tone}
-        icon={<Server size={18} />}
-      />
-      <SummaryCard
-        label="WhatsApp"
-        value={whatsapp.value}
-        description={whatsapp.description}
-        tone={whatsapp.tone}
-        icon={whatsappIcon}
-      />
-      <SummaryCard
-        label="Outbound policy"
-        value={policy.value}
-        description={policy.description}
-        tone={policy.tone}
-        icon={policy.tone === "warning" ? <AlertTriangle size={18} /> : <ShieldCheck size={18} />}
-      />
+    <section className="grid overflow-hidden rounded-lg border border-wago-line bg-white md:grid-cols-3 md:divide-x md:divide-wago-line">
+      <StatusMetric metric={backendMetric(health)} />
+      <StatusMetric metric={whatsappMetric(status)} />
+      <StatusMetric metric={policyMetric(accountHealth)} />
     </section>
   );
 }

@@ -1,14 +1,7 @@
 import { Check, Loader2, Send } from "lucide-react";
 import type { FormEvent } from "react";
 import type { WhatsAppStatus } from "../../api.js";
-import {
-  cardBodyClass,
-  inputClass,
-  primaryButtonClass,
-  secondaryButtonClass,
-  sectionDescriptionClass,
-  sectionTitleClass,
-} from "../../shared/ui/classes.js";
+import { cardBodyClass, fieldLabelClass, inputClass, primaryButtonClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 
 type SendMessageCardProps = {
   status: WhatsAppStatus;
@@ -36,19 +29,19 @@ export function SendMessageCard({
   onAllowAndSend,
 }: SendMessageCardProps) {
   return (
-    <section id="messaging" className={`${cardBodyClass} scroll-mt-28`}>
+    <section className={cardBodyClass}>
       <div>
-        <h2 className={sectionTitleClass}>Send Message</h2>
+        <h2 className={sectionTitleClass}>Send a message</h2>
         <p className={sectionDescriptionClass}>
           {status === "connected"
-            ? "Send through the bound WhatsApp session. Recipient permission is enforced before delivery."
+            ? "Use the bound session for a direct outbound test. Recipient permission is enforced."
             : "Connect WhatsApp before sending messages."}
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-5 grid gap-4">
+      <form onSubmit={onSubmit} className="mt-4 grid gap-3">
         <label>
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.06em] text-[#5d7067]">Phone</span>
+          <span className={fieldLabelClass}>Recipient phone</span>
           <input
             className={inputClass}
             value={phone}
@@ -60,33 +53,32 @@ export function SendMessageCard({
         </label>
 
         <label>
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.06em] text-[#5d7067]">Message</span>
+          <span className={fieldLabelClass}>Message</span>
           <textarea
-            className={`${inputClass} min-h-32 resize-y`}
+            className={`${inputClass} min-h-24 resize-y`}
             value={message}
             onChange={(event) => onMessageChange(event.target.value)}
-            placeholder="Hello"
-            rows={5}
+            placeholder="Type a test message"
+            rows={4}
             aria-label="Message text"
           />
         </label>
 
         {approvalRequired ? (
-          <div className="rounded-xl border border-[#efdba4] bg-[#fff8e8] p-3.5 text-sm leading-6 text-[#795300]">
-            This number is not allowed yet. Use <strong>Allow &amp; Send</strong> only when the recipient has given
-            permission to receive outbound messages.
+          <div className="rounded-md border border-[#ead6a2] bg-wago-warning-soft px-3 py-2.5 text-xs leading-5 text-[#6f5200]">
+            This number is not allowed yet. Use <strong>Allow &amp; Send</strong> only after confirming recipient permission.
           </div>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
           <button className={primaryButtonClass} type="submit" disabled={!canSend}>
-            {isSending ? <Loader2 className="animate-spin" size={17} /> : <Send size={17} />}
+            {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
             {isSending ? "Sending" : "Send"}
           </button>
 
           {approvalRequired ? (
             <button className={secondaryButtonClass} type="button" onClick={onAllowAndSend} disabled={!canSend}>
-              {isSending ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+              {isSending ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
               Allow &amp; Send
             </button>
           ) : null}

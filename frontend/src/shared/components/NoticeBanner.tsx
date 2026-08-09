@@ -14,17 +14,15 @@ export function NoticeBanner({ notice }: NoticeBannerProps) {
 
   return (
     <div
-      className={`mb-5 mt-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${
-        success ? "border-[#bfe1d4] bg-[#e7f6f0] text-[#155a45]" : "border-[#efc1c5] bg-[#fff0f1] text-[#8b2932]"
+      className={`mt-3 flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-[13px] ${
+        success
+          ? "border-[#c9e2d7] bg-[#eef7f3] text-[#245b47]"
+          : "border-[#ecc9cd] bg-wago-danger-soft text-[#813039]"
       }`}
       role={success ? "status" : "alert"}
     >
-      {success ? (
-        <CheckCircle2 className="mt-0.5 shrink-0" size={17} />
-      ) : (
-        <AlertCircle className="mt-0.5 shrink-0" size={17} />
-      )}
-      <span className="font-medium leading-6">{notice.message}</span>
+      {success ? <CheckCircle2 className="mt-0.5 shrink-0" size={15} /> : <AlertCircle className="mt-0.5 shrink-0" size={15} />}
+      <span className="leading-5">{notice.message}</span>
     </div>
   );
 }

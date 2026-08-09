@@ -1,12 +1,6 @@
-import { Link2Off, Loader2, QrCode, Smartphone } from "lucide-react";
+import { Link2Off, Loader2, QrCode } from "lucide-react";
 import type { WhatsAppBinding, WhatsAppStatus } from "../../api.js";
-import {
-  cardBodyClass,
-  dangerButtonClass,
-  primaryButtonClass,
-  sectionDescriptionClass,
-  sectionTitleClass,
-} from "../../shared/ui/classes.js";
+import { cardBodyClass, dangerButtonClass, primaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 import type { HealthState } from "../dashboard/types.js";
 
 type WhatsAppBindingCardProps = {
@@ -42,58 +36,44 @@ export function WhatsAppBindingCard({
   onChangeAccount,
 }: WhatsAppBindingCardProps) {
   return (
-    <section id="connection" className={`${cardBodyClass} scroll-mt-28`}>
-      <div className="flex items-start justify-between gap-5 max-[680px]:flex-col">
+    <section className={cardBodyClass}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e9f4ef] text-[#176b55]">
-              <Smartphone size={19} />
-            </span>
-            <div>
-              <h2 className={sectionTitleClass}>WhatsApp Connection</h2>
-              <p className={sectionDescriptionClass}>{connectionDescription}</p>
-            </div>
-          </div>
-
-          {binding.state === "bound" ? (
-            <div className="mt-5 grid gap-2 rounded-xl border border-[#d9e8e2] bg-[#f1f8f5] p-3.5 sm:grid-cols-[1fr_auto] sm:items-center">
-              <div>
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[#718179]">
-                  Bound account
-                </span>
-                <strong className="mt-1 block font-mono text-sm text-[#176b55]">{binding.phone}</strong>
-              </div>
-              <span className="text-xs text-[#718179]">{formatBoundAt(binding.boundAt)}</span>
-            </div>
-          ) : null}
+          <h2 className={sectionTitleClass}>WhatsApp connection</h2>
+          <p className={sectionDescriptionClass}>{connectionDescription}</p>
         </div>
 
         {canStartPairing ? (
           <button
-            className={`${primaryButtonClass} shrink-0`}
+            className={primaryButtonClass}
             type="button"
             onClick={onPair}
             disabled={health !== "ok" || isPairing || pairingInProgress}
           >
             {isPairing || (pairingInProgress && status === "connecting") ? (
-              <Loader2 className="animate-spin" size={17} />
+              <Loader2 className="animate-spin" size={15} />
             ) : (
-              <QrCode size={17} />
+              <QrCode size={15} />
             )}
             {pairButtonLabel}
           </button>
         ) : binding.state === "bound" ? (
-          <button
-            className={`${dangerButtonClass} shrink-0`}
-            type="button"
-            onClick={onChangeAccount}
-            disabled={health !== "ok" || isRebinding}
-          >
-            {isRebinding ? <Loader2 className="animate-spin" size={17} /> : <Link2Off size={17} />}
+          <button className={dangerButtonClass} type="button" onClick={onChangeAccount} disabled={health !== "ok" || isRebinding}>
+            {isRebinding ? <Loader2 className="animate-spin" size={15} /> : <Link2Off size={15} />}
             Change account
           </button>
         ) : null}
       </div>
+
+      {binding.state === "bound" ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#2f8b67]" />
+            <strong className="font-mono text-sm font-semibold text-[#285f49]">{binding.phone}</strong>
+          </div>
+          <span className="text-[11px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
+        </div>
+      ) : null}
     </section>
   );
 }

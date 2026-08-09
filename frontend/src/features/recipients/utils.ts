@@ -6,12 +6,12 @@ export function phoneFromJid(jid: string): string {
 
 export function recipientStatus(recipient: RecipientRecord): { label: string; className: string } {
   if (recipient.optedOut) {
-    return { label: "Opted out", className: "bg-[#fff0f1] text-[#9c2932]" };
+    return { label: "Opted out", className: "bg-wago-danger-soft text-wago-danger" };
   }
 
   if (recipient.allowed) {
-    return { label: "Allowed", className: "bg-[#e5f5ee] text-[#176b55]" };
+    return { label: "Allowed", className: "bg-[#edf7f2] text-[#255c48]" };
   }
 
-  return { label: "Not allowed", className: "bg-[#fff5dc] text-[#916000]" };
+  return { label: "Not allowed", className: "bg-wago-warning-soft text-wago-warning" };
 }

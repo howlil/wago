@@ -148,6 +148,25 @@ export type MessageStatusResponse =
       message: string;
     };
 
+export type ActivityLevel = "info" | "success" | "warning" | "error";
+export type ActivityCategory = "system" | "security" | "connection" | "recipient" | "messaging";
+
+export type ActivityEvent = {
+  id: string;
+  timestamp: string;
+  level: ActivityLevel;
+  category: ActivityCategory;
+  code: string;
+  title: string;
+  description: string;
+  metadata?: Record<string, string | number | boolean | null>;
+};
+
+export type ActivityResponse = {
+  success: true;
+  events: ActivityEvent[];
+};
+
 export type RebindResponse = PairingResponse;
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -298,6 +317,10 @@ export function sendMessage(
 
 export function getMessageStatus(messageId: string): Promise<MessageStatusResponse> {
   return requestJson<MessageStatusResponse>(`/messages/${encodeURIComponent(messageId)}/status`);
+}
+
+export function listActivity(limit = 100): Promise<ActivityResponse> {
+  return requestJson<ActivityResponse>(`/activity?limit=${encodeURIComponent(String(limit))}`);
 }
 
 export function rebindWhatsApp(): Promise<RebindResponse> {

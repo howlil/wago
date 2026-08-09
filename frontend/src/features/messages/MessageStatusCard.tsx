@@ -1,12 +1,7 @@
 import { CheckCircle2, Clock3, Loader2, RefreshCcw, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { getMessageStatus, type MessageStatusResponse } from "../../api.js";
-import {
-  cardBodyClass,
-  secondaryButtonClass,
-  sectionDescriptionClass,
-  sectionTitleClass,
-} from "../../shared/ui/classes.js";
+import { cardBodyClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 
 type DeliveryStatus = Extract<MessageStatusResponse, { success: true }>;
 
@@ -20,14 +15,12 @@ const AUTO_POLL_WINDOW_MS = 30000;
 
 function statusClass(status: DeliveryStatus["status"]): string {
   if (status === "accepted") {
-    return "text-[#176b55]";
+    return "text-wago-brand";
   }
-
   if (status === "rejected") {
-    return "text-[#a12d35]";
+    return "text-wago-danger";
   }
-
-  return "text-[#916000]";
+  return "text-wago-warning";
 }
 
 export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCardProps) {
@@ -43,13 +36,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
   const pollStartedAt = useRef(Date.now());
 
   useEffect(() => {
-    setDelivery({
-      success: true,
-      id: messageId,
-      to: "",
-      status: initialStatus,
-      updatedAt: new Date().toISOString(),
-    });
+    setDelivery({ success: true, id: messageId, to: "", status: initialStatus, updatedAt: new Date().toISOString() });
     setError(null);
     pollStartedAt.current = Date.now();
   }, [initialStatus, messageId]);
@@ -112,45 +99,30 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
     }
   }
 
-  const icon =
-    delivery.status === "accepted" ? (
-      <CheckCircle2 size={17} />
-    ) : delivery.status === "rejected" ? (
-      <XCircle size={17} />
-    ) : (
-      <Clock3 size={17} />
-    );
+  const icon = delivery.status === "accepted" ? <CheckCircle2 size={15} /> : delivery.status === "rejected" ? <XCircle size={15} /> : <Clock3 size={15} />;
 
   return (
     <section className={cardBodyClass}>
-      <div className="flex items-start justify-between gap-4 max-[560px]:flex-col">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className={sectionTitleClass}>Last Message Status</h2>
-          <p className={sectionDescriptionClass}>
-            Tracks server acceptance or rejection. This is not a WhatsApp read receipt.
-          </p>
+          <h2 className={sectionTitleClass}>Last message status</h2>
+          <p className={sectionDescriptionClass}>Gateway acknowledgement status, not a WhatsApp read receipt.</p>
         </div>
-        <button
-          className={secondaryButtonClass}
-          type="button"
-          onClick={() => void handleRefresh()}
-          disabled={refreshing}
-        >
-          {refreshing ? <Loader2 className="animate-spin" size={15} /> : <RefreshCcw size={15} />}
+        <button className={secondaryButtonClass} type="button" onClick={() => void handleRefresh()} disabled={refreshing}>
+          {refreshing ? <Loader2 className="animate-spin" size={13} /> : <RefreshCcw size={13} />}
           Refresh
         </button>
       </div>
 
-      <div className="mt-4 rounded-xl bg-[#f5f8f6] p-4">
-        <div className={`flex items-center gap-2 text-sm font-semibold ${statusClass(delivery.status)}`}>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
+        <div className={`flex items-center gap-2 text-xs font-semibold ${statusClass(delivery.status)}`}>
           {icon}
           <span className="capitalize">{delivery.status}</span>
         </div>
-        <span className="mt-2 block break-all font-mono text-[11px] text-[#718179]">{messageId}</span>
-        {delivery.to ? <span className="mt-1 block text-xs text-[#718179]">To {delivery.to}</span> : null}
-        {delivery.message ? <span className="mt-1 block text-xs text-[#9c2932]">{delivery.message}</span> : null}
-        {error ? <span className="mt-1 block text-xs text-[#9c2932]">{error}</span> : null}
+        <span className="max-w-full truncate font-mono text-[10px] text-[#818b86]">{messageId}</span>
       </div>
+      {delivery.message ? <p className="mb-0 mt-2 text-xs text-wago-danger">{delivery.message}</p> : null}
+      {error ? <p className="mb-0 mt-2 text-xs text-wago-danger">{error}</p> : null}
     </section>
   );
 }

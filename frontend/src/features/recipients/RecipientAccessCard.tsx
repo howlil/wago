@@ -1,4 +1,3 @@
-import { ShieldCheck } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { allowRecipient, listRecipients, optOutRecipient, type RecipientRecord } from "../../api.js";
 import { cardBodyClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
@@ -116,41 +115,34 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
   }
 
   return (
-    <section id="recipients" className={`${cardBodyClass} scroll-mt-28`}>
-      <div className="mb-5 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e9f4ef] text-[#176b55]">
-          <ShieldCheck size={19} />
-        </span>
+    <section className={cardBodyClass}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className={sectionTitleClass}>Recipient Access</h2>
-          <p className={sectionDescriptionClass}>
-            Explicitly allow outbound recipients here. Opt-outs remain blocked until permission is intentionally
-            restored.
-          </p>
+          <h2 className={sectionTitleClass}>Recipient access</h2>
+          <p className={sectionDescriptionClass}>Manage who can receive outbound messages. Opt-outs remain blocked until explicitly restored.</p>
         </div>
+        {enabled ? <span className="text-xs text-[#7b8680]">{recipients.length} saved</span> : null}
       </div>
 
       {!enabled ? (
-        <p className="mb-0 rounded-xl bg-[#f4f7f5] px-4 py-3 text-sm text-[#718179]">
+        <p className="mb-0 mt-4 rounded-md border border-dashed border-wago-line px-3 py-4 text-sm text-wago-muted">
           Authenticate the gateway to manage recipients.
         </p>
       ) : (
         <>
-          <RecipientForm
-            phone={phone}
-            label={label}
-            busy={Boolean(busyPhone)}
-            onPhoneChange={setPhone}
-            onLabelChange={setLabel}
-            onSubmit={handleAllow}
-          />
+          <div className="mt-4">
+            <RecipientForm
+              phone={phone}
+              label={label}
+              busy={Boolean(busyPhone)}
+              onPhoneChange={setPhone}
+              onLabelChange={setLabel}
+              onSubmit={handleAllow}
+            />
+          </div>
 
           {notice ? (
-            <p
-              className={`mb-0 mt-3 rounded-xl px-3.5 py-2.5 text-sm ${
-                notice.type === "success" ? "bg-[#e5f5ee] text-[#176b55]" : "bg-[#fff0f1] text-[#9c2932]"
-              }`}
-            >
+            <p className={`mb-0 mt-2 rounded-md px-3 py-2 text-xs ${notice.type === "success" ? "bg-[#edf7f2] text-[#255c48]" : "bg-wago-danger-soft text-wago-danger"}`}>
               {notice.message}
             </p>
           ) : null}

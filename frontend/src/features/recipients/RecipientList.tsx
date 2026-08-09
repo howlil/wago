@@ -14,56 +14,42 @@ type RecipientListProps = {
 export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReallow }: RecipientListProps) {
   if (loading) {
     return (
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-[#e0e8e4] px-4 py-5 text-sm text-[#718179]">
-        <Loader2 className="animate-spin" size={16} /> Loading recipients
+      <div className="mt-3 flex items-center gap-2 rounded-md border border-wago-line px-3 py-4 text-xs text-wago-muted">
+        <Loader2 className="animate-spin" size={14} /> Loading recipients
       </div>
     );
   }
 
   if (recipients.length === 0) {
-    return (
-      <p className="mb-0 mt-4 rounded-xl border border-dashed border-[#d8e2dd] px-4 py-5 text-sm text-[#718179]">
-        No recipients have been added yet.
-      </p>
-    );
+    return <p className="mb-0 mt-3 rounded-md border border-dashed border-wago-line px-3 py-4 text-xs text-wago-muted">No recipients have been added yet.</p>;
   }
 
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-[#e0e8e4]">
-      <div className="divide-y divide-[#e7edea]">
+    <div className="mt-3 overflow-hidden rounded-md border border-wago-line">
+      <div className="divide-y divide-[#e8ece9]">
         {recipients.map((recipient) => {
           const recipientPhone = phoneFromJid(recipient.jid);
           const status = recipientStatus(recipient);
           const busy = busyPhone === recipientPhone;
 
           return (
-            <div
-              key={recipient.jid}
-              className="flex items-center justify-between gap-3 bg-white px-4 py-3.5 max-[680px]:flex-col max-[680px]:items-start"
-            >
+            <div key={recipient.jid} className="flex items-center justify-between gap-3 bg-white px-3 py-2.5 max-[620px]:flex-col max-[620px]:items-start">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <strong className="font-mono text-sm text-[#21342c]">{recipientPhone}</strong>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.className}`}>
-                    {status.label}
-                  </span>
+                  <strong className="font-mono text-xs font-semibold text-[#26362f]">{recipientPhone}</strong>
+                  <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${status.className}`}>{status.label}</span>
                 </div>
-                {recipient.label ? <span className="mt-1 block text-xs text-[#718179]">{recipient.label}</span> : null}
+                {recipient.label ? <span className="mt-0.5 block text-[11px] text-[#7b8680]">{recipient.label}</span> : null}
               </div>
 
               {recipient.allowed && !recipient.optedOut ? (
                 <button className={dangerButtonClass} type="button" onClick={() => onOptOut(recipient)} disabled={busy}>
-                  {busy ? <Loader2 className="animate-spin" size={15} /> : <UserMinus size={15} />}
+                  {busy ? <Loader2 className="animate-spin" size={13} /> : <UserMinus size={13} />}
                   Opt out
                 </button>
               ) : (
-                <button
-                  className={secondaryButtonClass}
-                  type="button"
-                  onClick={() => onReallow(recipient)}
-                  disabled={busy}
-                >
-                  {busy ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />}
+                <button className={secondaryButtonClass} type="button" onClick={() => onReallow(recipient)} disabled={busy}>
+                  {busy ? <Loader2 className="animate-spin" size={13} /> : <Check size={13} />}
                   Allow again
                 </button>
               )}
