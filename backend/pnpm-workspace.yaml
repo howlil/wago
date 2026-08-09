@@ -1,0 +1,8 @@
+allowBuilds:
+  "@whiskeysockets/baileys": true
+  esbuild: true
+  protobufjs: true
+onlyBuiltDependencies:
+  - "@whiskeysockets/baileys"
+  - esbuild
+  - protobufjs
