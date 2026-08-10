@@ -28,21 +28,28 @@ describe("startWhatsAppInBackground", () => {
 });
 
 describe("createShutdownHandler", () => {
-  it("shuts down WhatsApp, closes the server, and exits once", async () => {
+  it("stops HTTP intake, shuts down WhatsApp, flushes persistence, and exits once", async () => {
     const server = createServerMock();
     const exit = vi.fn();
     const shutdownWhatsApp = vi.fn(async () => undefined);
+    const flushPersistence = vi.fn(async () => undefined);
     const shutdown = createShutdownHandler(server, {
       exit,
       shutdownWhatsApp,
+      flushPersistence,
     });
 
     await shutdown("SIGTERM");
     await shutdown("SIGINT");
 
-    expect(shutdownWhatsApp).toHaveBeenCalledTimes(1);
     expect(server.closeMock).toHaveBeenCalledTimes(1);
+    expect(shutdownWhatsApp).toHaveBeenCalledTimes(1);
+    expect(flushPersistence).toHaveBeenCalledTimes(1);
     expect(exit).toHaveBeenCalledWith(0);
     expect(exit).toHaveBeenCalledTimes(1);
+
+    expect(server.closeMock.mock.invocationCallOrder[0]).toBeLessThan(shutdownWhatsApp.mock.invocationCallOrder[0] ?? 0);
+    expect(shutdownWhatsApp.mock.invocationCallOrder[0]).toBeLessThan(flushPersistence.mock.invocationCallOrder[0] ?? 0);
+    expect(flushPersistence.mock.invocationCallOrder[0]).toBeLessThan(exit.mock.invocationCallOrder[0] ?? 0);
   });
 });
