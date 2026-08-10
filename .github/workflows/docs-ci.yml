@@ -53,5 +53,8 @@ jobs:
       - name: Check formatting and lint
         run: pnpm check
 
+      - name: Test documentation helpers
+        run: pnpm --dir docs test
+
       - name: Build documentation
         run: pnpm build:docs
