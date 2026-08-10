@@ -1,0 +1,1 @@
+Legacy `docs/superpowers/` planning artifacts are being relocated under `.agent/` so the public `docs/` tree contains only user-facing documentation.
