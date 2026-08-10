@@ -64,7 +64,8 @@ describe("audit query", () => {
 
   it("rejects an invalid cursor", async () => {
     await expect(listAudit({ limit: 20, before: "not-a-valid-cursor" })).rejects.toMatchObject({
-      name: "INVALID_AUDIT_CURSOR",
+      name: "ApplicationError",
+      code: "INVALID_AUDIT_CURSOR",
     });
   });
 

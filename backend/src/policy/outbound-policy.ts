@@ -1,3 +1,4 @@
+import { ApplicationError, isApplicationError } from "../errors/application-error.js";
 import { withTransaction } from "../infrastructure/database.js";
 import { logger } from "../infrastructure/logger.js";
 import { getRecipientByJid, getRecipientByJidSync, rememberSuccessfulOutboundSync } from "../recipients/store.js";
@@ -225,7 +226,7 @@ export async function checkOutboundPolicy(input: OutboundPolicyInput): Promise<O
 
 export async function recordOutboundAccepted(
   input: OutboundPolicyInput,
-  _messageId: string | null,
+  messageId: string | null,
   resolvedJid?: string,
 ): Promise<void> {
   const now = Date.now();
@@ -246,8 +247,17 @@ export async function recordOutboundAccepted(
     });
   } catch (error) {
     logger.error(
-      { event: "outbound.persistence_failed", error },
+      {
+        event: "outbound.persistence_failed",
+        errorName: error instanceof Error ? error.name : "UNKNOWN",
+        messageId,
+      },
       "Outbound message was sent but safety state could not be fully persisted",
+    );
+    throw new ApplicationError(
+      "OUTBOUND_STATE_PERSIST_FAILED",
+      "Message was accepted by WhatsApp but Wago could not persist outbound safety state",
+      { cause: error },
     );
   }
 }
@@ -288,7 +298,7 @@ export async function resetOutboundPolicyState(): Promise<void> {
   await persisted;
 }
 
-const outboundPolicyErrorNames = new Set<OutboundPolicyBlockReason>([
+const outboundPolicyErrorCodes = new Set<OutboundPolicyBlockReason>([
   "RECIPIENT_NOT_ALLOWED",
   "RECIPIENT_OPTED_OUT",
   "DUPLICATE_MESSAGE",
@@ -300,36 +310,12 @@ const outboundPolicyErrorNames = new Set<OutboundPolicyBlockReason>([
   "OUTBOUND_PAUSED",
 ]);
 
-export function createOutboundPolicyError(decision: Exclude<OutboundPolicyDecision, { allowed: true }>): Error {
-  const error = new Error(decision.message);
-  error.name = decision.reason;
-
-  if (decision.retryAt) {
-    Object.defineProperty(error, "retryAt", {
-      value: decision.retryAt,
-      enumerable: true,
-    });
-  }
-
-  return error;
+export function createOutboundPolicyError(
+  decision: Exclude<OutboundPolicyDecision, { allowed: true }>,
+): ApplicationError {
+  return new ApplicationError(decision.reason, decision.message, { retryAt: decision.retryAt });
 }
 
-export function isOutboundPolicyError(error: unknown): error is Error {
-  return error instanceof Error && outboundPolicyErrorNames.has(error.name as OutboundPolicyBlockReason);
-}
-
-export function getOutboundPolicyHttpStatus(reason: OutboundPolicyBlockReason): number {
-  if (reason === "DUPLICATE_MESSAGE") {
-    return 409;
-  }
-
-  if (reason === "RECIPIENT_NOT_ALLOWED" || reason === "RECIPIENT_OPTED_OUT") {
-    return 403;
-  }
-
-  if (reason === "OUTBOUND_PAUSED") {
-    return 503;
-  }
-
-  return 429;
+export function isOutboundPolicyError(error: unknown): error is ApplicationError {
+  return isApplicationError(error) && outboundPolicyErrorCodes.has(error.code as OutboundPolicyBlockReason);
 }

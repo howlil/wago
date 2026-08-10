@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { ApplicationError } from "../errors/application-error.js";
 import { allowRecipientJid, optOutRecipient, resetRecipientStoreForTest } from "../recipients/store.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
-  getOutboundPolicyHttpStatus,
   isOutboundPolicyError,
   type OutboundPolicyDecision,
   type OutboundPolicyInput,
@@ -390,10 +390,8 @@ describe("outbound policy", () => {
     });
   });
 
-  // --- Error helpers (preserved from original tests) ---
-
   describe("error helpers", () => {
-    it("creates stable errors for blocked policy decisions", () => {
+    it("creates typed errors for blocked policy decisions", () => {
       const retryAt = new Date("2026-08-09T00:00:00.000Z");
       const decision: Exclude<OutboundPolicyDecision, { allowed: true }> = {
         allowed: false,
@@ -404,29 +402,21 @@ describe("outbound policy", () => {
 
       const error = createOutboundPolicyError(decision);
 
-      expect(error.name).toBe("WA_REACHOUT_RESTRICTED");
+      expect(error).toBeInstanceOf(ApplicationError);
+      expect(error.name).toBe("ApplicationError");
+      expect(error.code).toBe("WA_REACHOUT_RESTRICTED");
       expect(error.message).toBe("Outbound is restricted");
+      expect(error.retryAt).toBe(retryAt);
       expect(isOutboundPolicyError(error)).toBe(true);
-      expect((error as Error & { retryAt?: Date }).retryAt).toBe(retryAt);
     });
 
-    it("maps policy reasons to stable HTTP statuses", () => {
-      expect(getOutboundPolicyHttpStatus("RECIPIENT_NOT_ALLOWED")).toBe(403);
-      expect(getOutboundPolicyHttpStatus("RECIPIENT_OPTED_OUT")).toBe(403);
-      expect(getOutboundPolicyHttpStatus("DUPLICATE_MESSAGE")).toBe(409);
-      expect(getOutboundPolicyHttpStatus("ACCOUNT_RATE_LIMITED")).toBe(429);
-      expect(getOutboundPolicyHttpStatus("RECIPIENT_RATE_LIMITED")).toBe(429);
-      expect(getOutboundPolicyHttpStatus("NEW_CHAT_RATE_LIMITED")).toBe(429);
-      expect(getOutboundPolicyHttpStatus("WA_REACHOUT_RESTRICTED")).toBe(429);
-      expect(getOutboundPolicyHttpStatus("WA_NEW_CHAT_CAPPED")).toBe(429);
-      expect(getOutboundPolicyHttpStatus("OUTBOUND_PAUSED")).toBe(503);
-    });
-
-    it("detects outbound policy errors correctly", () => {
-      const policyError = new Error("blocked");
-      policyError.name = "ACCOUNT_RATE_LIMITED";
+    it("detects only typed outbound policy errors", () => {
+      const policyError = new ApplicationError("ACCOUNT_RATE_LIMITED", "blocked");
+      const spoofed = new Error("blocked");
+      spoofed.name = "ACCOUNT_RATE_LIMITED";
 
       expect(isOutboundPolicyError(policyError)).toBe(true);
+      expect(isOutboundPolicyError(spoofed)).toBe(false);
       expect(isOutboundPolicyError(new Error("random"))).toBe(false);
       expect(isOutboundPolicyError("not an error")).toBe(false);
     });

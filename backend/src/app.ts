@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import cors from "cors";
-import express, { type ErrorRequestHandler } from "express";
+import express from "express";
 import helmet from "helmet";
 import { config } from "./config/index.js";
-import { validateRuntimeConfig } from "./config/validation.js";
+import { errorHandler } from "./http/middleware/error-handler.js";
+import { requestHasSameOrigin } from "./middleware/origin.js";
 import { requestLogger } from "./middleware/request-logger.js";
+import { getReadinessSnapshot } from "./modules/gateway/readiness.js";
 import { activityRouter } from "./routes/activity.routes.js";
 import { appRouter } from "./routes/app.routes.js";
 import { messageRouter } from "./routes/message.routes.js";
@@ -14,33 +15,18 @@ import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();
 
-const configErrors = validateRuntimeConfig({
-  nodeEnv: config.nodeEnv,
-  corsOrigin: config.corsOrigin,
-});
-
-if (configErrors.length > 0) {
-  throw new Error(`Invalid production configuration: ${configErrors.join(" ")}`);
-}
-
 app.set("trust proxy", config.trustProxy ? 1 : false);
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", config.corsOrigin === "*" ? "*" : config.corsOrigin],
+        connectSrc: ["'self'"],
         imgSrc: ["'self'", "data:"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
       },
     },
-  }),
-);
-app.use(
-  cors({
-    origin: config.corsOrigin === "*" ? "*" : config.corsOrigin,
-    credentials: config.corsOrigin !== "*",
   }),
 );
 app.use(express.json({ limit: config.bodyLimit }));
@@ -51,17 +37,11 @@ app.use((req, res, next) => {
   const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
   const origin = req.header("origin");
 
-  if (
-    stateChangingMethods.has(req.method) &&
-    hasCookieAuth &&
-    origin &&
-    config.corsOrigin !== "*" &&
-    origin !== config.corsOrigin
-  ) {
+  if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && !requestHasSameOrigin(req)) {
     return res.status(403).json({
       success: false,
       error: "INVALID_ORIGIN",
-      message: "Cookie-authenticated requests must come from the configured origin",
+      message: "Cookie-authenticated requests must come from the Wago origin",
     });
   }
 
@@ -73,11 +53,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.get("/ready", (_req, res) => {
-  res.json({
-    status: "ok",
-    appId: config.appId,
-    apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
-  });
+  res.json(getReadinessSnapshot());
 });
 
 app.use("/app", appRouter);
@@ -95,24 +71,4 @@ if (frontendDirectory && existsSync(frontendDirectory)) {
   });
 }
 
-const jsonErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
-  if (error instanceof SyntaxError && "body" in error) {
-    return res.status(400).json({
-      success: false,
-      error: "INVALID_JSON",
-      message: "Request body must be valid JSON",
-    });
-  }
-
-  if (error instanceof Error && "type" in error && error.type === "entity.too.large") {
-    return res.status(413).json({
-      success: false,
-      error: "PAYLOAD_TOO_LARGE",
-      message: "Request body is too large",
-    });
-  }
-
-  return next(error);
-};
-
-app.use(jsonErrorHandler);
+app.use(errorHandler);

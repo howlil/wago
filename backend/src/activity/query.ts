@@ -1,3 +1,4 @@
+import { ApplicationError, isApplicationError } from "../errors/application-error.js";
 import { getDatabase } from "../infrastructure/database.js";
 import type { ActivityCategory, ActivityLevel, AuditEvent, AuditMetadata, AuditSource } from "./audit-event.js";
 
@@ -37,10 +38,8 @@ const MAX_PAGE_SIZE = 200;
 const MAX_SEARCH_LENGTH = 100;
 const database = getDatabase();
 
-function invalidCursor(): Error {
-  const error = new Error("Audit cursor is invalid");
-  error.name = "INVALID_AUDIT_CURSOR";
-  return error;
+function invalidCursor(): ApplicationError {
+  return new ApplicationError("INVALID_AUDIT_CURSOR", "Audit cursor is invalid");
 }
 
 function encodeCursor(cursor: AuditCursor): string {
@@ -71,7 +70,7 @@ function decodeCursor(raw: string): AuditCursor {
 
     return { timestamp, rowid };
   } catch (error) {
-    if (error instanceof Error && error.name === "INVALID_AUDIT_CURSOR") {
+    if (isApplicationError(error) && error.code === "INVALID_AUDIT_CURSOR") {
       throw error;
     }
 
