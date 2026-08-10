@@ -8,7 +8,7 @@ Wago stores durable application state and WhatsApp authentication material under
 
 Sensitive runtime files include:
 
-- `/app/data/wago.db` — gateway settings, API-key hash, binding metadata, recipient consent state, outbound safety history, and operator activity
+- `/app/data/wago.db` — gateway settings, API-key hash, binding metadata, recipient consent state, outbound safety history, and operator audit events
 - `/app/data/wago.db-wal` and `/app/data/wago.db-shm` while SQLite WAL mode is active
 - `/app/data/auth/` — long-lived Baileys/WhatsApp session credentials
 - legacy JSON recovery files retained after an upgrade from the previous persistence format
@@ -28,6 +28,12 @@ Do not include these values in public issues, discussions, screenshots, logs, pu
 
 If logs are needed, redact secrets and mask identifiers first.
 
+## Audit Data Boundary
+
+The `/audit` workspace and `GET /activity` endpoint expose structured operational evidence, not raw WhatsApp protocol capture. Baileys audit metadata is sanitized before persistence: only safe primitive values are retained, phone/JID-shaped identifiers are masked, and secret/protocol fields such as QR data, credential/key material, tokens, cookies, authorization values, message/text fields, and nested raw payloads are dropped.
+
+Audit rows still belong to the private gateway state. They can reveal timing, lifecycle state, restriction status, and operational behavior, so protect `wago.db` and authenticated audit access even though the low-level adapter removes message content and session secrets.
+
 ## Operational Guidance
 
 - Keep Wago behind HTTPS when exposed outside localhost.
@@ -37,6 +43,7 @@ If logs are needed, redact secrets and mask identifiers first.
 - Stop the service before filesystem-style backups so SQLite can checkpoint and the database/auth snapshot is consistent.
 - Never use `docker compose down -v` during a normal upgrade unless the persistent gateway state is intentionally being destroyed.
 - Rebind WhatsApp and rotate external secrets if `/app/data`, an auth directory, backup, or API credential is suspected to be exposed.
+- Treat terminal session invalidation as a recovery event: inspect sanitized audit evidence, then pair again rather than forcing an aggressive reconnect loop.
 
 ## Transport Boundary
 

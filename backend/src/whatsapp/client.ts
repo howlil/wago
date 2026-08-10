@@ -591,6 +591,16 @@ export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
   }
 
   await initializeWhatsApp();
+  auditBaileys({
+    level: "info",
+    category: "connection",
+    code: "baileys.session.rebind_ready",
+    title: "WhatsApp rebind reset completed",
+    description: "The previous session was cleared and a fresh Baileys pairing lifecycle was started.",
+    metadata: {
+      socketGeneration,
+    },
+  });
 
   return { status: getConnectionStatus() };
 }

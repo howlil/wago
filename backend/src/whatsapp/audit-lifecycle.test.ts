@@ -138,6 +138,52 @@ describe("Baileys lifecycle audit", () => {
     });
   });
 
+  it("records unknown disconnect status explicitly and keeps it recoverable", async () => {
+    vi.useFakeTimers();
+    const { initializeWhatsApp } = await import("../whatsapp.js");
+    const { listAudit } = await import("../activity/query.js");
+
+    await initializeWhatsApp();
+    baileysMock.ev.emit("connection.update", {
+      connection: "close",
+      lastDisconnect: { error: { output: { statusCode: 599 } } },
+    });
+
+    const page = await listAudit({ limit: 20, source: "baileys", category: "connection" });
+    const closeEvent = page.events.find((event) => event.code === "baileys.connection.close");
+
+    expect(closeEvent).toMatchObject({
+      metadata: {
+        statusCode: 599,
+        reason: "status_599",
+        terminal: false,
+        reconnect: true,
+      },
+    });
+    expect(page.events.find((event) => event.code === "baileys.session.invalidated")).toBeUndefined();
+    expect(page.events.find((event) => event.code === "baileys.reconnect.scheduled")).toBeDefined();
+  });
+
+  it("records missing persisted auth on restart and requires pairing", async () => {
+    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("../whatsapp.js");
+    const { listAudit } = await import("../activity/query.js");
+
+    await resumeWhatsAppSession();
+
+    expect(baileysMock.makeWASocket).not.toHaveBeenCalled();
+    expect(getWhatsAppStatus()).toMatchObject({
+      status: "disconnected",
+      binding: { state: "unbound" },
+      accountHealth: {
+        availability: "unavailable",
+        unavailableReason: "session_invalid",
+      },
+    });
+
+    const page = await listAudit({ limit: 20, source: "baileys", category: "connection" });
+    expect(page.events.find((event) => event.code === "baileys.session.auth_missing")).toBeDefined();
+  });
+
   it("records credential persistence failures without credential content", async () => {
     baileysMock.saveCreds.mockRejectedValueOnce(new Error("disk failed"));
     const { initializeWhatsApp, shutdownWhatsApp } = await import("../whatsapp.js");
