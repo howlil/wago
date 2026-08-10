@@ -22,9 +22,7 @@ type BindingRow = {
 };
 
 const database = getDatabase();
-const selectBinding = database.prepare(
-  "SELECT state, jid, phone, bound_at FROM whatsapp_binding WHERE id = 1",
-);
+const selectBinding = database.prepare("SELECT state, jid, phone, bound_at FROM whatsapp_binding WHERE id = 1");
 const upsertBinding = database.prepare(`
   INSERT INTO whatsapp_binding (id, state, jid, phone, bound_at)
   VALUES (1, ?, ?, ?, ?)
