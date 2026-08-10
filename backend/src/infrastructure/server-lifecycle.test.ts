@@ -48,8 +48,12 @@ describe("createShutdownHandler", () => {
     expect(exit).toHaveBeenCalledWith(0);
     expect(exit).toHaveBeenCalledTimes(1);
 
-    expect(server.closeMock.mock.invocationCallOrder[0]).toBeLessThan(shutdownWhatsApp.mock.invocationCallOrder[0] ?? 0);
-    expect(shutdownWhatsApp.mock.invocationCallOrder[0]).toBeLessThan(flushPersistence.mock.invocationCallOrder[0] ?? 0);
+    expect(server.closeMock.mock.invocationCallOrder[0]).toBeLessThan(
+      shutdownWhatsApp.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(shutdownWhatsApp.mock.invocationCallOrder[0]).toBeLessThan(
+      flushPersistence.mock.invocationCallOrder[0] ?? 0,
+    );
     expect(flushPersistence.mock.invocationCallOrder[0]).toBeLessThan(exit.mock.invocationCallOrder[0] ?? 0);
   });
 });
