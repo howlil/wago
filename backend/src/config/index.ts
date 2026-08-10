@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readJsonFileSync, writeJsonFileAtomicSync } from "../infrastructure/json-file.js";
 
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 const nodeEnv = process.env.NODE_ENV?.trim() || "development";
@@ -15,6 +15,7 @@ const settingsFile = resolve(dataDirectory, "app-settings.json");
 const envApiKey = process.env.API_KEY?.trim();
 const envCorsOrigin = process.env.CORS_ORIGIN?.trim();
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
+const SETTINGS_VERSION = 1 as const;
 
 type ApiKeySource = "env" | "generated" | "unset";
 
@@ -25,21 +26,65 @@ type PersistedSettings = {
   generatedAt?: string;
 };
 
+type PersistedSettingsEnvelope = {
+  version: typeof SETTINGS_VERSION;
+  data: PersistedSettings;
+};
+
+type PersistedSettingsFile = PersistedSettings | PersistedSettingsEnvelope;
+
 export type BootstrapApiKeyResult =
   | { success: true; appId: string; apiKey: string; recovered: boolean }
   | { success: false; error: "APP_ALREADY_INITIALIZED" | "INVALID_API_KEY"; message: string };
 
-function readSettings(): PersistedSettings {
-  if (!existsSync(settingsFile)) {
-    return {};
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
+}
+
+function isPersistedSettings(value: unknown): value is PersistedSettings {
+  if (!isRecord(value)) {
+    return false;
   }
 
-  return JSON.parse(readFileSync(settingsFile, "utf8")) as PersistedSettings;
+  return (
+    isOptionalString(value.appId) &&
+    isOptionalString(value.apiKey) &&
+    isOptionalString(value.apiKeyHash) &&
+    isOptionalString(value.generatedAt)
+  );
+}
+
+function isPersistedSettingsFile(value: unknown): value is PersistedSettingsFile {
+  if (isPersistedSettings(value)) {
+    return true;
+  }
+
+  return isRecord(value) && value.version === SETTINGS_VERSION && "data" in value && isPersistedSettings(value.data);
+}
+
+function readSettings(): { settings: PersistedSettings; legacy: boolean } {
+  const stored = readJsonFileSync(settingsFile, isPersistedSettingsFile);
+
+  if (!stored) {
+    return { settings: {}, legacy: false };
+  }
+
+  if ("version" in stored) {
+    return { settings: stored.data, legacy: false };
+  }
+
+  return { settings: stored, legacy: true };
 }
 
 function writeSettings(settings: PersistedSettings): void {
-  mkdirSync(dataDirectory, { recursive: true });
-  writeFileSync(settingsFile, `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 });
+  writeJsonFileAtomicSync(settingsFile, {
+    version: SETTINGS_VERSION,
+    data: settings,
+  } satisfies PersistedSettingsEnvelope);
 }
 
 function generateApiKey(): string {
@@ -50,12 +95,17 @@ export function hashApiKey(apiKey: string): string {
   return createHash("sha256").update(apiKey).digest("hex");
 }
 
-const persistedSettings = readSettings();
+const initialSettingsRead = readSettings();
+const persistedSettings = initialSettingsRead.settings;
 const initialAppId = persistedSettings.appId || `wa-gateway-${randomUUID().slice(0, 8)}`;
 const persistedApiKeyHash =
   persistedSettings.apiKeyHash || (persistedSettings.apiKey ? hashApiKey(persistedSettings.apiKey) : null);
 
-if (!persistedSettings.appId || (persistedSettings.apiKey && !persistedSettings.apiKeyHash)) {
+if (
+  initialSettingsRead.legacy ||
+  !persistedSettings.appId ||
+  (persistedSettings.apiKey && !persistedSettings.apiKeyHash)
+) {
   writeSettings({
     ...persistedSettings,
     appId: initialAppId,
@@ -121,7 +171,7 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
   const apiKeyHash = hashApiKey(apiKey);
 
   writeSettings({
-    ...readSettings(),
+    ...readSettings().settings,
     appId: config.appId,
     apiKeyHash,
     generatedAt: new Date().toISOString(),

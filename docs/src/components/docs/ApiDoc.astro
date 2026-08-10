@@ -66,7 +66,7 @@ const id = lang === 'id';
   <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">{id ? 'Outbound policy limits' : 'Outbound policy limits'}</h2>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-9">
     <li>{id ? 'Recipient wajib allowed dan tidak opted out.' : 'The recipient must be allowed and not opted out.'}</li>
-    <li>{id ? 'Accepted idempotency key disimpan di memory selama 1 jam.' : 'Accepted idempotency keys are retained in memory for 1 hour.'}</li>
+    <li>{id ? 'Accepted idempotency key dipersistenkan selama TTL 1 jam dan tetap berlaku setelah restart.' : 'Accepted idempotency keys are persisted for a 1-hour TTL and remain effective across restarts.'}</li>
     <li>{id ? 'Account: maksimal 30 accepted sends per 60 detik.' : 'Account: max 30 accepted sends per 60 seconds.'}</li>
     <li>{id ? 'Per recipient: maksimal 5 accepted sends per 60 detik.' : 'Per recipient: max 5 accepted sends per 60 seconds.'}</li>
     <li>{id ? 'New chat: maksimal 10 recipient baru per 1 jam.' : 'New chat: max 10 new recipients per hour.'}</li>
