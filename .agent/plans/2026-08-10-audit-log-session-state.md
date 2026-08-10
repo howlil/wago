@@ -1,1 +1,0 @@
-This path is reserved for the original detailed audit execution plan. See `.agent/plans/2026-08-10-audit-observability.md` for the current condensed execution ledger.
