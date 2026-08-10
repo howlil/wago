@@ -11,9 +11,9 @@ const id = lang === 'id';
 
 <DocsLayout title={id ? 'Operasional' : 'Operations'}>
   <PageHeader
-    eyebrow={id ? 'Runbook' : 'Runbook'}
+    eyebrow="Runbook"
     title={id ? 'Operasional & troubleshooting' : 'Operations & troubleshooting'}
-    description={id ? 'Panduan menjalankan satu instance Wago, memahami health, memelihara sesi, dan menangani failure umum.' : 'Runbook for operating one Wago instance, interpreting health, maintaining the session, and handling common failures.'}
+    description={id ? 'Panduan menjalankan satu instance Wago, memahami health/activity, memelihara sesi, dan menangani failure umum.' : 'Runbook for operating one Wago instance, interpreting health/activity, maintaining the session, and handling common failures.'}
   />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-4">Health & readiness</h2>
@@ -25,40 +25,52 @@ const id = lang === 'id';
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Status koneksi' : 'Connection states'}</h2>
   <div class="overflow-x-auto mb-8"><table class="w-full text-sm"><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">
-    <tr><td class="py-3 pr-5 text-[#fafafa]"><code>connecting</code></td><td>{id ? 'Socket sedang mencoba membangun koneksi.' : 'Socket is attempting to establish a connection.'}</td></tr>
+    <tr><td class="py-3 pr-5 text-[#fafafa]"><code>connecting</code></td><td>{id ? 'Socket sedang membangun atau memulihkan koneksi.' : 'The socket is establishing or restoring a connection.'}</td></tr>
     <tr><td class="py-3 pr-5 text-[#fafafa]"><code>qr</code></td><td>{id ? 'QR tersedia dan perlu dipindai.' : 'A QR is available and must be scanned.'}</td></tr>
-    <tr><td class="py-3 pr-5 text-[#fafafa]"><code>connected</code></td><td>{id ? 'Session tersambung.' : 'Session is connected.'}</td></tr>
+    <tr><td class="py-3 pr-5 text-[#fafafa]"><code>connected</code></td><td>{id ? 'Session tersambung dan binding account tersedia.' : 'The session is connected and an account binding is available.'}</td></tr>
     <tr><td class="py-3 pr-5 text-[#fafafa]"><code>disconnected</code></td><td>{id ? 'Tidak ada koneksi aktif; cek log/reconnect/pairing.' : 'No active connection; inspect logs/reconnect/pairing.'}</td></tr>
   </tbody></table></div>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Logs</h2>
-  <CodeBlock label="shell" code={`docker compose logs -f wago\ndocker compose logs --tail=200 wago`} />
-  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Wago menggunakan structured logging. Jangan mempublikasikan raw production logs tanpa masking nomor/JID dan secret.' : 'Wago uses structured logging. Do not publish raw production logs without masking phone/JID identifiers and secrets.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Activity</h2>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Dashboard menampilkan operator activity log. Backend menyimpan maksimal 300 event di /app/data/activity-log.json dan mereduksi metadata sensitif sebelum persistence.' : 'The dashboard exposes an operator activity log. The backend persists up to 300 events at /app/data/activity-log.json and redacts sensitive metadata before persistence.'}</p>
+  <CodeBlock label="cURL" code={`curl "$WAGO_URL/activity?limit=50" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"`} />
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Rebind session' : 'Rebind a session'}</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Rebind menghapus binding auth WhatsApp saat ini lalu memulai pairing baru. Gunakan hanya ketika memang ingin mengganti akun atau session rusak.' : 'Rebind clears the current WhatsApp auth binding and starts fresh pairing. Use it only when changing accounts or recovering a broken session.'}</p>
-  <CodeBlock label="cURL" code={`curl -X POST "$WAGO_URL/whatsapp/rebind" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"`} />
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Logs</h2>
+  <CodeBlock label="shell" code={`docker compose logs -f wago\ndocker compose logs --tail=200 wago`} />
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Runtime menggunakan structured logging. Jangan mempublikasikan raw production logs tanpa masking nomor/JID dan secret.' : 'The runtime uses structured logging. Do not publish raw production logs without masking phone/JID identifiers and secrets.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Pair vs rebind' : 'Pair vs rebind'}</h2>
+  <div class="grid sm:grid-cols-2 gap-4 mb-5">
+    <div class="border border-[#262626] rounded-lg p-5"><code class="text-[#fafafa]">POST /whatsapp/pair</code><p class="text-sm text-[#71717a] mt-2">{id ? 'Mulai pairing untuk gateway yang belum bound. Jika sudah bound, route mempertahankan binding yang ada.' : 'Starts pairing for an unbound gateway. When already bound, the existing binding is preserved.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><code class="text-[#fafafa]">POST /whatsapp/rebind</code><p class="text-sm text-[#71717a] mt-2">{id ? 'Logout, hapus auth/binding lama, lalu mulai pairing akun baru.' : 'Logs out, removes the old auth/binding, then starts pairing a new account.'}</p></div>
+  </div>
+  <Callout title={id ? 'Rebind bersifat destruktif terhadap session lama' : 'Rebind is destructive to the previous session'} tone="warning">
+    {id ? 'Gunakan rebind hanya ketika memang ingin mengganti akun atau memulihkan session yang rusak. Untuk reconnect normal, biarkan lifecycle/reconnect Wago bekerja.' : 'Use rebind only when intentionally changing accounts or recovering a broken session. For ordinary reconnects, let the Wago lifecycle/reconnect logic run.'}
+  </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'State yang reset saat restart' : 'State reset on restart'}</h2>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
-    <li>{id ? 'Message status cache (TTL normal 1 jam).' : 'Message-status cache (normal TTL 1 hour).'}</li>
+    <li>{id ? 'Message-status dan recent-message cache.' : 'Message-status and recent-message caches.'}</li>
     <li>{id ? 'Idempotency-key memory.' : 'Idempotency-key memory.'}</li>
     <li>{id ? 'Account/per-recipient/new-chat sliding windows.' : 'Account/per-recipient/new-chat sliding windows.'}</li>
-    <li>{id ? 'Known-recipient memory yang dipakai untuk new-chat classification.' : 'Known-recipient memory used for new-chat classification.'}</li>
+    <li>{id ? 'Known-recipient memory untuk new-chat classification.' : 'Known-recipient memory used for new-chat classification.'}</li>
+    <li>{id ? 'Account-health cache, reach-out cooldown map, dan reconnect counters.' : 'Account-health cache, reach-out cooldown map, and reconnect counters.'}</li>
   </ul>
-  <Callout title={id ? 'Persistent policy tetap ada' : 'Persistent policy remains'}>
-    {id ? 'Recipient allowlist/opt-out, app settings, dan Baileys auth tidak reset selama /app/data volume dipertahankan.' : 'Recipient allowlist/opt-out, app settings, and Baileys auth remain as long as the /app/data volume is preserved.'}
+  <Callout title={id ? 'Persistent state tetap ada' : 'Persistent state remains'}>
+    {id ? 'Baileys auth, app settings/API-key hash, recipient policy, WhatsApp binding, dan activity log tetap ada selama /app/data volume dipertahankan.' : 'Baileys auth, app settings/API-key hash, recipient policy, WhatsApp binding, and the activity log remain as long as the /app/data volume is preserved.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">Troubleshooting</h2>
   <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">{id ? 'Gejala' : 'Symptom'}</th><th class="py-2.5">{id ? 'Periksa' : 'Check'}</th></tr></thead><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">
-    <tr><td class="py-3 pr-4 text-[#fafafa]">401 UNAUTHORIZED</td><td>{id ? 'Bearer API key, whitespace, atau cookie browser.' : 'Bearer API key, whitespace, or browser cookie.'}</td></tr>
-    <tr><td class="py-3 pr-4 text-[#fafafa]">403 RECIPIENT_NOT_ALLOWED</td><td>{id ? 'POST /recipients/allow sebelum send.' : 'POST /recipients/allow before sending.'}</td></tr>
-    <tr><td class="py-3 pr-4 text-[#fafafa]">403 RECIPIENT_OPTED_OUT</td><td>{id ? 'Recipient policy memang memblokir outbound; jangan bypass opt-out.' : 'Recipient policy intentionally blocks outbound; do not bypass opt-out.'}</td></tr>
-    <tr><td class="py-3 pr-4 text-[#fafafa]">409 DUPLICATE_MESSAGE</td><td>{id ? 'Gunakan idempotency key baru hanya untuk pesan baru.' : 'Use a new idempotency key only for a new logical message.'}</td></tr>
-    <tr><td class="py-3 pr-4 text-[#fafafa]">429 *_RATE_LIMITED</td><td>{id ? 'Tunggu window policy; kurangi burst.' : 'Wait for the policy window and reduce burst rate.'}</td></tr>
-    <tr><td class="py-3 pr-4 text-[#fafafa]">503 WHATSAPP_NOT_CONNECTED</td><td>{id ? 'GET /whatsapp/status, QR, network, dan container logs.' : 'GET /whatsapp/status, QR state, network, and container logs.'}</td></tr>
-    <tr><td class="py-3 pr-4 text-[#fafafa]">QR {id ? 'tidak muncul' : 'not available'}</td><td>{id ? 'Jika connected, QR memang null. Jika disconnected, cek logs atau rebind.' : 'When connected, QR is expected to be null. If disconnected, inspect logs or rebind.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">403 API_KEY_REQUIRED</td><td>{id ? 'Gateway belum diinisialisasi. Selesaikan first-run Pair WhatsApp atau pre-provision API_KEY.' : 'The gateway is not initialized. Complete first-run Pair WhatsApp or pre-provision API_KEY.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">401 UNAUTHORIZED</td><td>{id ? 'Bearer API key, sessionStorage browser, atau auth cookie.' : 'Bearer API key, browser sessionStorage, or the auth cookie.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">403 RECIPIENT_NOT_ALLOWED</td><td>{id ? 'Allow recipient dari dashboard atau POST /recipients/allow.' : 'Allow the recipient from the dashboard or POST /recipients/allow.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">403 RECIPIENT_OPTED_OUT</td><td>{id ? 'Jangan bypass opt-out; re-allow hanya setelah permission diperoleh kembali.' : 'Do not bypass opt-out; re-allow only after renewed permission.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">409 DUPLICATE_MESSAGE</td><td>{id ? 'Gunakan idempotency key baru hanya untuk pesan logis yang baru.' : 'Use a new idempotency key only for a new logical message.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">429 *_RATE_LIMITED</td><td>{id ? 'Tunggu policy window dan kurangi burst.' : 'Wait for the policy window and reduce burst rate.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">429 REACHOUT_RESTRICTED</td><td>{id ? 'WhatsApp menolak reach-out. Jangan retry agresif; tunggu cooldown/account health pulih.' : 'WhatsApp rejected the reach-out. Do not retry aggressively; wait for cooldown/account health to recover.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">503 WHATSAPP_NOT_CONNECTED</td><td>{id ? 'GET /whatsapp/status, QR state, network, dan container logs.' : 'GET /whatsapp/status, QR state, network, and container logs.'}</td></tr>
+    <tr><td class="py-3 pr-4 text-[#fafafa]">QR {id ? 'tidak muncul' : 'not available'}</td><td>{id ? 'Jika connected, QR memang null. Jika unbound/disconnected, gunakan Pair WhatsApp dan cek logs.' : 'When connected, QR is expected to be null. If unbound/disconnected, use Pair WhatsApp and inspect logs.'}</td></tr>
     <tr><td class="py-3 pr-4 text-[#fafafa]">{id ? 'Pairing hilang setelah deploy' : 'Pairing lost after deploy'}</td><td>{id ? 'Pastikan wago_data tidak diganti/dihapus dan /app/data tetap mounted.' : 'Ensure wago_data was not replaced/deleted and /app/data remains mounted.'}</td></tr>
   </tbody></table></div>
 </DocsLayout>
