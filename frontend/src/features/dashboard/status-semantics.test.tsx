@@ -16,13 +16,7 @@ function outboundMetricScope() {
 
 describe("operator status semantics", () => {
   it("does not show outbound Normal while WhatsApp is disconnected", () => {
-    render(
-      <OverviewCards
-        health="ok"
-        status="disconnected"
-        accountHealth={{ availability: "available" } as never}
-      />,
-    );
+    render(<OverviewCards health="ok" status="disconnected" accountHealth={{ availability: "available" } as never} />);
 
     const outbound = outboundMetricScope();
     expect(outbound.getByText("Unavailable")).toBeTruthy();
