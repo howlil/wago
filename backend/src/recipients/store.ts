@@ -63,12 +63,7 @@ function isRecipientMap(value: unknown): value is RecipientFile {
 }
 
 function isRecipientEnvelope(value: unknown): value is RecipientEnvelope {
-  return (
-    isRecord(value) &&
-    value.version === RECIPIENT_STORE_VERSION &&
-    "data" in value &&
-    isRecipientMap(value.data)
-  );
+  return isRecord(value) && value.version === RECIPIENT_STORE_VERSION && "data" in value && isRecipientMap(value.data);
 }
 
 function isStoredRecipientFile(value: unknown): value is StoredRecipientFile {
