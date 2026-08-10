@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { config } from "../config/index.js";
+import { readJsonFile, writeJsonFileAtomic } from "../infrastructure/json-file.js";
 import { logger, redactLogFields } from "../infrastructure/logger.js";
 
 export type ActivityLevel = "info" | "success" | "warning" | "error";
@@ -23,34 +23,82 @@ export type ActivityEvent = {
 export type ActivityInput = Omit<ActivityEvent, "id" | "timestamp">;
 
 const MAX_ACTIVITY_EVENTS = 300;
+const ACTIVITY_STORE_VERSION = 1 as const;
 const activityFile =
   process.env.NODE_ENV === "test"
     ? resolve(config.dataDirectory, `activity-log-${process.pid}.json`)
     : resolve(config.dataDirectory, "activity-log.json");
 
+type ActivityEnvelope = {
+  version: typeof ACTIVITY_STORE_VERSION;
+  data: ActivityEvent[];
+};
+type StoredActivityFile = ActivityEvent[] | ActivityEnvelope;
+
 let writeQueue: Promise<void> = Promise.resolve();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isActivityEvent(value: unknown): value is ActivityEvent {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.timestamp === "string" &&
+    (value.level === "info" || value.level === "success" || value.level === "warning" || value.level === "error") &&
+    (value.category === "system" ||
+      value.category === "security" ||
+      value.category === "connection" ||
+      value.category === "recipient" ||
+      value.category === "messaging") &&
+    typeof value.code === "string" &&
+    typeof value.title === "string" &&
+    typeof value.description === "string" &&
+    (value.metadata === undefined || isRecord(value.metadata))
+  );
+}
+
+function isActivityArray(value: unknown): value is ActivityEvent[] {
+  return Array.isArray(value) && value.every(isActivityEvent);
+}
+
+function isStoredActivityFile(value: unknown): value is StoredActivityFile {
+  if (isActivityArray(value)) {
+    return true;
+  }
+
+  return (
+    isRecord(value) &&
+    value.version === ACTIVITY_STORE_VERSION &&
+    "data" in value &&
+    isActivityArray(value.data)
+  );
+}
 
 async function readActivityFile(): Promise<ActivityEvent[]> {
   try {
-    const raw = await readFile(activityFile, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
+    const stored = await readJsonFile(activityFile, isStoredActivityFile);
 
-    return Array.isArray(parsed) ? (parsed as ActivityEvent[]) : [];
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    if (!stored) {
       return [];
     }
 
+    return Array.isArray(stored) ? stored : stored.data;
+  } catch (error) {
     logger.warn({ event: "activity.read_failed", error }, "Failed to read operator activity log");
     return [];
   }
 }
 
 async function writeActivityFile(events: ActivityEvent[]): Promise<void> {
-  await mkdir(dirname(activityFile), { recursive: true });
-  const tmpFile = `${activityFile}.${process.pid}.tmp`;
-  await writeFile(tmpFile, `${JSON.stringify(events, null, 2)}\n`, { mode: 0o600 });
-  await rename(tmpFile, activityFile);
+  await writeJsonFileAtomic(activityFile, {
+    version: ACTIVITY_STORE_VERSION,
+    data: events,
+  } satisfies ActivityEnvelope);
 }
 
 export async function recordActivity(input: ActivityInput): Promise<ActivityEvent> {
@@ -76,8 +124,12 @@ export async function recordActivity(input: ActivityInput): Promise<ActivityEven
   return event;
 }
 
-export async function listActivity(limit = 100): Promise<ActivityEvent[]> {
+export async function flushActivityStore(): Promise<void> {
   await writeQueue.catch(() => undefined);
+}
+
+export async function listActivity(limit = 100): Promise<ActivityEvent[]> {
+  await flushActivityStore();
   const events = await readActivityFile();
   const safeLimit = Math.min(Math.max(Math.trunc(limit) || 100, 1), MAX_ACTIVITY_EVENTS);
 
@@ -85,6 +137,7 @@ export async function listActivity(limit = 100): Promise<ActivityEvent[]> {
 }
 
 export async function resetActivityLogForTest(): Promise<void> {
+  await flushActivityStore();
   writeQueue = Promise.resolve();
   await writeActivityFile([]);
 }
