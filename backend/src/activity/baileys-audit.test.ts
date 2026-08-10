@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { listAudit } from "./query.js";
 import { recordBaileysAudit, sanitizeBaileysMetadata } from "./baileys-audit.js";
+import { listAudit } from "./query.js";
 import { resetActivityLogForTest } from "./store.js";
 
 describe("Baileys audit sanitizer", () => {
