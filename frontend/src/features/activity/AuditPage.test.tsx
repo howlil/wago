@@ -100,12 +100,18 @@ describe("AuditPage", () => {
   });
 
   it("labels event source and keeps technical metadata behind disclosure", async () => {
+    const user = userEvent.setup();
     render(<AuditPage />);
 
     expect(await screen.findByText("Baileys")).toBeTruthy();
     expect(screen.getByText("Warning")).toBeTruthy();
     expect(screen.getByText("WhatsApp")).toBeTruthy();
-    expect(screen.getByText("Technical details")).toBeTruthy();
-    expect(screen.queryByText("Status code")).toBeNull();
+    const summary = screen.getByText("Technical details");
+    const disclosure = summary.closest("details") as HTMLDetailsElement | null;
+    expect(disclosure?.open).toBe(false);
+
+    await user.click(summary);
+    expect(disclosure?.open).toBe(true);
+    expect(screen.getByText("Status code")).toBeTruthy();
   });
 });
