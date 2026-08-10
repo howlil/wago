@@ -2,185 +2,226 @@
 
 This ledger tracks execution of the approved backend hardening design and implementation plan without competing with the concise root `plan.md`.
 
-Authoritative design and implementation plan:
+Authoritative artifacts:
 
-- `.agent/specs/2026-08-10-backend-production-hardening-design.md`
-- `.agent/plans/2026-08-10-backend-production-hardening.md`
+- design: `.agent/specs/2026-08-10-backend-production-hardening-design.md`
+- implementation plan: `.agent/plans/2026-08-10-backend-production-hardening.md`
+- final verification checkpoint: `.agent/checkpoints/2026-08-11-backend-production-hardening-verification.md`
+- execution branch: `staging/backend-production-hardening`
+- integration PR: #18
 
-Execution branch: `staging/backend-production-hardening`
-Draft integration PR: #18
+Architecture remains a production-grade single-instance modular monolith: Express + TypeScript + Baileys + SQLite + filesystem Baileys auth + React + one production container. No Redis, distributed queue, database server, DI framework, microservice split, or ceremonial architecture was introduced.
 
-Architecture remains a production-grade single-instance modular monolith: Express + TypeScript + Baileys + SQLite + filesystem Baileys auth + one production container. Do not add microservices, Redis, distributed queues, Kubernetes, a DI framework, or ceremonial layers without a demonstrated requirement.
-
-## Reconciliation with Main — 2026-08-11
-
-**Status:** completed against `main` after Milestone 4 Iteration 20 merged as `752d456628eb3b6805f0eadc8f751830ca6c276c`.
-
-Reason:
-
-- the old staging head `efea6984ca0503b482adbd370612ff944270ade3` was based on pre-PR-21/Iteration-20 history;
-- PR #21 moved internal engineering artifacts from `docs/superpowers` to `.agent` and refreshed public docs;
-- Iteration 20 added lifecycle/audit fixes in `backend/src/whatsapp.test.ts`, `backend/src/whatsapp/audit-lifecycle.test.ts`, and `backend/src/whatsapp/client.ts`;
-- merging the old staging history directly risked restoring stale planning/public-doc structure or dropping those lifecycle fixes.
-
-Reconciliation method:
-
-- preserved the old staging head at `backup/backend-production-hardening-pre-reconcile`;
-- rebuilt staging from current `main` rather than merging the divergent history;
-- restored the verified hardening backend subtree from the old staging checkpoint;
-- overlaid the three current-main Iteration 20 lifecycle files so audit/session hardening remains authoritative;
-- preserved current public docs, root roadmap, `.agent` workspace, SECURITY, and runtime architecture from `main`;
-- retained staging's intended Compose/environment changes;
-- moved this design/plan/ledger under `.agent` instead of reintroducing `docs/superpowers`.
-
-Zero-config reconciliation:
-
-- old PR #15 (`feat/zero-config-pairing`) was verified as already represented by this staging branch;
-- staging tests cover pairing-generated bootstrap without production env configuration, same-origin Host/Origin detection, cross-origin bootstrap rejection, and cookie-origin protection;
-- production Compose no longer requires `CORS_ORIGIN` or pre-provisioned `API_KEY`;
-- the obsolete production env example is removed;
-- PR #15 was closed as superseded and its old head is preserved at `backup/zero-config-pairing-pre-reconcile`.
-
-## Hardening Iteration 0: Baseline Integration and Staging Safety
+## Mainline Reconciliation
 
 **Status:** completed.
 
-- Approved design and implementation plan.
-- Integrated zero-config first pairing/bootstrap without required production `.env`/`CORS_ORIGIN`.
-- Preserved SQLite-backed settings and Bearer/cookie auth semantics.
-- Reconciled session-state work from `main` instead of retaining duplicate implementation.
-- Verified tests, builds, Docker, Docs CI, and CodeQL before architecture changes.
+The original staging history was rebuilt on top of the post-PR-21 / post-Iteration-20 mainline rather than merging stale public docs and planning layout back into the repository.
+
+Preserved archaeology branches:
+
+- `backup/backend-production-hardening-pre-reconcile`
+- `backup/zero-config-pairing-pre-reconcile`
+
+The rebuilt staging line preserved current Audit/Session Iteration 20 lifecycle behavior and moved hardening design/plan/evidence under `.agent/` rather than restoring `docs/superpowers`.
+
+Zero-config first pairing from the old PR #15 is represented in PR #18 and covered by regression tests; PR #15 was closed as superseded instead of being merged from its obsolete persistence baseline.
+
+## Hardening Iteration 0 — Baseline Integration and Staging Safety
+
+**Status:** completed.
+
+- approved design and implementation plan;
+- zero-config first-pairing/bootstrap integrated;
+- SQLite settings and Bearer/cookie authentication preserved;
+- current session-state work reconciled from main;
+- baseline tests/build/Docker/Docs/CodeQL verified.
 
 Initial verified runtime head: `77a80bb69c42511a39e012b58738d4900469f1d1`.
 
-## Hardening Iteration 1: Characterization and Contract Lock
+## Hardening Iteration 1 — Characterization and Contract Lock
 
-**Status:** completed — checkpoint reached.
+**Status:** completed.
 
-Coverage added before behavior-moving refactors:
+Characterization coverage locks:
 
-- `backend/src/http-contract.test.ts` locks auth, request validation, outbound-policy HTTP mappings, WhatsApp-unavailable handling, sanitized 5xx, and message-status contracts.
-- Existing `app.test.ts` locks malformed JSON and payload-too-large responses.
-- `backend/src/whatsapp/lifecycle.contract.test.ts` locks first boot, session resume, Pair idempotency, QR transition, and rebind lifecycle.
-- Existing WhatsApp suites lock reconnect, terminal logout, initialization failure, health invalidation, and shutdown.
+- authentication and validation responses;
+- malformed/oversized JSON;
+- outbound policy HTTP mappings;
+- disconnected WhatsApp handling;
+- sanitized unexpected failures;
+- message-status contracts;
+- first boot/session resume/pair/QR/rebind lifecycle;
+- recoverable reconnect, terminal logout, initialization failure, health invalidation, and shutdown.
 
-Checkpoint head: `731edd074678edfceb02ef25cc95dee2ce778dc2`.
+Checkpoint: `731edd074678edfceb02ef25cc95dee2ce778dc2`.
 
-## Hardening Iteration 2: Typed Application Errors and HTTP Error Boundary
+## Hardening Iteration 2 — Typed Application Errors and HTTP Mapping
 
-**Status:** completed — checkpoint reached.
-
-Goal: introduce the smallest typed expected-error model, centralize application-error to HTTP mapping, preserve stable public error contracts, sanitize unexpected 5xx responses, and remove HTTP status ownership from business policy code.
-
-Implemented:
-
-- Added neutral `ApplicationError` + stable `ApplicationErrorCode` under `backend/src/errors/`; application errors do not carry HTTP status.
-- Added centralized HTTP mapping under `backend/src/http/errors/error-response.ts`, including optional retry metadata.
-- Added global `apiErrorHandler` after JSON parser error handling; unexpected failures return only `INTERNAL_ERROR` and a generic message.
-- Global unhandled-error logging records only safe context (`event`, method, path, error type) rather than the raw Error/message/cause.
-- `outbound-policy.ts` now creates typed policy errors and no longer exports/owns an HTTP-status mapping.
-- Policy detection no longer trusts arbitrary `Error.name` spoofing.
-- Audit malformed-cursor failures now use `ApplicationError("INVALID_AUDIT_CURSOR", ...)` and flow through the global HTTP boundary.
-- Invalid normalized phone and unregistered WhatsApp recipient failures are typed.
-- `whatsapp.ts` normalizes the small set of legacy integration errors at the WhatsApp module boundary while keeping raw Baileys/runtime details inside the module.
-- `message.routes.ts` keeps request parsing, rate limiting, and activity logging, but delegates all expected application errors to the global HTTP boundary. Unexpected send failures retain the established `SEND_MESSAGE_FAILED` public contract.
-- No database migration or new dependency was introduced.
-
-TDD evidence:
-
-1. RED `4ba3d65e18fd7afec0a0bac7744947f5a1bad188` — CI #201 failed because `ApplicationError`/mapper did not exist; existing suites remained green.
-2. GREEN mapper — CI #204 passed after adding the neutral typed error and HTTP mapper.
-3. RED `1ff89db893a51b4abfdd2d372b843cd57867e1f7` — CI #206 failed because the centralized error-handler module did not exist.
-4. GREEN handler — CI #209 passed after adding the global API error handler.
-5. RED `3c041177e8742a59e189005e4f906a81ac6e4927` — CI #215 produced the intended semantic failures.
-6. During GREEN refactoring, characterization tests caught a control-flow regression where policy errors were audited but fell through to 500; the route was corrected so every `ApplicationError` reaches the global boundary after audit logging.
-7. RED `9fb7f30454e4a9f51e1d9d7bb2eb2e2c7308466f` — CI #237 proved the global handler still attached raw Error context to logs.
-8. GREEN runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062` — raw Error logging was replaced by safe error-type context.
-
-Historical verification on runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062`:
-
-- root formatting/lint: CI #238 success;
-- backend: 30 test files / 176 tests passed;
-- frontend: 3 test files / 19 tests passed;
-- backend + frontend production builds: CI #238 success;
-- Docker Build Core: CI #238 success;
-- Docs CI #84 success;
-- CodeQL #239 success.
-
-**Checkpoint:** Hardening Iteration 2 is closed.
-
-## Hardening Iteration 3: Message Application Service
-
-**Status:** completed — checkpoint reached.
-
-Goal: move message send/status orchestration behind one small application boundary while keeping `message.routes.ts` responsible only for HTTP transport concerns and existing activity/error contracts.
+**Status:** completed.
 
 Implemented:
 
-- Added `backend/src/modules/messages/message.service.ts` as the messages application boundary.
-- Added manual dependency injection through `createMessageService({ sendText, getStatus })`; no DI container or extra architectural framework was introduced.
-- `messageService.send()` accepts the application command `{ to, text, idempotencyKey? }` and delegates to the existing WhatsApp facade.
-- `messageService.findStatus()` owns status lookup delegation through the existing WhatsApp facade.
-- `message.routes.ts` no longer imports `sendTextMessage` or `getMessageStatus` directly.
-- The route still owns API-key authentication, HTTP rate limiting, request-shape validation, `Idempotency-Key` extraction/precedence, activity recording, HTTP response status, expected-error forwarding, and the established sanitized `SEND_MESSAGE_FAILED` fallback.
-- Existing HTTP characterization remains unchanged and green.
-- No Baileys lifecycle behavior, policy semantics, SQLite schema, dependency, or public API contract changed in this iteration.
-- Hardening Iteration 4 was intentionally not started.
+- neutral `ApplicationError` and stable application error codes;
+- HTTP mapping outside business policy;
+- sanitized unknown-error response/logging;
+- typed outbound, audit-cursor, phone, and WhatsApp integration failures;
+- outbound policy no longer owns HTTP status semantics or trusts arbitrary `Error.name` values as application policy codes.
+
+Key TDD checkpoints include RED `4ba3d65...`, `1ff89db...`, `3c04117...`, and `9fb7f30...`; reviewed GREEN runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062` passed its full gate.
+
+## Hardening Iteration 3 — Message Application Service
+
+**Status:** completed.
+
+Implemented a small messages application boundary with manual dependency injection only. HTTP routes retain transport validation/auth/rate-limit/idempotency/activity/response responsibilities; the service owns send/status use-case delegation.
 
 TDD evidence:
 
-1. RED `803a86b89c1cf963ea76bceb3bf08a4fa376b1a5` — CI #254 failed only because `message.service.ts` did not exist.
-2. GREEN service implementation reached `a78afb1e89f246748d15411301adb0c86c25b77a`; the new service unit test passed.
-3. RED route boundary `963304627ff6ebd6abf2b168bb2eb2eae0eca69b167` — CI #262 produced exactly the two intended failures.
-4. GREEN runtime head `bb8ea1146ed13d44ecf1384674e411a7c26e0bac` — both route-boundary tests passed and the full contract suite remained green.
+- RED `803a86b...` — missing service;
+- RED `9633046...` — routes still bypassed service;
+- GREEN `bb8ea1146ed13d44ecf1384674e411a7c26e0bac` — route/service boundary and existing contracts green.
 
-Historical verification on runtime head `bb8ea1146ed13d44ecf1384674e411a7c26e0bac`:
+## Hardening Iteration 4 — Outbound Policy Decoupling
 
-- root formatting/lint: CI #263 success;
-- backend: 32 test files / 179 tests passed;
-- frontend: 3 test files / 19 tests passed;
-- backend + frontend production builds: CI #263 success;
-- Docker Build Core: CI #263 success;
-- Docs CI #107 success;
-- CodeQL #264 success.
+**Status:** completed by acceptance review; no duplicate code move required.
 
-**Checkpoint:** Hardening Iteration 3 is closed. Stop before Hardening Iteration 4.
+The planned target had already been reached during Iteration 2:
 
-## Hardening Iteration 4: Outbound Policy Decoupling
+- outbound policy returns typed application decisions/errors;
+- no HTTP status table lives in policy;
+- retry metadata remains on typed application errors;
+- HTTP mapping remains in `backend/src/http/errors/error-response.ts`;
+- outbound policy safety semantics and public response contracts remain covered by characterization tests.
 
-**Status:** pending.
+No redundant abstraction was introduced merely to satisfy the checklist.
 
-Remove any remaining transport ownership from outbound-policy code only after reconciling current Milestone 5 behavior. Preserve all outbound-safety decisions, retry metadata, transactional invariants, activity contracts, and public HTTP mappings. Do not broaden this into unrelated policy redesign.
+## Hardening Iteration 5 — WhatsApp Runtime and Lifecycle Split
 
-## Remaining Iterations
+**Status:** completed.
 
-- Iteration 5 — WhatsApp Runtime and Lifecycle Split
-- Iteration 6 — Persistence and Transaction Ownership
-- Iteration 7 — HTTP and Application Lifecycle Cleanup
-- Iteration 8 — Production Engineering Rules and Documentation
-- Iteration 9 — Full Verification, Rollback Rehearsal, and PR Gate
+Valid RED CI `31432130876` failed only because the new sender/lifecycle boundaries did not exist while pre-existing suites stayed green.
 
-## Fresh Reconciliation Gate
+Implemented:
 
-Runtime reconciliation head before this ledger-only closeout: `64679b197b11a391a2530246bb9555261ab3d779`.
+- `modules/whatsapp/runtime.ts` — private socket/generation/lifecycle flags;
+- `modules/whatsapp/lifecycle.ts` — socket creation, events, reconnect, credentials, pairing, rebind, and shutdown;
+- `modules/whatsapp/sender.ts` — connected-state check, normalization, outbound policy, send orchestration, caches/status, accepted-state persistence;
+- `modules/whatsapp/observability.ts` — sanitized Baileys audit/account-health adapter;
+- typed WhatsApp rejection mapping;
+- `whatsapp/client.ts` reduced to compatibility facade;
+- public `whatsapp.ts` exposes narrow Wago-level operations and never the raw Baileys socket.
 
-Verified:
+GREEN CI `31432667063` passed formatting/lint, tests, core production builds, and Docker build after formatter-only cleanup.
 
-- [x] Core CI `31429553913` success;
-- [x] all backend/frontend tests success through Core CI;
-- [x] backend/frontend production builds success through Core CI;
-- [x] production Docker build success through Core CI;
-- [x] CodeQL `31429553916` success;
-- [x] compare reports `main` (`752d456628eb3b6805f0eadc8f751830ca6c276c`) as merge base with `behind_by=0`;
-- [x] PR changed-file review contains no `docs/superpowers` artifact;
-- [x] public `docs/` are inherited unchanged from the already-verified current `main`, so Docs CI is not path-triggered by this reconciliation rather than being falsely reported as a new run.
+## Hardening Iteration 6 — Persistence and Transaction Ownership
 
-Because this ledger update creates a new final branch head, Core CI and CodeQL must pass once more on that exact head before Hardening Iteration 4 may start. No new public-doc build is required unless a future hardening iteration changes `docs/`.
+**Status:** completed.
+
+Valid RED head `11cc7db549909cf2a6996720cef6b895089d6136`, CI `31432938378` proved three gaps:
+
+- migration ownership module missing;
+- transaction helper missing;
+- forced accepted-state persistence failure still resolved instead of failing closed.
+
+Implemented:
+
+- released migrations 1–3 moved unchanged into `infrastructure/database/migrations.ts`;
+- migration versions and SQL semantics were not rewritten;
+- shared SQLite transaction helper with rollback behavior;
+- old public database transaction wrapper retained for callers;
+- accepted outbound multi-write safety state remains atomic;
+- forced durable-state failure rolls back partial idempotency state and raises typed `OUTBOUND_STATE_PERSIST_FAILED`.
+
+Migration, transaction, persistence-failure, existing SQLite, policy, HTTP, and application suites are green in the final automated gate.
+
+## Hardening Iteration 7 — HTTP and Application Lifecycle Cleanup
+
+**Status:** completed.
+
+Valid RED CI `31433647723` showed 189 existing tests passing and exactly three new boundary suites failing because their modules were absent.
+
+Implemented:
+
+- shared Express `asyncHandler`;
+- one final HTTP error middleware for malformed JSON, oversized payloads, typed application errors, and sanitized unknown failures;
+- existing public unknown-error code `INTERNAL_ERROR` preserved rather than introducing an undocumented contract break;
+- asynchronous message, recipient, and WhatsApp routes use the shared async boundary while endpoint-specific response contracts remain intact;
+- explicit idempotent application lifecycle owner;
+- shutdown sequence after HTTP intake closes: WhatsApp shutdown → outbound policy flush → database checkpoint → database close;
+- duplicate legacy `server-lifecycle` implementation/test retired;
+- gateway readiness moved behind `modules/gateway/readiness.ts` with unchanged public `/ready` response shape.
+
+## Hardening Iteration 8 — Production Engineering Rules and Documentation
+
+**Status:** completed.
+
+`AGENTS.md` now describes the repository as a production-grade, single-instance modular monolith and uses the approved priority order:
+
+1. Correctness
+2. Security
+3. Data integrity
+4. Reliability
+5. Maintainability
+6. Observability
+7. Simplicity
+8. Performance
+9. Extensibility
+
+Mandatory rules cover module ownership, external-input validation, typed expected errors, bug-fix regressions, explicit transaction boundaries, append-only released migrations, explicit lifecycle transitions, retry idempotency, sanitized logs, graceful lifecycle behavior, deliberate API contract changes, and Baileys containment.
+
+Anti-over-engineering rules explicitly reject decorative microservices, Redis/queues, generic layer factories, unnecessary ports/adapters/DTO ceremony, SQL in routes, and HTTP decisions in business policy.
+
+A repository search found no stale MVP framing in current public Architecture/Development docs, so those public files were intentionally left unchanged.
+
+## Hardening Iteration 9 — Full Verification and Rollback Gate
+
+**Status:** automated gate completed; physical-handset limitation documented.
+
+Added `scripts/smoke-container.sh` and CI coverage that verifies:
+
+- current production Docker build;
+- fresh empty-volume startup;
+- `/health`, `/ready`, and dashboard reachability;
+- exact released migration set `[1,2,3]`;
+- stable app identity/readiness over restart;
+- no destructive migration reapplication;
+- known-good `main` image build;
+- rollback of the same copied persistent state to the known-good image;
+- rollback `/health`, `/ready`, dashboard, and migration readability.
+
+Runtime verification head `03f6c0f2d0a5067b3fd4ed9dcf997ce208de4990`:
+
+- CI `31434458628` — success;
+- formatting/lint — success;
+- backend/frontend tests — success;
+- backend/frontend production builds — success;
+- public documentation build — success;
+- Docker current image build — success;
+- restart/persistence smoke — success;
+- rollback image + same-volume rehearsal — success;
+- CodeQL `31434458742` — success.
+
+Physical WhatsApp QR scanning cannot be performed by the GitHub connector/hosted runner and is **not** claimed as executed. Pair/QR/connected/resume/reconnect/terminal-invalid/rebind/shutdown behavior is covered by automated Wago/Baileys lifecycle regressions. The limitation and exact automated evidence are recorded in `.agent/checkpoints/2026-08-11-backend-production-hardening-verification.md`.
+
+## Final PR Gate
+
+The verification checkpoint and this ledger are record-only changes after runtime verification head `03f6c0f...`.
+
+Before merge, the exact final PR head containing these records must satisfy:
+
+- Core CI including repository check, all tests, core production builds, and docs build;
+- Docker current-image build;
+- deterministic restart/persistence smoke;
+- same-volume rollback rehearsal against current `main`;
+- CodeQL;
+- `main...staging/backend-production-hardening` compare with `behind_by=0`;
+- diff review for approved scope and accidental architecture ceremony.
 
 ## Engineering Rules
 
-MUST: preserve module ownership; validate untrusted boundaries; use typed expected errors and stable public codes; add regression coverage before behavior-moving refactors; use explicit transactions for multi-write invariants; keep migrations append-only; make state transitions explicit; preserve retry idempotency; keep logs sanitized; keep Baileys internals inside the WhatsApp module.
+MUST: preserve module ownership; validate untrusted boundaries; use typed expected errors and stable public codes; add regression coverage before behavior-moving fixes; use explicit transactions for multi-write invariants; keep released migrations append-only; make state transitions explicit; preserve retry idempotency; keep logs sanitized; keep Baileys internals inside the WhatsApp module.
 
 SHOULD: prefer composition, narrow exported APIs, colocated focused tests, and interfaces only where they create a real boundary.
 
-MUST NOT: add distributed infrastructure by default; create ceremonial layers; put SQL in routes; put HTTP-status decisions in business-policy code; expose raw Baileys sockets across modules; swallow errors; log secrets/full identifiers/message bodies; or make destructive schema changes without migration/rollback design.
+MUST NOT: add distributed infrastructure by default; create ceremonial layers; put SQL in routes; put HTTP-status decisions in business policy; expose raw Baileys sockets across modules; swallow errors; log secrets/full identifiers/message bodies; or make destructive schema changes without migration/rollback design.
