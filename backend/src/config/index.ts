@@ -13,7 +13,6 @@ const dataDirectory =
       : resolve(moduleDirectory, "..", "..", "data");
 const settingsFile = resolve(dataDirectory, "app-settings.json");
 const envApiKey = process.env.API_KEY?.trim();
-const envCorsOrigin = process.env.CORS_ORIGIN?.trim();
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 const SETTINGS_VERSION = 1 as const;
 
@@ -124,7 +123,6 @@ export const config = {
   authCookieSecure: nodeEnv === "production",
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
-  corsOrigin: envCorsOrigin || "*",
   dataDirectory,
   frontendDirectory: nodeEnv === "production" ? "/app/public" : null,
   nodeEnv,

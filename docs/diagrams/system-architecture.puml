@@ -21,7 +21,7 @@ node "Wago container" as Container {
   rectangle "React dashboard\nstatic production build" as Frontend
 
   package "Express 5 application" as Backend {
-    rectangle "HTTP middleware\nHelmet · CORS · origin guard\nJSON limit · request logging" as Http
+    rectangle "HTTP middleware\nHelmet · same-origin guard\nJSON limit · request logging" as Http
     rectangle "Authentication\nBearer API key or HttpOnly cookie\nroute-level rate limits" as Auth
     rectangle "Route layer\n/health · /ready · /app · /activity\n/recipients · /whatsapp · /messages" as Routes
     rectangle "Outbound policy\nconsent · opt-out · idempotency\naccount/recipient/new-chat limits\nWhatsApp account-health checks" as Policy

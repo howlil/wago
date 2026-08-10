@@ -1,10 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import cors from "cors";
 import express, { type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { config } from "./config/index.js";
-import { validateRuntimeConfig } from "./config/validation.js";
+import { requestHasSameOrigin } from "./middleware/origin.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { activityRouter } from "./routes/activity.routes.js";
 import { appRouter } from "./routes/app.routes.js";
@@ -14,33 +13,18 @@ import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();
 
-const configErrors = validateRuntimeConfig({
-  nodeEnv: config.nodeEnv,
-  corsOrigin: config.corsOrigin,
-});
-
-if (configErrors.length > 0) {
-  throw new Error(`Invalid production configuration: ${configErrors.join(" ")}`);
-}
-
 app.set("trust proxy", config.trustProxy ? 1 : false);
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", config.corsOrigin === "*" ? "*" : config.corsOrigin],
+        connectSrc: ["'self'"],
         imgSrc: ["'self'", "data:"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
       },
     },
-  }),
-);
-app.use(
-  cors({
-    origin: config.corsOrigin === "*" ? "*" : config.corsOrigin,
-    credentials: config.corsOrigin !== "*",
   }),
 );
 app.use(express.json({ limit: config.bodyLimit }));
@@ -51,17 +35,11 @@ app.use((req, res, next) => {
   const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
   const origin = req.header("origin");
 
-  if (
-    stateChangingMethods.has(req.method) &&
-    hasCookieAuth &&
-    origin &&
-    config.corsOrigin !== "*" &&
-    origin !== config.corsOrigin
-  ) {
+  if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && !requestHasSameOrigin(req)) {
     return res.status(403).json({
       success: false,
       error: "INVALID_ORIGIN",
-      message: "Cookie-authenticated requests must come from the configured origin",
+      message: "Cookie-authenticated requests must come from the Wago origin",
     });
   }
 

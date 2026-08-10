@@ -2,6 +2,7 @@ import { Router } from "express";
 import { recordActivity } from "../activity/store.js";
 import { bootstrapApiKey, config } from "../config/index.js";
 import { requestHasValidApiKey } from "../middleware/auth.js";
+import { requestHasSameOrigin } from "../middleware/origin.js";
 
 export const appRouter = Router();
 
@@ -41,11 +42,11 @@ appRouter.post("/bootstrap", (req, res) => {
     });
   }
 
-  if (config.nodeEnv === "production" && req.header("origin") !== config.corsOrigin) {
+  if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
     return res.status(403).json({
       success: false,
       error: "INVALID_SETUP_ORIGIN",
-      message: "First-run setup must come from the configured CORS_ORIGIN.",
+      message: "First-run setup must come from the Wago dashboard origin.",
     });
   }
 
@@ -69,7 +70,7 @@ appRouter.post("/bootstrap", (req, res) => {
     title: result.recovered ? "Gateway access restored" : "Gateway initialized",
     description: result.recovered
       ? "The browser session recovered access using the existing gateway credentials."
-      : "Gateway credentials were created successfully. WhatsApp can now be paired.",
+      : "Gateway credentials were created automatically by the first WhatsApp pairing flow.",
   });
 
   return res.status(result.recovered ? 200 : 201).json({

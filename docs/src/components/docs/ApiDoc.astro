@@ -31,7 +31,7 @@ const id = lang === 'id';
         <tr><td class="py-3 text-emerald-400">GET</td><td><code>/health</code></td><td>Public</td><td>{id ? 'Liveness proses HTTP.' : 'HTTP process liveness.'}</td></tr>
         <tr><td class="py-3 text-emerald-400">GET</td><td><code>/ready</code></td><td>Public</td><td>{id ? 'App ID dan status konfigurasi API key.' : 'App ID and API-key configuration state.'}</td></tr>
         <tr><td class="py-3 text-emerald-400">GET</td><td><code>/app/info</code></td><td>Public</td><td>{id ? 'App ID, setup state, API-key source, dan auth state request.' : 'App ID, setup state, API-key source, and request auth state.'}</td></tr>
-        <tr><td class="py-3 text-blue-400">POST</td><td><code>/app/bootstrap</code></td><td>{id ? 'First run' : 'First run'}</td><td>{id ? 'Buat atau pulihkan credential browser ketika bootstrap diizinkan.' : 'Create or recover browser credentials when bootstrap is allowed.'}</td></tr>
+        <tr><td class="py-3 text-blue-400">POST</td><td><code>/app/bootstrap</code></td><td>{id ? 'First run' : 'First run'}</td><td>{id ? 'Persist credential yang dibuat otomatis oleh flow Pair WhatsApp.' : 'Persist the credential generated automatically by the Pair WhatsApp flow.'}</td></tr>
         <tr><td class="py-3 text-emerald-400">GET</td><td><code>/activity?limit=100</code></td><td>API key</td><td>{id ? 'Baca operator activity events yang dipersistenkan.' : 'Read persisted operator activity events.'}</td></tr>
         <tr><td class="py-3 text-emerald-400">GET</td><td><code>/recipients</code></td><td>API key</td><td>{id ? 'Daftar recipient policy records.' : 'List recipient policy records.'}</td></tr>
         <tr><td class="py-3 text-blue-400">POST</td><td><code>/recipients/allow</code></td><td>API key</td><td>{id ? 'Allow recipient dan menghapus status opt-out sebelumnya.' : 'Allow a recipient and clear a previous opt-out state.'}</td></tr>
@@ -48,7 +48,7 @@ const id = lang === 'id';
   </div>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">POST /app/bootstrap</h2>
-  <p class="text-sm text-[#a1a1aa] mb-3">{id ? 'Pada fresh gateway, request dapat membawa kandidat API key berformat wa_. Production hanya menerima bootstrap dari Origin yang sama dengan CORS_ORIGIN. Backend menyimpan hash key, mengembalikan raw key satu kali, dan membuat cookie HttpOnly.' : 'On a fresh gateway, the request can carry a wa_-prefixed API-key candidate. Production only accepts bootstrap from the configured CORS_ORIGIN. The backend persists the key hash, returns the raw key once, and creates an HttpOnly cookie.'}</p>
+  <p class="text-sm text-[#a1a1aa] mb-3">{id ? 'Endpoint ini merupakan detail internal dari Pair WhatsApp pada fresh gateway. Browser membuat kandidat API key berformat wa_, lalu production hanya menerima bootstrap bila Origin browser cocok dengan Host Wago pada request. Backend menyimpan hash key, mengembalikan raw key sekali, dan membuat cookie HttpOnly. Tidak ada CORS_ORIGIN atau API_KEY yang perlu dikonfigurasi di .env.' : 'This endpoint is an implementation detail of Pair WhatsApp on a fresh gateway. The browser creates a wa_-prefixed API-key candidate, and production only accepts bootstrap when the browser Origin matches the Wago request Host. The backend persists the key hash, returns the raw key once, and creates an HttpOnly cookie. No CORS_ORIGIN or API_KEY needs to be configured in .env.'}</p>
   <CodeBlock label="request" code={`{\n  "apiKey": "wa_<random-candidate>"\n}`} />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-3">POST /recipients/allow</h2>
@@ -68,7 +68,7 @@ const id = lang === 'id';
     <li>{id ? 'Recipient wajib allowed dan tidak opted out.' : 'The recipient must be allowed and not opted out.'}</li>
     <li>{id ? 'Accepted idempotency key dipersistenkan selama TTL 1 jam dan tetap berlaku setelah restart.' : 'Accepted idempotency keys are persisted for a 1-hour TTL and remain effective across restarts.'}</li>
     <li>{id ? 'Account: maksimal 30 accepted sends per 60 detik.' : 'Account: max 30 accepted sends per 60 seconds.'}</li>
-    <li>{id ? 'Per recipient: maksimal 5 accepted sends per 60 detik.' : 'Per recipient: max 5 accepted sends per 60 seconds.'}</li>
+    <li>{id ? 'Per recipient: maksimal 5 accepted sends per recipient per 60 detik.' : 'Per recipient: max 5 accepted sends per recipient per 60 seconds.'}</li>
     <li>{id ? 'New chat: maksimal 10 recipient baru per 1 jam.' : 'New chat: max 10 new recipients per hour.'}</li>
     <li>{id ? 'Account-health gate dapat memblokir new chat ketika WhatsApp melaporkan reach-out lock atau new-chat cap.' : 'The account-health gate can block new chats when WhatsApp reports a reach-out lock or new-chat cap.'}</li>
     <li>{id ? '/messages/send memiliki HTTP request limiter 30 request/menit.' : '/messages/send has a 30-request/minute HTTP limiter.'}</li>

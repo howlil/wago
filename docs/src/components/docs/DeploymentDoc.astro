@@ -21,9 +21,10 @@ const id = lang === 'id';
   <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Nama image wago-simple dipertahankan sebagai identifier distribusi saat ini meskipun repository bernama howlil/wago. Workflow release membangun linux/amd64 dan linux/arm64, menghasilkan SBOM/provenance, lalu push manifest ke GHCR.' : 'The wago-simple image name remains the current distribution identifier even though the repository is howlil/wago. The release workflow builds linux/amd64 and linux/arm64, generates SBOM/provenance, and pushes the manifest to GHCR.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Docker Compose</h2>
-  <CodeBlock label=".env" code={`CORS_ORIGIN=https://wago.example.com\nAPI_KEY=`} />
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'CORS_ORIGIN wajib. API_KEY opsional: kosongkan untuk first-run dashboard bootstrap, atau isi dengan secret random panjang untuk pre-provisioned authentication.' : 'CORS_ORIGIN is required. API_KEY is optional: leave it empty for first-run dashboard bootstrap, or set a long random secret for pre-provisioned authentication.'}</p>
-  <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f wago`} />
+  <CodeBlock label="shell" code={`git clone https://github.com/howlil/wago.git\ncd wago\ndocker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f wago`} />
+  <Callout title={id ? 'Tidak perlu production .env' : 'No production .env required'}>
+    {id ? 'Compose default tidak meminta CORS_ORIGIN atau API_KEY. Credential dibuat pada first Pair WhatsApp, sedangkan origin browser dideteksi otomatis dari Host request.' : 'The default Compose file does not ask for CORS_ORIGIN or API_KEY. Credentials are created on the first Pair WhatsApp action, while the browser origin is derived automatically from the request Host.'}
+  </Callout>
   <Callout title={id ? 'Network default sengaja tetap' : 'Network default is intentionally fixed'}>
     {id ? 'Compose publish 127.0.0.1:3000. Letakkan Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS di depannya.' : 'Compose publishes 127.0.0.1:3000. Put Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router in front of it.'}
   </Callout>
@@ -38,19 +39,20 @@ const id = lang === 'id';
   </ul>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Reverse proxy dan TLS' : 'Reverse proxy and TLS'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. CORS_ORIGIN harus sama persis dengan origin publik tersebut agar browser CORS dan first-run origin check konsisten.' : 'Prefer one HTTPS origin for both dashboard and API. CORS_ORIGIN should exactly match that public origin so browser CORS and the first-run origin check stay consistent.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API. Wago menjaga first-run bootstrap dan cookie-authenticated mutation tetap same-origin dengan membandingkan Origin browser terhadap Host request, jadi tidak ada nilai domain yang perlu disalin ke .env.' : 'Use one HTTPS origin for both dashboard and API. Wago keeps first-run bootstrap and cookie-authenticated mutations same-origin by comparing the browser Origin with the request Host, so there is no domain value to copy into an .env file.'}</p>
+  <p class="text-sm text-[#71717a] leading-relaxed mb-8">{id ? 'Integrasi REST eksternal menggunakan Bearer API key dan tidak bergantung pada browser CORS.' : 'External REST integrations use the Bearer API key and do not depend on browser CORS.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Persistence</h2>
   <div class="border border-[#262626] rounded-lg divide-y divide-[#262626] text-sm mb-8">
     <div class="p-4"><code class="text-[#fafafa]">/app/data/auth/</code><p class="text-[#71717a] mt-1">{id ? 'Baileys multi-file credential/session state. Perlakukan seperti private key.' : 'Baileys multi-file credential/session state. Treat it like a private key.'}</p></div>
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'Generated app ID dan hash API key untuk first-run generated credential.' : 'Generated app ID and API-key hash for a first-run generated credential.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'Generated app ID dan hash API key dari first pairing flow.' : 'Generated app ID and API-key hash from the first pairing flow.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/recipients.json</code><p class="text-[#71717a] mt-1">{id ? 'Allowlist/opt-out recipient.' : 'Recipient allowlist/opt-out records.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/whatsapp-binding.json</code><p class="text-[#71717a] mt-1">{id ? 'Akun yang sedang terikat ke instance beserta waktu binding.' : 'The account currently bound to the instance and its binding timestamp.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/activity-log.json</code><p class="text-[#71717a] mt-1">{id ? 'Operator activity log persisten, maksimal 300 event.' : 'Persistent operator activity log, capped at 300 events.'}</p></div>
   </div>
 
   <Callout title={id ? 'Yang tidak persisten' : 'What is not persistent'} tone="warning">
-    {id ? 'Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, dan message-status cache reset ketika proses restart.' : 'Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, and the message-status cache reset when the process restarts.'}
+    {id ? 'Raw generated API key tidak disimpan server. Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, dan message-status cache reset ketika proses restart.' : 'The raw generated API key is not stored by the server. Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, and the message-status cache reset when the process restarts.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Backup</h2>
