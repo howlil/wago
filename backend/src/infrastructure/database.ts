@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { chmodSync, mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { databaseFile, dataDirectory } from "../config/runtime-paths.js";
 import { importLegacyJsonState } from "./legacy-json-import.js";
@@ -10,6 +10,7 @@ mkdirSync(dataDirectory, { recursive: true });
 const database = new DatabaseSync(databaseFile, {
   timeout: DATABASE_TIMEOUT_MS,
 });
+chmodSync(databaseFile, 0o600);
 
 database.exec(`
   PRAGMA foreign_keys = ON;
@@ -87,6 +88,49 @@ const migrations: Migration[] = [
         ON activity_events(timestamp DESC);
       CREATE INDEX IF NOT EXISTS idx_activity_category_timestamp
         ON activity_events(category, timestamp DESC);
+    `,
+  },
+  {
+    version: 2,
+    sql: `
+      CREATE TABLE IF NOT EXISTS idempotency_keys (
+        key TEXT PRIMARY KEY,
+        expires_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_idempotency_expires_at
+        ON idempotency_keys(expires_at);
+
+      CREATE TABLE IF NOT EXISTS outbound_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient_jid TEXT NOT NULL,
+        accepted_at INTEGER NOT NULL,
+        is_new_recipient INTEGER NOT NULL CHECK (is_new_recipient IN (0, 1))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_outbound_events_accepted_at
+        ON outbound_events(accepted_at);
+      CREATE INDEX IF NOT EXISTS idx_outbound_events_recipient_time
+        ON outbound_events(recipient_jid, accepted_at);
+      CREATE INDEX IF NOT EXISTS idx_outbound_events_new_chat_time
+        ON outbound_events(is_new_recipient, accepted_at);
+
+      CREATE TABLE IF NOT EXISTS recipient_reachout_cooldowns (
+        jid TEXT PRIMARY KEY,
+        restricted_until INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_reachout_cooldowns_until
+        ON recipient_reachout_cooldowns(restricted_until);
+
+      CREATE TABLE IF NOT EXISTS gateway_policy_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        outbound_paused INTEGER NOT NULL CHECK (outbound_paused IN (0, 1)),
+        outbound_pause_message TEXT NOT NULL
+      );
+
+      INSERT OR IGNORE INTO gateway_policy_state (id, outbound_paused, outbound_pause_message)
+      VALUES (1, 0, 'Outbound messaging is paused');
     `,
   },
 ];
