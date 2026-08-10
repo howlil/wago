@@ -16,7 +16,7 @@ function outboundMetricScope() {
 
 describe("operator status semantics", () => {
   it("does not show outbound Normal while WhatsApp is disconnected", () => {
-    render(<OverviewCards health="ok" status="disconnected" accountHealth={{ availability: "available" } as never} />);
+    render(<OverviewCards health="ok" status="disconnected" accountHealth={{ availability: "available" }} />);
 
     const outbound = outboundMetricScope();
     expect(outbound.getByText("Unavailable")).toBeTruthy();
@@ -28,7 +28,7 @@ describe("operator status semantics", () => {
       <OverviewCards
         health="ok"
         status="connected"
-        accountHealth={{ availability: "unavailable", unavailableReason: "not_connected" } as never}
+        accountHealth={{ availability: "unavailable", unavailableReason: "not_connected" }}
       />,
     );
 
@@ -38,16 +38,14 @@ describe("operator status semantics", () => {
   });
 
   it("shows outbound Normal only for connected available health without restrictions", () => {
-    render(<OverviewCards health="ok" status="connected" accountHealth={{ availability: "available" } as never} />);
+    render(<OverviewCards health="ok" status="connected" accountHealth={{ availability: "available" }} />);
 
     expect(outboundMetricScope().getByText("Normal")).toBeTruthy();
   });
 
   it("renders account health unavailable instead of optimistic defaults", () => {
     render(
-      <AccountHealthCard
-        accountHealth={{ availability: "unavailable", unavailableReason: "session_invalid" } as never}
-      />,
+      <AccountHealthCard accountHealth={{ availability: "unavailable", unavailableReason: "session_invalid" }} />,
     );
 
     expect(screen.getByText("Health unavailable")).toBeTruthy();
@@ -57,7 +55,7 @@ describe("operator status semantics", () => {
   });
 
   it("renders checking health as checking rather than normal", () => {
-    render(<AccountHealthCard accountHealth={{ availability: "checking" } as never} />);
+    render(<AccountHealthCard accountHealth={{ availability: "checking" }} />);
 
     expect(screen.getByText("Checking account health")).toBeTruthy();
     expect(screen.queryByText("Available")).toBeNull();
