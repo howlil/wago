@@ -60,9 +60,10 @@ For every iteration:
 4. run focused tests
 5. run the relevant package build/check
 6. update this file with the actual result and commit SHA
-7. stop at a checkpoint before starting the next iteration
+7. merge that iteration only after its own quality gate is green
+8. stop at a checkpoint before starting the next iteration
 
-Do not merge to `main` until all iterations below are complete and the final quality gate is green.
+Each iteration is independently reviewable and may merge to `main` once green. Never merge a RED test checkpoint or an unverified implementation merely to preserve sequence.
 
 ---
 
@@ -70,36 +71,45 @@ Do not merge to `main` until all iterations below are complete and the final qua
 
 ### Iteration 17: Session-State Correctness
 
-**Status:** in progress
+**Status:** completed — checkpoint reached
 
-Goal: fix the current bug where WhatsApp can be disconnected/unlinked while outbound/account-health UI still appears normal.
+Goal: make the backend session/health model truthful when WhatsApp disconnects or the linked-device session becomes invalid. Frontend presentation of these new states remains intentionally deferred to Iteration 19.
 
 Tasks:
 
-- [ ] Add one central disconnect classifier for terminal vs recoverable Baileys disconnects.
-- [ ] Explicitly model account-health availability (`unavailable`, `checking`, `available`).
-- [ ] Invalidate operator-visible account health when connection closes, rebind starts, or shutdown clears the active socket.
-- [ ] Treat `DisconnectReason.loggedOut` as terminal: clear binding, do not reconnect, require pairing.
-- [ ] Keep binding for recoverable disconnects, but never expose cached health as currently available.
-- [ ] Force health refresh after a successful `connection=open`.
-- [ ] Make backend status snapshots truthful when health is unavailable.
-- [ ] Add regression tests for linked-device removal/logged-out behavior and recoverable disconnect behavior.
+- [x] Add one central disconnect classifier for terminal vs recoverable Baileys disconnects.
+- [x] Explicitly model account-health availability (`unavailable`, `checking`, `available`).
+- [x] Invalidate operator-visible account health when connection closes, rebind starts, or shutdown clears the active socket.
+- [x] Treat `DisconnectReason.loggedOut` as terminal: clear binding, do not reconnect, require pairing.
+- [x] Keep binding for recoverable disconnects, but never expose cached health as currently available.
+- [x] Force health refresh after a successful `connection=open`.
+- [x] Make backend status snapshots truthful when health is unavailable.
+- [x] Add regression tests for linked-device removal/logged-out behavior and recoverable disconnect behavior.
 
 Acceptance:
 
-- [ ] `WhatsApp: disconnected` can never imply `Outbound: Normal` through stale health data.
-- [ ] Terminal logout requires a new pairing and does not schedule reconnect.
-- [ ] Recoverable disconnect keeps the binding but exposes health as unavailable until restored.
-- [ ] Existing send hard-check still rejects when socket/status is not connected.
+- [x] Backend `/whatsapp/status` data cannot expose stale reach-out/new-chat health as currently available after disconnect.
+- [x] Terminal logout requires a new pairing and does not schedule reconnect.
+- [x] Recoverable disconnect keeps the binding but exposes health as unavailable until restored.
+- [x] Existing send hard-check still rejects when socket/status is not connected.
+- [ ] Frontend must stop rendering `Outbound: Normal` for disconnected/unavailable state — deferred to Iteration 19.
 
 Verification:
 
-- [ ] focused WhatsApp/account-health tests
-- [ ] `pnpm --dir backend test`
-- [ ] `pnpm --dir backend run build`
-- [ ] `pnpm check`
+- [x] disconnect/account-health/lifecycle regressions execute in the backend suite
+- [x] `pnpm --dir backend test` via core CI
+- [x] `pnpm --dir backend run build` via core CI
+- [x] `pnpm check` via core CI
+- [x] production Docker build via core CI
 
-Checkpoint: stop here and review the state model before Iteration 18.
+Result:
+
+- RED test evidence: `a36f130d08ce7007291b143ee7cda7b81994fec0` failed because `disconnect-classifier` did not yet exist.
+- Implementation head before ledger close: `2a0be4562e7ad4a1551f337309716d32ccba7c4c`.
+- Core CI run `31411469734` passed check, tests, core builds, and Docker build.
+- PR checkpoint: #17.
+
+Checkpoint: stop here. Iteration 18 must not begin until this checkpoint is merged and `main` is green.
 
 ### Iteration 18: Structured Low-Level Baileys Audit Backend
 
@@ -181,7 +191,7 @@ Tasks:
 - [ ] Add/adjust tests for equal timestamps, malformed cursors, unknown disconnect reason, health fetch failure, rebind, shutdown, and restart.
 - [ ] Perform manual linked-device-removal smoke procedure and document expected state transitions.
 - [ ] Run full root check/test/build, Docker build, Docs CI, and CodeQL.
-- [ ] Open PR only after the branch is internally green; squash-merge only after all checks pass.
+- [ ] Open/finalize the iteration PR only after the branch is internally green; squash-merge only after all checks pass.
 
 Acceptance:
 
