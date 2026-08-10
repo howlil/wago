@@ -20,10 +20,24 @@ const statusLabel: Record<WhatsAppStatus, string> = {
   disconnected: "Disconnected",
 };
 
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage?.getItem(SIDEBAR_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function persistSidebarCollapsed(value: boolean): void {
+  try {
+    window.localStorage?.setItem(SIDEBAR_STORAGE_KEY, String(value));
+  } catch {
+    // Storage can be unavailable in private, sandboxed or test environments.
+  }
+}
+
 export function DashboardShell({ children, health, status, isRefreshing, onRefresh }: DashboardShellProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    () => window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true",
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const displayStatus =
@@ -42,7 +56,7 @@ export function DashboardShell({ children, health, status, isRefreshing, onRefre
   function toggleSidebar(): void {
     setSidebarCollapsed((current) => {
       const next = !current;
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+      persistSidebarCollapsed(next);
       return next;
     });
   }

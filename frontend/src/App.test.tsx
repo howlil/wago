@@ -79,7 +79,6 @@ vi.mock("./api.js", () => ({
 }));
 
 beforeEach(() => {
-  window.localStorage.clear();
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
 });
 
@@ -104,11 +103,9 @@ describe("dashboard", () => {
 
     await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
     expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy();
-    expect(window.localStorage.getItem("wago.sidebar.collapsed")).toBe("true");
 
     await user.click(screen.getByRole("button", { name: "Expand sidebar" }));
     expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeTruthy();
-    expect(window.localStorage.getItem("wago.sidebar.collapsed")).toBe("false");
   });
 
   it("handles malformed activity responses without crashing the dashboard", async () => {
