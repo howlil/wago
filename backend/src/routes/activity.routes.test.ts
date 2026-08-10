@@ -1,7 +1,7 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { app } from "../app.js";
 import { recordActivity, resetActivityLogForTest } from "../activity/store.js";
+import { app } from "../app.js";
 import { config } from "../config/index.js";
 
 describe("activity routes", () => {
