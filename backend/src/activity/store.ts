@@ -71,12 +71,7 @@ function isStoredActivityFile(value: unknown): value is StoredActivityFile {
     return true;
   }
 
-  return (
-    isRecord(value) &&
-    value.version === ACTIVITY_STORE_VERSION &&
-    "data" in value &&
-    isActivityArray(value.data)
-  );
+  return isRecord(value) && value.version === ACTIVITY_STORE_VERSION && "data" in value && isActivityArray(value.data);
 }
 
 async function readActivityFile(): Promise<ActivityEvent[]> {
