@@ -18,7 +18,12 @@ export type AccountHealthFetcher = {
   fetchNewChatMessageCap: () => Promise<NewChatMessageCapInfo | undefined>;
 };
 
+export type AccountHealthAvailability = "unavailable" | "checking" | "available";
+export type AccountHealthUnavailableReason = "not_connected" | "session_invalid" | "fetch_failed";
+
 export type AccountHealthSnapshot = {
+  availability: AccountHealthAvailability;
+  unavailableReason?: AccountHealthUnavailableReason;
   reachoutTimeLock?: {
     isActive: boolean;
     retryAt?: string;
@@ -42,6 +47,8 @@ const HEALTH_CACHE_TTL_MS = 1000 * 60 * 2;
 const HEALTH_ERROR_TTL_MS = 1000 * 30;
 const FALLBACK_REACHOUT_RESTRICTION_MS = 1000 * 60 * 30;
 
+let availability: AccountHealthAvailability = "unavailable";
+let unavailableReason: AccountHealthUnavailableReason | undefined = "not_connected";
 let reachoutTimeLock: ReachoutTimelockState | undefined;
 let newChatCap: NewChatMessageCapInfo | undefined;
 let lastFetchedAt = 0;
@@ -80,6 +87,15 @@ function isFetchErrorCoolingDown(now: number): boolean {
   return Boolean(lastFetchErrorAt) && now - lastFetchErrorAt < HEALTH_ERROR_TTL_MS;
 }
 
+export function invalidateAccountHealth(reason: AccountHealthUnavailableReason): void {
+  availability = "unavailable";
+  unavailableReason = reason;
+  reachoutTimeLock = undefined;
+  newChatCap = undefined;
+  lastFetchedAt = 0;
+  lastFetchErrorAt = 0;
+}
+
 export async function refreshAccountHealth(
   fetcher: AccountHealthFetcher,
   options: { force?: boolean } = {},
@@ -89,6 +105,9 @@ export async function refreshAccountHealth(
   if (!options.force && (!isCacheStale(now) || isFetchErrorCoolingDown(now))) {
     return;
   }
+
+  availability = "checking";
+  unavailableReason = undefined;
 
   try {
     const [nextReachoutTimeLock, nextNewChatCap] = await Promise.all([
@@ -100,8 +119,14 @@ export async function refreshAccountHealth(
     newChatCap = nextNewChatCap;
     lastFetchedAt = now;
     lastFetchErrorAt = 0;
+    availability = "available";
+    unavailableReason = undefined;
   } catch {
+    reachoutTimeLock = undefined;
+    newChatCap = undefined;
     lastFetchErrorAt = now;
+    availability = "unavailable";
+    unavailableReason = "fetch_failed";
   }
 }
 
@@ -170,6 +195,8 @@ export function getAccountHealthSnapshot(): AccountHealthSnapshot {
   const retryAt = parseDate(reachoutTimeLock?.timeEnforcementEnds);
 
   return {
+    availability,
+    unavailableReason,
     reachoutTimeLock: reachoutTimeLock
       ? {
           isActive: Boolean(reachoutTimeLock.isActive),
@@ -184,6 +211,8 @@ export function getAccountHealthSnapshot(): AccountHealthSnapshot {
 }
 
 export function resetAccountHealthForTest(): void {
+  availability = "unavailable";
+  unavailableReason = "not_connected";
   reachoutTimeLock = undefined;
   newChatCap = undefined;
   lastFetchedAt = 0;
