@@ -35,9 +35,7 @@ const upsertIdempotency = database.prepare(`
 `);
 const deleteIdempotency = database.prepare("DELETE FROM idempotency_keys WHERE key = ?");
 const pruneIdempotency = database.prepare("DELETE FROM idempotency_keys WHERE expires_at <= ?");
-const selectCooldown = database.prepare(
-  "SELECT restricted_until FROM recipient_reachout_cooldowns WHERE jid = ?",
-);
+const selectCooldown = database.prepare("SELECT restricted_until FROM recipient_reachout_cooldowns WHERE jid = ?");
 const upsertCooldown = database.prepare(`
   INSERT INTO recipient_reachout_cooldowns (jid, restricted_until)
   VALUES (?, ?)
@@ -75,9 +73,7 @@ function mapWindow(row: unknown): PolicyWindow {
 }
 
 export function getOutboundPauseState(): OutboundPauseState {
-  const row = selectPause.get() as
-    | { outbound_paused?: number; outbound_pause_message?: string }
-    | undefined;
+  const row = selectPause.get() as { outbound_paused?: number; outbound_pause_message?: string } | undefined;
 
   return {
     paused: row?.outbound_paused === 1,
