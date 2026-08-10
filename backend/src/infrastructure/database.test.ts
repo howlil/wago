@@ -5,14 +5,20 @@ import { getDatabase, withTransaction } from "./database.js";
 const database = getDatabase();
 
 describe("SQLite persistence", () => {
-  it("uses WAL mode and applies schema migrations", () => {
+  it("uses WAL mode and applies all schema migrations", () => {
     const journal = database.prepare("PRAGMA journal_mode").get() as { journal_mode?: string } | undefined;
-    const migration = database.prepare("SELECT version FROM schema_migrations WHERE version = 1").get() as
-      | { version?: number }
-      | undefined;
+    const migrations = database.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{
+      version?: number;
+    }>;
 
     expect(journal?.journal_mode).toBe("wal");
-    expect(migration?.version).toBe(1);
+    expect(migrations.map((migration) => migration.version)).toEqual([1, 2]);
+    expect(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'outbound_events'").get(),
+    ).toBeDefined();
+    expect(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'idempotency_keys'").get(),
+    ).toBeDefined();
   });
 
   it("rolls back a failed transaction", () => {
