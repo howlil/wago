@@ -44,9 +44,7 @@ const upsertRecipient = database.prepare(`
     updated_at = excluded.updated_at,
     last_successful_outbound_at = excluded.last_successful_outbound_at
 `);
-const updateResolution = database.prepare(
-  "UPDATE recipients SET resolved_jid = ?, updated_at = ? WHERE jid = ?",
-);
+const updateResolution = database.prepare("UPDATE recipients SET resolved_jid = ?, updated_at = ? WHERE jid = ?");
 const updateSuccessfulOutbound = database.prepare(`
   UPDATE recipients
   SET resolved_jid = COALESCE(?, resolved_jid),
