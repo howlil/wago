@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { dataDirectory, databaseFile } from "../config/runtime-paths.js";
+import { databaseFile, dataDirectory } from "../config/runtime-paths.js";
 import { importLegacyJsonState } from "./legacy-json-import.js";
 
 const DATABASE_TIMEOUT_MS = 5_000;
@@ -114,9 +114,7 @@ export function withTransaction<T>(operation: () => T): T {
 
 function runMigrations(): void {
   const hasMigration = database.prepare("SELECT 1 FROM schema_migrations WHERE version = ?");
-  const recordMigration = database.prepare(
-    "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)",
-  );
+  const recordMigration = database.prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)");
 
   for (const migration of migrations) {
     if (hasMigration.get(migration.version)) {
