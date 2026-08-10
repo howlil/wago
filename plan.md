@@ -101,12 +101,17 @@ Verification:
 - [x] `pnpm --dir backend run build` via core CI
 - [x] `pnpm check` via core CI
 - [x] production Docker build via core CI
+- [x] CodeQL on the reviewed code head
 
 Result:
 
-- RED test evidence: `a36f130d08ce7007291b143ee7cda7b81994fec0` failed because `disconnect-classifier` did not yet exist.
-- Implementation head before ledger close: `2a0be4562e7ad4a1551f337309716d32ccba7c4c`.
-- Core CI run `31411469734` passed check, tests, core builds, and Docker build.
+- Initial RED evidence: `a36f130d08ce7007291b143ee7cda7b81994fec0` failed because `disconnect-classifier` did not yet exist.
+- First implementation head: `2a0be4562e7ad4a1551f337309716d32ccba7c4c`; core CI run `31411469734` passed.
+- Review found an async race where a health refresh started while connected could resolve after disconnect invalidation and restore stale `available` state.
+- Race RED evidence: `b69765c79589865b9df31a5650bb239ead4a3b56`; CI run `31411860794` failed exactly on the in-flight refresh regression.
+- Race fix: `3511ef39fb26c17c4996530dcd1b0b50d49f2c59` discards refresh results from an obsolete lifecycle/request generation.
+- Reviewed code CI run `31412009674` passed check, tests, core builds, and Docker build.
+- Reviewed code CodeQL run `31412009670` passed.
 - PR checkpoint: #17.
 
 Checkpoint: stop here. Iteration 18 must not begin until this checkpoint is merged and `main` is green.
