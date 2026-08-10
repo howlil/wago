@@ -131,31 +131,36 @@ Boundary: no fake typing/humanization, proxy/fingerprint/device-spoofing strateg
 
 ## Milestone 6: Public Documentation and Hybrid API Explorer
 
-**Status:** implementation in progress on `docs/api-docs-refresh`.
+**Status:** implemented and verified on `docs/api-docs-refresh`; pending PR review/merge.
 
 Design: `.agent/specs/2026-08-11-api-documentation-refresh-design.md`
 
 Detailed implementation plan: `.agent/plans/2026-08-11-api-documentation-refresh.md`
 
-Scope:
+Verification checkpoint: `.agent/checkpoints/2026-08-11-api-docs-implementation.md`
 
-- resync README and public Astro docs against current frontend/backend contracts;
-- make external server-to-server integration explicit;
-- document Bearer authentication, first-run bootstrap, QR/pair/rebind, recipient permission lifecycle, send/idempotency, message status, account health, audit filters/cursors, errors, and local safety limits;
-- replace the fixed code playground with a bilingual Hybrid API Explorer;
-- generate cURL, JavaScript, Python, and Node.js examples from one typed endpoint catalog;
-- optionally execute live browser → user-supplied Wago requests;
-- keep entered API keys in component memory only and never expose them in generated snippets;
-- require explicit confirmation for all POST live actions, with stronger warning for `/whatsapp/rebind`;
-- keep backend runtime behavior unchanged during this documentation milestone.
+Completed scope:
 
-Acceptance direction:
+- README and public Astro docs resynced against current frontend/backend contracts;
+- external server-to-server integration made explicit;
+- Bearer authentication, first-run bootstrap, QR/pair/rebind, recipient permission lifecycle, send/idempotency, message status, account health, audit filters/cursors, errors, and local safety limits documented;
+- fixed code playground replaced with a bilingual Hybrid API Explorer;
+- cURL, JavaScript, Python, and Node.js examples generated from one typed endpoint catalog;
+- optional live browser → user-supplied Wago requests supported without a docs proxy;
+- entered API keys stay in component memory and are never exposed in generated snippets;
+- all POST live actions require explicit confirmation, with stronger warning for `/whatsapp/rebind`;
+- all 15 current public routes are covered exactly once by the endpoint catalog regression;
+- dedicated frontend `/audit` workspace and structured audit API are reflected in public docs;
+- stale JSON persistence and 300-event audit references were corrected to the current SQLite/2,000-event model;
+- `docs/` is public-only and agent artifacts were moved under `.agent/`.
 
-- every current public route is documented exactly once;
-- docs include the dedicated frontend `/audit` workspace and structured audit API;
-- public docs do not claim inbound messages, webhooks, media, groups, delivered/read receipts, multi-session, or ban-prevention guarantees;
-- README remains a concise OSS entry point rather than duplicating the entire API reference;
-- docs tests/build and repository regression gates pass before merge.
+Verification evidence:
+
+- RED Docs CI: run `31421737961` failed on missing explorer helpers as intended;
+- GREEN Docs CI: run `31423719573` succeeded with 11/11 helper tests and Astro build;
+- GREEN Core CI: run `31423719828` succeeded including tests, core build, and Docker build;
+- GREEN CodeQL: run `31423719864` succeeded;
+- PR `#21` is synchronized with latest `main` and mergeable.
 
 ---
 
