@@ -116,6 +116,6 @@ describe("AuditPage", () => {
 
     await user.click(summary);
     expect(disclosure?.open).toBe(true);
-    expect(eventScope.getByText("Status code")).toBeTruthy();
+    expect(eventScope.getByText("Status Code")).toBeTruthy();
   });
 });
