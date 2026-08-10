@@ -56,7 +56,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
     );
   }
 
-  if (availability !== "available") {
+  if (!accountHealth || accountHealth.availability !== "available") {
     return (
       <section className={cardBodyClass}>
         <h2 className={sectionTitleClass}>Account health</h2>
