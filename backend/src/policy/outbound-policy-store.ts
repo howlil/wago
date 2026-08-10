@@ -82,9 +82,7 @@ function isStoredOutboundPolicyFile(value: unknown): value is StoredOutboundPoli
     return true;
   }
 
-  return (
-    isRecord(value) && value.version === STORE_VERSION && "data" in value && isOutboundPolicyState(value.data)
-  );
+  return isRecord(value) && value.version === STORE_VERSION && "data" in value && isOutboundPolicyState(value.data);
 }
 
 function cloneState(state: OutboundPolicyState): OutboundPolicyState {
@@ -120,9 +118,7 @@ async function writeStateToDisk(state: OutboundPolicyState): Promise<void> {
 }
 
 function enqueueSnapshot(snapshot: OutboundPolicyState): Promise<void> {
-  const operation = writeQueue
-    .catch(() => undefined)
-    .then(() => writeStateToDisk(snapshot));
+  const operation = writeQueue.catch(() => undefined).then(() => writeStateToDisk(snapshot));
 
   writeQueue = operation.then(
     () => undefined,
@@ -138,9 +134,10 @@ export function getOutboundPolicyState(): OutboundPolicyState {
   return cachedState;
 }
 
-export function mutateOutboundPolicyState<T>(
-  mutator: (state: OutboundPolicyState) => T,
-): { result: T; persisted: Promise<void> } {
+export function mutateOutboundPolicyState<T>(mutator: (state: OutboundPolicyState) => T): {
+  result: T;
+  persisted: Promise<void>;
+} {
   const result = mutator(cachedState);
   return {
     result,
