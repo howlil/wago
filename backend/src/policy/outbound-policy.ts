@@ -1,6 +1,10 @@
 import { withTransaction } from "../infrastructure/database.js";
 import { logger } from "../infrastructure/logger.js";
-import { getRecipientByJid, rememberSuccessfulOutboundSync } from "../recipients/store.js";
+import {
+  getRecipientByJid,
+  getRecipientByJidSync,
+  rememberSuccessfulOutboundSync,
+} from "../recipients/store.js";
 import {
   type AccountHealthFetcher,
   checkAccountHealth,
@@ -9,11 +13,18 @@ import {
 import {
   flushOutboundPolicyStore,
   forgetOutboundPolicyMemoryForTest,
-  getOutboundPolicyState,
-  mutateOutboundPolicyState,
-  type OutboundPolicyState,
-  reloadOutboundPolicyState,
+  getAccountWindow,
+  getNewChatWindow,
+  getOutboundPauseState,
+  getRecipientReachoutCooldown,
+  getRecipientWindow,
+  isIdempotencyKeyActive,
+  type PolicyWindow,
+  pruneOutboundSafety,
+  recordAcceptedOutbound,
   resetOutboundPolicyStoreForTest,
+  setOutboundPause,
+  setRecipientReachoutCooldown,
 } from "./outbound-policy-store.js";
 
 export type OutboundPolicyBlockReason =
@@ -57,62 +68,36 @@ const RECIPIENT_LIMIT = 5;
 const NEW_CHAT_WINDOW_MS = 1000 * 60 * 60;
 const NEW_CHAT_LIMIT = 10;
 
-function pruneTimestamps(timestamps: number[], windowMs: number, now: number): void {
-  while (timestamps.length > 0) {
-    const oldestTimestamp = timestamps[0];
+function checkPauseState(): OutboundPolicyDecision | undefined {
+  const pause = getOutboundPauseState();
 
-    if (oldestTimestamp === undefined || oldestTimestamp >= now - windowMs) {
-      return;
-    }
-
-    timestamps.shift();
-  }
-}
-
-function pruneIdempotencyKeys(state: OutboundPolicyState, now: number): void {
-  for (const [key, expiresAt] of Object.entries(state.seenIdempotencyKeys)) {
-    if (expiresAt <= now) {
-      delete state.seenIdempotencyKeys[key];
-    }
-  }
-}
-
-function checkPauseState(state: OutboundPolicyState): OutboundPolicyDecision | undefined {
-  if (!state.outboundPaused) {
+  if (!pause.paused) {
     return undefined;
   }
 
   return {
     allowed: false,
     reason: "OUTBOUND_PAUSED",
-    message: state.outboundPauseMessage,
+    message: pause.message,
   };
 }
 
-function checkIdempotency(
-  state: OutboundPolicyState,
-  idempotencyKey: string | undefined,
-  now: number,
-): OutboundPolicyDecision | undefined {
-  if (!idempotencyKey) {
+function checkIdempotency(idempotencyKey: string | undefined, now: number): OutboundPolicyDecision | undefined {
+  if (!idempotencyKey || !isIdempotencyKeyActive(idempotencyKey, now)) {
     return undefined;
   }
 
-  pruneIdempotencyKeys(state, now);
-
-  if (state.seenIdempotencyKeys[idempotencyKey]) {
-    return {
-      allowed: false,
-      reason: "DUPLICATE_MESSAGE",
-      message: `Message with idempotency key "${idempotencyKey}" was already sent`,
-    };
-  }
+  return {
+    allowed: false,
+    reason: "DUPLICATE_MESSAGE",
+    message: `Message with idempotency key "${idempotencyKey}" was already sent`,
+  };
 }
 
-async function getRecipientContext(
-  state: OutboundPolicyState,
-  jid: string,
-): Promise<{ decision?: OutboundPolicyDecision; isNewRecipient: boolean }> {
+async function getRecipientContext(jid: string): Promise<{
+  decision?: OutboundPolicyDecision;
+  isNewRecipient: boolean;
+}> {
   const recipient = await getRecipientByJid(jid);
 
   if (!recipient?.allowed) {
@@ -137,29 +122,15 @@ async function getRecipientContext(
     };
   }
 
-  if (!state.knownRecipients[jid] && recipient.lastSuccessfulOutboundAt) {
-    const persistedTimestamp = Date.parse(recipient.lastSuccessfulOutboundAt);
-    state.knownRecipients[jid] = Number.isFinite(persistedTimestamp) ? persistedTimestamp : Date.now();
-  }
-
   return {
-    isNewRecipient: !state.knownRecipients[jid],
+    isNewRecipient: !recipient.lastSuccessfulOutboundAt,
   };
 }
 
-function checkRecipientReachoutCooldown(
-  state: OutboundPolicyState,
-  jid: string,
-  now: number,
-): OutboundPolicyDecision | undefined {
-  const restrictedUntil = state.recipientReachoutCooldowns[jid];
+function checkRecipientReachoutRestriction(jid: string, now: number): OutboundPolicyDecision | undefined {
+  const restrictedUntil = getRecipientReachoutCooldown(jid, now);
 
   if (!restrictedUntil) {
-    return undefined;
-  }
-
-  if (restrictedUntil <= now) {
-    delete state.recipientReachoutCooldowns[jid];
     return undefined;
   }
 
@@ -171,76 +142,72 @@ function checkRecipientReachoutCooldown(
   };
 }
 
-function checkAccountRateLimit(state: OutboundPolicyState, now: number): OutboundPolicyDecision | undefined {
-  pruneTimestamps(state.accountSendTimestamps, ACCOUNT_WINDOW_MS, now);
-
-  if (state.accountSendTimestamps.length >= ACCOUNT_LIMIT) {
-    const oldestInWindow = state.accountSendTimestamps[0] ?? now;
-    return {
-      allowed: false,
-      reason: "ACCOUNT_RATE_LIMITED",
-      message: `Account send limit of ${ACCOUNT_LIMIT} messages per ${ACCOUNT_WINDOW_MS / 1000}s exceeded`,
-      retryAt: new Date(oldestInWindow + ACCOUNT_WINDOW_MS),
-    };
+function rateLimitDecision(
+  window: PolicyWindow,
+  limit: number,
+  windowMs: number,
+  reason: "ACCOUNT_RATE_LIMITED" | "RECIPIENT_RATE_LIMITED" | "NEW_CHAT_RATE_LIMITED",
+  message: string,
+): OutboundPolicyDecision | undefined {
+  if (window.count < limit) {
+    return undefined;
   }
+
+  return {
+    allowed: false,
+    reason,
+    message,
+    retryAt: new Date((window.oldest ?? Date.now()) + windowMs),
+  };
 }
 
-function checkRecipientRateLimit(
-  state: OutboundPolicyState,
-  jid: string,
-  now: number,
-): OutboundPolicyDecision | undefined {
-  const recipientTimestamps = state.recipientSendTimestamps[jid] ?? [];
-  state.recipientSendTimestamps[jid] = recipientTimestamps;
-  pruneTimestamps(recipientTimestamps, RECIPIENT_WINDOW_MS, now);
-
-  if (recipientTimestamps.length >= RECIPIENT_LIMIT) {
-    const oldestInWindow = recipientTimestamps[0] ?? now;
-    return {
-      allowed: false,
-      reason: "RECIPIENT_RATE_LIMITED",
-      message: `Recipient send limit of ${RECIPIENT_LIMIT} messages per ${RECIPIENT_WINDOW_MS / 1000}s exceeded`,
-      retryAt: new Date(oldestInWindow + RECIPIENT_WINDOW_MS),
-    };
-  }
+function checkAccountRateLimit(now: number): OutboundPolicyDecision | undefined {
+  return rateLimitDecision(
+    getAccountWindow(now - ACCOUNT_WINDOW_MS),
+    ACCOUNT_LIMIT,
+    ACCOUNT_WINDOW_MS,
+    "ACCOUNT_RATE_LIMITED",
+    `Account send limit of ${ACCOUNT_LIMIT} messages per ${ACCOUNT_WINDOW_MS / 1000}s exceeded`,
+  );
 }
 
-function checkNewChatRateLimit(
-  state: OutboundPolicyState,
-  isNewRecipient: boolean,
-  now: number,
-): OutboundPolicyDecision | undefined {
+function checkRecipientRateLimit(jid: string, now: number): OutboundPolicyDecision | undefined {
+  return rateLimitDecision(
+    getRecipientWindow(jid, now - RECIPIENT_WINDOW_MS),
+    RECIPIENT_LIMIT,
+    RECIPIENT_WINDOW_MS,
+    "RECIPIENT_RATE_LIMITED",
+    `Recipient send limit of ${RECIPIENT_LIMIT} messages per ${RECIPIENT_WINDOW_MS / 1000}s exceeded`,
+  );
+}
+
+function checkNewChatRateLimit(isNewRecipient: boolean, now: number): OutboundPolicyDecision | undefined {
   if (!isNewRecipient) {
     return undefined;
   }
 
-  pruneTimestamps(state.newChatTimestamps, NEW_CHAT_WINDOW_MS, now);
-
-  if (state.newChatTimestamps.length >= NEW_CHAT_LIMIT) {
-    const oldestInWindow = state.newChatTimestamps[0] ?? now;
-    return {
-      allowed: false,
-      reason: "NEW_CHAT_RATE_LIMITED",
-      message: `New chat limit of ${NEW_CHAT_LIMIT} per ${NEW_CHAT_WINDOW_MS / 1000}s exceeded`,
-      retryAt: new Date(oldestInWindow + NEW_CHAT_WINDOW_MS),
-    };
-  }
+  return rateLimitDecision(
+    getNewChatWindow(now - NEW_CHAT_WINDOW_MS),
+    NEW_CHAT_LIMIT,
+    NEW_CHAT_WINDOW_MS,
+    "NEW_CHAT_RATE_LIMITED",
+    `New chat limit of ${NEW_CHAT_LIMIT} per ${NEW_CHAT_WINDOW_MS / 1000}s exceeded`,
+  );
 }
 
 export async function checkOutboundPolicy(input: OutboundPolicyInput): Promise<OutboundPolicyDecision> {
-  const state = getOutboundPolicyState();
   const now = Date.now();
 
-  const pauseDecision = checkPauseState(state);
+  const pauseDecision = checkPauseState();
   if (pauseDecision) return pauseDecision;
 
-  const idempotencyDecision = checkIdempotency(state, input.idempotencyKey, now);
+  const idempotencyDecision = checkIdempotency(input.idempotencyKey, now);
   if (idempotencyDecision) return idempotencyDecision;
 
-  const recipientContext = await getRecipientContext(state, input.jid);
+  const recipientContext = await getRecipientContext(input.jid);
   if (recipientContext.decision) return recipientContext.decision;
 
-  const cooldownDecision = checkRecipientReachoutCooldown(state, input.jid, now);
+  const cooldownDecision = checkRecipientReachoutRestriction(input.jid, now);
   if (cooldownDecision) return cooldownDecision;
 
   const healthDecision = await checkAccountHealth(input.accountHealthFetcher, {
@@ -248,13 +215,13 @@ export async function checkOutboundPolicy(input: OutboundPolicyInput): Promise<O
   });
   if (!healthDecision.allowed) return healthDecision;
 
-  const accountLimitDecision = checkAccountRateLimit(state, now);
+  const accountLimitDecision = checkAccountRateLimit(now);
   if (accountLimitDecision) return accountLimitDecision;
 
-  const recipientLimitDecision = checkRecipientRateLimit(state, input.jid, now);
+  const recipientLimitDecision = checkRecipientRateLimit(input.jid, now);
   if (recipientLimitDecision) return recipientLimitDecision;
 
-  const newChatLimitDecision = checkNewChatRateLimit(state, recipientContext.isNewRecipient, now);
+  const newChatLimitDecision = checkNewChatRateLimit(recipientContext.isNewRecipient, now);
   if (newChatLimitDecision) return newChatLimitDecision;
 
   return { allowed: true };
@@ -266,29 +233,22 @@ export async function recordOutboundAccepted(
   resolvedJid?: string,
 ): Promise<void> {
   const now = Date.now();
-  const wasKnown = Boolean(getOutboundPolicyState().knownRecipients[input.jid]);
+  const recipient = getRecipientByJidSync(input.jid);
+  const isNewRecipient = !recipient?.lastSuccessfulOutboundAt;
 
   try {
     withTransaction(() => {
-      mutateOutboundPolicyState((state) => {
-        if (input.idempotencyKey) {
-          state.seenIdempotencyKeys[input.idempotencyKey] = now + IDEMPOTENCY_TTL_MS;
-        }
-
-        state.accountSendTimestamps.push(now);
-        const recipientTimestamps = state.recipientSendTimestamps[input.jid] ?? [];
-        recipientTimestamps.push(now);
-        state.recipientSendTimestamps[input.jid] = recipientTimestamps;
-
-        if (!wasKnown) {
-          state.newChatTimestamps.push(now);
-        }
-        state.knownRecipients[input.jid] = now;
+      recordAcceptedOutbound({
+        jid: input.jid,
+        acceptedAt: now,
+        isNewRecipient,
+        idempotencyKey: input.idempotencyKey,
+        idempotencyExpiresAt: input.idempotencyKey ? now + IDEMPOTENCY_TTL_MS : undefined,
       });
       rememberSuccessfulOutboundSync(input.jid, resolvedJid);
+      pruneOutboundSafety(now, now - NEW_CHAT_WINDOW_MS);
     });
   } catch (error) {
-    reloadOutboundPolicyState();
     logger.error(
       { event: "outbound.persistence_failed", error },
       "Outbound message was sent but safety state could not be fully persisted",
@@ -302,30 +262,19 @@ export function recordOutboundRejected(_input: OutboundPolicyInput, _error: unkn
 }
 
 export async function markRecipientReachoutRestricted(jid: string, restrictedUntil: number): Promise<void> {
-  const { persisted } = mutateOutboundPolicyState((state) => {
-    state.recipientReachoutCooldowns[jid] = restrictedUntil;
-  });
-  await persisted;
+  setRecipientReachoutCooldown(jid, restrictedUntil);
 }
 
 export async function pauseOutbound(message?: string): Promise<void> {
-  const { persisted } = mutateOutboundPolicyState((state) => {
-    state.outboundPaused = true;
-    state.outboundPauseMessage = message || "Outbound messaging is paused";
-  });
-  await persisted;
+  setOutboundPause(true, message || "Outbound messaging is paused");
 }
 
 export async function resumeOutbound(): Promise<void> {
-  const { persisted } = mutateOutboundPolicyState((state) => {
-    state.outboundPaused = false;
-    state.outboundPauseMessage = "Outbound messaging is paused";
-  });
-  await persisted;
+  setOutboundPause(false);
 }
 
 export function isOutboundPaused(): boolean {
-  return getOutboundPolicyState().outboundPaused;
+  return getOutboundPauseState().paused;
 }
 
 export async function flushOutboundPolicyPersistence(): Promise<void> {
