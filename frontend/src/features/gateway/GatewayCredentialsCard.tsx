@@ -8,7 +8,7 @@ import {
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
-import type { CopiedField } from "../dashboard/types.js";
+import type { CopiedField } from "./types.js";
 
 type GatewayCredentialsCardProps = {
   appId: string;

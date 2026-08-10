@@ -1,5 +1,6 @@
 import { Link2Off, Loader2, QrCode } from "lucide-react";
 import type { WhatsAppBinding, WhatsAppStatus } from "../../api.js";
+import type { BackendHealthState } from "../../shared/types/status.js";
 import {
   cardBodyClass,
   dangerButtonClass,
@@ -7,11 +8,10 @@ import {
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
-import type { HealthState } from "../dashboard/types.js";
 import { QrPairingCard } from "./QrPairingCard.js";
 
 type WhatsAppBindingCardProps = {
-  health: HealthState;
+  health: BackendHealthState;
   status: WhatsAppStatus;
   binding: WhatsAppBinding;
   qrImage: string | null;

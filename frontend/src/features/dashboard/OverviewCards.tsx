@@ -1,10 +1,10 @@
 import { MessageCircleMore, RadioTower, ShieldCheck } from "lucide-react";
 import type { ComponentType } from "react";
 import type { AccountHealthSnapshot, WhatsAppStatus } from "../../api.js";
-import type { HealthState } from "../../features/dashboard/types.js";
+import type { BackendHealthState } from "../../shared/types/status.js";
 
 type OverviewCardsProps = {
-  health: HealthState;
+  health: BackendHealthState;
   status: WhatsAppStatus;
   accountHealth?: AccountHealthSnapshot;
 };
@@ -31,7 +31,7 @@ const toneIcon: Record<Metric["tone"], string> = {
   muted: "border-[#dde3e0] bg-[#f5f7f6] text-[#77827d]",
 };
 
-function backendMetric(health: HealthState): Metric {
+function backendMetric(health: BackendHealthState): Metric {
   if (health === "ok") {
     return { label: "Gateway", value: "Healthy", detail: "API responding", tone: "ok", icon: RadioTower };
   }

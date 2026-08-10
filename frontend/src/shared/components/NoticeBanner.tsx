@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle2 } from "lucide-react";
-import type { Notice } from "../../features/dashboard/types.js";
+import type { Notice } from "../ui/feedback.js";
 
 type NoticeBannerProps = {
   notice: Notice;
