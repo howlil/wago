@@ -35,7 +35,8 @@ function GatewayHero() {
             Operate WhatsApp from one clean control surface.
           </h2>
           <p className="mt-3 mb-0 max-w-2xl text-[12px] leading-5 text-[#c6ddd3] sm:text-[13px] sm:leading-6">
-            Pair your account, manage gateway credentials, approve recipients and send messages without hiding the underlying API workflow.
+            Pair your account, manage gateway credentials, approve recipients and send messages without hiding the
+            underlying API workflow.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
