@@ -1,5 +1,5 @@
 import { ChevronDown, Loader2, RefreshCcw, Search } from "lucide-react";
-import { type FormEvent } from "react";
+import type { FormEvent } from "react";
 import {
   cardBodyClass,
   secondaryButtonClass,
@@ -7,12 +7,7 @@ import {
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
 import { ActivityEventList } from "./ActivityEventList.js";
-import {
-  type CategoryFilter,
-  type LevelFilter,
-  type SourceFilter,
-  useActivityLog,
-} from "./useActivityLog.js";
+import { type CategoryFilter, type LevelFilter, type SourceFilter, useActivityLog } from "./useActivityLog.js";
 
 type ActivityLogPanelProps = {
   enabled: boolean;
@@ -68,7 +63,10 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
         </button>
       </div>
 
-      <form className="mt-4 grid gap-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(130px,0.7fr))_auto]" onSubmit={submitFilters}>
+      <form
+        className="mt-4 grid gap-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(130px,0.7fr))_auto]"
+        onSubmit={submitFilters}
+      >
         <label className="relative">
           <span className="sr-only">Search audit events</span>
           <Search className="pointer-events-none absolute left-3 top-3 text-[#7f8a84]" size={14} />
@@ -83,7 +81,11 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
 
         <label className="relative">
           <span className="sr-only">Filter audit source</span>
-          <select className={selectClass} value={source} onChange={(event) => setSource(event.target.value as SourceFilter)}>
+          <select
+            className={selectClass}
+            value={source}
+            onChange={(event) => setSource(event.target.value as SourceFilter)}
+          >
             <option value="all">All sources</option>
             <option value="wago">Wago</option>
             <option value="baileys">Baileys</option>
@@ -110,7 +112,11 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
 
         <label className="relative">
           <span className="sr-only">Filter audit level</span>
-          <select className={selectClass} value={level} onChange={(event) => setLevel(event.target.value as LevelFilter)}>
+          <select
+            className={selectClass}
+            value={level}
+            onChange={(event) => setLevel(event.target.value as LevelFilter)}
+          >
             <option value="all">All levels</option>
             <option value="success">Success</option>
             <option value="info">Information</option>
