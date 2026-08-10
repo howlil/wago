@@ -1,10 +1,6 @@
 import { MessageCircleMore, RadioTower, ShieldCheck } from "lucide-react";
 import type { ComponentType } from "react";
-import type {
-  AccountHealthSnapshot,
-  AccountHealthUnavailableReason,
-  WhatsAppStatus,
-} from "../../api.js";
+import type { AccountHealthSnapshot, AccountHealthUnavailableReason, WhatsAppStatus } from "../../api.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
 
 type OverviewCardsProps = {
@@ -92,7 +88,13 @@ function policyMetric(
   accountHealth?: AccountHealthSnapshot,
 ): Metric {
   if (health === "checking") {
-    return { label: "Outbound", value: "Checking", detail: "Gateway health is being checked", tone: "muted", icon: ShieldCheck };
+    return {
+      label: "Outbound",
+      value: "Checking",
+      detail: "Gateway health is being checked",
+      tone: "muted",
+      icon: ShieldCheck,
+    };
   }
   if (health !== "ok") {
     return { label: "Outbound", value: "Unavailable", detail: "Backend unreachable", tone: "error", icon: ShieldCheck };
@@ -107,7 +109,13 @@ function policyMetric(
     };
   }
   if (accountHealth?.availability === "checking") {
-    return { label: "Outbound", value: "Checking", detail: "Account health is refreshing", tone: "muted", icon: ShieldCheck };
+    return {
+      label: "Outbound",
+      value: "Checking",
+      detail: "Account health is refreshing",
+      tone: "muted",
+      icon: ShieldCheck,
+    };
   }
   if (accountHealth?.availability !== "available") {
     return {
