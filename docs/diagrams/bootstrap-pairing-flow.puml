@@ -20,7 +20,7 @@ participant "Express /whatsapp" as WaRoutes
 database "/app/data/app-settings.json" as Settings
 participant "Baileys client" as Baileys
 database "/app/data/whatsapp-binding.json" as Binding
-cloud "WhatsApp Web" as WhatsApp
+participant "WhatsApp Web" as WhatsApp
 
 Operator -> UI : Open Wago dashboard
 UI -> App : GET /app/info
