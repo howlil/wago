@@ -67,7 +67,7 @@ vi.mock("./api.js", () => ({
       phone: "6281234567890",
       boundAt: "2026-08-10T00:00:00.000Z",
     },
-    accountHealth: {},
+    accountHealth: { availability: "available" },
   })),
   listActivity: vi.fn(async () => ({ success: true, events: [] })),
   listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
