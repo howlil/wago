@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listActivity } from "../../api.js";
@@ -103,15 +103,19 @@ describe("AuditPage", () => {
     const user = userEvent.setup();
     render(<AuditPage />);
 
-    expect(await screen.findByText("Baileys")).toBeTruthy();
-    expect(screen.getByText("Warning")).toBeTruthy();
-    expect(screen.getByText("WhatsApp")).toBeTruthy();
-    const summary = screen.getByText("Technical details");
+    const eventTitle = await screen.findByText("WhatsApp connection closed");
+    const eventRow = eventTitle.closest("article");
+    expect(eventRow).toBeTruthy();
+    const eventScope = within(eventRow as HTMLElement);
+    expect(eventScope.getByText("Baileys")).toBeTruthy();
+    expect(eventScope.getByText("Warning")).toBeTruthy();
+    expect(eventScope.getByText("WhatsApp")).toBeTruthy();
+    const summary = eventScope.getByText("Technical details");
     const disclosure = summary.closest("details") as HTMLDetailsElement | null;
     expect(disclosure?.open).toBe(false);
 
     await user.click(summary);
     expect(disclosure?.open).toBe(true);
-    expect(screen.getByText("Status code")).toBeTruthy();
+    expect(eventScope.getByText("Status code")).toBeTruthy();
   });
 });
