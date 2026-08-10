@@ -1,90 +1,55 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { readJsonFileSync, writeJsonFileAtomicSync } from "../infrastructure/json-file.js";
+import { resolve } from "node:path";
+import { getDatabase } from "../infrastructure/database.js";
+import { dataDirectory, nodeEnv } from "./runtime-paths.js";
 
-const moduleDirectory = dirname(fileURLToPath(import.meta.url));
-const nodeEnv = process.env.NODE_ENV?.trim() || "development";
-const dataDirectory =
-  nodeEnv === "production"
-    ? "/app/data"
-    : nodeEnv === "test"
-      ? resolve(moduleDirectory, "..", "..", "data-test")
-      : resolve(moduleDirectory, "..", "..", "data");
-const settingsFile = resolve(dataDirectory, "app-settings.json");
 const envApiKey = process.env.API_KEY?.trim();
 const envCorsOrigin = process.env.CORS_ORIGIN?.trim();
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
-const SETTINGS_VERSION = 1 as const;
 
 type ApiKeySource = "env" | "generated" | "unset";
 
 type PersistedSettings = {
-  appId?: string;
-  apiKey?: string;
-  apiKeyHash?: string;
-  generatedAt?: string;
+  appId: string;
+  apiKeyHash: string | null;
+  generatedAt: string | null;
 };
-
-type PersistedSettingsEnvelope = {
-  version: typeof SETTINGS_VERSION;
-  data: PersistedSettings;
-};
-
-type PersistedSettingsFile = PersistedSettings | PersistedSettingsEnvelope;
 
 export type BootstrapApiKeyResult =
   | { success: true; appId: string; apiKey: string; recovered: boolean }
   | { success: false; error: "APP_ALREADY_INITIALIZED" | "INVALID_API_KEY"; message: string };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
+const database = getDatabase();
+const readSettingsStatement = database.prepare(
+  "SELECT app_id, api_key_hash, generated_at FROM app_settings WHERE id = 1",
+);
+const writeSettingsStatement = database.prepare(`
+  INSERT INTO app_settings (id, app_id, api_key_hash, generated_at)
+  VALUES (1, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    app_id = excluded.app_id,
+    api_key_hash = excluded.api_key_hash,
+    generated_at = excluded.generated_at
+`);
 
-function isOptionalString(value: unknown): boolean {
-  return value === undefined || typeof value === "string";
-}
+function readSettings(): PersistedSettings | null {
+  const row = readSettingsStatement.get() as
+    | { app_id?: string; api_key_hash?: string | null; generated_at?: string | null }
+    | undefined;
 
-function isPersistedSettings(value: unknown): value is PersistedSettings {
-  if (!isRecord(value)) {
-    return false;
+  if (!row?.app_id) {
+    return null;
   }
 
-  return (
-    isOptionalString(value.appId) &&
-    isOptionalString(value.apiKey) &&
-    isOptionalString(value.apiKeyHash) &&
-    isOptionalString(value.generatedAt)
-  );
-}
-
-function isPersistedSettingsFile(value: unknown): value is PersistedSettingsFile {
-  if (isPersistedSettings(value)) {
-    return true;
-  }
-
-  return isRecord(value) && value.version === SETTINGS_VERSION && "data" in value && isPersistedSettings(value.data);
-}
-
-function readSettings(): { settings: PersistedSettings; legacy: boolean } {
-  const stored = readJsonFileSync(settingsFile, isPersistedSettingsFile);
-
-  if (!stored) {
-    return { settings: {}, legacy: false };
-  }
-
-  if ("version" in stored) {
-    return { settings: stored.data, legacy: false };
-  }
-
-  return { settings: stored, legacy: true };
+  return {
+    appId: row.app_id,
+    apiKeyHash: row.api_key_hash ?? null,
+    generatedAt: row.generated_at ?? null,
+  };
 }
 
 function writeSettings(settings: PersistedSettings): void {
-  writeJsonFileAtomicSync(settingsFile, {
-    version: SETTINGS_VERSION,
-    data: settings,
-  } satisfies PersistedSettingsEnvelope);
+  writeSettingsStatement.run(settings.appId, settings.apiKeyHash, settings.generatedAt);
 }
 
 function generateApiKey(): string {
@@ -95,22 +60,15 @@ export function hashApiKey(apiKey: string): string {
   return createHash("sha256").update(apiKey).digest("hex");
 }
 
-const initialSettingsRead = readSettings();
-const persistedSettings = initialSettingsRead.settings;
-const initialAppId = persistedSettings.appId || `wa-gateway-${randomUUID().slice(0, 8)}`;
-const persistedApiKeyHash =
-  persistedSettings.apiKeyHash || (persistedSettings.apiKey ? hashApiKey(persistedSettings.apiKey) : null);
+const persistedSettings = readSettings();
+const initialAppId = persistedSettings?.appId ?? `wa-gateway-${randomUUID().slice(0, 8)}`;
+const persistedApiKeyHash = persistedSettings?.apiKeyHash ?? null;
 
-if (
-  initialSettingsRead.legacy ||
-  !persistedSettings.appId ||
-  (persistedSettings.apiKey && !persistedSettings.apiKeyHash)
-) {
+if (!persistedSettings) {
   writeSettings({
-    ...persistedSettings,
     appId: initialAppId,
-    apiKey: undefined,
-    apiKeyHash: persistedApiKeyHash ?? undefined,
+    apiKeyHash: null,
+    generatedAt: null,
   });
 }
 
@@ -171,7 +129,6 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
   const apiKeyHash = hashApiKey(apiKey);
 
   writeSettings({
-    ...readSettings().settings,
     appId: config.appId,
     apiKeyHash,
     generatedAt: new Date().toISOString(),
@@ -188,4 +145,13 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     apiKey,
     recovered: false,
   };
+}
+
+export function resetPersistedSettingsForTest(): void {
+  database.prepare("DELETE FROM app_settings").run();
+  writeSettings({
+    appId: config.appId,
+    apiKeyHash: null,
+    generatedAt: null,
+  });
 }
