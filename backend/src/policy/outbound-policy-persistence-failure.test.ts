@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getDatabase } from "../infrastructure/database.js";
 import { allowRecipientJid, resetRecipientStoreForTest } from "../recipients/store.js";
+import { type OutboundPolicyInput, recordOutboundAccepted, resetOutboundPolicyState } from "./outbound-policy.js";
 import { isIdempotencyKeyActive } from "./outbound-policy-store.js";
-import {
-  type OutboundPolicyInput,
-  recordOutboundAccepted,
-  resetOutboundPolicyState,
-} from "./outbound-policy.js";
 
 const database = getDatabase();
 const jid = "6281234567890@s.whatsapp.net";
