@@ -226,7 +226,7 @@ export async function checkOutboundPolicy(input: OutboundPolicyInput): Promise<O
 
 export async function recordOutboundAccepted(
   input: OutboundPolicyInput,
-  _messageId: string | null,
+  messageId: string | null,
   resolvedJid?: string,
 ): Promise<void> {
   const now = Date.now();
@@ -247,8 +247,17 @@ export async function recordOutboundAccepted(
     });
   } catch (error) {
     logger.error(
-      { event: "outbound.persistence_failed", error },
+      {
+        event: "outbound.persistence_failed",
+        errorName: error instanceof Error ? error.name : "UNKNOWN",
+        messageId,
+      },
       "Outbound message was sent but safety state could not be fully persisted",
+    );
+    throw new ApplicationError(
+      "OUTBOUND_STATE_PERSIST_FAILED",
+      "Message was accepted by WhatsApp but Wago could not persist outbound safety state",
+      { cause: error },
     );
   }
 }
