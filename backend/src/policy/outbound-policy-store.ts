@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { config } from "../config/index.js";
-import { readJsonFile, writeJsonFileAtomic } from "../infrastructure/json-file.js";
+import { readJsonFileSync, writeJsonFileAtomic } from "../infrastructure/json-file.js";
 
 export type OutboundPolicyState = {
   seenIdempotencyKeys: Record<string, number>;
@@ -25,8 +25,6 @@ const policyFile =
     ? resolve(config.dataDirectory, `outbound-policy-${process.pid}.json`)
     : resolve(config.dataDirectory, "outbound-policy.json");
 
-let cachedState: OutboundPolicyState | undefined;
-let loadPromise: Promise<OutboundPolicyState> | undefined;
 let writeQueue: Promise<void> = Promise.resolve();
 
 function defaultState(): OutboundPolicyState {
@@ -104,8 +102,8 @@ function cloneState(state: OutboundPolicyState): OutboundPolicyState {
   };
 }
 
-async function readStateFromDisk(): Promise<OutboundPolicyState> {
-  const stored = await readJsonFile(policyFile, isStoredOutboundPolicyFile);
+function readStateFromDisk(): OutboundPolicyState {
+  const stored = readJsonFileSync(policyFile, isStoredOutboundPolicyFile);
 
   if (!stored) {
     return defaultState();
@@ -134,35 +132,15 @@ function enqueueSnapshot(snapshot: OutboundPolicyState): Promise<void> {
   return operation;
 }
 
-export async function getOutboundPolicyState(): Promise<OutboundPolicyState> {
-  if (cachedState) {
-    return cachedState;
-  }
+let cachedState = readStateFromDisk();
 
-  loadPromise ??= readStateFromDisk().then((state) => {
-    cachedState = state;
-    return state;
-  });
-
-  return loadPromise;
+export function getOutboundPolicyState(): OutboundPolicyState {
+  return cachedState;
 }
 
-export async function mutateOutboundPolicyState<T>(
-  mutator: (state: OutboundPolicyState) => T,
-): Promise<T> {
-  const state = await getOutboundPolicyState();
-  const result = mutator(state);
-  await enqueueSnapshot(cloneState(state));
-  return result;
-}
-
-export function mutateLoadedOutboundPolicyState<T>(
+export function mutateOutboundPolicyState<T>(
   mutator: (state: OutboundPolicyState) => T,
 ): { result: T; persisted: Promise<void> } {
-  if (!cachedState) {
-    throw new Error("Outbound policy state must be loaded before recording an outcome");
-  }
-
   const result = mutator(cachedState);
   return {
     result,
@@ -176,14 +154,10 @@ export async function flushOutboundPolicyStore(): Promise<void> {
 
 export async function forgetOutboundPolicyMemoryForTest(): Promise<void> {
   await flushOutboundPolicyStore();
-  cachedState = undefined;
-  loadPromise = undefined;
+  cachedState = readStateFromDisk();
 }
 
-export async function resetOutboundPolicyStoreForTest(): Promise<void> {
-  await flushOutboundPolicyStore();
-  const state = defaultState();
-  cachedState = state;
-  loadPromise = Promise.resolve(state);
-  await writeStateToDisk(state);
+export function resetOutboundPolicyStoreForTest(): Promise<void> {
+  cachedState = defaultState();
+  return enqueueSnapshot(cloneState(cachedState));
 }
