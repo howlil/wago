@@ -28,11 +28,6 @@ describe("SQLite persistence", () => {
     const indexNames = new Set(indexes.map((index) => index.name));
 
     expect(columnNames.has("source")).toBe(true);
-    expect(indexNames).toEqual(
-      expect.objectContaining({
-        has: expect.any(Function),
-      }),
-    );
     expect(indexNames.has("idx_activity_timestamp")).toBe(true);
     expect(indexNames.has("idx_activity_source_timestamp")).toBe(true);
     expect(indexNames.has("idx_activity_category_timestamp")).toBe(true);
