@@ -60,9 +60,7 @@ function parseMetadata(raw: string | null): ActivityMetadata | undefined {
 
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as ActivityMetadata)
-      : undefined;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as ActivityMetadata) : undefined;
   } catch {
     return undefined;
   }
