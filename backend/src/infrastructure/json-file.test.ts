@@ -15,8 +15,13 @@ const syncFile = resolve(config.dataDirectory, `json-file-sync-${process.pid}.js
 const corruptFile = resolve(config.dataDirectory, `json-file-corrupt-${process.pid}.json`);
 
 function isValue(value: unknown): value is { value: string } {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value) && "value" in value &&
-    typeof (value as { value?: unknown }).value === "string";
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "value" in value &&
+    typeof (value as { value?: unknown }).value === "string"
+  );
 }
 
 afterEach(() => {
