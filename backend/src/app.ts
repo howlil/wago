@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import express, { type ErrorRequestHandler } from "express";
+import express from "express";
 import helmet from "helmet";
 import { config } from "./config/index.js";
-import { apiErrorHandler } from "./http/error-handler.js";
+import { errorHandler } from "./http/middleware/error-handler.js";
 import { requestHasSameOrigin } from "./middleware/origin.js";
 import { requestLogger } from "./middleware/request-logger.js";
+import { getReadinessSnapshot } from "./modules/gateway/readiness.js";
 import { activityRouter } from "./routes/activity.routes.js";
 import { appRouter } from "./routes/app.routes.js";
 import { messageRouter } from "./routes/message.routes.js";
@@ -52,11 +53,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.get("/ready", (_req, res) => {
-  res.json({
-    status: "ok",
-    appId: config.appId,
-    apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
-  });
+  res.json(getReadinessSnapshot());
 });
 
 app.use("/app", appRouter);
@@ -74,25 +71,4 @@ if (frontendDirectory && existsSync(frontendDirectory)) {
   });
 }
 
-const jsonErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
-  if (error instanceof SyntaxError && "body" in error) {
-    return res.status(400).json({
-      success: false,
-      error: "INVALID_JSON",
-      message: "Request body must be valid JSON",
-    });
-  }
-
-  if (error instanceof Error && "type" in error && error.type === "entity.too.large") {
-    return res.status(413).json({
-      success: false,
-      error: "PAYLOAD_TOO_LARGE",
-      message: "Request body is too large",
-    });
-  }
-
-  return next(error);
-};
-
-app.use(jsonErrorHandler);
-app.use(apiErrorHandler);
+app.use(errorHandler);
