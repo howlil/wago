@@ -14,7 +14,7 @@ Architecture remains a production-grade single-instance modular monolith: Expres
 
 ## Reconciliation with Main — 2026-08-11
 
-**Status:** staging rebuilt from current `main` after Milestone 4 Iteration 20 merged as `752d456628eb3b6805f0eadc8f751830ca6c276c`.
+**Status:** completed against `main` after Milestone 4 Iteration 20 merged as `752d456628eb3b6805f0eadc8f751830ca6c276c`.
 
 Reason:
 
@@ -33,7 +33,13 @@ Reconciliation method:
 - retained staging's intended Compose/environment changes;
 - moved this design/plan/ledger under `.agent` instead of reintroducing `docs/superpowers`.
 
-The reconciled staging branch must pass a fresh CI/Docs CI/CodeQL/Docker gate before Hardening Iteration 4 starts. Record that evidence at the end of this ledger.
+Zero-config reconciliation:
+
+- old PR #15 (`feat/zero-config-pairing`) was verified as already represented by this staging branch;
+- staging tests cover pairing-generated bootstrap without production env configuration, same-origin Host/Origin detection, cross-origin bootstrap rejection, and cookie-origin protection;
+- production Compose no longer requires `CORS_ORIGIN` or pre-provisioned `API_KEY`;
+- the obsolete production env example is removed;
+- PR #15 was closed as superseded and its old head is preserved at `backup/zero-config-pairing-pre-reconcile`.
 
 ## Hardening Iteration 0: Baseline Integration and Staging Safety
 
@@ -79,7 +85,6 @@ Implemented:
 - `whatsapp.ts` normalizes the small set of legacy integration errors at the WhatsApp module boundary while keeping raw Baileys/runtime details inside the module.
 - `message.routes.ts` keeps request parsing, rate limiting, and activity logging, but delegates all expected application errors to the global HTTP boundary. Unexpected send failures retain the established `SEND_MESSAGE_FAILED` public contract.
 - No database migration or new dependency was introduced.
-- Message application-service extraction was intentionally not started; that remains Hardening Iteration 3.
 
 TDD evidence:
 
@@ -87,9 +92,9 @@ TDD evidence:
 2. GREEN mapper — CI #204 passed after adding the neutral typed error and HTTP mapper.
 3. RED `1ff89db893a51b4abfdd2d372b843cd57867e1f7` — CI #206 failed because the centralized error-handler module did not exist.
 4. GREEN handler — CI #209 passed after adding the global API error handler.
-5. RED `3c041177e8742a59e189005e4f906a81ac6e4927` — CI #215 produced the intended semantic failures: typed duplicate still mapped to 500, audit cursor was not typed, policy errors still mutated `Error.name`, and spoofed names were trusted.
-6. During GREEN refactoring, characterization tests caught a control-flow regression where policy errors were audited but fell through to 500 instead of reaching `next(error)`. The route was corrected so every `ApplicationError` reaches the global boundary after audit logging.
-7. RED `9fb7f30454e4a9f51e1d9d7bb2eb2e2c7308466f` — CI #237 proved the global handler still attached raw Error context to logs; the new sanitizer assertion was the only backend failure.
+5. RED `3c041177e8742a59e189005e4f906a81ac6e4927` — CI #215 produced the intended semantic failures.
+6. During GREEN refactoring, characterization tests caught a control-flow regression where policy errors were audited but fell through to 500; the route was corrected so every `ApplicationError` reaches the global boundary after audit logging.
+7. RED `9fb7f30454e4a9f51e1d9d7bb2eb2e2c7308466f` — CI #237 proved the global handler still attached raw Error context to logs.
 8. GREEN runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062` — raw Error logging was replaced by safe error-type context.
 
 Historical verification on runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062`:
@@ -118,15 +123,15 @@ Implemented:
 - `messageService.findStatus()` owns status lookup delegation through the existing WhatsApp facade.
 - `message.routes.ts` no longer imports `sendTextMessage` or `getMessageStatus` directly.
 - The route still owns API-key authentication, HTTP rate limiting, request-shape validation, `Idempotency-Key` extraction/precedence, activity recording, HTTP response status, expected-error forwarding, and the established sanitized `SEND_MESSAGE_FAILED` fallback.
-- Existing HTTP characterization remains unchanged and green, including outbound-policy status mappings, disconnected handling, unexpected-send sanitization, and message-status found/not-found contracts.
+- Existing HTTP characterization remains unchanged and green.
 - No Baileys lifecycle behavior, policy semantics, SQLite schema, dependency, or public API contract changed in this iteration.
 - Hardening Iteration 4 was intentionally not started.
 
 TDD evidence:
 
-1. RED `803a86b89c1cf963ea76bceb3bf08a4fa376b1a5` — CI #254 failed only because `message.service.ts` did not exist; the 30 pre-existing backend suites / 176 tests remained green.
-2. GREEN service implementation reached `a78afb1e89f246748d15411301adb0c86c25b77a`; the new service unit test passed. That full run was not accepted as the final gate because an unrelated existing 2,000-row activity-retention test hit its 5-second timeout once; later runs returned it to its normal sub-second range without changing that test.
-3. RED route boundary `963304627ff6ebd6abf2b168bb2eb2eae0eca69b167` — CI #262 produced exactly the two intended failures: send orchestration still bypassed `messageService.send()` and status lookup still bypassed `messageService.findStatus()`. All unrelated backend tests were green.
+1. RED `803a86b89c1cf963ea76bceb3bf08a4fa376b1a5` — CI #254 failed only because `message.service.ts` did not exist.
+2. GREEN service implementation reached `a78afb1e89f246748d15411301adb0c86c25b77a`; the new service unit test passed.
+3. RED route boundary `963304627ff6ebd6abf2b168bb2eb2eae0eca69b167` — CI #262 produced exactly the two intended failures.
 4. GREEN runtime head `bb8ea1146ed13d44ecf1384674e411a7c26e0bac` — both route-boundary tests passed and the full contract suite remained green.
 
 Historical verification on runtime head `bb8ea1146ed13d44ecf1384674e411a7c26e0bac`:
@@ -157,18 +162,20 @@ Remove any remaining transport ownership from outbound-policy code only after re
 
 ## Fresh Reconciliation Gate
 
-Current reconciled branch source head: `2ece953fc91d794600e6f38c0409ebacc8c49834` plus this ledger commit.
+Runtime reconciliation head before this ledger-only closeout: `64679b197b11a391a2530246bb9555261ab3d779`.
 
-Required before any Hardening Iteration 4 code:
+Verified:
 
-- [ ] Core CI success
-- [ ] all backend/frontend tests success
-- [ ] backend/frontend production builds success
-- [ ] production Docker build success
-- [ ] Docs CI success
-- [ ] CodeQL success
-- [ ] PR compare confirms latest `main` is the merge base / staging is not behind
-- [ ] PR changed-file review confirms no `docs/superpowers` artifact is reintroduced
+- [x] Core CI `31429553913` success;
+- [x] all backend/frontend tests success through Core CI;
+- [x] backend/frontend production builds success through Core CI;
+- [x] production Docker build success through Core CI;
+- [x] CodeQL `31429553916` success;
+- [x] compare reports `main` (`752d456628eb3b6805f0eadc8f751830ca6c276c`) as merge base with `behind_by=0`;
+- [x] PR changed-file review contains no `docs/superpowers` artifact;
+- [x] public `docs/` are inherited unchanged from the already-verified current `main`, so Docs CI is not path-triggered by this reconciliation rather than being falsely reported as a new run.
+
+Because this ledger update creates a new final branch head, Core CI and CodeQL must pass once more on that exact head before Hardening Iteration 4 may start. No new public-doc build is required unless a future hardening iteration changes `docs/`.
 
 ## Engineering Rules
 
