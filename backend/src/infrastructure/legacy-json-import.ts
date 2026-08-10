@@ -12,13 +12,7 @@ function readLegacyPayload(path: string): unknown | null {
 
   const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
 
-  if (
-    parsed &&
-    typeof parsed === "object" &&
-    !Array.isArray(parsed) &&
-    "version" in parsed &&
-    "data" in parsed
-  ) {
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "version" in parsed && "data" in parsed) {
     return (parsed as { data: unknown }).data;
   }
 
@@ -53,9 +47,7 @@ function importSettings(database: DatabaseSync, dataDirectory: string): void {
   }
 
   const rawApiKey = optionalString(settings.apiKey);
-  const apiKeyHash =
-    optionalString(settings.apiKeyHash) ??
-    (rawApiKey ? createHash("sha256").update(rawApiKey).digest("hex") : null);
+  const apiKeyHash = optionalString(settings.apiKeyHash) ?? (rawApiKey ? createHash("sha256").update(rawApiKey).digest("hex") : null);
 
   database
     .prepare(
@@ -80,12 +72,7 @@ function importBinding(database: DatabaseSync, dataDirectory: string): void {
       `INSERT INTO whatsapp_binding (id, state, jid, phone, bound_at)
        VALUES (1, ?, ?, ?, ?)`,
     )
-    .run(
-      binding.state,
-      optionalString(binding.jid),
-      optionalString(binding.phone),
-      optionalString(binding.boundAt),
-    );
+    .run(binding.state, optionalString(binding.jid), optionalString(binding.phone), optionalString(binding.boundAt));
 }
 
 function importRecipients(database: DatabaseSync, dataDirectory: string): void {
