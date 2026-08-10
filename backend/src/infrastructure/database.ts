@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { dataDirectory, databaseFile } from "../config/runtime-paths.js";
+import { importLegacyJsonState } from "./legacy-json-import.js";
 
 const DATABASE_TIMEOUT_MS = 5_000;
 
@@ -130,6 +131,7 @@ function runMigrations(): void {
 }
 
 runMigrations();
+importLegacyJsonState(database, dataDirectory);
 
 export function checkpointDatabase(): void {
   database.exec("PRAGMA wal_checkpoint(PASSIVE)");
