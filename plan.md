@@ -18,8 +18,6 @@ Production-ready does not mean zero WhatsApp enforcement risk. Baileys is an uno
 
 ## Planning and Documentation Boundary
 
-Repository planning is now intentionally separated from public documentation:
-
 ```text
 docs/       public Astro documentation read by Wago users
 .agent/     internal agent specs, implementation plans, audit/checkpoint notes
@@ -49,6 +47,7 @@ Already implemented and treated as baseline:
 - account reach-out/new-chat-cap checks;
 - redacted structured logging;
 - structured Wago/Baileys audit backend with sanitization, filters, cursor pagination, and bounded retention;
+- dedicated frontend `/audit` workspace with server-driven filters/pagination and truthful account-health rendering;
 - durable application state in `/app/data/wago.db` with SQLite WAL/migrations;
 - React control dashboard;
 - graceful shutdown;
@@ -87,29 +86,25 @@ Scope:
 - add bounded publish timeout;
 - verify GHCR `latest` publication and supported architectures.
 
-This stays separate from runtime safety and public documentation work.
-
 ---
 
 ## Milestone 4: Audit Observability and Honest Session State
 
-**Status:** Iterations 17–18 completed; Iterations 19–20 pending.
+**Status:** Iterations 17–19 completed; Iteration 20 pending.
 
 Detailed execution ledger: `.agent/plans/2026-08-10-audit-observability.md`
 
 Completed foundation:
 
 - truthful terminal/recoverable disconnect classification;
-- explicit account-health availability;
-- stale-health race protection;
+- explicit account-health availability and stale-health race protection;
 - SQLite-backed structured Wago/Baileys audit events;
-- strict audit sanitization;
-- lifecycle instrumentation;
-- `GET /activity` filters and cursor pagination.
+- strict audit sanitization and lifecycle instrumentation;
+- `GET /activity` filters and cursor pagination;
+- dedicated `/audit` frontend workspace with source/category/level/search filters, load-more cursor pagination, and truthful disconnected/unavailable health state.
 
 Remaining:
 
-- **Iteration 19:** dedicated `/audit` page, navigation, operator-friendly filters/pagination, truthful disconnected/unavailable UI state.
 - **Iteration 20:** integration hardening, privacy/status review, public operations/security documentation, full release gate.
 
 ---
@@ -130,43 +125,34 @@ Priority scope:
 - **P2:** record inbound interaction context without storing content or granting consent;
 - **P2:** make Wago-local account/recipient/new-chat limits configurable while retaining current defaults.
 
-Boundary:
-
-- no fake typing/humanization;
-- no proxy/fingerprint/device-spoofing strategy;
-- no distributed queue/service;
-- no claim of guaranteed ban prevention.
+Boundary: no fake typing/humanization, proxy/fingerprint/device-spoofing strategy, distributed queue/service, or claim of guaranteed ban prevention.
 
 ---
 
 ## Milestone 6: Public Documentation and Hybrid API Explorer
 
-**Status:** design approved; implementation plan prepared; implementation not started yet.
+**Status:** implementation in progress on `docs/api-docs-refresh`.
 
 Design: `.agent/specs/2026-08-11-api-documentation-refresh-design.md`
 
 Detailed implementation plan: `.agent/plans/2026-08-11-api-documentation-refresh.md`
 
-Public documentation boundary:
+Scope:
 
-- `docs/` contains only the public Astro documentation site;
-- `.agent/` contains the agent design/implementation material for this milestone.
-
-Planned scope:
-
-- resync README and Astro docs against current frontend/backend contracts;
+- resync README and public Astro docs against current frontend/backend contracts;
 - make external server-to-server integration explicit;
 - document Bearer authentication, first-run bootstrap, QR/pair/rebind, recipient permission lifecycle, send/idempotency, message status, account health, audit filters/cursors, errors, and local safety limits;
-- replace the fixed code playground with a bilingual **Hybrid API Explorer**;
+- replace the fixed code playground with a bilingual Hybrid API Explorer;
 - generate cURL, JavaScript, Python, and Node.js examples from one typed endpoint catalog;
 - optionally execute live browser → user-supplied Wago requests;
-- keep the entered API key in component memory only and never expose it in generated snippets;
+- keep entered API keys in component memory only and never expose them in generated snippets;
 - require explicit confirmation for all POST live actions, with stronger warning for `/whatsapp/rebind`;
-- keep backend/frontend runtime behavior unchanged during this documentation-only milestone.
+- keep backend runtime behavior unchanged during this documentation milestone.
 
 Acceptance direction:
 
 - every current public route is documented exactly once;
+- docs include the dedicated frontend `/audit` workspace and structured audit API;
 - public docs do not claim inbound messages, webhooks, media, groups, delivered/read receipts, multi-session, or ban-prevention guarantees;
 - README remains a concise OSS entry point rather than duplicating the entire API reference;
 - docs tests/build and repository regression gates pass before merge.

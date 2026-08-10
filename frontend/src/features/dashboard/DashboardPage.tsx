@@ -1,8 +1,7 @@
 import type { WhatsAppStatus } from "../../api.js";
-import { DashboardShell } from "../../shared/components/DashboardShell.js";
+import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
-import { ActivityLogPanel } from "../activity/ActivityLogPanel.js";
 import { GatewayCredentialsCard } from "../gateway/GatewayCredentialsCard.js";
 import { MessageStatusCard } from "../messages/MessageStatusCard.js";
 import { SendMessageCard } from "../messages/SendMessageCard.js";
@@ -45,11 +44,15 @@ export function DashboardPage() {
   const headerStatus = getHeaderStatus(dashboard.health, dashboard.status);
 
   return (
-    <DashboardShell
+    <AppShell
+      title="Control"
+      description="Manage connection, access and outbound messaging."
+      activePath="/"
       statusLabel={headerStatus.label}
       statusTone={headerStatus.tone}
       isRefreshing={dashboard.isRefreshing}
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
+      refreshLabel="Refresh status"
     >
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
       <NoticeBanner notice={dashboard.notice} />
@@ -121,8 +124,6 @@ export function DashboardPage() {
               Account health appears after the gateway is authenticated.
             </div>
           )}
-
-          <ActivityLogPanel enabled={dashboard.isAuthenticated} />
         </div>
       </div>
 
@@ -132,6 +133,6 @@ export function DashboardPage() {
         onCancel={dashboard.closeRebindDialog}
         onConfirm={() => void dashboard.handleRebind()}
       />
-    </DashboardShell>
+    </AppShell>
   );
 }
