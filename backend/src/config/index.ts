@@ -63,12 +63,7 @@ function isPersistedSettingsFile(value: unknown): value is PersistedSettingsFile
     return true;
   }
 
-  return (
-    isRecord(value) &&
-    value.version === SETTINGS_VERSION &&
-    "data" in value &&
-    isPersistedSettings(value.data)
-  );
+  return isRecord(value) && value.version === SETTINGS_VERSION && "data" in value && isPersistedSettings(value.data);
 }
 
 function readSettings(): { settings: PersistedSettings; legacy: boolean } {
