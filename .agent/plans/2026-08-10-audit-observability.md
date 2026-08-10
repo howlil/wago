@@ -19,8 +19,6 @@ Completed:
 - obsolete in-flight account-health refreshes cannot restore stale `available` state;
 - CI, Docker build, and CodeQL green.
 
-Frontend rendering of unavailable health remains part of Iteration 19.
-
 ## Iteration 18: Structured Low-Level Baileys Audit Backend
 
 **Status:** completed and merged to `main` in commit `c55e25fa6f68ee8ff853b12fbc4a8968fc021a90`.
@@ -131,58 +129,100 @@ Iteration 18 final verification:
 
 ## Iteration 19: Dedicated Audit Log Page and Navigation
 
-**Status:** pending.
+**Status:** completed and merged as `a7bfd2c176ef5dad81c216529f90b0aaf696cb3c` through PR `#20`.
 
-**Goal:** move operational history out of Control and build a readable `/audit` page.
+### 19A — Workspace Routing, Shell, and Navigation
 
-Planned scope:
+Completed:
 
-- remove Activity Log from Control;
-- add `/audit` route;
-- data-driven Control/Audit Log navigation;
-- source/category/level/search filters;
-- expandable technical details;
-- refresh + cursor `Load more`;
-- operator-friendly default view;
-- Account Health/Outbound cards must not show optimistic normal state when disconnected/unavailable;
-- frontend route/status/pagination regression tests.
+- Activity Log removed from Control;
+- dedicated `/audit` workspace added;
+- dashboard shell generalized into page-aware `AppShell`;
+- data-driven Control/Audit navigation shared across desktop/mobile sidebar;
+- minimal route selection added without a router/state dependency;
+- active-page `aria-current`, sidebar collapse, and mobile behavior preserved.
 
-Acceptance:
+Evidence:
 
-- sidebar exposes intended workspace pages without duplicated activity panel;
-- audit page supports current backend filtering/pagination contract;
-- technical metadata remains opt-in;
-- outbound normal/healthy presentation requires backend reachable + WhatsApp connected + account health available + no active restriction.
+- RED head `7ce456f9dde2259d736215d9ee825c9d8e938c08`; CI `31418440302` failed on the intended route/navigation contracts.
+- GREEN CI `31418985218` passed check, tests, core build, and Docker build.
 
-Verification:
+### 19B — Server-Driven Audit Page
 
-```bash
-pnpm --dir frontend test
-pnpm --dir frontend run build
-pnpm check
-```
+Completed:
+
+- source/category/level/search filters are sent to the backend;
+- 50-row cursor pages use `before` + `nextCursor` and append unique events;
+- source, category, and severity are labeled explicitly;
+- technical metadata stays closed by default;
+- browser does not load and filter the full 2,000-row history;
+- frontend consumes only the sanitized audit contract.
+
+Evidence:
+
+- RED head `71be79e094001a8518a430d86487b564ec1a7f6c`; CI `31419185311` failed on missing source filtering, cursor load-more, and labels.
+- GREEN CI `31420026751` passed page regressions, full tests/build, and Docker build.
+
+### 19C — Truthful Health and Outbound Status
+
+Completed:
+
+- frontend account-health type aligned to `unavailable | checking | available`;
+- `Outbound: Normal` requires backend reachable + WhatsApp connected + health available + no active restriction;
+- disconnected/unavailable/checking are rendered explicitly;
+- `session_invalid` provides pairing recovery guidance;
+- missing/fetch-failed health no longer defaults optimistically to healthy.
+
+Evidence:
+
+- behavioral RED head `beffdb7884bea97a03e69ac1accee5cc44a8f126`; CI `31420235630` showed the four intended optimistic-state failures.
+- GREEN CI `31420756261` passed tests/build/check/Docker.
+- reviewed code head `a8b01716178a6548a253a42984b3c29bffb3e42f`: CI `31421193134` success and CodeQL `31421193125` success.
+- final ledger head `9bdfbc68efd2513088190bee10b6abfccb3bd52f`: CI `31421528880` success and CodeQL `31421527223` success.
 
 ## Iteration 20: Integration Hardening, Public Docs, and Release Gate
 
-**Status:** pending.
+**Status:** implementation complete; being reconciled onto the post-PR-21 `main` through PR `#22`.
 
-**Goal:** verify session invalidation + audit behavior end-to-end and leave runtime/public docs internally consistent.
+Goal: verify session invalidation + audit behavior end-to-end and leave runtime/public docs internally consistent without reintroducing the obsolete `docs/superpowers` planning layout.
 
-Planned scope:
+Completed integration scope:
 
-- audit all status derivations for stale/optimistic values;
-- audit Baileys logging paths for sensitive persistence;
-- update public architecture/operations/security documentation with released behavior only;
-- test malformed cursor, unknown disconnect reason, health fetch failure, rebind, shutdown, restart, equal timestamps;
-- manual linked-device-removal smoke procedure;
-- full check/test/build, Docker, Docs CI, CodeQL, release validation.
+- `baileys.session.rebind_ready` records that old auth/binding cleanup completed and a fresh socket lifecycle started; it does not claim the new session is connected;
+- rebind regression verifies `rebind_started` and `rebind_ready` checkpoints, logout, and fresh socket creation;
+- unknown disconnect status `599` is persisted as explicit `status_599`, remains non-terminal, and follows the recoverable reconnect path;
+- restart with missing persisted auth remains disconnected/unbound, marks account health `session_invalid`, avoids socket creation, and records `baileys.session.auth_missing`;
+- existing regressions continue to cover terminal logout, recoverable reconnect, shutdown ordering, health-fetch failure, malformed audit cursor, equal timestamps, QR privacy, credential-write failure privacy, ACK privacy, and logger redaction;
+- public architecture, operations, security guidance, and PlantUML are aligned with the structured/sanitized audit boundary;
+- a manual Linked Devices unlink smoke procedure is documented for a disposable/test account.
 
-Acceptance:
+TDD and pre-reconciliation evidence:
 
-- removing Wago from Linked Devices moves Wago to disconnected/pairing-required state without stale healthy outbound indicators;
-- audit history explains the transition with sanitized evidence;
-- no raw secret/message/session payload is persisted by audit logging;
-- core, frontend, Docker, public docs, and CodeQL gates are green.
+- valid RED head `724151d5...`; Core CI `31423146163` failed because the expected rebind completion audit checkpoint did not yet exist;
+- implementation checkpoint `2041b7205b2ad2635c82b3efb9e7d3e030705fd0`: Core CI `31423998191` success, Docs CI `31423998495` success, CodeQL `31423998455` success;
+- old final ledger head `c609e099fe70df717099563e2a3d6023fa359474`: Core CI `31424345137` success, Docs CI `31424343755` success, CodeQL `31424343286` success.
+
+Reconciliation note:
+
+- PR `#21` merged afterward and moved internal planning artifacts under `.agent/`, so the old PR `#22` head was backed up at `backup/iteration20-pre-reconcile` and rebuilt from the latest `main` instead of merging the obsolete root-plan/public-doc versions.
+- The reconciled PR keeps PR `#21` documentation as the base and grafts only still-valid Iteration 20 deltas.
+- A fresh post-reconciliation Core CI + Docs CI + CodeQL gate is required before merge; record those run IDs below when available.
+
+Post-reconciliation final verification:
+
+- [ ] Core CI success
+- [ ] Docs CI success
+- [ ] CodeQL success
+- [ ] production Docker build success through Core CI
+- [ ] final diff review confirms no `docs/superpowers` reintroduction and no raw sensitive protocol persistence
+
+Manual validation boundary:
+
+- the Linked Devices unlink procedure is documented but a physical-device unlink is not claimed as executed by automated CI.
+
+Release validation boundary:
+
+- GHCR publication remains a separate operational incident. Iteration 20 does not claim container publication healthy while the stale release concurrency lock remains unresolved.
 
 ## Milestone Rules
 
