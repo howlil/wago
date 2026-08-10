@@ -69,6 +69,7 @@ let shuttingDown = false;
 let socketGeneration = 0;
 let reconnectAttempt = 0;
 let reconnectTimer: NodeJS.Timeout | undefined;
+let credentialWriteQueue: Promise<void> = Promise.resolve();
 
 function createNamedError(name: string, message: string): Error {
   const error = new Error(message);
@@ -81,6 +82,19 @@ function makeAccountHealthFetcher(activeSocket: WASocket): AccountHealthFetcher 
     fetchAccountReachoutTimelock: () => activeSocket.fetchAccountReachoutTimelock(),
     fetchNewChatMessageCap: () => activeSocket.fetchNewChatMessageCap(),
   };
+}
+
+function enqueueCredentialWrite(saveCreds: () => Promise<void>): void {
+  credentialWriteQueue = credentialWriteQueue
+    .catch(() => undefined)
+    .then(saveCreds)
+    .catch((error) => {
+      logger.error({ event: "wa.credentials.persist_failed", error }, "Failed to persist WhatsApp credentials");
+    });
+}
+
+async function flushCredentialWrites(): Promise<void> {
+  await credentialWriteQueue.catch(() => undefined);
 }
 
 function clearReconnectTimer(): void {
@@ -126,12 +140,12 @@ export async function initializeWhatsApp(): Promise<void> {
 
     socket = nextSocket;
 
-    nextSocket.ev.on("creds.update", async () => {
+    nextSocket.ev.on("creds.update", () => {
       if (generation !== socketGeneration) {
         return;
       }
 
-      await saveCreds();
+      enqueueCredentialWrite(saveCreds);
     });
 
     nextSocket.ev.on("messages.update", (updates) => {
@@ -302,6 +316,8 @@ export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
   markConnecting();
 
   try {
+    await flushCredentialWrites();
+
     if (activeSocket) {
       await activeSocket.logout("Rebinding WhatsApp session").catch(() => undefined);
     }
@@ -324,6 +340,8 @@ export async function shutdownWhatsApp(): Promise<void> {
   socketGeneration += 1;
   socket = undefined;
   markDisconnected();
+
+  await flushCredentialWrites();
 
   try {
     activeSocket?.end(undefined);
