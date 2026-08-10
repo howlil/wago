@@ -28,7 +28,7 @@ node "Wago container" as Container {
     rectangle "Baileys client\nconnection · QR · reconnect\nrecipient resolution · send/status" as Baileys
   }
 
-  database "SQLite durable state\n/app/data/wago.db\nsettings · binding · recipients\noutbound safety · activity" as Database
+  database "SQLite durable state\n/app/data/wago.db\nsettings · binding · recipients\nindexed outbound safety · activity" as Database
   database "Baileys auth files\n/app/data/auth/" as AuthFiles
   collections "Transient process memory\nQR / connection / reconnect\naccount-health cache\nmessage status / recent-message cache" as Memory
 }
@@ -41,16 +41,16 @@ Auth --> Routes
 Routes --> Database : application durable state
 Routes --> Baileys : status · QR · pair · rebind
 Routes --> Policy : outbound send
-Policy --> Database : transactional safety + recipient state
-Policy --> Memory : hot policy/cache state
+Policy --> Database : indexed safety queries\ntransactional accepted-send writes
 Policy --> Baileys : account-health query
 Baileys --> AuthFiles : multi-file auth
 Baileys --> Database : account binding / recipient history
-Baileys --> Memory : connection/message caches
+Baileys --> Memory : connection / health / message caches
 Baileys <--> WhatsApp : WhatsApp Web protocol
 
 note bottom of Database
 WAL mode with schema migrations.
+Idempotency, outbound events, cooldowns, and pause state use normalized tables.
 Legacy JSON state is imported once on upgrade.
 end note
 
