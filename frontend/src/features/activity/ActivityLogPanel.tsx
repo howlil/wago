@@ -10,9 +10,10 @@ import { type CategoryFilter, type LevelFilter, useActivityLog } from "./useActi
 
 type ActivityLogPanelProps = {
   enabled: boolean;
+  heading?: string;
 };
 
-export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
+export function ActivityLogPanel({ enabled, heading = "Activity Log" }: ActivityLogPanelProps) {
   const { events, filteredEvents, category, level, loading, error, setCategory, setLevel, load } =
     useActivityLog(enabled);
 
@@ -20,7 +21,7 @@ export function ActivityLogPanel({ enabled }: ActivityLogPanelProps) {
     <section className={`${cardBodyClass} h-full`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className={sectionTitleClass}>Activity Log</h2>
+          <h2 className={sectionTitleClass}>{heading}</h2>
           <p className={sectionDescriptionClass}>Recent operational events. Sensitive values are masked.</p>
         </div>
         <button
