@@ -53,6 +53,8 @@ let reachoutTimeLock: ReachoutTimelockState | undefined;
 let newChatCap: NewChatMessageCapInfo | undefined;
 let lastFetchedAt = 0;
 let lastFetchErrorAt = 0;
+let healthLifecycleGeneration = 0;
+let healthRefreshGeneration = 0;
 
 function parseDate(value?: Date | string): Date | undefined {
   if (!value) {
@@ -87,7 +89,12 @@ function isFetchErrorCoolingDown(now: number): boolean {
   return Boolean(lastFetchErrorAt) && now - lastFetchErrorAt < HEALTH_ERROR_TTL_MS;
 }
 
+function isCurrentRefresh(lifecycleGeneration: number, refreshGeneration: number): boolean {
+  return lifecycleGeneration === healthLifecycleGeneration && refreshGeneration === healthRefreshGeneration;
+}
+
 export function invalidateAccountHealth(reason: AccountHealthUnavailableReason): void {
+  healthLifecycleGeneration += 1;
   availability = "unavailable";
   unavailableReason = reason;
   reachoutTimeLock = undefined;
@@ -106,6 +113,8 @@ export async function refreshAccountHealth(
     return;
   }
 
+  const lifecycleGeneration = healthLifecycleGeneration;
+  const refreshGeneration = ++healthRefreshGeneration;
   availability = "checking";
   unavailableReason = undefined;
 
@@ -115,6 +124,10 @@ export async function refreshAccountHealth(
       fetcher.fetchNewChatMessageCap(),
     ]);
 
+    if (!isCurrentRefresh(lifecycleGeneration, refreshGeneration)) {
+      return;
+    }
+
     reachoutTimeLock = normalizeReachoutState(nextReachoutTimeLock);
     newChatCap = nextNewChatCap;
     lastFetchedAt = now;
@@ -122,6 +135,10 @@ export async function refreshAccountHealth(
     availability = "available";
     unavailableReason = undefined;
   } catch {
+    if (!isCurrentRefresh(lifecycleGeneration, refreshGeneration)) {
+      return;
+    }
+
     reachoutTimeLock = undefined;
     newChatCap = undefined;
     lastFetchErrorAt = now;
@@ -211,6 +228,8 @@ export function getAccountHealthSnapshot(): AccountHealthSnapshot {
 }
 
 export function resetAccountHealthForTest(): void {
+  healthLifecycleGeneration += 1;
+  healthRefreshGeneration = 0;
   availability = "unavailable";
   unavailableReason = "not_connected";
   reachoutTimeLock = undefined;
