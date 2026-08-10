@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import makeWASocket, { useMultiFileAuthState, WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
-import { recordBaileysAudit, type BaileysAuditInput } from "../activity/baileys-audit.js";
+import { type BaileysAuditInput, recordBaileysAudit } from "../activity/baileys-audit.js";
 import { config } from "../config/index.js";
 import { baileysLogger, logger, maskIdentifier } from "../infrastructure/logger.js";
 import {
