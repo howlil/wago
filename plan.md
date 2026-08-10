@@ -18,52 +18,57 @@ Production-ready does not mean zero WhatsApp enforcement risk. Baileys is an uno
 
 ## Current Foundation
 
-The previous production-readiness work is already implemented and should be treated as baseline rather than reworked in this milestone:
+Already implemented and treated as baseline:
 
 - outbound consent/opt-out, idempotency, account/recipient/new-chat limits, pause state
 - async `202 pending` send semantics
 - account reach-out/new-chat-cap checks
 - bounded reconnect backoff
-- focused WhatsApp modules
 - redacted structured logging
 - API key/cookie/Origin hardening
 - graceful shutdown
 - Docker/GHCR/CI/CodeQL/OSS documentation
 - frontend feature boundaries and shared layout
-- application durable state consolidated into `/app/data/wago.db`
+- durable application state in `/app/data/wago.db`
 - SQLite WAL, migrations, normalized outbound-safety tables, transactional accepted-send bookkeeping
-
-Open release validation such as tagged-release smoke tests remains separate from the work below.
 
 ## Non-Goals
 
-Do not add:
-
-- Redis, PostgreSQL, Kafka, BullMQ, or another database service
-- multi-session or multi-tenant architecture
-- raw Baileys packet/frame persistence
-- message-history persistence
-- raw QR/auth/Signal-key persistence outside Baileys' existing auth store
-- bulk sender/campaign scheduler
-- fake typing, random delays, proxy/fingerprint rotation, or anti-detection behavior
-- a custom frontend router unless the small routing dependency proves unnecessary
+Do not add Redis, PostgreSQL, Kafka, queues, multi-session/multi-tenant architecture, message-history persistence, raw protocol payload persistence, bulk/campaign features, anti-detection behavior, or unrelated refactors.
 
 ## Execution Protocol
 
-This milestone is intentionally **not one-shot**.
-
-For every iteration:
+This milestone is intentionally not one-shot. For every iteration:
 
 1. mark only that iteration `in progress`
-2. write a failing regression test for the behavior being changed
-3. implement the smallest coherent change
-4. run focused tests
-5. run the relevant package build/check
-6. update this file with the actual result and commit SHA
-7. merge that iteration only after its own quality gate is green
-8. stop at a checkpoint before starting the next iteration
+2. write a failing regression test
+3. verify the RED failure is for the intended missing behavior
+4. implement the smallest coherent change
+5. run focused tests and relevant build/check
+6. review the diff for lifecycle/security races
+7. update this ledger with RED/GREEN evidence and commit SHA
+8. merge only after the iteration quality gate is green
+9. stop before the next iteration
 
-Each iteration is independently reviewable and may merge to `main` once green. Never merge a RED test checkpoint or an unverified implementation merely to preserve sequence.
+---
+
+## Operational Incident: GHCR Release Queue
+
+**Status:** root cause identified; workflow change intentionally kept separate from Iteration 18.
+
+Evidence:
+
+- Release Container run `31377431025` / run #42 remains `in_progress` from commit `75f6531909c16960a806b6285eb9f9fcf8525224`.
+- Its `Publish Core GHCR Image` job is stuck at `Build and push core image`.
+- `.github/workflows/release-container.yml` uses `concurrency: release-container-${{ github.ref }}` with `cancel-in-progress: false`.
+- Therefore newer `main` release runs wait in `pending`; when another pending run arrives, GitHub can replace/cancel the older pending run while the stale in-progress run continues holding the concurrency slot.
+
+Recommended remediation, as a separate release-workflow hotfix:
+
+- cancel stale run #42 once from GitHub Actions to release the current lock;
+- change release concurrency to `cancel-in-progress: true` because only the newest `main/latest` image matters;
+- add bounded `timeout-minutes` to the publish job so a hung build cannot block releases indefinitely;
+- verify the next `main` release publishes `ghcr.io/howlil/wago-simple:latest`.
 
 ---
 
@@ -71,148 +76,148 @@ Each iteration is independently reviewable and may merge to `main` once green. N
 
 ### Iteration 17: Session-State Correctness
 
-**Status:** completed — checkpoint reached
+**Status:** completed and merged as `ca75e9e206ea7582ea50068c94e1d8a2af19dae4`.
 
-Goal: make the backend session/health model truthful when WhatsApp disconnects or the linked-device session becomes invalid. Frontend presentation of these new states remains intentionally deferred to Iteration 19.
+Completed:
 
-Tasks:
+- central terminal/recoverable disconnect classifier;
+- explicit account-health `unavailable | checking | available` state;
+- health invalidation on disconnect/rebind/shutdown/missing auth/init failure;
+- logged-out sessions clear binding and stop reconnect;
+- recoverable disconnect keeps binding but health becomes unavailable;
+- stale socket references are cleared;
+- obsolete in-flight account-health refreshes cannot restore stale `available` state;
+- CI, Docker build, and CodeQL green.
 
-- [x] Add one central disconnect classifier for terminal vs recoverable Baileys disconnects.
-- [x] Explicitly model account-health availability (`unavailable`, `checking`, `available`).
-- [x] Invalidate operator-visible account health when connection closes, rebind starts, or shutdown clears the active socket.
-- [x] Treat `DisconnectReason.loggedOut` as terminal: clear binding, do not reconnect, require pairing.
-- [x] Keep binding for recoverable disconnects, but never expose cached health as currently available.
-- [x] Force health refresh after a successful `connection=open`.
-- [x] Make backend status snapshots truthful when health is unavailable.
-- [x] Add regression tests for linked-device removal/logged-out behavior and recoverable disconnect behavior.
-
-Acceptance:
-
-- [x] Backend `/whatsapp/status` data cannot expose stale reach-out/new-chat health as currently available after disconnect.
-- [x] Terminal logout requires a new pairing and does not schedule reconnect.
-- [x] Recoverable disconnect keeps the binding but exposes health as unavailable until restored.
-- [x] Existing send hard-check still rejects when socket/status is not connected.
-- [ ] Frontend must stop rendering `Outbound: Normal` for disconnected/unavailable state — deferred to Iteration 19.
-
-Verification:
-
-- [x] disconnect/account-health/lifecycle regressions execute in the backend suite
-- [x] `pnpm --dir backend test` via core CI
-- [x] `pnpm --dir backend run build` via core CI
-- [x] `pnpm check` via core CI
-- [x] production Docker build via core CI
-- [x] CodeQL on the reviewed code head
-
-Result:
-
-- Initial RED evidence: `a36f130d08ce7007291b143ee7cda7b81994fec0` failed because `disconnect-classifier` did not yet exist.
-- First implementation head: `2a0be4562e7ad4a1551f337309716d32ccba7c4c`; core CI run `31411469734` passed.
-- Review found an async race where a health refresh started while connected could resolve after disconnect invalidation and restore stale `available` state.
-- Race RED evidence: `b69765c79589865b9df31a5650bb239ead4a3b56`; CI run `31411860794` failed exactly on the in-flight refresh regression.
-- Race fix: `3511ef39fb26c17c4996530dcd1b0b50d49f2c59` discards refresh results from an obsolete lifecycle/request generation.
-- Reviewed code CI run `31412009674` passed check, tests, core builds, and Docker build.
-- Reviewed code CodeQL run `31412009670` passed.
-- PR checkpoint: #17.
-
-Checkpoint: stop here. Iteration 18 must not begin until this checkpoint is merged and `main` is green.
+Frontend rendering of unavailable health remains deferred to Iteration 19.
 
 ### Iteration 18: Structured Low-Level Baileys Audit Backend
 
-**Status:** pending
+**Status:** completed — backend checkpoint reached on `feature/audit-log-backend-iteration18`.
 
 Goal: persist useful Baileys lifecycle evidence without storing raw sensitive protocol payloads.
 
-Tasks:
+#### 18A — SQLite Audit Model and Query Layer
 
-- [ ] Add `source: wago | baileys` to the audit event model and SQLite schema.
-- [ ] Add a dedicated Baileys audit adapter/sanitizer.
-- [ ] Record selected lifecycle events: socket creation, QR availability without QR value, connection open/close, disconnect classification, reconnect scheduling, terminal session invalidation, credential persistence failures, message ACK/rejection, reach-out timelock/new-chat-cap changes.
-- [ ] Never persist message body, QR value, credentials, Signal keys, tokens, cookies, API keys, full JIDs/phones, or arbitrary nested Baileys payloads.
-- [ ] Increase bounded audit retention to 2,000 events.
-- [ ] Add server-side filters and cursor pagination to `GET /activity`.
-- [ ] Add indexes for newest-first pagination and common filters.
-- [ ] Add backend security/regression tests for sanitization, retention, filters, and pagination.
+- [x] RED migration/query/store regressions before production changes.
+- [x] Add migration v3 with `source TEXT NOT NULL DEFAULT 'wago'`.
+- [x] Add source/category/level + newest-first audit indexes.
+- [x] Move audit event/source/metadata types into `activity/audit-event.ts` while keeping existing call sites compatible.
+- [x] Raise bounded retention from 300 to 2,000.
+- [x] Add server-side `listAudit()` filtering and keyset cursor pagination.
+- [x] Search only `code`, `title`, and `description`; cap search text to 100 chars.
+- [x] Invalid cursor fails with stable `INVALID_AUDIT_CURSOR`.
+- [x] Equal-timestamp pagination is tested with a fixed clock and row identity tie-breaker.
 
 Acceptance:
 
-- [ ] A terminal disconnect can be diagnosed from audit history after the event.
-- [ ] Technical detail is useful enough to identify status code/reason/reconnect decision/socket generation.
-- [ ] Sensitive fields never enter SQLite audit metadata.
-- [ ] The API does not load/filter the whole 2,000-row timeline in application memory.
+- [x] existing activity writes default to `source=wago`;
+- [x] filtering/pagination happens in SQLite, not by loading all rows into application memory;
+- [x] equal timestamps paginate deterministically using row identity;
+- [x] only newest 2,000 events remain.
 
-Verification:
+Evidence:
 
-- [ ] focused activity/audit tests
-- [ ] `pnpm --dir backend test`
-- [ ] `pnpm --dir backend run build`
-- [ ] `pnpm check`
+- RED head `e9e36a6d7d27d438beda2a78002d2e9d3b3f874a`; CI `31414388145` failed on missing query module, migration/source contract, and 2,000-row retention as intended.
+- GREEN CI `31414932289` passed check, tests, core build, and Docker build.
 
-Checkpoint: stop here and inspect real audit payload shape before building UI.
+#### 18B — Strict Baileys Audit Sanitizer
+
+- [x] RED tests for secret dropping, identifier masking, and nested object/array rejection.
+- [x] Add `activity/baileys-audit.ts`.
+- [x] Allow primitive metadata only.
+- [x] Drop secret/protocol keys including QR, credential/key material, tokens, cookies, authorization, password, message/text, and arbitrary payloads.
+- [x] Mask JID/phone values with existing `maskIdentifier()`.
+- [x] `recordBaileysAudit()` always persists `source=baileys`.
+
+Acceptance:
+
+- [x] raw protocol objects never enter SQLite metadata through the Baileys adapter;
+- [x] full phone/JID/message/QR/auth data cannot be persisted by this adapter.
+
+Evidence:
+
+- RED head `d1add1e1a55dc010f0165b14905686edda70d468`; CI `31415124314` failed because the sanitizer/adapter did not yet exist.
+- GREEN CI `31415218064` passed sanitizer tests, project tests/builds, and Docker build.
+
+#### 18C — Baileys Lifecycle Instrumentation
+
+- [x] RED lifecycle/audit regressions first.
+- [x] Record socket creation, QR-ready without QR value, connection open/close, disconnect classification, reconnect scheduling, terminal session invalidation, and shutdown.
+- [x] Record credential persistence failures and bounded/coalesced credential update success.
+- [x] Record message server ACK/rejection without message body or recipient/message identity leakage in audit metadata.
+- [x] Record reach-out timelock/new-chat-cap checks/changes and account-health fetch failures using safe primitive metadata.
+- [x] Reuse Iteration 17 disconnect classification; reconnect/session semantics are not re-derived.
+- [x] Audit persistence failure is isolated from the WhatsApp lifecycle.
+
+Acceptance:
+
+- [x] terminal logout can be diagnosed after the fact from audit rows;
+- [x] close event exposes status code/reason/terminal/reconnect/socket generation without raw protocol payload;
+- [x] no raw Baileys packet/frame persistence is enabled.
+
+Evidence:
+
+- RED head `97670655d7dc9e333eabe9374f4166519a1b20e0`; CI `31415527250` failed only because the four expected lifecycle audit records did not exist yet.
+- GREEN CI `31415984687` passed lifecycle regressions, full tests/build, and Docker build.
+
+#### 18D — Filtered Cursor-Based Audit API
+
+- [x] RED authenticated route tests.
+- [x] `GET /activity` accepts `limit`, `before`, `source`, `category`, `level`, and `q`.
+- [x] Whitelist enum filters; invalid filter returns `400 INVALID_AUDIT_FILTER`.
+- [x] Invalid cursor returns `400 INVALID_AUDIT_CURSOR`.
+- [x] Default limit 100; query layer clamps to 1..200.
+- [x] Response is `{ success, events, nextCursor? }`.
+- [x] Existing API-key authentication behavior remains unchanged.
+
+Evidence:
+
+- RED head `3dfd7bd3d9621b4cc6f109754eb02fd1c24f579e`; CI `31416257346` kept auth green while filter/cursor contracts failed as intended.
+- GREEN CI `31416505166` passed route tests, full tests/build, and Docker build.
+
+Iteration 18 final verification:
+
+- [x] focused activity/database/audit/lifecycle/route regressions
+- [x] backend + frontend tests through root CI
+- [x] backend + frontend/core build through root CI
+- [x] `pnpm check` through root CI
+- [x] production Docker build
+- [x] diff review for pagination/test determinism and lifecycle/privacy boundaries
+- [x] reviewed code head `4ac04fdf4e8a1c3766863e2affbecea2dc3b05f6`
+- [x] fresh reviewed-code CI `31416724276` success
+- [x] fresh reviewed-code CodeQL `31416724242` success
+
+Checkpoint: stop here after final PR-head verification and merge. Do not start frontend `/audit` work in this iteration.
 
 ### Iteration 19: Dedicated Audit Log Page and Navigation
 
-**Status:** pending
+**Status:** pending.
 
-Goal: move operational history out of Control and make low-level diagnostics friendly to ordinary users.
+Goal: move operational history out of Control and build a readable `/audit` page.
 
-Tasks:
+Planned scope:
 
-- [ ] Remove Activity Log completely from the Control page.
-- [ ] Add a real `/audit` page.
-- [ ] Generalize `DashboardShell` into an application shell with page title/action slots.
-- [ ] Make sidebar navigation data-driven with `Control` and `Audit Log` on desktop/mobile.
-- [ ] Add routing with the smallest maintainable solution; prefer `react-router-dom` if a dependency is needed.
-- [ ] Build Audit Log UI with search, source/category/level filters, newest-first timeline, source/severity/category labels, friendly descriptions, expandable technical details, refresh, and `Load more` cursor pagination.
-- [ ] Keep technical metadata opt-in; default view must be readable without knowing Baileys internals.
-- [ ] Update Account Health/Outbound cards so disconnected/unavailable state is visually explicit rather than optimistic.
-- [ ] Add frontend regression tests for routes, sidebar active state, no Activity Log on Control, audit filtering/pagination, and disconnected status semantics.
-
-Acceptance:
-
-- [ ] Sidebar contains exactly the intended workspace pages: `Control` and `Audit Log`.
-- [ ] Control has no Activity Log panel.
-- [ ] Audit Log is useful to both an operator and a developer debugging Baileys.
-- [ ] `Outbound: Normal` is shown only when backend is reachable, WhatsApp is connected, account health is available, and no active restriction is reported.
-
-Verification:
-
-- [ ] `pnpm --dir frontend test`
-- [ ] `pnpm --dir frontend run build`
-- [ ] `pnpm check`
-
-Checkpoint: stop here for UX review before final hardening.
+- remove Activity Log from Control;
+- add `/audit` route and data-driven Control/Audit Log navigation;
+- build source/category/level/search filters, expandable technical detail, refresh and cursor `Load more`;
+- keep default view operator-friendly;
+- update Account Health/Outbound cards so unavailable/disconnected state is explicit;
+- add frontend route/status/pagination regression tests.
 
 ### Iteration 20: Integration Hardening, Docs, and Release Gate
 
-**Status:** pending
+**Status:** pending.
 
-Goal: prove the whole behavior end-to-end and leave the repository internally consistent.
+Goal: verify session invalidation + audit behavior end-to-end and leave repository/docs internally consistent.
 
-Tasks:
+Planned scope:
 
-- [ ] Audit all status derivations for stale/optimistic values.
-- [ ] Audit all Baileys logging paths for accidental sensitive persistence.
-- [ ] Update architecture/operations/security documentation for Audit Log, session invalidation, retention, and privacy boundaries.
-- [ ] Add/adjust tests for equal timestamps, malformed cursors, unknown disconnect reason, health fetch failure, rebind, shutdown, and restart.
-- [ ] Perform manual linked-device-removal smoke procedure and document expected state transitions.
-- [ ] Run full root check/test/build, Docker build, Docs CI, and CodeQL.
-- [ ] Open/finalize the iteration PR only after the branch is internally green; squash-merge only after all checks pass.
-
-Acceptance:
-
-- [ ] Removing Wago from WhatsApp Linked Devices changes Wago to disconnected/pairing-required state without stale healthy outbound indicators.
-- [ ] Audit Log contains enough sanitized evidence to explain the transition.
-- [ ] No raw secret/message/session payload is persisted by Audit Log.
-- [ ] Core, frontend, Docker, docs, and CodeQL gates are green.
-
-Verification:
-
-- [ ] `pnpm check`
-- [ ] `pnpm test`
-- [ ] `pnpm build`
-- [ ] production Docker build
-- [ ] Docs CI
-- [ ] CodeQL
+- audit status derivations and sensitive logging paths;
+- update architecture/operations/security docs;
+- test malformed cursor, unknown disconnect reason, fetch failure, rebind, shutdown, restart, and equal timestamps;
+- manual linked-device-removal smoke procedure;
+- full check/test/build, Docker, Docs CI, CodeQL, and release validation.
 
 ---
 
@@ -691,10 +696,10 @@ Definition of done:
 ## Implementation Rules
 
 - Prefer explicit failure/unknown state over optimistic status.
-- Do not unit-test Baileys internals; test Wago's classifiers, adapters, and state transitions.
+- Test Wago classifiers/adapters/state transitions, not Baileys internals.
 - Keep one WhatsApp account per process.
 - Treat `/app/data/wago.db`, WAL/SHM files, and `/app/data/auth` as secret-bearing state.
-- Do not log or persist QR data, auth data, API keys, cookies, tokens, full phone numbers/JIDs, or message text.
+- Never persist QR data, auth data, API keys, cookies, tokens, full phone/JID, message text, or arbitrary raw protocol payloads.
 - Do not run multiple replicas against the same SQLite/auth volume.
 - Keep transient state transient unless durability is required for safety or diagnosis.
-- Avoid unrelated refactors during these iterations.
+- Avoid unrelated refactors during each iteration.

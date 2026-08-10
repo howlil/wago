@@ -127,6 +127,18 @@ const migrations: Migration[] = [
       VALUES (1, 0, 'Outbound messaging is paused');
     `,
   },
+  {
+    version: 3,
+    sql: `
+      ALTER TABLE activity_events
+        ADD COLUMN source TEXT NOT NULL DEFAULT 'wago';
+
+      CREATE INDEX IF NOT EXISTS idx_activity_source_timestamp
+        ON activity_events(source, timestamp DESC);
+      CREATE INDEX IF NOT EXISTS idx_activity_level_timestamp
+        ON activity_events(level, timestamp DESC);
+    `,
+  },
 ];
 
 export function getDatabase(): DatabaseSync {

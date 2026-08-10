@@ -12,13 +12,26 @@ describe("SQLite persistence", () => {
     }>;
 
     expect(journal?.journal_mode).toBe("wal");
-    expect(migrations.map((migration) => migration.version)).toEqual([1, 2]);
+    expect(migrations.map((migration) => migration.version)).toEqual([1, 2, 3]);
     expect(
       database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'outbound_events'").get(),
     ).toBeDefined();
     expect(
       database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'idempotency_keys'").get(),
     ).toBeDefined();
+  });
+
+  it("adds audit source and filter indexes", () => {
+    const columns = database.prepare("PRAGMA table_info(activity_events)").all() as Array<{ name?: string }>;
+    const indexes = database.prepare("PRAGMA index_list(activity_events)").all() as Array<{ name?: string }>;
+    const columnNames = new Set(columns.map((column) => column.name));
+    const indexNames = new Set(indexes.map((index) => index.name));
+
+    expect(columnNames.has("source")).toBe(true);
+    expect(indexNames.has("idx_activity_timestamp")).toBe(true);
+    expect(indexNames.has("idx_activity_source_timestamp")).toBe(true);
+    expect(indexNames.has("idx_activity_category_timestamp")).toBe(true);
+    expect(indexNames.has("idx_activity_level_timestamp")).toBe(true);
   });
 
   it("rolls back a failed transaction", () => {

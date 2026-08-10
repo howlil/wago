@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { getDatabase } from "../infrastructure/database.js";
 import { listActivity, recordActivity, resetActivityLogForTest } from "./store.js";
+
+const database = getDatabase();
 
 describe("activity store", () => {
   afterEach(async () => {
@@ -27,6 +30,35 @@ describe("activity store", () => {
     expect(events).toHaveLength(2);
     expect(events[0]?.code).toBe("second");
     expect(events[1]?.code).toBe("first");
+  });
+
+  it("defaults existing call sites to source wago", async () => {
+    const event = await recordActivity({
+      level: "info",
+      category: "system",
+      code: "test.default_source",
+      title: "Default source",
+      description: "Compatibility event",
+    });
+
+    expect(event.source).toBe("wago");
+  });
+
+  it("retains only the newest 2000 events", async () => {
+    for (let index = 0; index < 2001; index += 1) {
+      await recordActivity({
+        level: "info",
+        category: "system",
+        code: `retention.${index}`,
+        title: "Retention event",
+        description: `Retention event ${index}`,
+      });
+    }
+
+    const row = database.prepare("SELECT COUNT(*) AS count FROM activity_events").get() as
+      | { count?: number }
+      | undefined;
+    expect(row?.count).toBe(2000);
   });
 
   it("redacts sensitive metadata before persistence", async () => {
