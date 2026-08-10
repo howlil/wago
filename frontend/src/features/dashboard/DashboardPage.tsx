@@ -10,7 +10,6 @@ import { RecipientAccessCard } from "../recipients/RecipientAccessCard.js";
 import { AccountHealthCard } from "../whatsapp/AccountHealthCard.js";
 import { RebindSessionDialog } from "../whatsapp/RebindSessionDialog.js";
 import { WhatsAppBindingCard } from "../whatsapp/WhatsAppBindingCard.js";
-import { GatewayHero } from "./GatewayHero.js";
 import { OverviewCards } from "./OverviewCards.js";
 import { useDashboardController } from "./useDashboardController.js";
 
@@ -52,7 +51,6 @@ export function DashboardPage() {
       isRefreshing={dashboard.isRefreshing}
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
     >
-      <GatewayHero />
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
       <NoticeBanner notice={dashboard.notice} />
 
