@@ -44,9 +44,7 @@ describe("operator status semantics", () => {
   });
 
   it("renders account health unavailable instead of optimistic defaults", () => {
-    render(
-      <AccountHealthCard accountHealth={{ availability: "unavailable", unavailableReason: "session_invalid" }} />,
-    );
+    render(<AccountHealthCard accountHealth={{ availability: "unavailable", unavailableReason: "session_invalid" }} />);
 
     expect(screen.getByText("Health unavailable")).toBeTruthy();
     expect(screen.getByText(/pair WhatsApp again/i)).toBeTruthy();
