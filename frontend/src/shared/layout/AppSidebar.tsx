@@ -66,7 +66,9 @@ export function AppSidebar({ collapsed, mobileOpen, onToggleCollapsed, onCloseMo
         {!collapsed ? (
           <div className="mx-3 mt-auto mb-3 rounded-xl border border-[#e1e9e5] bg-[#f8faf9] p-3">
             <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-wago-brand">Self-hosted</p>
-            <p className="mt-1 mb-0 text-[10px] leading-4 text-wago-muted">Your session and gateway stay under your control.</p>
+            <p className="mt-1 mb-0 text-[10px] leading-4 text-wago-muted">
+              Your session and gateway stay under your control.
+            </p>
           </div>
         ) : (
           <div className="mt-auto border-t border-wago-line p-2.5">
@@ -109,7 +111,9 @@ export function AppSidebar({ collapsed, mobileOpen, onToggleCollapsed, onCloseMo
             </nav>
             <div className="mx-3 mt-auto mb-3 rounded-xl border border-[#e1e9e5] bg-[#f8faf9] p-3">
               <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-wago-brand">Self-hosted</p>
-              <p className="mt-1 mb-0 text-[10px] leading-4 text-wago-muted">Your session and gateway stay under your control.</p>
+              <p className="mt-1 mb-0 text-[10px] leading-4 text-wago-muted">
+                Your session and gateway stay under your control.
+              </p>
             </div>
           </aside>
         </div>
