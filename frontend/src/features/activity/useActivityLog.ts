@@ -1,8 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { type ActivityCategory, type ActivityEvent, type ActivityLevel, listActivity } from "../../api.js";
+import { useCallback, useEffect, useState } from "react";
+import {
+  type ActivityCategory,
+  type ActivityEvent,
+  type ActivityLevel,
+  type ActivityQuery,
+  type AuditSource,
+  listActivity,
+} from "../../api.js";
 
+export type SourceFilter = "all" | AuditSource;
 export type CategoryFilter = "all" | ActivityCategory;
-export type LevelFilter = "all" | "attention" | ActivityLevel;
+export type LevelFilter = "all" | ActivityLevel;
+
+const PAGE_SIZE = 50;
 
 function activityErrorMessage(error: unknown): string {
   const apiError = error as { error?: string; message?: string };
@@ -14,41 +24,66 @@ function activityErrorMessage(error: unknown): string {
   return apiError.message ?? "Could not load gateway activity.";
 }
 
+function appendUniqueEvents(current: ActivityEvent[], incoming: ActivityEvent[]): ActivityEvent[] {
+  const byId = new Map(current.map((event) => [event.id, event]));
+  for (const event of incoming) {
+    byId.set(event.id, event);
+  }
+  return Array.from(byId.values());
+}
+
 export function useActivityLog(enabled: boolean) {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [source, setSource] = useState<SourceFilter>("all");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [level, setLevel] = useState<LevelFilter>("all");
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState<ActivityQuery>({ limit: PAGE_SIZE });
+  const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (showLoading = false) => {
+  const loadPage = useCallback(
+    async (request: ActivityQuery, append = false) => {
       if (!enabled) {
         setEvents([]);
+        setNextCursor(undefined);
         setError(null);
         return;
       }
 
-      if (showLoading) {
+      if (append) {
+        setLoadingMore(true);
+      } else {
         setLoading(true);
       }
 
       try {
-        const result = await listActivity(150);
+        const result = await listActivity(request);
 
         if (!Array.isArray(result.events)) {
-          setEvents([]);
+          if (!append) {
+            setEvents([]);
+            setNextCursor(undefined);
+          }
           setError("Activity endpoint returned an invalid response. Restart or update the backend, then refresh.");
           return;
         }
 
-        setEvents(result.events);
+        setEvents((current) => (append ? appendUniqueEvents(current, result.events) : result.events));
+        setNextCursor(result.nextCursor);
         setError(null);
       } catch (caught) {
-        setEvents([]);
+        if (!append) {
+          setEvents([]);
+          setNextCursor(undefined);
+        }
         setError(activityErrorMessage(caught));
       } finally {
-        if (showLoading) {
+        if (append) {
+          setLoadingMore(false);
+        } else {
           setLoading(false);
         }
       }
@@ -57,47 +92,48 @@ export function useActivityLog(enabled: boolean) {
   );
 
   useEffect(() => {
-    void load(true);
+    void loadPage(query);
+  }, [loadPage, query]);
 
-    if (!enabled) {
-      return;
+  function applyFilters(): void {
+    const trimmedSearch = search.trim().slice(0, 100);
+    setQuery({
+      limit: PAGE_SIZE,
+      ...(source === "all" ? {} : { source }),
+      ...(category === "all" ? {} : { category }),
+      ...(level === "all" ? {} : { level }),
+      ...(trimmedSearch ? { q: trimmedSearch } : {}),
+    });
+  }
+
+  function refresh(): Promise<void> {
+    return loadPage(query);
+  }
+
+  function loadMore(): Promise<void> {
+    if (!nextCursor || loadingMore) {
+      return Promise.resolve();
     }
 
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void load(false);
-      }
-    }, 10000);
-
-    return () => window.clearInterval(timer);
-  }, [enabled, load]);
-
-  const filteredEvents = useMemo(
-    () =>
-      events.filter((event) => {
-        if (category !== "all" && event.category !== category) {
-          return false;
-        }
-        if (level === "attention" && event.level !== "warning" && event.level !== "error") {
-          return false;
-        }
-        if (level !== "all" && level !== "attention" && event.level !== level) {
-          return false;
-        }
-        return true;
-      }),
-    [category, events, level],
-  );
+    return loadPage({ ...query, before: nextCursor }, true);
+  }
 
   return {
     events,
-    filteredEvents,
+    source,
     category,
     level,
+    search,
+    nextCursor,
     loading,
+    loadingMore,
     error,
+    setSource,
     setCategory,
     setLevel,
-    load,
+    setSearch,
+    applyFilters,
+    refresh,
+    loadMore,
   };
 }
