@@ -1,16 +1,39 @@
 # Backend Production Hardening Execution Ledger
 
-This ledger tracks execution of the approved backend hardening design and implementation plan without competing with the shared repository `plan.md`, which is also updated by the Audit Observability and Outbound Safety milestones.
+This ledger tracks execution of the approved backend hardening design and implementation plan without competing with the concise root `plan.md`.
 
 Authoritative design and implementation plan:
 
-- `docs/superpowers/specs/2026-08-10-backend-production-hardening-design.md`
-- `docs/superpowers/plans/2026-08-10-backend-production-hardening.md`
+- `.agent/specs/2026-08-10-backend-production-hardening-design.md`
+- `.agent/plans/2026-08-10-backend-production-hardening.md`
 
 Execution branch: `staging/backend-production-hardening`
 Draft integration PR: #18
 
 Architecture remains a production-grade single-instance modular monolith: Express + TypeScript + Baileys + SQLite + filesystem Baileys auth + one production container. Do not add microservices, Redis, distributed queues, Kubernetes, a DI framework, or ceremonial layers without a demonstrated requirement.
+
+## Reconciliation with Main — 2026-08-11
+
+**Status:** staging rebuilt from current `main` after Milestone 4 Iteration 20 merged as `752d456628eb3b6805f0eadc8f751830ca6c276c`.
+
+Reason:
+
+- the old staging head `efea6984ca0503b482adbd370612ff944270ade3` was based on pre-PR-21/Iteration-20 history;
+- PR #21 moved internal engineering artifacts from `docs/superpowers` to `.agent` and refreshed public docs;
+- Iteration 20 added lifecycle/audit fixes in `backend/src/whatsapp.test.ts`, `backend/src/whatsapp/audit-lifecycle.test.ts`, and `backend/src/whatsapp/client.ts`;
+- merging the old staging history directly risked restoring stale planning/public-doc structure or dropping those lifecycle fixes.
+
+Reconciliation method:
+
+- preserved the old staging head at `backup/backend-production-hardening-pre-reconcile`;
+- rebuilt staging from current `main` rather than merging the divergent history;
+- restored the verified hardening backend subtree from the old staging checkpoint;
+- overlaid the three current-main Iteration 20 lifecycle files so audit/session hardening remains authoritative;
+- preserved current public docs, root roadmap, `.agent` workspace, SECURITY, and runtime architecture from `main`;
+- retained staging's intended Compose/environment changes;
+- moved this design/plan/ledger under `.agent` instead of reintroducing `docs/superpowers`.
+
+The reconciled staging branch must pass a fresh CI/Docs CI/CodeQL/Docker gate before Hardening Iteration 4 starts. Record that evidence at the end of this ledger.
 
 ## Hardening Iteration 0: Baseline Integration and Staging Safety
 
@@ -69,14 +92,7 @@ TDD evidence:
 7. RED `9fb7f30454e4a9f51e1d9d7bb2eb2e2c7308466f` — CI #237 proved the global handler still attached raw Error context to logs; the new sanitizer assertion was the only backend failure.
 8. GREEN runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062` — raw Error logging was replaced by safe error-type context.
 
-Latest-main reconciliation:
-
-- staging was reconciled with Audit Backend `main c55e25fa6f68ee8ff853b12fbc4a8968fc021a90` before Iteration 2 work;
-- staging was reconciled again with Audit Workspace `main a7bfd2c176ef5dad81c216529f90b0aaf696cb3c` before closing the iteration;
-- reconciliation head `23ac9383fbfc0c3a8ed5fad16093098cb464079e` had `behind_by=0` and `a7bfd2c...` as merge base;
-- frontend from latest `main` is preserved rather than independently modified by this backend iteration.
-
-Verification on runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062`:
+Historical verification on runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062`:
 
 - root formatting/lint: CI #238 success;
 - backend: 30 test files / 176 tests passed;
@@ -86,7 +102,7 @@ Verification on runtime head `334fc94b95d49b0bde234c5ea81b28f449f76062`:
 - Docs CI #84 success;
 - CodeQL #239 success.
 
-**Checkpoint:** Hardening Iteration 2 is closed. Stop before Hardening Iteration 3.
+**Checkpoint:** Hardening Iteration 2 is closed.
 
 ## Hardening Iteration 3: Message Application Service
 
@@ -110,15 +126,10 @@ TDD evidence:
 
 1. RED `803a86b89c1cf963ea76bceb3bf08a4fa376b1a5` — CI #254 failed only because `message.service.ts` did not exist; the 30 pre-existing backend suites / 176 tests remained green.
 2. GREEN service implementation reached `a78afb1e89f246748d15411301adb0c86c25b77a`; the new service unit test passed. That full run was not accepted as the final gate because an unrelated existing 2,000-row activity-retention test hit its 5-second timeout once; later runs returned it to its normal sub-second range without changing that test.
-3. RED route boundary `963304627ff6ebd6abf2b168bb2eae0eca69b167` — CI #262 produced exactly the two intended failures: send orchestration still bypassed `messageService.send()` and status lookup still bypassed `messageService.findStatus()`. All unrelated backend tests were green.
+3. RED route boundary `963304627ff6ebd6abf2b168bb2eb2eae0eca69b167` — CI #262 produced exactly the two intended failures: send orchestration still bypassed `messageService.send()` and status lookup still bypassed `messageService.findStatus()`. All unrelated backend tests were green.
 4. GREEN runtime head `bb8ea1146ed13d44ecf1384674e411a7c26e0bac` — both route-boundary tests passed and the full contract suite remained green.
 
-Latest-main check:
-
-- `main` remained at `a7bfd2c176ef5dad81c216529f90b0aaf696cb3c` through the Iteration 3 runtime verification;
-- staging therefore remained reconciled with the latest `main` baseline for this checkpoint.
-
-Verification on runtime head `bb8ea1146ed13d44ecf1384674e411a7c26e0bac`:
+Historical verification on runtime head `bb8ea1146ed13d44ecf1384674e411a7c26e0bac`:
 
 - root formatting/lint: CI #263 success;
 - backend: 32 test files / 179 tests passed;
@@ -143,6 +154,21 @@ Remove any remaining transport ownership from outbound-policy code only after re
 - Iteration 7 — HTTP and Application Lifecycle Cleanup
 - Iteration 8 — Production Engineering Rules and Documentation
 - Iteration 9 — Full Verification, Rollback Rehearsal, and PR Gate
+
+## Fresh Reconciliation Gate
+
+Current reconciled branch source head: `2ece953fc91d794600e6f38c0409ebacc8c49834` plus this ledger commit.
+
+Required before any Hardening Iteration 4 code:
+
+- [ ] Core CI success
+- [ ] all backend/frontend tests success
+- [ ] backend/frontend production builds success
+- [ ] production Docker build success
+- [ ] Docs CI success
+- [ ] CodeQL success
+- [ ] PR compare confirms latest `main` is the merge base / staging is not behind
+- [ ] PR changed-file review confirms no `docs/superpowers` artifact is reintroduced
 
 ## Engineering Rules
 
