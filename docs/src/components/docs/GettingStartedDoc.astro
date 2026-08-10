@@ -10,55 +10,43 @@ const id = lang === 'id';
 ---
 
 <DocsLayout title={id ? 'Memulai' : 'Getting Started'}>
-  <PageHeader
-    eyebrow="Quick start"
-    title={id ? 'Dari container sampai pesan pertama' : 'From container to first message'}
-    description={id
-      ? 'Jalur production paling pendek menggunakan image GHCR proyek, satu origin HTTPS, dan first-run setup dari dashboard.'
-      : 'The shortest production path uses the project GHCR image, one HTTPS origin, and first-run setup from the dashboard.'}
-  />
+  <PageHeader eyebrow="Quick start" title={id ? 'Dari container sampai integrasi aplikasi pertama' : 'From container to your first application integration'} description={id ? 'Jalankan satu instance Wago, bootstrap credential, pair WhatsApp, lalu gunakan REST API dari backend aplikasi Anda.' : 'Run one Wago instance, bootstrap credentials, pair WhatsApp, then call its REST API from your application backend.'} />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">1. {id ? 'Prasyarat' : 'Prerequisites'}</h2>
-  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
-    <li>Docker Engine + Docker Compose v2.</li>
-    <li>{id ? 'Satu akun WhatsApp yang dapat membuka Linked devices.' : 'One WhatsApp account that can access Linked devices.'}</li>
-    <li>{id ? 'Satu origin HTTPS melalui reverse proxy, tunnel, atau router PaaS untuk deployment publik.' : 'One HTTPS origin through a reverse proxy, tunnel, or PaaS router for public deployment.'}</li>
-  </ul>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8"><li>Docker Engine + Docker Compose v2.</li><li>{id ? 'Satu akun WhatsApp yang dapat membuka Linked devices.' : 'One WhatsApp account that can access Linked devices.'}</li><li>{id ? 'Origin HTTPS melalui reverse proxy, tunnel, atau router PaaS bila service dipublikasikan.' : 'An HTTPS origin through a reverse proxy, tunnel, or PaaS router when the service is public.'}</li></ul>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">2. {id ? 'Clone dan konfigurasi origin' : 'Clone and configure the origin'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">2. {id ? 'Clone dan konfigurasi' : 'Clone and configure'}</h2>
   <CodeBlock label="shell" code={`git clone https://github.com/howlil/wago.git\ncd wago\ncp .env.production.example .env`} />
   <CodeBlock label=".env" code={`CORS_ORIGIN=https://wago.example.com\nAPI_KEY=`} />
-  <Callout title={id ? 'API_KEY opsional' : 'API_KEY is optional'}>
-    {id
-      ? 'Biarkan API_KEY kosong untuk first-run setup dari dashboard. Jika ingin mengunci gateway sebelum URL publik dapat diklaim, isi API_KEY dengan secret random yang panjang sebelum container dijalankan.'
-      : 'Leave API_KEY empty for first-run setup from the dashboard. If the gateway must be locked before the public URL can be claimed, set API_KEY to a long random secret before starting the container.'}
-  </Callout>
+  <Callout title={id ? 'API_KEY opsional' : 'API_KEY is optional'}>{id ? 'Biarkan API_KEY kosong untuk first-run setup dari dashboard. Isi API_KEY sebelum startup jika ingin pre-provisioned authentication.' : 'Leave API_KEY empty for first-run setup from the dashboard. Set API_KEY before startup when you prefer pre-provisioned authentication.'}</Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">3. {id ? 'Jalankan service' : 'Start the service'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">3. {id ? 'Jalankan Wago' : 'Start Wago'}</h2>
   <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d\ndocker compose ps\ncurl http://127.0.0.1:3000/health`} />
-  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Compose bind ke 127.0.0.1:3000. Reverse proxy/tunnel meneruskan origin HTTPS publik ke service ini.' : 'Compose binds to 127.0.0.1:3000. A reverse proxy or tunnel forwards the public HTTPS origin to this service.'}</p>
+  <CodeBlock label="response" code={`{"status":"ok"}`} />
+  <p class="text-sm text-[#71717a] mb-8">{id ? 'Compose bind ke 127.0.0.1:3000. Jangan expose port ini langsung ke internet tanpa reverse proxy/tunnel HTTPS.' : 'Compose binds to 127.0.0.1:3000. Do not expose this port directly to the internet without an HTTPS reverse proxy or tunnel.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">4. {id ? 'Bootstrap dan Pair WhatsApp' : 'Bootstrap and pair WhatsApp'}</h2>
-  <ol class="list-decimal pl-5 text-sm text-[#a1a1aa] space-y-2 mb-4">
-    <li>{id ? 'Buka dashboard Wago pada CORS_ORIGIN yang dikonfigurasi.' : 'Open the Wago dashboard at the configured CORS_ORIGIN.'}</li>
-    <li>{id ? 'Pada fresh gateway tanpa API_KEY, klik Pair WhatsApp. Dashboard otomatis membuat kandidat API key, melakukan first-run bootstrap, lalu memulai pairing.' : 'On a fresh gateway without API_KEY, click Pair WhatsApp. The dashboard automatically creates an API-key candidate, performs first-run bootstrap, then starts pairing.'}</li>
-    <li>{id ? 'Simpan raw API key yang ditampilkan bila external REST client akan menggunakannya. Backend hanya menyimpan hash untuk generated key.' : 'Save the displayed raw API key if an external REST client will use it. The backend stores only the hash for a generated key.'}</li>
-    <li>{id ? 'Buka WhatsApp → Linked devices → Link a device dan scan QR.' : 'Open WhatsApp → Linked devices → Link a device and scan the QR.'}</li>
-  </ol>
-  <p class="text-sm text-[#71717a] mb-8">{id ? 'Jika API_KEY sudah diprovision atau gateway pernah diinisialisasi, masukkan existing API key pada Gateway Credentials terlebih dahulu. First-run bootstrap tidak membuat key baru setelah credential sudah ada.' : 'If API_KEY was pre-provisioned or the gateway was already initialized, enter the existing API key in Gateway Credentials first. First-run bootstrap does not create a new key after credentials already exist.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">4. {id ? 'Bootstrap credential dan pair WhatsApp' : 'Bootstrap credentials and pair WhatsApp'}</h2>
+  <ol class="list-decimal pl-5 text-sm text-[#a1a1aa] space-y-2 mb-4"><li>{id ? 'Buka dashboard pada CORS_ORIGIN.' : 'Open the dashboard at CORS_ORIGIN.'}</li><li>{id ? 'Pada fresh gateway tanpa API_KEY, klik Pair WhatsApp. Frontend membuat kandidat API key, memanggil POST /app/bootstrap, lalu memulai pairing.' : 'On a fresh gateway without API_KEY, click Pair WhatsApp. The frontend creates an API-key candidate, calls POST /app/bootstrap, then starts pairing.'}</li><li>{id ? 'Simpan raw API key bila external application akan memakai REST API. Generated raw key tidak disimpan server; server menyimpan representasi hash di SQLite.' : 'Save the raw API key if an external application will use the REST API. The generated raw key is not stored by the server; its hash representation is persisted in SQLite.'}</li><li>{id ? 'Buka WhatsApp → Linked devices → Link a device, lalu scan QR.' : 'Open WhatsApp → Linked devices → Link a device, then scan the QR.'}</li></ol>
+  <Callout title={id ? 'Bootstrap bukan rotasi key umum' : 'Bootstrap is not a general key-rotation endpoint'} tone="warning">{id ? 'Di production bootstrap harus berasal dari Origin yang sama dengan CORS_ORIGIN. Setelah gateway punya credential, first-run flow tidak boleh dianggap sebagai endpoint pembuatan key baru bebas.' : 'In production bootstrap must originate from the configured CORS_ORIGIN. Once credentials exist, the first-run flow should not be treated as an unrestricted key-generation endpoint.'}</Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">5. {id ? 'Izinkan recipient' : 'Allow a recipient'}</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Recipient dapat di-allow dari dashboard, atau melalui REST API berikut.' : 'A recipient can be allowed from the dashboard, or through the REST API below.'}</p>
-  <CodeBlock label="cURL" code={`export WAGO_URL="https://wago.example.com"\nexport WAGO_API_KEY="your-api-key"\n\ncurl -X POST "$WAGO_URL/recipients/allow" \\\n  -H "Authorization: Bearer $WAGO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"phone":"6281234567890","label":"Demo recipient"}'`} />
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">5. {id ? 'Siapkan aplikasi eksternal' : 'Prepare an external application'}</h2>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Simpan URL dan API key Wago di environment backend aplikasi Anda.' : 'Keep the Wago URL and API key in your application backend environment.'}</p>
+  <CodeBlock label=".env" code={`WAGO_URL=https://wago.example.com\nWAGO_API_KEY=wa_...`} />
+  <CodeBlock label={id ? 'Arsitektur' : 'Architecture'} code={`Browser / mobile client\n        |\n        v\nApplication backend\n        |\n        | Bearer WAGO_API_KEY\n        v\n       Wago\n        |\n        v\n    WhatsApp`} />
+  <Callout title={id ? 'Jangan taruh API key di frontend publik' : 'Do not put the API key in a public frontend'} tone="warning">{id ? 'React/Vue/browser bundle dapat dibaca pengguna. Call Wago dari backend/server application Anda.' : 'React/Vue/browser bundles are readable by users. Call Wago from your backend/server application.'}</Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">6. {id ? 'Kirim pesan' : 'Send a message'}</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Gunakan form Send Message di dashboard atau endpoint API.' : 'Use the Send Message form in the dashboard or the API endpoint.'}</p>
-  <CodeBlock label="cURL" code={`curl -X POST "$WAGO_URL/messages/send" \\\n  -H "Authorization: Bearer $WAGO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -H "Idempotency-Key: demo-001" \\\n  -d '{"to":"6281234567890","text":"Hello from Wago"}'`} />
-  <Callout title={id ? 'Arti HTTP 202' : 'What HTTP 202 means'} tone="warning">
-    {id ? 'Response 202/pending berarti operasi outbound diterima oleh layer Wago/Baileys. Ini bukan bukti pesan sudah delivered atau read.' : 'A 202/pending response means the outbound operation was accepted by the Wago/Baileys layer. It is not proof that the message was delivered or read.'}
-  </Callout>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">6. {id ? 'Allow recipient saat permission diperoleh' : 'Allow a recipient when permission is obtained'}</h2>
+  <CodeBlock label="cURL" code={`export WAGO_URL="https://wago.example.com"\nexport WAGO_API_KEY="wa_..."\n\ncurl -X POST "$WAGO_URL/recipients/allow" \\\n  -H "Authorization: Bearer $WAGO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"phone":"6281234567890","label":"Example recipient"}'`} />
+  <p class="text-sm text-[#71717a] mb-8">{id ? 'Allow biasanya dilakukan sekali ketika aplikasi Anda mencatat permission/consent. Jangan otomatis allow sebelum setiap pesan.' : 'Allow is normally performed when your application records permission/consent. Do not automatically allow a recipient before every message.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">7. {id ? 'Cek status dan activity' : 'Check status and activity'}</h2>
-  <CodeBlock label="cURL" code={`curl "$WAGO_URL/messages/<message-id>/status" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"\n\ncurl "$WAGO_URL/activity?limit=20" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"`} />
-  <p class="text-sm text-[#71717a]">{id ? 'Message status bersifat transient dan hilang saat proses restart. Operator activity disimpan di SQLite /app/data/wago.db dan dibatasi maksimal 300 event.' : 'Message status is transient and is lost when the process restarts. Operator activity is stored in SQLite at /app/data/wago.db and capped at 300 events.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">7. {id ? 'Kirim pesan pertama' : 'Send the first message'}</h2>
+  <CodeBlock label="cURL" code={`curl -X POST "$WAGO_URL/messages/send" \\\n  -H "Authorization: Bearer $WAGO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -H "Idempotency-Key: first-message-001" \\\n  -d '{"to":"6281234567890","text":"Hello from Wago"}'`} />
+  <CodeBlock label="202" code={`{\n  "success": true,\n  "messageId": "...",\n  "status": "pending"\n}`} />
+  <Callout title={id ? 'Pending bukan delivered/read' : 'Pending is not delivered/read'} tone="warning">{id ? '202/pending berarti operasi outbound diterima oleh layer Wago/Baileys. Status yang saat ini disimpan adalah pending, accepted, atau rejected.' : '202/pending means the outbound operation was accepted by the Wago/Baileys layer. The currently retained states are pending, accepted, or rejected.'}</Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">8. {id ? 'Cek status dan audit' : 'Check status and audit'}</h2>
+  <CodeBlock label="cURL" code={`curl "$WAGO_URL/messages/<message-id>/status" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"\n\ncurl "$WAGO_URL/activity?source=baileys&category=connection&limit=20" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"`} />
+  <p class="text-sm text-[#71717a]">{id ? 'Message status bersifat transient dan dapat hilang saat restart. Audit event disimpan di SQLite dengan bounded retention 2.000 event dan Baileys metadata disanitasi sebelum persistence.' : 'Message status is transient and may disappear after restart. Audit events are stored in SQLite with bounded retention of 2,000 events, and Baileys metadata is sanitized before persistence.'}</p>
+
+  <div class="mt-9 border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">{id ? 'Berikutnya' : 'Next'}</h3><p class="text-sm text-[#71717a]">{id ? 'Buka Referensi API untuk mencoba Hybrid API Explorer, melihat semua endpoint, filter audit, error code, dan batas outbound.' : 'Open the API Reference to use the Hybrid API Explorer and inspect every endpoint, audit filter, error code, and outbound limit.'}</p></div>
 </DocsLayout>

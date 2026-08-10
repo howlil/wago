@@ -17,9 +17,9 @@ actor Operator
 participant "React dashboard" as UI
 participant "Express /app" as App
 participant "Express /whatsapp" as WaRoutes
-database "/app/data/app-settings.json" as Settings
+database "/app/data/wago.db" as Database
 participant "Baileys client" as Baileys
-database "/app/data/whatsapp-binding.json" as Binding
+database "/app/data/auth/" as Auth
 participant "WhatsApp Web" as WhatsApp
 
 Operator -> UI : Open Wago dashboard
@@ -30,7 +30,7 @@ alt Fresh gateway: no API key or hash exists
   Operator -> UI : Click Pair WhatsApp
   UI -> UI : Generate wa_<random> API-key candidate
   UI -> App : POST /app/bootstrap { apiKey }\nProduction Origin must match CORS_ORIGIN
-  App -> Settings : Persist appId + SHA-256 API-key hash\n(raw generated key is not persisted)
+  App -> Database : Persist appId + SHA-256 API-key hash\n(raw generated key is not persisted)
   App --> UI : 201 appId + raw API key\nSet HttpOnly auth cookie
   UI -> UI : Keep raw key in sessionStorage
 else Existing gateway credentials
@@ -42,6 +42,7 @@ end
 
 UI -> WaRoutes : POST /whatsapp/pair
 WaRoutes -> Baileys : pairWhatsApp()
+Baileys -> Auth : Read/write Baileys auth state
 Baileys -> WhatsApp : Start linked-device session
 WhatsApp --> Baileys : QR payload
 Baileys --> WaRoutes : status=qr
@@ -50,7 +51,7 @@ UI -> WaRoutes : GET /whatsapp/qr/image
 WaRoutes --> UI : SVG QR
 Operator -> WhatsApp : Scan QR from Linked devices
 WhatsApp --> Baileys : connection=open
-Baileys -> Binding : Persist normalized account binding
+Baileys -> Database : Persist normalized account binding
 UI -> WaRoutes : GET /whatsapp/status
 WaRoutes --> UI : connected + binding + account health
 @enduml

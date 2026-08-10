@@ -2,66 +2,54 @@
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import PageHeader from './PageHeader.astro';
 import Callout from './Callout.astro';
+import CodeBlock from './CodeBlock.astro';
 
 interface Props { lang: 'en' | 'id' }
 const { lang } = Astro.props;
 const id = lang === 'id';
+
 const internalDefaults = [
-  ['HTTP', '0.0.0.0:3000', id ? 'Alamat aplikasi tetap di dalam container.' : 'Fixed application address inside the container.'],
-  ['Host publish', '127.0.0.1:3000', id ? 'Compose hanya expose ke loopback.' : 'Compose exposes only to loopback.'],
+  ['HTTP', '0.0.0.0:3000', id ? 'Alamat aplikasi di dalam container.' : 'Application address inside the container.'],
+  ['Host publish', '127.0.0.1:3000', id ? 'Compose publish hanya ke loopback host.' : 'Compose publishes only to host loopback.'],
   ['Data', '/app/data', id ? 'Root persistent volume.' : 'Persistent volume root.'],
+  ['Database', '/app/data/wago.db', id ? 'SQLite durable application state.' : 'SQLite durable application state.'],
   ['WhatsApp auth', '/app/data/auth', id ? 'Baileys multi-file auth state.' : 'Baileys multi-file auth state.'],
   ['Request body', '32kb', id ? 'Batas JSON body.' : 'JSON body limit.'],
   ['Country code', '62', id ? 'Normalisasi nomor lokal Indonesia.' : 'Indonesian local-number normalization.'],
-  ['Logging', 'enabled / info', id ? 'Structured request/runtime logging production.' : 'Structured production request/runtime logging.'],
-  ['Web bootstrap', 'first run only', id ? 'Aktif hanya selama belum ada API key/hash; production wajib dari CORS_ORIGIN.' : 'Available only while no API key/hash exists; production requires the configured CORS_ORIGIN.'],
-  ['Secure auth cookie', 'enabled in production', id ? 'Cookie bootstrap HttpOnly menggunakan Secure pada production.' : 'The bootstrap HttpOnly cookie uses Secure in production.'],
+  ['Logging', 'info (production)', id ? 'Structured logging dengan redaction.' : 'Structured logging with redaction.'],
+  ['Web bootstrap', 'first run only', id ? 'Tersedia hanya sebelum API credential tersimpan.' : 'Available only before API credentials are persisted.'],
+  ['Secure auth cookie', 'production', id ? 'HttpOnly cookie menggunakan Secure di production.' : 'The HttpOnly cookie uses Secure in production.'],
   ['Trust proxy', 'false', id ? 'Tidak diekspos sebagai operator setting.' : 'Not exposed as an operator setting.'],
   ['WA version strategy', 'Baileys default', id ? 'Tidak dipaksa melalui environment variable.' : 'Not forced through an environment variable.'],
 ];
 ---
 
 <DocsLayout title={id ? 'Konfigurasi' : 'Configuration'}>
-  <PageHeader
-    eyebrow="Environment"
-    title={id ? 'Konfigurasi production yang minimal' : 'Minimal production configuration'}
-    description={id
-      ? 'Wago sengaja membatasi environment configuration. CORS_ORIGIN wajib untuk production; API_KEY opsional karena fresh gateway dapat membuat credential sekali dari dashboard.'
-      : 'Wago intentionally keeps environment configuration small. CORS_ORIGIN is required in production; API_KEY is optional because a fresh gateway can create credentials once from the dashboard.'}
-  />
+  <PageHeader eyebrow="Environment" title={id ? 'Konfigurasi production yang sengaja minimal' : 'Intentionally small production configuration'} description={id ? 'Untuk production self-hosted, operator hanya perlu menetapkan CORS_ORIGIN dan secara opsional API_KEY. State lain disimpan di /app/data atau menggunakan default internal yang tetap.' : 'For self-hosted production, operators only need CORS_ORIGIN and optionally API_KEY. Other state lives under /app/data or uses fixed internal defaults.'} />
 
-  <Callout title={id ? 'Yang benar-benar wajib' : 'What is actually required'} tone="warning">
-    {id
-      ? 'Production gagal start jika CORS_ORIGIN kosong atau menggunakan *. API_KEY tidak wajib: isi untuk pre-provisioned authentication, atau kosongkan agar first-run dashboard membuat API key.'
-      : 'Production fails to start when CORS_ORIGIN is empty or uses *. API_KEY is not required: set it for pre-provisioned authentication, or leave it empty so the first-run dashboard can create the API key.'}
-  </Callout>
+  <Callout title={id ? 'Yang benar-benar wajib' : 'What is actually required'} tone="warning">{id ? 'Production gagal start jika CORS_ORIGIN kosong atau menggunakan *. API_KEY opsional: set untuk pre-provisioned authentication, atau kosongkan agar first-run dashboard membuat credential.' : 'Production fails to start when CORS_ORIGIN is empty or uses *. API_KEY is optional: set it for pre-provisioned authentication, or leave it empty so the first-run dashboard can create credentials.'}</Callout>
 
-  <div class="overflow-x-auto mt-8 mb-10">
-    <table class="w-full text-sm text-left">
-      <thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Variable</th><th class="py-2.5 pr-4">{id ? 'Wajib' : 'Required'}</th><th class="py-2.5">{id ? 'Keterangan' : 'Description'}</th></tr></thead>
-      <tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>CORS_ORIGIN</code></td><td class="py-3 pr-4">{id ? 'Ya' : 'Yes'}</td><td class="py-3">{id ? 'Origin HTTPS publik Wago. Production menolak * dan first-run bootstrap harus berasal dari origin ini.' : 'Public HTTPS origin for Wago. Production rejects * and first-run bootstrap must originate from this origin.'}</td></tr>
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>API_KEY</code></td><td class="py-3 pr-4">{id ? 'Tidak' : 'No'}</td><td class="py-3">{id ? 'Optional pre-provisioned Bearer secret. Jika kosong dan belum ada persisted hash, dashboard dapat membuat key sekali saat Pair WhatsApp.' : 'Optional pre-provisioned Bearer secret. When omitted and no persisted hash exists, the dashboard can create the key once when Pair WhatsApp is started.'}</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-4">Environment variables</h2>
+  <div class="overflow-x-auto mb-10"><table class="w-full text-sm text-left"><thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Variable</th><th class="py-2.5 pr-4">{id ? 'Wajib' : 'Required'}</th><th class="py-2.5">{id ? 'Keterangan' : 'Description'}</th></tr></thead><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]"><tr><td class="py-3 pr-4 text-[#fafafa]"><code>CORS_ORIGIN</code></td><td class="py-3 pr-4">{id ? 'Ya, production' : 'Yes, production'}</td><td class="py-3">{id ? 'Origin publik Wago. Production menolak *; first-run bootstrap harus berasal dari origin ini.' : 'Public Wago origin. Production rejects *; first-run bootstrap must originate from this origin.'}</td></tr><tr><td class="py-3 pr-4 text-[#fafafa]"><code>API_KEY</code></td><td class="py-3 pr-4">{id ? 'Tidak' : 'No'}</td><td class="py-3">{id ? 'Pre-provisioned Bearer secret. Jika kosong dan belum ada generated credential di SQLite, dashboard dapat bootstrap sekali.' : 'Pre-provisioned Bearer secret. When omitted and no generated credential exists in SQLite, the dashboard can bootstrap once.'}</td></tr></tbody></table></div>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Mode A — first-run dashboard' : 'Mode A — first-run dashboard'}</h2>
-  <pre class="bg-[#111] border border-[#262626] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto mb-4"><code>{`CORS_ORIGIN=https://wago.example.com
-API_KEY=`}</code></pre>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Fresh gateway dimulai tanpa credential. Saat operator menekan Pair WhatsApp, frontend membuat kandidat random, POST ke /app/bootstrap, backend menyimpan SHA-256 hash di app-settings.json, lalu browser menerima raw key dan cookie HttpOnly. Setelah credential tercipta, bootstrap tidak dapat digunakan sebagai initial claim lagi.' : 'A fresh gateway starts without credentials. When the operator clicks Pair WhatsApp, the frontend creates a random candidate and POSTs it to /app/bootstrap; the backend stores its SHA-256 hash in app-settings.json, then the browser receives the raw key and an HttpOnly cookie. Once credentials exist, bootstrap is no longer available as an initial claim path.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Mode A — first-run dashboard</h2>
+  <CodeBlock label=".env" code={`CORS_ORIGIN=https://wago.example.com\nAPI_KEY=`} />
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Fresh gateway mulai tanpa API credential. Dashboard membuat kandidat random wa_..., memanggil POST /app/bootstrap, lalu backend menyimpan SHA-256 hash di tabel app_settings pada /app/data/wago.db.' : 'A fresh gateway starts without an API credential. The dashboard creates a random wa_... candidate, calls POST /app/bootstrap, then the backend stores its SHA-256 hash in the app_settings table in /app/data/wago.db.'}</p>
+  <p class="text-sm text-[#71717a] mb-9">{id ? 'Raw generated key dikembalikan ke browser untuk operator/client, tetapi tidak dipersistenkan server. Simpan raw key bila external application membutuhkannya.' : 'The raw generated key is returned to the browser for the operator/client but is not persisted by the server. Save it if an external application needs it.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Mode B — pre-provisioned API key' : 'Mode B — pre-provisioned API key'}</h2>
-  <pre class="bg-[#111] border border-[#262626] rounded-lg p-4 text-sm text-[#d4d4d8] overflow-x-auto mb-4"><code>{`CORS_ORIGIN=https://wago.example.com
-API_KEY=<long-random-secret>`}</code></pre>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-9">{id ? 'Gunakan mode ini bila public URL dapat diakses sebelum owner membuka dashboard. Browser harus memasukkan key yang sudah diprovision untuk memperoleh akses protected endpoint.' : 'Use this mode when the public URL may be reachable before the owner opens the dashboard. The browser must enter the pre-provisioned key before protected endpoints are available.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Mode B — pre-provisioned API key</h2>
+  <CodeBlock label=".env" code={`CORS_ORIGIN=https://wago.example.com\nAPI_KEY=<long-random-secret>`} />
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-9">{id ? 'Gunakan mode ini bila public URL dapat diakses sebelum owner membuka dashboard atau bila secret ingin dikelola oleh deployment platform.' : 'Use this mode when the public URL may be reachable before the owner opens the dashboard or when the secret should be managed by the deployment platform.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Default internal' : 'Internal defaults'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Nilai berikut sengaja tidak diekspos sebagai environment variable agar deployment sederhana dan konsisten.' : 'These values are intentionally not exposed as environment variables so deployments stay simple and consistent.'}</p>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm text-left">
-      <thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Setting</th><th class="py-2.5 pr-4">Default</th><th class="py-2.5">{id ? 'Keterangan' : 'Description'}</th></tr></thead>
-      <tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">{internalDefaults.map(row => <tr><td class="py-3 pr-4 text-[#fafafa]">{row[0]}</td><td class="py-3 pr-4 text-[#71717a]"><code>{row[1]}</code></td><td class="py-3">{row[2]}</td></tr>)}</tbody>
-    </table>
-  </div>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'CORS dan API Explorer' : 'CORS and the API Explorer'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Hybrid API Explorer berjalan di browser dan mengirim request langsung ke Base URL Wago. Karena itu, live request hanya berhasil jika origin halaman docs diizinkan oleh CORS_ORIGIN Wago.' : 'The Hybrid API Explorer runs in the browser and sends requests directly to the Wago Base URL. Live requests only succeed when the docs-page origin is allowed by Wago CORS_ORIGIN.'}</p>
+  <Callout title={id ? 'Docs tidak melakukan proxy CORS' : 'The docs do not proxy around CORS'}>{id ? 'Ini sengaja: API key dan payload tidak dikirim ke server dokumentasi. Untuk integrasi aplikasi nyata, panggil Wago dari backend/server aplikasi Anda.' : 'This is intentional: API keys and payloads are never sent to the documentation server. For real application integration, call Wago from your application backend/server.'}</Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-4">{id ? 'Default internal' : 'Internal defaults'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Nilai berikut saat ini tidak perlu menjadi environment variable. Mereka menjaga deployment tetap kecil dan predictable.' : 'The following values do not currently need to be environment variables. They keep deployment small and predictable.'}</p>
+  <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Setting</th><th class="py-2.5 pr-4">Default</th><th class="py-2.5">{id ? 'Keterangan' : 'Description'}</th></tr></thead><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">{internalDefaults.map(row => <tr><td class="py-3 pr-4 text-[#fafafa]">{row[0]}</td><td class="py-3 pr-4 text-[#71717a]"><code>{row[1]}</code></td><td class="py-3">{row[2]}</td></tr>)}</tbody></table></div>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Outbound limits</h2>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-4"><li>{id ? 'Account: 30 accepted send / 60 detik.' : 'Account: 30 accepted sends / 60 seconds.'}</li><li>{id ? 'Recipient: 5 accepted send / 60 detik.' : 'Recipient: 5 accepted sends / 60 seconds.'}</li><li>{id ? 'New chat: 10 recipient baru / jam.' : 'New chat: 10 new recipients / hour.'}</li></ul>
+  <Callout title={id ? 'Guardrail lokal' : 'Local guardrails'} tone="warning">{id ? 'Angka tersebut adalah default defensif Wago saat ini, bukan threshold resmi WhatsApp atau jaminan anti-ban.' : 'These values are Wago defensive defaults, not official WhatsApp thresholds or an anti-ban guarantee.'}</Callout>
 </DocsLayout>
