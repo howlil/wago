@@ -90,22 +90,20 @@ Scope:
 
 ## Milestone 4: Audit Observability and Honest Session State
 
-**Status:** Iterations 17–19 completed; Iteration 20 pending.
+**Status:** completed — Iterations 17–20 implemented and verified; Iteration 20 is being reconciled onto the latest `main` through PR `#22`.
 
 Detailed execution ledger: `.agent/plans/2026-08-10-audit-observability.md`
 
-Completed foundation:
+Completed scope:
 
 - truthful terminal/recoverable disconnect classification;
 - explicit account-health availability and stale-health race protection;
 - SQLite-backed structured Wago/Baileys audit events;
 - strict audit sanitization and lifecycle instrumentation;
 - `GET /activity` filters and cursor pagination;
-- dedicated `/audit` frontend workspace with source/category/level/search filters, load-more cursor pagination, and truthful disconnected/unavailable health state.
-
-Remaining:
-
-- **Iteration 20:** integration hardening, privacy/status review, public operations/security documentation, full release gate.
+- dedicated `/audit` frontend workspace with source/category/level/search filters, load-more cursor pagination, and truthful disconnected/unavailable health state;
+- integration regressions for rebind completion, unknown disconnect status, and missing-auth restart behavior;
+- public architecture/operations/security guidance aligned with the sanitized audit and session-invalidation model.
 
 ---
 
@@ -131,7 +129,7 @@ Boundary: no fake typing/humanization, proxy/fingerprint/device-spoofing strateg
 
 ## Milestone 6: Public Documentation and Hybrid API Explorer
 
-**Status:** implemented and verified on `docs/api-docs-refresh`; pending PR review/merge.
+**Status:** completed and merged through PR `#21` as `cdba31b03b2ff0bc59c11f34590baef2591fe218`.
 
 Design: `.agent/specs/2026-08-11-api-documentation-refresh-design.md`
 
@@ -154,13 +152,11 @@ Completed scope:
 - stale JSON persistence and 300-event audit references were corrected to the current SQLite/2,000-event model;
 - `docs/` is public-only and agent artifacts were moved under `.agent/`.
 
-Verification evidence:
+Final merge verification evidence:
 
 - RED Docs CI: run `31421737961` failed on missing explorer helpers as intended;
-- GREEN Docs CI: run `31423719573` succeeded with 11/11 helper tests and Astro build;
-- GREEN Core CI: run `31423719828` succeeded including tests, core build, and Docker build;
-- GREEN CodeQL: run `31423719864` succeeded;
-- PR `#21` is synchronized with latest `main` and mergeable.
+- final docs-changing head `e9d9c27c9d3f6ba91941e391ded925b0cce2bf94` passed Docs CI `31424297193`, Core CI `31424297321`, and CodeQL `31424296878`;
+- PR `#21` merged to `main` as `cdba31b03b2ff0bc59c11f34590baef2591fe218`.
 
 ---
 

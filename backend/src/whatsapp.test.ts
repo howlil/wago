@@ -93,6 +93,7 @@ describe("whatsapp send semantics", () => {
       end: baileysMock.end,
       logout: baileysMock.logout,
     });
+    baileysMock.logout.mockResolvedValue(undefined);
     baileysMock.fetchAccountReachoutTimelock.mockResolvedValue(undefined);
     baileysMock.fetchNewChatMessageCap.mockResolvedValue(undefined);
     baileysMock.onWhatsApp.mockResolvedValue([
@@ -106,6 +107,9 @@ describe("whatsapp send semantics", () => {
         id: "message-1",
       },
     });
+
+    const { resetActivityLogForTest } = await import("./activity/store.js");
+    await resetActivityLogForTest();
   });
 
   afterEach(() => {
@@ -359,6 +363,23 @@ describe("whatsapp send semantics", () => {
       availability: "unavailable",
       unavailableReason: "not_connected",
     });
+  });
+
+  it("records a completion checkpoint after rebind starts a fresh socket lifecycle", async () => {
+    const { initializeWhatsApp, rebindWhatsApp } = await import("./whatsapp.js");
+    const { listAudit } = await import("./activity/query.js");
+
+    await initializeWhatsApp();
+    await rebindWhatsApp();
+    await Promise.resolve();
+
+    const page = await listAudit({ limit: 20, source: "baileys", category: "connection" });
+    const codes = page.events.map((event) => event.code);
+
+    expect(baileysMock.logout).toHaveBeenCalledTimes(1);
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(2);
+    expect(codes).toContain("baileys.session.rebind_started");
+    expect(codes).toContain("baileys.session.rebind_ready");
   });
 
   it("uses bundled Baileys version", async () => {

@@ -18,17 +18,18 @@ actor "External\nAPI client" as ApiClient
 cloud "WhatsApp Web" as WhatsApp
 
 node "Wago container" as Container {
-  rectangle "React dashboard\nstatic production build" as Frontend
+  rectangle "React workspaces\nControl · /audit" as Frontend
 
   package "Express 5 application" as Backend {
     rectangle "HTTP middleware\nHelmet · CORS · origin guard\nJSON limit · request logging" as Http
     rectangle "Authentication\nBearer API key or HttpOnly cookie\nroute-level rate limits" as Auth
     rectangle "Route layer\n/health · /ready · /app · /activity\n/recipients · /whatsapp · /messages" as Routes
     rectangle "Outbound policy\nconsent · opt-out · idempotency\naccount/recipient/new-chat limits\nWhatsApp account-health checks" as Policy
-    rectangle "Baileys client\nconnection · QR · reconnect\nrecipient resolution · send/status" as Baileys
+    rectangle "Audit service\nWago + sanitized Baileys events\nfilter · search · keyset cursor" as Audit
+    rectangle "Baileys client\nconnection · QR · reconnect\ndisconnect classifier · send/status" as Baileys
   }
 
-  database "SQLite durable state\n/app/data/wago.db\nsettings · binding · recipients\nindexed outbound safety · activity" as Database
+  database "SQLite durable state\n/app/data/wago.db\nsettings · binding · recipients\nindexed outbound safety · audit events" as Database
   database "Baileys auth files\n/app/data/auth/" as AuthFiles
   collections "Transient process memory\nQR / connection / reconnect\naccount-health cache\nmessage status / recent-message cache" as Memory
 }
@@ -39,18 +40,28 @@ ApiClient --> Http : HTTPS + Bearer
 Http --> Auth
 Auth --> Routes
 Routes --> Database : application durable state
+Routes --> Audit : filtered audit query
 Routes --> Baileys : status · QR · pair · rebind
 Routes --> Policy : outbound send
 Policy --> Database : indexed safety queries\ntransactional accepted-send writes
 Policy --> Baileys : account-health query
+Baileys --> Audit : sanitized lifecycle evidence
+Audit --> Database : bounded structured events
 Baileys --> AuthFiles : multi-file auth
 Baileys --> Database : account binding / recipient history
 Baileys --> Memory : connection / health / message caches
 Baileys <--> WhatsApp : WhatsApp Web protocol
 
+note bottom of Audit
+Baileys audit keeps safe primitive metadata only.
+QR, message body, credential/key material, raw payloads,
+and full identifiers are not persisted by the adapter.
+end note
+
 note bottom of Database
 WAL mode with schema migrations.
-Idempotency, outbound events, cooldowns, and pause state use normalized tables.
+Idempotency, outbound events, cooldowns, pause state, and audit indexes use normalized tables.
+Audit retention is bounded to the newest 2,000 events.
 Legacy JSON state is imported once on upgrade.
 end note
 
