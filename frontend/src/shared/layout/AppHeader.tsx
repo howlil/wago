@@ -43,7 +43,9 @@ export function AppHeader({
                 Gateway
               </span>
             </div>
-            <p className="mt-0.5 hidden text-[10px] font-medium text-wago-muted sm:block">Manage connection, access and outbound messaging.</p>
+            <p className="mt-0.5 hidden text-[10px] font-medium text-wago-muted sm:block">
+              Manage connection, access and outbound messaging.
+            </p>
           </div>
         </div>
 
