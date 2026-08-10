@@ -48,7 +48,7 @@ jobs:
         run: pnpm build
 
   docker-build:
-    name: Docker Build Core
+    name: Docker Build and Persistence Smoke
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -56,3 +56,19 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t wago-simple:ci .
+
+      - name: Checkout rollback baseline
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          path: rollback-main
+
+      - name: Build known-good rollback image
+        run: docker build -t wago-simple:rollback-base rollback-main
+
+      - name: Run container persistence and rollback smoke
+        env:
+          IMAGE: wago-simple:ci
+          ROLLBACK_IMAGE: wago-simple:rollback-base
+          SKIP_BUILD: "1"
+        run: bash scripts/smoke-container.sh
