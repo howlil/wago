@@ -2,14 +2,16 @@ import { Menu, RefreshCcw } from "lucide-react";
 
 type AppHeaderProps = {
   title: string;
-  statusLabel: string;
-  statusTone: "positive" | "warning" | "danger" | "neutral";
-  isRefreshing: boolean;
-  onRefresh: () => void;
+  description: string;
+  statusLabel?: string;
+  statusTone?: "positive" | "warning" | "danger" | "neutral";
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+  refreshLabel?: string;
   onOpenMobileNav: () => void;
 };
 
-const statusDotClass: Record<AppHeaderProps["statusTone"], string> = {
+const statusDotClass: Record<NonNullable<AppHeaderProps["statusTone"]>, string> = {
   positive: "bg-[#2f9b70] shadow-[0_0_0_3px_rgba(47,155,112,0.13)]",
   warning: "bg-[#ba8422] shadow-[0_0_0_3px_rgba(186,132,34,0.12)]",
   danger: "bg-wago-danger shadow-[0_0_0_3px_rgba(166,58,66,0.12)]",
@@ -18,10 +20,12 @@ const statusDotClass: Record<AppHeaderProps["statusTone"], string> = {
 
 export function AppHeader({
   title,
+  description,
   statusLabel,
-  statusTone,
-  isRefreshing,
+  statusTone = "neutral",
+  isRefreshing = false,
   onRefresh,
+  refreshLabel = "Refresh",
   onOpenMobileNav,
 }: AppHeaderProps) {
   return (
@@ -43,27 +47,29 @@ export function AppHeader({
                 Gateway
               </span>
             </div>
-            <p className="mt-0.5 hidden text-[10px] font-medium text-wago-muted sm:block">
-              Manage connection, access and outbound messaging.
-            </p>
+            <p className="mt-0.5 hidden text-[10px] font-medium text-wago-muted sm:block">{description}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex h-8 items-center gap-2 rounded-full border border-[#dce6e1] bg-white px-3 text-[11px] text-[#52615a] shadow-sm">
-            <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass[statusTone]}`} />
-            <span className="max-w-[110px] truncate font-semibold sm:max-w-none">{statusLabel}</span>
-          </div>
-          <button
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#cfdbd5] bg-white px-3 text-[11px] font-semibold text-[#2a3932] shadow-sm transition hover:-translate-y-px hover:border-[#bdcec5] hover:bg-[#f8faf9] hover:shadow-md disabled:cursor-wait disabled:translate-y-0 disabled:text-[#89918d] disabled:shadow-sm"
-            type="button"
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            aria-label="Refresh status"
-          >
-            <RefreshCcw className={isRefreshing ? "animate-spin" : ""} size={13} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
+          {statusLabel ? (
+            <div className="flex h-8 items-center gap-2 rounded-full border border-[#dce6e1] bg-white px-3 text-[11px] text-[#52615a] shadow-sm">
+              <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass[statusTone]}`} />
+              <span className="max-w-[110px] truncate font-semibold sm:max-w-none">{statusLabel}</span>
+            </div>
+          ) : null}
+          {onRefresh ? (
+            <button
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#cfdbd5] bg-white px-3 text-[11px] font-semibold text-[#2a3932] shadow-sm transition hover:-translate-y-px hover:border-[#bdcec5] hover:bg-[#f8faf9] hover:shadow-md disabled:cursor-wait disabled:translate-y-0 disabled:text-[#89918d] disabled:shadow-sm"
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              aria-label={refreshLabel}
+            >
+              <RefreshCcw className={isRefreshing ? "animate-spin" : ""} size={13} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          ) : null}
         </div>
       </div>
     </header>
