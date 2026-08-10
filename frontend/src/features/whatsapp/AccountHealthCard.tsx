@@ -56,7 +56,9 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
     );
   }
 
-  if (!accountHealth || accountHealth.availability !== "available") {
+  const availableHealth = accountHealth?.availability === "available" ? accountHealth : undefined;
+
+  if (!availableHealth) {
     return (
       <section className={cardBodyClass}>
         <h2 className={sectionTitleClass}>Account health</h2>
@@ -72,8 +74,8 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
     );
   }
 
-  const reachout = accountHealth.reachoutTimeLock;
-  const cap = accountHealth.newChatCap;
+  const reachout = availableHealth.reachoutTimeLock;
+  const cap = availableHealth.newChatCap;
   const reachoutRestricted = Boolean(reachout?.isActive);
   const capRestricted = cap?.capping_status === "CAPPED";
   const capWarning = cap?.capping_status === "FIRST_WARNING" || cap?.capping_status === "SECOND_WARNING";
@@ -128,7 +130,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         </div>
       </dl>
 
-      <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth.lastFetchedAt)}</p>
+      <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(availableHealth.lastFetchedAt)}</p>
     </section>
   );
 }
