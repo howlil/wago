@@ -143,9 +143,7 @@ function importOutboundPolicy(database: DatabaseSync, dataDirectory: string): vo
     return;
   }
 
-  const insertIdempotency = database.prepare(
-    "INSERT OR IGNORE INTO idempotency_keys (key, expires_at) VALUES (?, ?)",
-  );
+  const insertIdempotency = database.prepare("INSERT OR IGNORE INTO idempotency_keys (key, expires_at) VALUES (?, ?)");
   const idempotency = asRecord(policy.seenIdempotencyKeys);
   if (idempotency) {
     for (const [key, rawExpiresAt] of Object.entries(idempotency)) {
