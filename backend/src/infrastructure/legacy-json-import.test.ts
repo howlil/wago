@@ -91,17 +91,14 @@ describe("legacy JSON import", () => {
       app_id?: string;
       api_key_hash?: string;
     };
-    const recipient = database.prepare("SELECT jid, allowed FROM recipients WHERE jid = ?").get(
-      "628123@s.whatsapp.net",
-    ) as { jid?: string; allowed?: number };
+    const recipient = database
+      .prepare("SELECT jid, allowed FROM recipients WHERE jid = ?")
+      .get("628123@s.whatsapp.net") as { jid?: string; allowed?: number };
 
     expect(settings).toEqual({ app_id: "wa-gateway-legacy", api_key_hash: "abc123" });
     expect(recipient).toEqual({ jid: "628123@s.whatsapp.net", allowed: 1 });
 
-    writeFileSync(
-      resolve(directory, "app-settings.json"),
-      JSON.stringify({ appId: "wa-gateway-overwrite-attempt" }),
-    );
+    writeFileSync(resolve(directory, "app-settings.json"), JSON.stringify({ appId: "wa-gateway-overwrite-attempt" }));
     importLegacyJsonState(database, directory);
 
     expect(database.prepare("SELECT app_id FROM app_settings WHERE id = 1").get()).toEqual({
