@@ -80,6 +80,7 @@ vi.mock("./api.js", () => ({
 
 beforeEach(() => {
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+  window.history.replaceState({}, "", "/");
 });
 
 afterEach(() => {
@@ -89,12 +90,22 @@ afterEach(() => {
 });
 
 describe("dashboard", () => {
-  it("renders a single-page control navigation and activity log", async () => {
+  it("renders Control as a dedicated workspace without an embedded Activity Log", async () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Control" })).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Control" })).toHaveLength(1);
-    expect(screen.getByRole("heading", { name: "Activity Log" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Audit Log" })).toHaveLength(1);
+    expect(screen.queryByRole("heading", { name: "Activity Log" })).toBeNull();
+  });
+
+  it("renders Audit Log as a dedicated workspace route", async () => {
+    window.history.replaceState({}, "", "/audit");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Audit Log" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Audit Log" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Control" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("collapses and restores the global sidebar", async () => {
@@ -111,10 +122,11 @@ describe("dashboard", () => {
   it("handles malformed activity responses without crashing the dashboard", async () => {
     vi.mocked(listActivity).mockResolvedValueOnce({ success: true, events: undefined } as never);
 
+    window.history.replaceState({}, "", "/audit");
     render(<App />);
 
     expect(await screen.findByText(/activity endpoint returned an invalid response/i)).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Control" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Audit Log" })).toBeTruthy();
   });
 
   it("opens the change-account dialog for an existing binding", async () => {
