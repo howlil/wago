@@ -48,16 +48,38 @@ const id = lang === 'id';
     {id ? 'Gunakan rebind hanya ketika memang ingin mengganti akun atau memulihkan session yang rusak. Untuk reconnect normal, biarkan lifecycle/reconnect Wago bekerja.' : 'Use rebind only when intentionally changing accounts or recovering a broken session. For ordinary reconnects, let the Wago lifecycle/reconnect logic run.'}
   </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'State yang reset saat restart' : 'State reset on restart'}</h2>
-  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Persistence saat restart' : 'Persistence across restarts'}</h2>
+  <p class="text-sm text-[#a1a1aa] mb-3">{id ? 'State yang hanya dibutuhkan untuk runtime tetap ephemeral dan dibangun ulang setelah proses hidup kembali:' : 'State needed only for the active process remains ephemeral and is rebuilt after restart:'}</p>
+  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-6">
     <li>{id ? 'Message-status dan recent-message cache.' : 'Message-status and recent-message caches.'}</li>
-    <li>{id ? 'Idempotency-key memory.' : 'Idempotency-key memory.'}</li>
-    <li>{id ? 'Account/per-recipient/new-chat sliding windows.' : 'Account/per-recipient/new-chat sliding windows.'}</li>
-    <li>{id ? 'Known-recipient memory untuk new-chat classification.' : 'Known-recipient memory used for new-chat classification.'}</li>
-    <li>{id ? 'Account-health cache, reach-out cooldown map, dan reconnect counters.' : 'Account-health cache, reach-out cooldown map, and reconnect counters.'}</li>
+    <li>{id ? 'Account-health cache dan snapshot QR/koneksi sementara.' : 'Account-health cache and transient QR/connection snapshots.'}</li>
+    <li>{id ? 'Reconnect counters dan timer proses.' : 'Reconnect counters and process timers.'}</li>
   </ul>
-  <Callout title={id ? 'Persistent state tetap ada' : 'Persistent state remains'}>
-    {id ? 'Baileys auth, app settings/API-key hash, recipient policy, WhatsApp binding, dan activity log tetap ada selama /app/data volume dipertahankan.' : 'Baileys auth, app settings/API-key hash, recipient policy, WhatsApp binding, and the activity log remain as long as the /app/data volume is preserved.'}
+  <Callout title={id ? 'Safety state tetap durable' : 'Safety state remains durable'}>
+    {id ? 'Selama /app/data dipertahankan, Wago menyimpan Baileys auth, app settings/API-key hash, recipient allow/opt-out dan riwayat successful outbound, WhatsApp binding, activity log, idempotency keys, account/per-recipient/new-chat rate windows, known-recipient classification, outbound pause, dan reach-out cooldown.' : 'As long as /app/data is preserved, Wago retains Baileys auth, app settings/API-key hash, recipient allow/opt-out and successful-outbound history, WhatsApp binding, activity log, idempotency keys, account/per-recipient/new-chat rate windows, known-recipient classification, outbound pause, and reach-out cooldowns.'}
+  </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Backup & restore /app/data' : 'Back up & restore /app/data'}</h2>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Backup dilakukan saat service berhenti agar snapshot konsisten. Perintah berikut menemukan named volume yang benar dari mount /app/data, jadi tidak bergantung pada nama project Docker Compose.' : 'Stop the service while creating a backup so the snapshot is consistent. The commands below discover the actual named volume from the /app/data mount, so they do not depend on the Docker Compose project name.'}</p>
+  <CodeBlock label={id ? 'Backup' : 'Backup'} code={`docker compose stop wago
+VOLUME=$(docker inspect "$(docker compose ps -aq wago)" --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Name}}{{end}}{{end}}')
+mkdir -p backups
+docker run --rm \\
+  -v "$VOLUME:/data:ro" \\
+  -v "$PWD/backups:/backup" \\
+  alpine:3.22 tar -C /data -czf /backup/wago-data.tgz .
+chmod 600 backups/wago-data.tgz
+docker compose start wago`} />
+  <p class="text-sm text-[#a1a1aa] mt-5 mb-4">{id ? 'Untuk restore, hentikan Wago, kosongkan volume target, ekstrak backup, lalu start kembali:' : 'To restore, stop Wago, clear the target volume, extract the backup, then start the service again:'}</p>
+  <CodeBlock label={id ? 'Restore' : 'Restore'} code={`docker compose stop wago
+VOLUME=$(docker inspect "$(docker compose ps -aq wago)" --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Name}}{{end}}{{end}}')
+docker run --rm \\
+  -v "$VOLUME:/data" \\
+  -v "$PWD/backups:/backup:ro" \\
+  alpine:3.22 sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf {} + && tar -C /data -xzf /backup/wago-data.tgz'
+docker compose start wago`} />
+  <Callout title={id ? 'Backup adalah credential sensitif' : 'Backups contain sensitive credentials'} tone="warning">
+    {id ? 'Arsip /app/data berisi credential sesi WhatsApp dan state keamanan gateway. Simpan terenkripsi/berpermission ketat, jangan upload ke repository, artifact publik, atau tiket support.' : 'The /app/data archive contains WhatsApp session credentials and gateway security state. Store it encrypted or with strict permissions; never upload it to the repository, public artifacts, or support tickets.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">Troubleshooting</h2>
