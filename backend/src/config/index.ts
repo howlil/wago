@@ -4,7 +4,6 @@ import { getDatabase } from "../infrastructure/database.js";
 import { dataDirectory, nodeEnv } from "./runtime-paths.js";
 
 const envApiKey = process.env.API_KEY?.trim();
-const envCorsOrigin = process.env.CORS_ORIGIN?.trim();
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 
 type ApiKeySource = "env" | "generated" | "unset";
@@ -82,7 +81,6 @@ export const config = {
   authCookieSecure: nodeEnv === "production",
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
-  corsOrigin: envCorsOrigin || "*",
   dataDirectory,
   frontendDirectory: nodeEnv === "production" ? "/app/public" : null,
   nodeEnv,

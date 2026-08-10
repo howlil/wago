@@ -60,7 +60,7 @@ export const requireApiKey: RequestHandler = (req, res, next) => {
     return res.status(403).json({
       success: false,
       error: "API_KEY_REQUIRED",
-      message: "Initialize the app from the web UI or set API_KEY on the backend before using this operation",
+      message: "Start the first WhatsApp pairing from the Wago dashboard to initialize gateway credentials",
     });
   }
 

@@ -58,14 +58,6 @@ activityRouter.get("/", requireApiKey, async (req, res, next) => {
       ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
     });
   } catch (error) {
-    if (error instanceof Error && error.name === "INVALID_AUDIT_CURSOR") {
-      return res.status(400).json({
-        success: false,
-        error: "INVALID_AUDIT_CURSOR",
-        message: "Audit cursor is invalid",
-      });
-    }
-
     return next(error);
   }
 });

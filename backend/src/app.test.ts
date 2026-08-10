@@ -7,8 +7,10 @@ import { resetRecipientStoreForTest } from "./recipients/store.js";
 const apiKeyRequiredResponse = {
   success: false,
   error: "API_KEY_REQUIRED",
-  message: "Initialize the app from the web UI or set API_KEY on the backend before using this operation",
+  message: "Start the first WhatsApp pairing from the Wago dashboard to initialize gateway credentials",
 };
+
+const pairingCandidate = `wa_${"a".repeat(64)}`;
 
 describe("app", () => {
   beforeEach(async () => {
@@ -16,8 +18,8 @@ describe("app", () => {
     config.apiKey = null;
     config.apiKeyHash = null;
     config.apiKeySource = "unset";
+    config.nodeEnv = "test";
     config.requestLogging = false;
-    config.corsOrigin = "*";
     await resetRecipientStoreForTest();
   });
 
@@ -58,10 +60,10 @@ describe("app", () => {
     expect(response.body).toMatchObject({ status: "ok", apiKeyConfigured: true });
   });
 
-  it("allows browser clients to consume the API during local development", async () => {
-    const response = await request(app).get("/app/info").set("Origin", "http://127.0.0.1:5173");
+  it("does not advertise wildcard browser CORS access", async () => {
+    const response = await request(app).get("/app/info").set("Origin", "https://other.example.com");
     expect(response.status).toBe(200);
-    expect(response.headers["access-control-allow-origin"]).toBe("*");
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
   });
 
   it("returns a JSON API error for malformed JSON bodies", async () => {
@@ -139,17 +141,47 @@ describe("app", () => {
     });
   });
 
-  it("bootstraps a generated API key from first-run web setup", async () => {
-    const response = await request(app).post("/app/bootstrap");
+  it("bootstraps the pairing-generated API key without production env configuration", async () => {
+    const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
     expect(response.body.appId).toBe(config.appId);
-    expect(response.body.apiKey).toMatch(/^wa_/);
+    expect(response.body.apiKey).toBe(pairingCandidate);
     expect(response.headers["set-cookie"]?.[0]).toContain(config.authCookieName);
     expect(config.apiKey).toBeNull();
-    expect(config.apiKeyHash).toBe(hashApiKey(response.body.apiKey));
+    expect(config.apiKeyHash).toBe(hashApiKey(pairingCandidate));
     expect(config.apiKeySource).toBe("generated");
     expect(config.allowWebBootstrap).toBe(false);
+  });
+
+  it("auto-detects the production dashboard origin from the request host", async () => {
+    config.nodeEnv = "production";
+
+    const response = await request(app)
+      .post("/app/bootstrap")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ apiKey: pairingCandidate });
+
+    expect(response.status).toBe(201);
+    expect(response.body.apiKey).toBe(pairingCandidate);
+  });
+
+  it("rejects first-run production bootstrap from a different origin", async () => {
+    config.nodeEnv = "production";
+
+    const response = await request(app)
+      .post("/app/bootstrap")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://evil.example.com")
+      .send({ apiKey: pairingCandidate });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_SETUP_ORIGIN",
+      message: "First-run setup must come from the Wago dashboard origin.",
+    });
   });
 
   it("authenticates generated API keys by persisted hash", async () => {
@@ -159,13 +191,13 @@ describe("app", () => {
     expect(response.status).toBe(200);
   });
 
-  it("rejects cookie-authenticated state changes from a different configured origin", async () => {
+  it("rejects cookie-authenticated state changes from a different request origin", async () => {
     config.apiKeyHash = hashApiKey("generated-key");
     config.apiKeySource = "generated";
-    config.corsOrigin = "https://app.example.com";
 
     const response = await request(app)
       .post("/recipients/allow")
+      .set("Host", "wago.example.com")
       .set("Origin", "https://evil.example.com")
       .set("Cookie", `${config.authCookieName}=generated-key`)
       .send({ phone: "6281234567890" });
@@ -174,13 +206,27 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "INVALID_ORIGIN",
-      message: "Cookie-authenticated requests must come from the configured origin",
+      message: "Cookie-authenticated requests must come from the Wago origin",
     });
+  });
+
+  it("accepts cookie-authenticated state changes from the detected Wago origin", async () => {
+    config.apiKeyHash = hashApiKey("generated-key");
+    config.apiKeySource = "generated";
+
+    const response = await request(app)
+      .post("/recipients/allow")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .set("Cookie", `${config.authCookieName}=generated-key`)
+      .send({ phone: "6281234567890" });
+
+    expect(response.status).toBe(201);
   });
 
   it("rejects web bootstrap when explicitly disabled", async () => {
     config.allowWebBootstrap = false;
-    const response = await request(app).post("/app/bootstrap");
+    const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       success: false,
@@ -192,7 +238,7 @@ describe("app", () => {
   it("rejects bootstrap after an API key exists", async () => {
     config.apiKey = "existing-key";
     config.apiKeySource = "env";
-    const response = await request(app).post("/app/bootstrap");
+    const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(409);
     expect(response.body).toEqual({
       success: false,
