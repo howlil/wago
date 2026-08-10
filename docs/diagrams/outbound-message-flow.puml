@@ -1,0 +1,64 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam defaultFontName sans-serif
+skinparam ArrowColor #3F5E52
+skinparam ParticipantBorderColor #AFC2B9
+skinparam ParticipantBackgroundColor #F7FAF8
+skinparam SequenceLifeLineBorderColor #AFC2B9
+skinparam SequenceLifeLineBackgroundColor #F7FAF8
+
+title Protected outbound text-message flow
+
+autonumber
+actor "Dashboard / API client" as Caller
+participant "Auth + HTTP limiter" as Middleware
+participant "POST /messages/send" as Route
+participant "Baileys client" as Client
+participant "Outbound policy" as Policy
+database "Recipient store" as Recipients
+participant "Account health" as Health
+collections "Transient policy state" as State
+participant "Recipient resolver" as Resolver
+cloud "WhatsApp Web" as WhatsApp
+collections "Message status store" as Status
+
+Caller -> Middleware : POST /messages/send\nBearer/cookie + to + text + Idempotency-Key
+Middleware -> Middleware : Validate authentication\n30 requests/minute route limit
+Middleware -> Route : Authorized request
+Route -> Client : sendTextMessage(to, text, key)
+Client -> Policy : checkOutboundPolicy(...)
+Policy -> Recipients : allowed? opted out?
+Recipients --> Policy : recipient policy record
+Policy -> Health : check account reach-out/new-chat state
+Health --> Policy : health decision
+Policy -> State : idempotency + account + recipient\n+ new-chat sliding-window checks
+
+alt Policy blocks outbound
+  Policy --> Client : blocked reason + optional retryAt
+  Client --> Route : named policy error
+  Route --> Caller : 403 / 409 / 429 / 503\nstructured error response
+else Policy allows outbound
+  Policy --> Client : allowed
+  Client -> Resolver : Resolve destination JID
+  Resolver --> Client : resolved JID
+  Client -> WhatsApp : sendMessage(resolvedJid, { text })
+  WhatsApp --> Client : message key / id
+  Client -> Status : remember pending status
+  Client -> Policy : recordOutboundAccepted(...)
+  Policy -> State : consume idempotency key\nrecord accepted send windows
+  Client --> Route : { messageId, status: pending }
+  Route --> Caller : HTTP 202 pending
+
+  ... asynchronous WhatsApp update ...
+  WhatsApp --> Client : messages.update
+  Client -> Status : accepted or rejected
+
+  Caller -> Route : GET /messages/:id/status
+  Route -> Status : getMessageStatus(id)
+  Status --> Route : retained status
+  Route --> Caller : pending / accepted / rejected
+end
+@enduml
