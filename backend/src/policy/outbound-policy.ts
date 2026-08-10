@@ -9,7 +9,6 @@ import {
   flushOutboundPolicyStore,
   forgetOutboundPolicyMemoryForTest,
   getOutboundPolicyState,
-  mutateLoadedOutboundPolicyState,
   mutateOutboundPolicyState,
   type OutboundPolicyState,
   resetOutboundPolicyStoreForTest,
@@ -227,7 +226,7 @@ function checkNewChatRateLimit(
 }
 
 export async function checkOutboundPolicy(input: OutboundPolicyInput): Promise<OutboundPolicyDecision> {
-  const state = await getOutboundPolicyState();
+  const state = getOutboundPolicyState();
   const now = Date.now();
 
   const pauseDecision = checkPauseState(state);
@@ -265,8 +264,8 @@ export async function recordOutboundAccepted(
   resolvedJid?: string,
 ): Promise<void> {
   const now = Date.now();
-  const wasKnown = Boolean((await getOutboundPolicyState()).knownRecipients[input.jid]);
-  const { persisted } = mutateLoadedOutboundPolicyState((state) => {
+  const wasKnown = Boolean(getOutboundPolicyState().knownRecipients[input.jid]);
+  const { persisted } = mutateOutboundPolicyState((state) => {
     if (input.idempotencyKey) {
       state.seenIdempotencyKeys[input.idempotencyKey] = now + IDEMPOTENCY_TTL_MS;
     }
@@ -298,27 +297,30 @@ export function recordOutboundRejected(_input: OutboundPolicyInput, _error: unkn
 }
 
 export async function markRecipientReachoutRestricted(jid: string, restrictedUntil: number): Promise<void> {
-  await mutateOutboundPolicyState((state) => {
+  const { persisted } = mutateOutboundPolicyState((state) => {
     state.recipientReachoutCooldowns[jid] = restrictedUntil;
   });
+  await persisted;
 }
 
 export async function pauseOutbound(message?: string): Promise<void> {
-  await mutateOutboundPolicyState((state) => {
+  const { persisted } = mutateOutboundPolicyState((state) => {
     state.outboundPaused = true;
     state.outboundPauseMessage = message || "Outbound messaging is paused";
   });
+  await persisted;
 }
 
 export async function resumeOutbound(): Promise<void> {
-  await mutateOutboundPolicyState((state) => {
+  const { persisted } = mutateOutboundPolicyState((state) => {
     state.outboundPaused = false;
     state.outboundPauseMessage = "Outbound messaging is paused";
   });
+  await persisted;
 }
 
-export async function isOutboundPaused(): Promise<boolean> {
-  return (await getOutboundPolicyState()).outboundPaused;
+export function isOutboundPaused(): boolean {
+  return getOutboundPolicyState().outboundPaused;
 }
 
 export async function flushOutboundPolicyPersistence(): Promise<void> {
@@ -331,8 +333,9 @@ export async function forgetOutboundPolicyStateForTest(): Promise<void> {
 }
 
 export async function resetOutboundPolicyState(): Promise<void> {
-  await resetOutboundPolicyStoreForTest();
+  const persisted = resetOutboundPolicyStoreForTest();
   resetAccountHealthForTest();
+  await persisted;
 }
 
 const outboundPolicyErrorNames = new Set<OutboundPolicyBlockReason>([
