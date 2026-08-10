@@ -61,13 +61,7 @@ function WorkspaceNavigation({
   );
 }
 
-export function AppSidebar({
-  activePath,
-  collapsed,
-  mobileOpen,
-  onToggleCollapsed,
-  onCloseMobile,
-}: AppSidebarProps) {
+export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapsed, onCloseMobile }: AppSidebarProps) {
   return (
     <>
       <aside
