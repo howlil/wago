@@ -1,1 +1,0 @@
-Legacy agent-only artifacts under `docs/superpowers/` are being relocated to `.agent/` so the public Astro documentation tree contains only user-facing documentation.
