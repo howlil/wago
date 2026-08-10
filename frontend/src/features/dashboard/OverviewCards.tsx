@@ -1,6 +1,10 @@
 import { MessageCircleMore, RadioTower, ShieldCheck } from "lucide-react";
 import type { ComponentType } from "react";
-import type { AccountHealthSnapshot, WhatsAppStatus } from "../../api.js";
+import type {
+  AccountHealthSnapshot,
+  AccountHealthUnavailableReason,
+  WhatsAppStatus,
+} from "../../api.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
 
 type OverviewCardsProps = {
@@ -72,9 +76,51 @@ function whatsappMetric(status: WhatsAppStatus): Metric {
   };
 }
 
-function policyMetric(accountHealth?: AccountHealthSnapshot): Metric {
-  const reachoutActive = Boolean(accountHealth?.reachoutTimeLock?.isActive);
-  const capStatus = accountHealth?.newChatCap?.capping_status;
+function unavailableHealthDetail(reason?: AccountHealthUnavailableReason): string {
+  if (reason === "session_invalid") {
+    return "Pair WhatsApp again";
+  }
+  if (reason === "fetch_failed") {
+    return "Health check failed";
+  }
+  return "Connect WhatsApp to check";
+}
+
+function policyMetric(
+  health: BackendHealthState,
+  status: WhatsAppStatus,
+  accountHealth?: AccountHealthSnapshot,
+): Metric {
+  if (health === "checking") {
+    return { label: "Outbound", value: "Checking", detail: "Gateway health is being checked", tone: "muted", icon: ShieldCheck };
+  }
+  if (health !== "ok") {
+    return { label: "Outbound", value: "Unavailable", detail: "Backend unreachable", tone: "error", icon: ShieldCheck };
+  }
+  if (status !== "connected") {
+    return {
+      label: "Outbound",
+      value: "Unavailable",
+      detail: "WhatsApp is not connected",
+      tone: "muted",
+      icon: ShieldCheck,
+    };
+  }
+  if (accountHealth?.availability === "checking") {
+    return { label: "Outbound", value: "Checking", detail: "Account health is refreshing", tone: "muted", icon: ShieldCheck };
+  }
+  if (accountHealth?.availability !== "available") {
+    return {
+      label: "Outbound",
+      value: "Unavailable",
+      detail: unavailableHealthDetail(accountHealth?.unavailableReason),
+      tone: accountHealth?.unavailableReason === "fetch_failed" ? "warning" : "muted",
+      icon: ShieldCheck,
+    };
+  }
+
+  const reachoutActive = Boolean(accountHealth.reachoutTimeLock?.isActive);
+  const capStatus = accountHealth.newChatCap?.capping_status;
 
   if (reachoutActive) {
     return {
@@ -132,7 +178,7 @@ export function OverviewCards({ health, status, accountHealth }: OverviewCardsPr
     <section className="grid overflow-hidden rounded-2xl border border-[#dce7e1] bg-white shadow-[0_12px_34px_rgba(31,70,53,0.055)] md:grid-cols-3 md:divide-x md:divide-[#e4ebe7]">
       <StatusMetric metric={backendMetric(health)} />
       <StatusMetric metric={whatsappMetric(status)} />
-      <StatusMetric metric={policyMetric(accountHealth)} />
+      <StatusMetric metric={policyMetric(health, status, accountHealth)} />
     </section>
   );
 }
