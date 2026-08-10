@@ -29,7 +29,7 @@ describe("audit query", () => {
       source: "baileys",
       category: "connection",
       level: "warning",
-      q: "logout",
+      q: "logged",
     });
 
     expect(page.events.map((event) => event.code)).toEqual(["baileys.connection.close"]);
