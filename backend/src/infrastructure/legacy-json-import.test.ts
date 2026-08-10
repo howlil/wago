@@ -149,9 +149,7 @@ describe("legacy JSON import", () => {
       database.prepare("SELECT jid, restricted_until FROM recipient_reachout_cooldowns WHERE jid = ?").get(jid),
     ).toEqual({ jid, restricted_until: 5_000 });
     expect(
-      database
-        .prepare("SELECT outbound_paused, outbound_pause_message FROM gateway_policy_state WHERE id = 1")
-        .get(),
+      database.prepare("SELECT outbound_paused, outbound_pause_message FROM gateway_policy_state WHERE id = 1").get(),
     ).toEqual({ outbound_paused: 1, outbound_pause_message: "maintenance" });
 
     writeFileSync(resolve(directory, "app-settings.json"), JSON.stringify({ appId: "wa-gateway-overwrite-attempt" }));
