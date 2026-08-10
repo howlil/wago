@@ -47,7 +47,7 @@ export function DashboardShell({ children, health, status, isRefreshing, onRefre
   }
 
   return (
-    <div className="min-h-screen bg-wago-canvas text-wago-ink">
+    <div className="min-h-screen text-wago-ink">
       <AppSidebar
         collapsed={sidebarCollapsed}
         mobileOpen={mobileNavOpen}
@@ -55,7 +55,7 @@ export function DashboardShell({ children, health, status, isRefreshing, onRefre
         onCloseMobile={() => setMobileNavOpen(false)}
       />
 
-      <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-[68px]" : "lg:pl-[208px]"}`}>
+      <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-[224px]"}`}>
         <AppHeader
           title="Control"
           statusLabel={displayStatus}
@@ -64,7 +64,7 @@ export function DashboardShell({ children, health, status, isRefreshing, onRefre
           onRefresh={onRefresh}
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
-        <main className="mx-auto max-w-[1360px] px-3 py-3 sm:px-4 lg:px-5">{children}</main>
+        <main className="mx-auto max-w-[1440px] px-3 pb-8 pt-4 sm:px-5 sm:pt-5 lg:px-7 lg:pb-10">{children}</main>
       </div>
     </div>
   );
