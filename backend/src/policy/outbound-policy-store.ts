@@ -117,6 +117,19 @@ async function writeStateToDisk(state: OutboundPolicyState): Promise<void> {
   } satisfies OutboundPolicyEnvelope);
 }
 
+function enqueueSnapshot(snapshot: OutboundPolicyState): Promise<void> {
+  const operation = writeQueue
+    .catch(() => undefined)
+    .then(() => writeStateToDisk(snapshot));
+
+  writeQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  return operation;
+}
+
 export async function getOutboundPolicyState(): Promise<OutboundPolicyState> {
   if (cachedState) {
     return cachedState;
@@ -135,19 +148,22 @@ export async function mutateOutboundPolicyState<T>(
 ): Promise<T> {
   const state = await getOutboundPolicyState();
   const result = mutator(state);
-  const snapshot = cloneState(state);
-
-  const operation = writeQueue
-    .catch(() => undefined)
-    .then(() => writeStateToDisk(snapshot));
-
-  writeQueue = operation.then(
-    () => undefined,
-    () => undefined,
-  );
-
-  await operation;
+  await enqueueSnapshot(cloneState(state));
   return result;
+}
+
+export function mutateLoadedOutboundPolicyState<T>(
+  mutator: (state: OutboundPolicyState) => T,
+): { result: T; persisted: Promise<void> } {
+  if (!cachedState) {
+    throw new Error("Outbound policy state must be loaded before recording an outcome");
+  }
+
+  const result = mutator(cachedState);
+  return {
+    result,
+    persisted: enqueueSnapshot(cloneState(cachedState)),
+  };
 }
 
 export async function flushOutboundPolicyStore(): Promise<void> {
