@@ -1,4 +1,4 @@
-import type { AccountHealthSnapshot } from "../../api.js";
+import type { AccountHealthSnapshot, AccountHealthUnavailableReason } from "../../api.js";
 import { cardBodyClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 
 type AccountHealthCardProps = {
@@ -24,9 +24,56 @@ function formatDate(value?: string): string {
   return date ? date.toLocaleString() : "—";
 }
 
+function unavailableDescription(reason?: AccountHealthUnavailableReason): string {
+  if (reason === "session_invalid") {
+    return "The linked session is no longer valid. Pair WhatsApp again to restore account health.";
+  }
+  if (reason === "fetch_failed") {
+    return "The latest account-health check failed. Retry after the connection is stable.";
+  }
+  if (reason === "not_connected") {
+    return "Connect WhatsApp to check account restrictions.";
+  }
+  return "Account health is unavailable until the connected session is checked.";
+}
+
 export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
-  const reachout = accountHealth?.reachoutTimeLock;
-  const cap = accountHealth?.newChatCap;
+  const availability = accountHealth?.availability ?? "unavailable";
+
+  if (availability === "checking") {
+    return (
+      <section className={cardBodyClass}>
+        <h2 className={sectionTitleClass}>Account health</h2>
+        <p className={sectionDescriptionClass}>Restrictions reported by the current WhatsApp session.</p>
+        <div className="mt-3 rounded-xl border border-[#dce4e0] bg-[#f7f9f8] px-4 py-4">
+          <strong className="block text-xs font-semibold text-[#4d5b54]">Checking account health</strong>
+          <p className="mb-0 mt-1 text-[11px] leading-5 text-wago-muted">
+            Refreshing WhatsApp reach-out and new-chat restriction state.
+          </p>
+        </div>
+        <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+      </section>
+    );
+  }
+
+  if (availability !== "available") {
+    return (
+      <section className={cardBodyClass}>
+        <h2 className={sectionTitleClass}>Account health</h2>
+        <p className={sectionDescriptionClass}>Restrictions reported by the current WhatsApp session.</p>
+        <div className="mt-3 rounded-xl border border-[#e5ddd0] bg-[#fbf8f2] px-4 py-4">
+          <strong className="block text-xs font-semibold text-[#705f42]">Health unavailable</strong>
+          <p className="mb-0 mt-1 text-[11px] leading-5 text-[#776b58]">
+            {unavailableDescription(accountHealth?.unavailableReason)}
+          </p>
+        </div>
+        <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+      </section>
+    );
+  }
+
+  const reachout = accountHealth.reachoutTimeLock;
+  const cap = accountHealth.newChatCap;
   const reachoutRestricted = Boolean(reachout?.isActive);
   const capRestricted = cap?.capping_status === "CAPPED";
   const capWarning = cap?.capping_status === "FIRST_WARNING" || cap?.capping_status === "SECOND_WARNING";
@@ -81,7 +128,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         </div>
       </dl>
 
-      <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+      <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth.lastFetchedAt)}</p>
     </section>
   );
 }
