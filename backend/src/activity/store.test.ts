@@ -55,7 +55,9 @@ describe("activity store", () => {
       });
     }
 
-    const row = database.prepare("SELECT COUNT(*) AS count FROM activity_events").get() as { count?: number } | undefined;
+    const row = database.prepare("SELECT COUNT(*) AS count FROM activity_events").get() as
+      | { count?: number }
+      | undefined;
     expect(row?.count).toBe(2000);
   });
 
