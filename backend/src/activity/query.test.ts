@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { recordActivity, resetActivityLogForTest } from "./store.js";
 import { listAudit } from "./query.js";
+import { recordActivity, resetActivityLogForTest } from "./store.js";
 
 describe("audit query", () => {
   afterEach(async () => {
