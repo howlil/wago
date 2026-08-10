@@ -1,6 +1,4 @@
-import { resolve } from "node:path";
-import { config } from "../config/index.js";
-import { readJsonFile, writeJsonFileAtomic } from "../infrastructure/json-file.js";
+import { getDatabase, withTransaction } from "../infrastructure/database.js";
 import { toWhatsAppJid } from "../utils/phone.js";
 
 export type RecipientRecord = {
@@ -14,139 +12,112 @@ export type RecipientRecord = {
   lastSuccessfulOutboundAt?: string;
 };
 
-type RecipientFile = Record<string, RecipientRecord>;
-type RecipientEnvelope = {
-  version: 1;
-  data: RecipientFile;
+type RecipientRow = {
+  jid: string;
+  resolved_jid: string | null;
+  label: string | null;
+  allowed: number;
+  opted_out: number;
+  created_at: string;
+  updated_at: string;
+  last_successful_outbound_at: string | null;
 };
-type StoredRecipientFile = RecipientFile | RecipientEnvelope;
 
-const RECIPIENT_STORE_VERSION = 1 as const;
-const recipientsFile =
-  process.env.NODE_ENV === "test"
-    ? resolve(config.dataDirectory, `recipients-${process.pid}.json`)
-    : resolve(config.dataDirectory, "recipients.json");
-
-let mutationQueue: Promise<void> = Promise.resolve();
+const database = getDatabase();
+const selectRecipient = database.prepare(`
+  SELECT jid, resolved_jid, label, allowed, opted_out, created_at, updated_at, last_successful_outbound_at
+  FROM recipients WHERE jid = ?
+`);
+const selectRecipients = database.prepare(`
+  SELECT jid, resolved_jid, label, allowed, opted_out, created_at, updated_at, last_successful_outbound_at
+  FROM recipients ORDER BY jid ASC
+`);
+const upsertRecipient = database.prepare(`
+  INSERT INTO recipients (
+    jid, resolved_jid, label, allowed, opted_out, created_at, updated_at, last_successful_outbound_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(jid) DO UPDATE SET
+    resolved_jid = excluded.resolved_jid,
+    label = excluded.label,
+    allowed = excluded.allowed,
+    opted_out = excluded.opted_out,
+    updated_at = excluded.updated_at,
+    last_successful_outbound_at = excluded.last_successful_outbound_at
+`);
+const updateResolution = database.prepare(
+  "UPDATE recipients SET resolved_jid = ?, updated_at = ? WHERE jid = ?",
+);
+const updateSuccessfulOutbound = database.prepare(`
+  UPDATE recipients
+  SET resolved_jid = COALESCE(?, resolved_jid),
+      last_successful_outbound_at = ?,
+      updated_at = ?
+  WHERE jid = ?
+`);
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+function mapRecipient(row: RecipientRow): RecipientRecord {
+  return {
+    jid: row.jid,
+    resolvedJid: row.resolved_jid ?? undefined,
+    label: row.label ?? undefined,
+    allowed: row.allowed === 1,
+    optedOut: row.opted_out === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastSuccessfulOutboundAt: row.last_successful_outbound_at ?? undefined,
+  };
 }
 
-function isOptionalString(value: unknown): boolean {
-  return value === undefined || typeof value === "string";
-}
-
-function isRecipientRecord(value: unknown): value is RecipientRecord {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  return (
-    typeof value.jid === "string" &&
-    isOptionalString(value.resolvedJid) &&
-    isOptionalString(value.label) &&
-    typeof value.allowed === "boolean" &&
-    typeof value.optedOut === "boolean" &&
-    typeof value.createdAt === "string" &&
-    typeof value.updatedAt === "string" &&
-    isOptionalString(value.lastSuccessfulOutboundAt)
-  );
-}
-
-function isRecipientMap(value: unknown): value is RecipientFile {
-  return isRecord(value) && Object.values(value).every(isRecipientRecord);
-}
-
-function isRecipientEnvelope(value: unknown): value is RecipientEnvelope {
-  return isRecord(value) && value.version === RECIPIENT_STORE_VERSION && "data" in value && isRecipientMap(value.data);
-}
-
-function isStoredRecipientFile(value: unknown): value is StoredRecipientFile {
-  return isRecipientMap(value) || isRecipientEnvelope(value);
-}
-
-async function readRecipientFileFromDisk(): Promise<RecipientFile> {
-  const stored = await readJsonFile(recipientsFile, isStoredRecipientFile);
-
-  if (!stored) {
-    return {};
-  }
-
-  return isRecipientEnvelope(stored) ? stored.data : stored;
-}
-
-async function writeRecipientFile(recipients: RecipientFile): Promise<void> {
-  await writeJsonFileAtomic(recipientsFile, {
-    version: RECIPIENT_STORE_VERSION,
-    data: recipients,
-  } satisfies RecipientEnvelope);
-}
-
-async function mutateRecipients<T>(mutator: (recipients: RecipientFile) => T): Promise<T> {
-  let result!: T;
-
-  const operation = mutationQueue
-    .catch(() => undefined)
-    .then(async () => {
-      const recipients = await readRecipientFileFromDisk();
-      result = mutator(recipients);
-      await writeRecipientFile(recipients);
-    });
-
-  mutationQueue = operation.then(
-    () => undefined,
-    () => undefined,
-  );
-
-  await operation;
-  return result;
+function getRecipientRow(jid: string): RecipientRow | undefined {
+  return selectRecipient.get(jid) as RecipientRow | undefined;
 }
 
 export async function flushRecipientStore(): Promise<void> {
-  await mutationQueue;
+  // SQLite commits writes synchronously on the shared connection.
 }
 
 export async function listRecipients(): Promise<RecipientRecord[]> {
-  await flushRecipientStore();
-  const recipients = await readRecipientFileFromDisk();
-
-  return Object.values(recipients).sort((a, b) => a.jid.localeCompare(b.jid));
+  return (selectRecipients.all() as RecipientRow[]).map(mapRecipient);
 }
 
 export async function getRecipientByJid(jid: string): Promise<RecipientRecord | null> {
-  await flushRecipientStore();
-  const recipients = await readRecipientFileFromDisk();
-
-  return recipients[jid] ?? null;
+  const row = getRecipientRow(jid);
+  return row ? mapRecipient(row) : null;
 }
 
 export async function allowRecipient(phone: string, label?: string): Promise<RecipientRecord> {
-  const jid = toWhatsAppJid(phone);
-
-  return allowRecipientJid(jid, label);
+  return allowRecipientJid(toWhatsAppJid(phone), label);
 }
 
 export async function allowRecipientJid(jid: string, label?: string): Promise<RecipientRecord> {
-  return mutateRecipients((recipients) => {
-    const existing = recipients[jid];
+  return withTransaction(() => {
+    const existing = getRecipientRow(jid);
     const timestamp = nowIso();
     const record: RecipientRecord = {
       jid,
-      resolvedJid: existing?.resolvedJid,
-      label: label?.trim() || existing?.label,
+      resolvedJid: existing?.resolved_jid ?? undefined,
+      label: label?.trim() || existing?.label || undefined,
       allowed: true,
       optedOut: false,
-      createdAt: existing?.createdAt ?? timestamp,
+      createdAt: existing?.created_at ?? timestamp,
       updatedAt: timestamp,
-      lastSuccessfulOutboundAt: existing?.lastSuccessfulOutboundAt,
+      lastSuccessfulOutboundAt: existing?.last_successful_outbound_at ?? undefined,
     };
 
-    recipients[jid] = record;
+    upsertRecipient.run(
+      record.jid,
+      record.resolvedJid ?? null,
+      record.label ?? null,
+      1,
+      0,
+      record.createdAt,
+      record.updatedAt,
+      record.lastSuccessfulOutboundAt ?? null,
+    );
     return record;
   });
 }
@@ -154,60 +125,47 @@ export async function allowRecipientJid(jid: string, label?: string): Promise<Re
 export async function optOutRecipient(phone: string): Promise<RecipientRecord> {
   const jid = toWhatsAppJid(phone);
 
-  return mutateRecipients((recipients) => {
-    const existing = recipients[jid];
+  return withTransaction(() => {
+    const existing = getRecipientRow(jid);
     const timestamp = nowIso();
     const record: RecipientRecord = {
       jid,
-      resolvedJid: existing?.resolvedJid,
-      label: existing?.label,
-      allowed: existing?.allowed ?? false,
+      resolvedJid: existing?.resolved_jid ?? undefined,
+      label: existing?.label ?? undefined,
+      allowed: existing?.allowed === 1,
       optedOut: true,
-      createdAt: existing?.createdAt ?? timestamp,
+      createdAt: existing?.created_at ?? timestamp,
       updatedAt: timestamp,
-      lastSuccessfulOutboundAt: existing?.lastSuccessfulOutboundAt,
+      lastSuccessfulOutboundAt: existing?.last_successful_outbound_at ?? undefined,
     };
 
-    recipients[jid] = record;
+    upsertRecipient.run(
+      record.jid,
+      record.resolvedJid ?? null,
+      record.label ?? null,
+      record.allowed ? 1 : 0,
+      1,
+      record.createdAt,
+      record.updatedAt,
+      record.lastSuccessfulOutboundAt ?? null,
+    );
     return record;
   });
 }
 
 export async function rememberRecipientResolution(jid: string, resolvedJid: string): Promise<void> {
-  await mutateRecipients((recipients) => {
-    const existing = recipients[jid];
+  updateResolution.run(resolvedJid, nowIso(), jid);
+}
 
-    if (!existing) {
-      return;
-    }
-
-    recipients[jid] = {
-      ...existing,
-      resolvedJid,
-      updatedAt: nowIso(),
-    };
-  });
+export function rememberSuccessfulOutboundSync(jid: string, resolvedJid?: string): void {
+  const timestamp = nowIso();
+  updateSuccessfulOutbound.run(resolvedJid ?? null, timestamp, timestamp, jid);
 }
 
 export async function rememberSuccessfulOutbound(jid: string, resolvedJid?: string): Promise<void> {
-  await mutateRecipients((recipients) => {
-    const existing = recipients[jid];
-
-    if (!existing) {
-      return;
-    }
-
-    const timestamp = nowIso();
-    recipients[jid] = {
-      ...existing,
-      resolvedJid: resolvedJid ?? existing.resolvedJid,
-      lastSuccessfulOutboundAt: timestamp,
-      updatedAt: timestamp,
-    };
-  });
+  rememberSuccessfulOutboundSync(jid, resolvedJid);
 }
 
 export async function resetRecipientStoreForTest(): Promise<void> {
-  await flushRecipientStore();
-  await writeRecipientFile({});
+  database.prepare("DELETE FROM recipients").run();
 }
