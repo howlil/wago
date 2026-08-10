@@ -6,6 +6,7 @@ export type OutboundPolicyState = {
   seenIdempotencyKeys: Record<string, number>;
   accountSendTimestamps: number[];
   recipientSendTimestamps: Record<string, number[]>;
+  knownRecipients: Record<string, number>;
   newChatTimestamps: number[];
   recipientReachoutCooldowns: Record<string, number>;
   outboundPaused: boolean;
@@ -33,6 +34,7 @@ function defaultState(): OutboundPolicyState {
     seenIdempotencyKeys: {},
     accountSendTimestamps: [],
     recipientSendTimestamps: {},
+    knownRecipients: {},
     newChatTimestamps: [],
     recipientReachoutCooldowns: {},
     outboundPaused: false,
@@ -69,6 +71,7 @@ function isOutboundPolicyState(value: unknown): value is OutboundPolicyState {
     isNumberRecord(value.seenIdempotencyKeys) &&
     isNumberArray(value.accountSendTimestamps) &&
     isNumberArrayRecord(value.recipientSendTimestamps) &&
+    isNumberRecord(value.knownRecipients) &&
     isNumberArray(value.newChatTimestamps) &&
     isNumberRecord(value.recipientReachoutCooldowns) &&
     typeof value.outboundPaused === "boolean" &&
@@ -93,6 +96,7 @@ function cloneState(state: OutboundPolicyState): OutboundPolicyState {
     recipientSendTimestamps: Object.fromEntries(
       Object.entries(state.recipientSendTimestamps).map(([jid, timestamps]) => [jid, [...timestamps]]),
     ),
+    knownRecipients: { ...state.knownRecipients },
     newChatTimestamps: [...state.newChatTimestamps],
     recipientReachoutCooldowns: { ...state.recipientReachoutCooldowns },
     outboundPaused: state.outboundPaused,
