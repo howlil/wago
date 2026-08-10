@@ -28,13 +28,7 @@ function persistSidebarCollapsed(value: boolean): void {
   }
 }
 
-export function DashboardShell({
-  children,
-  statusLabel,
-  statusTone,
-  isRefreshing,
-  onRefresh,
-}: DashboardShellProps) {
+export function DashboardShell({ children, statusLabel, statusTone, isRefreshing, onRefresh }: DashboardShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 

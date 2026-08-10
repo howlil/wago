@@ -10,12 +10,7 @@ type UseMessageComposerOptions = {
   onAfterMutation: () => Promise<void>;
 };
 
-export function useMessageComposer({
-  isAuthenticated,
-  status,
-  onNotice,
-  onAfterMutation,
-}: UseMessageComposerOptions) {
+export function useMessageComposer({ isAuthenticated, status, onNotice, onAfterMutation }: UseMessageComposerOptions) {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [recipientApprovalPhone, setRecipientApprovalPhone] = useState<string | null>(null);

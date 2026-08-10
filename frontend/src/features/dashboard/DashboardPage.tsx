@@ -1,7 +1,7 @@
 import type { WhatsAppStatus } from "../../api.js";
 import { DashboardShell } from "../../shared/components/DashboardShell.js";
-import type { BackendHealthState } from "../../shared/types/status.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
+import type { BackendHealthState } from "../../shared/types/status.js";
 import { ActivityLogPanel } from "../activity/ActivityLogPanel.js";
 import { GatewayCredentialsCard } from "../gateway/GatewayCredentialsCard.js";
 import { MessageStatusCard } from "../messages/MessageStatusCard.js";
