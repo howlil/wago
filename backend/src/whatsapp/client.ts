@@ -12,6 +12,7 @@ import { baileysLogger, logger, maskIdentifier } from "../infrastructure/logger.
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
+  markRecipientReachoutRestricted,
   recordOutboundAccepted,
   recordOutboundRejected,
 } from "../policy/outbound-policy.js";
@@ -68,7 +69,6 @@ let shuttingDown = false;
 let socketGeneration = 0;
 let reconnectAttempt = 0;
 let reconnectTimer: NodeJS.Timeout | undefined;
-const reachoutRestrictedUntil = new Map<string, number>();
 
 function createNamedError(name: string, message: string): Error {
   const error = new Error(message);
@@ -361,15 +361,6 @@ export async function sendTextMessage(
     throw createOutboundPolicyError(policyDecision);
   }
 
-  const restrictedUntil = reachoutRestrictedUntil.get(jid);
-
-  if (restrictedUntil && restrictedUntil > Date.now()) {
-    throw createNamedError(
-      "REACHOUT_RESTRICTED",
-      "WhatsApp recently rejected this chat as a restricted reach-out. Wait before trying this contact again.",
-    );
-  }
-
   try {
     const resolvedJid = await resolveRecipientJid(socket, jid);
     const result = await socket.sendMessage(resolvedJid, { text });
@@ -389,7 +380,7 @@ export async function sendTextMessage(
       });
     }
 
-    recordOutboundAccepted(policyInput, messageId);
+    await recordOutboundAccepted(policyInput, messageId, resolvedJid);
     logger.info({
       event: "wa.outbound.accepted",
       messageId,
@@ -411,7 +402,7 @@ export async function sendTextMessage(
     if (error instanceof Error && error.name === "REACHOUT_RESTRICTED") {
       markReachoutRestricted();
       await refreshAccountHealth(makeAccountHealthFetcher(socket), { force: true });
-      reachoutRestrictedUntil.set(jid, Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS);
+      await markRecipientReachoutRestricted(jid, Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS);
     }
 
     throw error;
