@@ -46,10 +46,22 @@ function whatsappMetric(status: WhatsAppStatus): Metric {
     return { label: "WhatsApp", value: "Connected", detail: "Session ready", tone: "ok", icon: MessageCircleMore };
   }
   if (status === "qr") {
-    return { label: "WhatsApp", value: "Pairing", detail: "Scan QR to continue", tone: "warning", icon: MessageCircleMore };
+    return {
+      label: "WhatsApp",
+      value: "Pairing",
+      detail: "Scan QR to continue",
+      tone: "warning",
+      icon: MessageCircleMore,
+    };
   }
   if (status === "connecting") {
-    return { label: "WhatsApp", value: "Connecting", detail: "Restoring session", tone: "warning", icon: MessageCircleMore };
+    return {
+      label: "WhatsApp",
+      value: "Connecting",
+      detail: "Restoring session",
+      tone: "warning",
+      icon: MessageCircleMore,
+    };
   }
   return {
     label: "WhatsApp",
@@ -74,7 +86,13 @@ function policyMetric(accountHealth?: AccountHealthSnapshot): Metric {
     };
   }
   if (capStatus === "CAPPED") {
-    return { label: "Outbound", value: "New chats capped", detail: "New recipients paused", tone: "warning", icon: ShieldCheck };
+    return {
+      label: "Outbound",
+      value: "New chats capped",
+      detail: "New recipients paused",
+      tone: "warning",
+      icon: ShieldCheck,
+    };
   }
   if (capStatus === "FIRST_WARNING" || capStatus === "SECOND_WARNING") {
     return { label: "Outbound", value: "Warning", detail: "New recipients paused", tone: "warning", icon: ShieldCheck };
@@ -89,7 +107,9 @@ function StatusMetric({ metric }: { metric: Metric }) {
     <div className="group relative min-w-0 overflow-hidden bg-white px-4 py-4 transition hover:bg-[#fcfdfc] sm:px-5">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d7e7df] to-transparent opacity-0 transition group-hover:opacity-100" />
       <div className="flex items-center gap-3.5">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${toneIcon[metric.tone]}`}>
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${toneIcon[metric.tone]}`}
+        >
           <Icon size={18} />
         </div>
         <div className="min-w-0 flex-1">
@@ -97,7 +117,9 @@ function StatusMetric({ metric }: { metric: Metric }) {
             <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-wago-muted">{metric.label}</span>
             <span className={`h-1.5 w-1.5 rounded-full ${toneDot[metric.tone]}`} />
           </div>
-          <strong className="mt-1 block truncate text-[15px] font-bold tracking-[-0.02em] text-wago-ink">{metric.value}</strong>
+          <strong className="mt-1 block truncate text-[15px] font-bold tracking-[-0.02em] text-wago-ink">
+            {metric.value}
+          </strong>
           <span className="mt-0.5 block truncate text-[10px] font-medium text-[#818b86]">{metric.detail}</span>
         </div>
       </div>
