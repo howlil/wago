@@ -1,1 +1,0 @@
-The detailed 2026-08-10 audit spec/plan originally lived under `docs/superpowers/`. They must live under `.agent/` because `docs/` is public documentation only.
