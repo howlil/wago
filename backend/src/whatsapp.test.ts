@@ -45,7 +45,16 @@ const baileysMock = vi.hoisted(() => {
 vi.mock("@whiskeysockets/baileys", () => ({
   default: baileysMock.makeWASocket,
   DisconnectReason: {
+    connectionClosed: 428,
+    connectionLost: 408,
+    connectionReplaced: 440,
+    timedOut: 408,
     loggedOut: 401,
+    badSession: 500,
+    restartRequired: 515,
+    multideviceMismatch: 411,
+    forbidden: 403,
+    unavailableService: 503,
   },
   fetchLatestBaileysVersion: baileysMock.fetchLatestBaileysVersion,
   useMultiFileAuthState: baileysMock.useMultiFileAuthState,
@@ -213,6 +222,72 @@ describe("whatsapp send semantics", () => {
     expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps binding but invalidates health after a recoverable disconnect", async () => {
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
+    const { bindWhatsAppAccount, clearWhatsAppBinding } = await import("./whatsapp/binding-store.js");
+    const { refreshAccountHealth } = await import("./whatsapp/account-health.js");
+
+    clearWhatsAppBinding();
+    bindWhatsAppAccount("6281234567890@s.whatsapp.net");
+    await refreshAccountHealth(
+      {
+        fetchAccountReachoutTimelock: async () => ({ isActive: false }),
+        fetchNewChatMessageCap: async () => ({ capping_status: "NONE" }),
+      },
+      { force: true },
+    );
+    await initializeWhatsApp();
+
+    baileysMock.ev.emit("connection.update", {
+      connection: "close",
+      lastDisconnect: { error: { output: { statusCode: 428 } } },
+    });
+
+    expect(getWhatsAppStatus()).toMatchObject({
+      status: "disconnected",
+      binding: { state: "bound" },
+      accountHealth: {
+        availability: "unavailable",
+        unavailableReason: "not_connected",
+      },
+    });
+  });
+
+  it("clears binding and marks the session invalid after logged-out close", async () => {
+    vi.useFakeTimers();
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
+    const { bindWhatsAppAccount, clearWhatsAppBinding } = await import("./whatsapp/binding-store.js");
+    const { refreshAccountHealth } = await import("./whatsapp/account-health.js");
+
+    clearWhatsAppBinding();
+    bindWhatsAppAccount("6281234567890@s.whatsapp.net");
+    await refreshAccountHealth(
+      {
+        fetchAccountReachoutTimelock: async () => ({ isActive: false }),
+        fetchNewChatMessageCap: async () => ({ capping_status: "NONE" }),
+      },
+      { force: true },
+    );
+    await initializeWhatsApp();
+
+    baileysMock.ev.emit("connection.update", {
+      connection: "close",
+      lastDisconnect: { error: { output: { statusCode: 401 } } },
+    });
+
+    expect(getWhatsAppStatus()).toMatchObject({
+      status: "disconnected",
+      binding: { state: "unbound" },
+      accountHealth: {
+        availability: "unavailable",
+        unavailableReason: "session_invalid",
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
+  });
+
   it("does not schedule reconnect after logged-out close", async () => {
     vi.useFakeTimers();
     const { initializeWhatsApp } = await import("./whatsapp.js");
@@ -237,13 +312,25 @@ describe("whatsapp send semantics", () => {
 
   it("closes the socket without logout during ordinary shutdown", async () => {
     vi.useFakeTimers();
-    const { initializeWhatsApp, shutdownWhatsApp } = await import("./whatsapp.js");
+    const { getWhatsAppStatus, initializeWhatsApp, shutdownWhatsApp } = await import("./whatsapp.js");
+    const { refreshAccountHealth } = await import("./whatsapp/account-health.js");
 
+    await refreshAccountHealth(
+      {
+        fetchAccountReachoutTimelock: async () => ({ isActive: false }),
+        fetchNewChatMessageCap: async () => ({ capping_status: "NONE" }),
+      },
+      { force: true },
+    );
     await initializeWhatsApp();
     await shutdownWhatsApp();
 
     expect(baileysMock.end).toHaveBeenCalledTimes(1);
     expect(baileysMock.logout).not.toHaveBeenCalled();
+    expect(getWhatsAppStatus().accountHealth).toMatchObject({
+      availability: "unavailable",
+      unavailableReason: "not_connected",
+    });
 
     baileysMock.ev.emit("connection.update", {
       connection: "close",
@@ -268,6 +355,10 @@ describe("whatsapp send semantics", () => {
     await expect(initializeWhatsApp()).rejects.toThrow("auth read failed");
 
     expect(getWhatsAppStatus().status).toBe("disconnected");
+    expect(getWhatsAppStatus().accountHealth).toMatchObject({
+      availability: "unavailable",
+      unavailableReason: "not_connected",
+    });
   });
 
   it("uses bundled Baileys version", async () => {

@@ -71,6 +71,38 @@ describe("account health", () => {
     });
   });
 
+  it("ignores an in-flight health refresh that resolves after session invalidation", async () => {
+    let resolveReachout!: (value: { isActive: boolean } | undefined) => void;
+    let resolveCap!: (value: { capping_status: string } | undefined) => void;
+    const reachout = new Promise<{ isActive: boolean } | undefined>((resolve) => {
+      resolveReachout = resolve;
+    });
+    const cap = new Promise<{ capping_status: string } | undefined>((resolve) => {
+      resolveCap = resolve;
+    });
+
+    const refresh = refreshAccountHealth(
+      makeFetcher({
+        fetchAccountReachoutTimelock: vi.fn(() => reachout),
+        fetchNewChatMessageCap: vi.fn(() => cap),
+      }),
+      { force: true },
+    );
+
+    expect(getAccountHealthSnapshot().availability).toBe("checking");
+    invalidateAccountHealth("session_invalid");
+    resolveReachout({ isActive: false });
+    resolveCap({ capping_status: "NONE" });
+    await refresh;
+
+    expect(getAccountHealthSnapshot()).toMatchObject({
+      availability: "unavailable",
+      unavailableReason: "session_invalid",
+      reachoutTimeLock: undefined,
+      newChatCap: undefined,
+    });
+  });
+
   it("blocks new recipients when reachout timelock is active", async () => {
     const retryAt = new Date(Date.now() + 60_000);
     const fetcher = makeFetcher({

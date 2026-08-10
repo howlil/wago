@@ -1,12 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import makeWASocket, {
-  DisconnectReason,
-  useMultiFileAuthState,
-  WAMessageStatus,
-  type WASocket,
-} from "@whiskeysockets/baileys";
+import makeWASocket, { useMultiFileAuthState, WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { config } from "../config/index.js";
 import { baileysLogger, logger, maskIdentifier } from "../infrastructure/logger.js";
 import {
@@ -19,6 +14,7 @@ import {
 import { toWhatsAppJid } from "../utils/phone.js";
 import {
   type AccountHealthFetcher,
+  invalidateAccountHealth,
   markReachoutRestricted,
   refreshAccountHealth,
   updateReachoutTimeLock,
@@ -35,16 +31,12 @@ import {
   type WhatsAppStatus,
   type WhatsAppStatusSnapshot,
 } from "./connection-state.js";
+import { classifyDisconnect } from "./disconnect-classifier.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { getMessageStatus, rememberPendingMessageStatus, updateMessageStatus } from "./message-status-store.js";
 import { getRecentMessage, rememberRecentTextMessage } from "./recent-message-store.js";
 import { resolveRecipientJid } from "./recipient-cache.js";
-import {
-  getReconnectDelayMs,
-  nextReconnectAttempt,
-  resetReconnectAttempts,
-  shouldScheduleReconnect,
-} from "./reconnect-state.js";
+import { getReconnectDelayMs, nextReconnectAttempt, resetReconnectAttempts } from "./reconnect-state.js";
 
 export type { WhatsAppStatus, WhatsAppStatusSnapshot };
 export { getMessageStatus };
@@ -233,36 +225,45 @@ export async function initializeWhatsApp(): Promise<void> {
       }
 
       if (update.connection === "close") {
-        markDisconnected();
-
         const statusCode = (update.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output
           ?.statusCode;
-        const loggedOut = statusCode === DisconnectReason.loggedOut;
+        const classification = classifyDisconnect({
+          statusCode,
+          rebindInProgress,
+          shuttingDown,
+        });
 
-        if (loggedOut && !rebindInProgress) {
+        markDisconnected();
+        invalidateAccountHealth(classification.terminal ? "session_invalid" : "not_connected");
+
+        if (socket === nextSocket) {
+          socket = undefined;
+        }
+        socketGeneration += 1;
+
+        if (classification.terminal && !rebindInProgress) {
           clearWhatsAppBinding();
+          clearReconnectTimer();
         }
 
         logger.warn({
           event: "wa.connection",
           state: "disconnected",
-          statusCode,
-          loggedOut,
+          statusCode: classification.statusCode,
+          reason: classification.reason,
+          terminal: classification.terminal,
+          reconnect: classification.shouldReconnect,
         });
 
-        if (
-          shouldScheduleReconnect({
-            loggedOut,
-            rebindInProgress,
-            shuttingDown,
-          })
-        ) {
+        if (classification.shouldReconnect) {
           scheduleReconnect();
         }
       }
     });
   } catch (error) {
+    socket = undefined;
     markDisconnected();
+    invalidateAccountHealth("not_connected");
     throw error;
   } finally {
     reconnecting = false;
@@ -271,7 +272,10 @@ export async function initializeWhatsApp(): Promise<void> {
 
 export async function resumeWhatsAppSession(): Promise<void> {
   if (!existsSync(credentialsFile)) {
+    socket = undefined;
+    clearWhatsAppBinding();
     markDisconnected();
+    invalidateAccountHealth("session_invalid");
     return;
   }
 
@@ -313,6 +317,7 @@ export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
   socketGeneration += 1;
   socket = undefined;
   clearWhatsAppBinding();
+  invalidateAccountHealth("not_connected");
   markConnecting();
 
   try {
@@ -340,6 +345,7 @@ export async function shutdownWhatsApp(): Promise<void> {
   socketGeneration += 1;
   socket = undefined;
   markDisconnected();
+  invalidateAccountHealth("not_connected");
 
   await flushCredentialWrites();
 
