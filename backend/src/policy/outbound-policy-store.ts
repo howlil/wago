@@ -1,6 +1,4 @@
-import { resolve } from "node:path";
-import { config } from "../config/index.js";
-import { readJsonFileSync, writeJsonFileAtomic } from "../infrastructure/json-file.js";
+import { getDatabase } from "../infrastructure/database.js";
 
 export type OutboundPolicyState = {
   seenIdempotencyKeys: Record<string, number>;
@@ -13,19 +11,15 @@ export type OutboundPolicyState = {
   outboundPauseMessage: string;
 };
 
-type OutboundPolicyEnvelope = {
-  version: 1;
-  data: OutboundPolicyState;
-};
-type StoredOutboundPolicyFile = OutboundPolicyState | OutboundPolicyEnvelope;
-
-const STORE_VERSION = 1 as const;
-const policyFile =
-  process.env.NODE_ENV === "test"
-    ? resolve(config.dataDirectory, `outbound-policy-${process.pid}.json`)
-    : resolve(config.dataDirectory, "outbound-policy.json");
-
-let writeQueue: Promise<void> = Promise.resolve();
+const database = getDatabase();
+const selectPolicy = database.prepare("SELECT payload FROM outbound_policy_state WHERE id = 1");
+const upsertPolicy = database.prepare(`
+  INSERT INTO outbound_policy_state (id, payload, updated_at)
+  VALUES (1, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    payload = excluded.payload,
+    updated_at = excluded.updated_at
+`);
 
 function defaultState(): OutboundPolicyState {
   return {
@@ -77,14 +71,6 @@ function isOutboundPolicyState(value: unknown): value is OutboundPolicyState {
   );
 }
 
-function isStoredOutboundPolicyFile(value: unknown): value is StoredOutboundPolicyFile {
-  if (isOutboundPolicyState(value)) {
-    return true;
-  }
-
-  return isRecord(value) && value.version === STORE_VERSION && "data" in value && isOutboundPolicyState(value.data);
-}
-
 function cloneState(state: OutboundPolicyState): OutboundPolicyState {
   return {
     seenIdempotencyKeys: { ...state.seenIdempotencyKeys },
@@ -100,35 +86,25 @@ function cloneState(state: OutboundPolicyState): OutboundPolicyState {
   };
 }
 
-function readStateFromDisk(): OutboundPolicyState {
-  const stored = readJsonFileSync(policyFile, isStoredOutboundPolicyFile);
-
-  if (!stored) {
+function readStateFromDatabase(): OutboundPolicyState {
+  const row = selectPolicy.get() as { payload?: string } | undefined;
+  if (!row?.payload) {
     return defaultState();
   }
 
-  return "version" in stored ? stored.data : stored;
+  try {
+    const parsed = JSON.parse(row.payload) as unknown;
+    return isOutboundPolicyState(parsed) ? parsed : defaultState();
+  } catch {
+    return defaultState();
+  }
 }
 
-async function writeStateToDisk(state: OutboundPolicyState): Promise<void> {
-  await writeJsonFileAtomic(policyFile, {
-    version: STORE_VERSION,
-    data: state,
-  } satisfies OutboundPolicyEnvelope);
+function persistState(state: OutboundPolicyState): void {
+  upsertPolicy.run(JSON.stringify(state), new Date().toISOString());
 }
 
-function enqueueSnapshot(snapshot: OutboundPolicyState): Promise<void> {
-  const operation = writeQueue.catch(() => undefined).then(() => writeStateToDisk(snapshot));
-
-  writeQueue = operation.then(
-    () => undefined,
-    () => undefined,
-  );
-
-  return operation;
-}
-
-let cachedState = readStateFromDisk();
+let cachedState = readStateFromDatabase();
 
 export function getOutboundPolicyState(): OutboundPolicyState {
   return cachedState;
@@ -138,23 +114,32 @@ export function mutateOutboundPolicyState<T>(mutator: (state: OutboundPolicyStat
   result: T;
   persisted: Promise<void>;
 } {
-  const result = mutator(cachedState);
+  const nextState = cloneState(cachedState);
+  const result = mutator(nextState);
+  persistState(nextState);
+  cachedState = nextState;
+
   return {
     result,
-    persisted: enqueueSnapshot(cloneState(cachedState)),
+    persisted: Promise.resolve(),
   };
 }
 
+export function reloadOutboundPolicyState(): void {
+  cachedState = readStateFromDatabase();
+}
+
 export async function flushOutboundPolicyStore(): Promise<void> {
-  await writeQueue;
+  // SQLite commits writes synchronously on the shared connection.
 }
 
 export async function forgetOutboundPolicyMemoryForTest(): Promise<void> {
-  await flushOutboundPolicyStore();
-  cachedState = readStateFromDisk();
+  reloadOutboundPolicyState();
 }
 
 export function resetOutboundPolicyStoreForTest(): Promise<void> {
-  cachedState = defaultState();
-  return enqueueSnapshot(cloneState(cachedState));
+  const nextState = defaultState();
+  persistState(nextState);
+  cachedState = nextState;
+  return Promise.resolve();
 }
