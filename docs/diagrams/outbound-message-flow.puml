@@ -22,7 +22,7 @@ database "Recipient store" as Recipients
 participant "Account health" as Health
 collections "Transient policy state" as State
 participant "Recipient resolver" as Resolver
-cloud "WhatsApp Web" as WhatsApp
+participant "WhatsApp Web" as WhatsApp
 collections "Message status store" as Status
 
 Caller -> Middleware : POST /messages/send\nBearer/cookie + to + text + Idempotency-Key
