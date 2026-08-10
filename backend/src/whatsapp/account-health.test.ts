@@ -3,6 +3,7 @@ import {
   type AccountHealthFetcher,
   checkAccountHealth,
   getAccountHealthSnapshot,
+  invalidateAccountHealth,
   markReachoutRestricted,
   refreshAccountHealth,
   resetAccountHealthForTest,
@@ -21,6 +22,53 @@ describe("account health", () => {
   afterEach(() => {
     resetAccountHealthForTest();
     vi.useRealTimers();
+  });
+
+  it("starts unavailable before a connected-session fetch", () => {
+    resetAccountHealthForTest();
+
+    expect(getAccountHealthSnapshot()).toMatchObject({
+      availability: "unavailable",
+      unavailableReason: "not_connected",
+    });
+  });
+
+  it("becomes available after a successful forced refresh", async () => {
+    resetAccountHealthForTest();
+
+    await refreshAccountHealth(
+      makeFetcher({
+        fetchAccountReachoutTimelock: vi.fn(async () => ({ isActive: false })),
+        fetchNewChatMessageCap: vi.fn(async () => ({ capping_status: "NONE" })),
+      }),
+      { force: true },
+    );
+
+    expect(getAccountHealthSnapshot()).toMatchObject({
+      availability: "available",
+      unavailableReason: undefined,
+    });
+  });
+
+  it("clears stale restriction fields when the session disconnects", async () => {
+    await refreshAccountHealth(
+      makeFetcher({
+        fetchAccountReachoutTimelock: vi.fn(async () => ({ isActive: true })),
+        fetchNewChatMessageCap: vi.fn(async () => ({ capping_status: "CAPPED", total_quota: 250 })),
+      }),
+      { force: true },
+    );
+
+    invalidateAccountHealth("not_connected");
+
+    expect(getAccountHealthSnapshot()).toMatchObject({
+      availability: "unavailable",
+      unavailableReason: "not_connected",
+      reachoutTimeLock: undefined,
+      newChatCap: undefined,
+      lastFetchedAt: undefined,
+      lastFetchErrorAt: undefined,
+    });
   });
 
   it("blocks new recipients when reachout timelock is active", async () => {
@@ -121,7 +169,7 @@ describe("account health", () => {
     expect(fetcher.fetchNewChatMessageCap).toHaveBeenCalledTimes(1);
   });
 
-  it("fails open and records fetch errors", async () => {
+  it("fails open for policy but marks operator health unavailable after fetch errors", async () => {
     const fetcher = makeFetcher({
       fetchAccountReachoutTimelock: vi.fn(async () => {
         throw new Error("boom");
@@ -131,6 +179,10 @@ describe("account health", () => {
     const decision = await checkAccountHealth(fetcher, { isNewRecipient: true });
 
     expect(decision).toEqual({ allowed: true });
+    expect(getAccountHealthSnapshot()).toMatchObject({
+      availability: "unavailable",
+      unavailableReason: "fetch_failed",
+    });
     expect(getAccountHealthSnapshot().lastFetchErrorAt).toBeDefined();
   });
 
