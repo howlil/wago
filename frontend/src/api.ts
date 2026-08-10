@@ -56,7 +56,12 @@ export type WhatsAppBinding =
       boundAt: string;
     };
 
+export type AccountHealthAvailability = "unavailable" | "checking" | "available";
+export type AccountHealthUnavailableReason = "not_connected" | "session_invalid" | "fetch_failed";
+
 export type AccountHealthSnapshot = {
+  availability: AccountHealthAvailability;
+  unavailableReason?: AccountHealthUnavailableReason;
   reachoutTimeLock?: {
     isActive: boolean;
     retryAt?: string;
