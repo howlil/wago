@@ -192,18 +192,66 @@ Checkpoint: stop here after final PR-head verification and merge. Do not start f
 
 ### Iteration 19: Dedicated Audit Log Page and Navigation
 
-**Status:** pending.
+**Status:** completed — frontend checkpoint reached on `feature/audit-log-frontend-iteration19`.
 
-Goal: move operational history out of Control and build a readable `/audit` page.
+Goal: move operational history out of Control and build a readable `/audit` page without adding unnecessary routing/state dependencies.
 
-Planned scope:
+#### 19A — Workspace Routing, Shell, and Navigation
 
-- remove Activity Log from Control;
-- add `/audit` route and data-driven Control/Audit Log navigation;
-- build source/category/level/search filters, expandable technical detail, refresh and cursor `Load more`;
-- keep default view operator-friendly;
-- update Account Health/Outbound cards so unavailable/disconnected state is explicit;
-- add frontend route/status/pagination regression tests.
+- [x] RED route/navigation regressions before production changes.
+- [x] Remove Activity Log completely from Control.
+- [x] Generalize `DashboardShell` into page-aware `AppShell`.
+- [x] Add data-driven Control and Audit Log navigation shared by desktop/mobile sidebar.
+- [x] Add minimal `/audit` workspace routing without introducing a router dependency.
+- [x] Preserve sidebar collapse/mobile behavior and active-page semantics with `aria-current`.
+
+Evidence:
+
+- RED head `7ce456f9dde2259d736215d9ee825c9d8e938c08`; CI `31418440302` kept formatting/backend/Docker green while the three new route/navigation contracts failed as intended.
+- GREEN CI `31418985218` passed check, tests, core build, and Docker build.
+
+#### 19B — Server-Driven Audit Page
+
+- [x] RED page regressions for source/category/level/search filters, cursor pagination, and audit labels.
+- [x] Extend the frontend activity API contract with `source`, filters, `before`, `q`, and `nextCursor`.
+- [x] Execute search/filtering on the backend rather than filtering the 2,000-row history in browser memory.
+- [x] Use 50-row cursor pages and append unique events through `Load more`.
+- [x] Label source, category, and severity explicitly.
+- [x] Keep technical metadata behind a closed-by-default disclosure.
+- [x] Keep message/session secret material out of the UI contract; the page consumes only sanitized audit rows.
+
+Evidence:
+
+- RED head `71be79e094001a8518a430d86487b564ec1a7f6c`; CI `31419185311` failed only because source filtering, cursor load-more, and source/severity labels were not implemented yet.
+- GREEN CI `31420026751` passed page regressions, full tests/build, and Docker build.
+
+#### 19C — Truthful Health and Outbound Status
+
+- [x] RED regressions for disconnected, unavailable-health, checking-health, and healthy outbound states.
+- [x] Align frontend `AccountHealthSnapshot` with backend `unavailable | checking | available` semantics.
+- [x] Render `Outbound: Normal` only when the backend is reachable, WhatsApp is connected, account health is available, and no active restriction is reported.
+- [x] Render disconnected/unavailable health explicitly instead of optimistic `Available`/`Normal` defaults.
+- [x] Give session-invalid health an explicit pairing recovery message.
+- [x] Keep the status logic fail-closed when availability is missing or a health fetch failed.
+
+Evidence:
+
+- Behavioral RED head `beffdb7884bea97a03e69ac1accee5cc44a8f126`; CI `31420235630` produced the four intended optimistic-status failures while existing audit/dashboard regressions remained green.
+- First GREEN behavior/build checkpoint CI `31420756261` passed tests, builds, check, and Docker after explicit health modeling and TypeScript narrowing fixes.
+
+Iteration 19 final verification:
+
+- [x] frontend route/navigation/audit/status regressions
+- [x] backend regression suite remains green through root CI
+- [x] `pnpm check` through root CI
+- [x] backend + frontend/core build through root CI
+- [x] production Docker build
+- [x] diff review for feature/shared boundaries, routing scope, server-side filtering, progressive disclosure, and fail-closed status semantics
+- [x] reviewed code head `a8b01716178a6548a253a42984b3c29bffb3e42f`
+- [x] fresh reviewed-code CI `31421193134` success
+- [x] fresh reviewed-code CodeQL `31421193125` success
+
+Checkpoint: stop here after final PR-head verification. Iteration 20 remains pending and GHCR release-workflow remediation remains a separate operational hotfix.
 
 ### Iteration 20: Integration Hardening, Docs, and Release Gate
 
@@ -235,7 +283,7 @@ Planned scope:
 
 ### Audit Findings and Priority
 
-The current implementation already has meaningful defensive controls: explicit recipient allowlisting, opt-out enforcement, idempotency, account/per-recipient/new-chat rate limits, persistent cooldown/pause state, Baileys Reachout Timelock and New Chat Message Cap checks, `463` mapping, bounded reconnect backoff, session persistence, and message ACK/rejection tracking.
+The current implementation already has meaningful defensive controls: explicit recipient allowlisting, opt-out enforcement, idempotency, account/per-recipient/new-chat limits, persistent cooldown/pause state, Baileys Reachout Timelock and New Chat Message Cap checks, `463` mapping, bounded reconnect backoff, session persistence, and message ACK/rejection tracking.
 
 The remaining gaps are:
 
