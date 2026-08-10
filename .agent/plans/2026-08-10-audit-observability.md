@@ -182,7 +182,7 @@ Evidence:
 
 ## Iteration 20: Integration Hardening, Public Docs, and Release Gate
 
-**Status:** implementation and post-PR-21 reconciliation complete on PR `#22`; final ledger-head verification pending.
+**Status:** completed and merged through PR `#22` as `752d456628eb3b6805f0eadc8f751830ca6c276c`.
 
 Goal: verify session invalidation + audit behavior end-to-end and leave runtime/public docs internally consistent without reintroducing the obsolete `docs/superpowers` planning layout.
 
@@ -202,20 +202,14 @@ TDD and pre-reconciliation evidence:
 - implementation checkpoint `2041b7205b2ad2635c82b3efb9e7d3e030705fd0`: Core CI `31423998191` success, Docs CI `31423998495` success, CodeQL `31423998455` success;
 - old final ledger head `c609e099fe70df717099563e2a3d6023fa359474`: Core CI `31424345137` success, Docs CI `31424343755` success, CodeQL `31424343286` success.
 
-Reconciliation:
+Reconciliation and final verification:
 
-- PR `#21` merged afterward and moved internal planning artifacts under `.agent/`, so the old PR `#22` head was backed up at `backup/iteration20-pre-reconcile` and rebuilt from `cdba31b03b2ff0bc59c11f34590baef2591fe218` instead of merging obsolete root-plan/public-doc versions;
-- current public Architecture/Operations docs from PR `#21` remained the base; only still-valid Iteration 20 lifecycle/runbook additions were applied;
-- first fresh reconciliation head `25c40a39204337b4e1507e6904bc53065d6e4df8` passed Core CI `31428778185`, Docs CI `31428778351`, and CodeQL `31428778748`; Core CI includes the production Docker build.
-
-Final ledger-head verification required before merge:
-
-- [ ] Core CI success on the commit containing this evidence
-- [ ] Docs CI success on the commit containing this evidence
-- [ ] CodeQL success on the commit containing this evidence
-- [ ] production Docker build success through Core CI
-- [x] no `docs/superpowers` planning artifacts reintroduced by PR `#22`
-- [x] no raw QR/message/auth/protocol payload persistence added
+- PR `#21` merged first and moved internal planning artifacts under `.agent/`; therefore the old PR `#22` head was backed up at `backup/iteration20-pre-reconcile` instead of being merged over the newer planning/public-doc structure;
+- PR `#22` was rebuilt from `cdba31b03b2ff0bc59c11f34590baef2591fe218`, retaining PR `#21` as the public-doc base and applying only still-valid Iteration 20 changes;
+- reconciliation head `25c40a39204337b4e1507e6904bc53065d6e4df8` passed Core CI `31428778185`, Docs CI `31428778351`, and CodeQL `31428778748`;
+- final verified PR head `6c2af716925bf946e904c96c3e9e31a9472ef535` passed Core CI `31428959538`, Docs CI `31428960366`, and CodeQL `31428959649`; Core CI included the production Docker build;
+- changed-file review confirmed no `docs/superpowers` planning artifact was reintroduced and no raw QR/message/auth/protocol payload persistence was added;
+- PR `#22` was squash-merged to `main` as `752d456628eb3b6805f0eadc8f751830ca6c276c`.
 
 Manual validation boundary:
 
@@ -223,7 +217,7 @@ Manual validation boundary:
 
 Release validation boundary:
 
-- GHCR publication remains a separate operational incident. Iteration 20 does not claim container publication healthy while the stale release concurrency lock remains unresolved.
+- GHCR publication remains a separate operational incident. Milestone 4 does not claim container publication healthy while the stale release concurrency lock remains unresolved.
 
 ## Milestone Rules
 
