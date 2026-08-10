@@ -42,14 +42,14 @@ const pruneActivity = database.prepare(`
   DELETE FROM activity_events
   WHERE rowid IN (
     SELECT rowid FROM activity_events
-    ORDER BY timestamp DESC
+    ORDER BY timestamp DESC, rowid DESC
     LIMIT -1 OFFSET ?
   )
 `);
 const selectActivity = database.prepare(`
   SELECT id, timestamp, level, category, code, title, description, metadata_json
   FROM activity_events
-  ORDER BY timestamp DESC
+  ORDER BY timestamp DESC, rowid DESC
   LIMIT ?
 `);
 
