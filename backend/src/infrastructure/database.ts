@@ -67,12 +67,6 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_recipients_updated_at
         ON recipients(updated_at DESC);
 
-      CREATE TABLE IF NOT EXISTS outbound_policy_state (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        payload TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-
       CREATE TABLE IF NOT EXISTS activity_events (
         id TEXT PRIMARY KEY,
         timestamp TEXT NOT NULL,
