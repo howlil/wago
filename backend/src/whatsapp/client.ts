@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import makeWASocket, { useMultiFileAuthState, WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
+import { recordBaileysAudit, type BaileysAuditInput } from "../activity/baileys-audit.js";
 import { config } from "../config/index.js";
 import { baileysLogger, logger, maskIdentifier } from "../infrastructure/logger.js";
 import {
@@ -51,6 +52,7 @@ export type SendTextMessageResult = {
 };
 
 const REACHOUT_RESTRICTION_COOLDOWN_MS = 1000 * 60 * 30;
+const CREDENTIAL_AUDIT_INTERVAL_MS = 1000 * 60;
 const authDirectory = config.authDirectory;
 const credentialsFile = resolve(authDirectory, "creds.json");
 
@@ -62,6 +64,8 @@ let socketGeneration = 0;
 let reconnectAttempt = 0;
 let reconnectTimer: NodeJS.Timeout | undefined;
 let credentialWriteQueue: Promise<void> = Promise.resolve();
+let lastCredentialAuditGeneration = 0;
+let lastCredentialAuditAt = 0;
 
 function createNamedError(name: string, message: string): Error {
   const error = new Error(message);
@@ -69,19 +73,134 @@ function createNamedError(name: string, message: string): Error {
   return error;
 }
 
-function makeAccountHealthFetcher(activeSocket: WASocket): AccountHealthFetcher {
+function auditBaileys(input: BaileysAuditInput): void {
+  void recordBaileysAudit(input).catch((error) => {
+    logger.warn({ event: "wa.audit.persist_failed", error }, "Failed to persist Baileys audit event");
+  });
+}
+
+function auditDate(value: Date | string | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+function makeAccountHealthFetcher(activeSocket: WASocket, generation = socketGeneration): AccountHealthFetcher {
   return {
-    fetchAccountReachoutTimelock: () => activeSocket.fetchAccountReachoutTimelock(),
-    fetchNewChatMessageCap: () => activeSocket.fetchNewChatMessageCap(),
+    fetchAccountReachoutTimelock: async () => {
+      try {
+        const state = await activeSocket.fetchAccountReachoutTimelock();
+        auditBaileys({
+          level: state?.isActive ? "warning" : "info",
+          category: "connection",
+          code: "baileys.health.reachout_timelock",
+          title: "Reach-out health checked",
+          description: "WhatsApp reach-out restriction state was refreshed.",
+          metadata: {
+            socketGeneration: generation,
+            active: Boolean(state?.isActive),
+            retryAt: auditDate(state?.timeEnforcementEnds),
+            enforcementType: state?.enforcementType ?? null,
+          },
+        });
+        return state;
+      } catch (error) {
+        auditBaileys({
+          level: "warning",
+          category: "connection",
+          code: "baileys.health.fetch_failed",
+          title: "Account health check failed",
+          description: "WhatsApp reach-out health could not be refreshed.",
+          metadata: {
+            socketGeneration: generation,
+            operation: "reachout_timelock",
+            errorName: error instanceof Error ? error.name : "UNKNOWN",
+          },
+        });
+        throw error;
+      }
+    },
+    fetchNewChatMessageCap: async () => {
+      try {
+        const cap = await activeSocket.fetchNewChatMessageCap();
+        auditBaileys({
+          level: cap?.capping_status === "CAPPED" ? "warning" : "info",
+          category: "connection",
+          code: "baileys.health.new_chat_cap",
+          title: "New-chat cap checked",
+          description: "WhatsApp new-chat capacity state was refreshed.",
+          metadata: {
+            socketGeneration: generation,
+            cappingStatus: cap?.capping_status ?? null,
+            totalQuota: cap?.total_quota ?? null,
+            usedQuota: cap?.used_quota ?? null,
+          },
+        });
+        return cap;
+      } catch (error) {
+        auditBaileys({
+          level: "warning",
+          category: "connection",
+          code: "baileys.health.fetch_failed",
+          title: "Account health check failed",
+          description: "WhatsApp new-chat capacity could not be refreshed.",
+          metadata: {
+            socketGeneration: generation,
+            operation: "new_chat_cap",
+            errorName: error instanceof Error ? error.name : "UNKNOWN",
+          },
+        });
+        throw error;
+      }
+    },
   };
 }
 
-function enqueueCredentialWrite(saveCreds: () => Promise<void>): void {
+function shouldAuditCredentialSuccess(generation: number, now: number): boolean {
+  if (generation !== lastCredentialAuditGeneration || now - lastCredentialAuditAt >= CREDENTIAL_AUDIT_INTERVAL_MS) {
+    lastCredentialAuditGeneration = generation;
+    lastCredentialAuditAt = now;
+    return true;
+  }
+
+  return false;
+}
+
+function enqueueCredentialWrite(saveCreds: () => Promise<void>, generation: number): void {
   credentialWriteQueue = credentialWriteQueue
     .catch(() => undefined)
-    .then(saveCreds)
-    .catch((error) => {
-      logger.error({ event: "wa.credentials.persist_failed", error }, "Failed to persist WhatsApp credentials");
+    .then(async () => {
+      try {
+        await saveCreds();
+        const now = Date.now();
+        if (shouldAuditCredentialSuccess(generation, now)) {
+          auditBaileys({
+            level: "info",
+            category: "security",
+            code: "baileys.credentials.persisted",
+            title: "WhatsApp credentials persisted",
+            description: "Updated Baileys credentials were persisted successfully.",
+            metadata: {
+              socketGeneration: generation,
+            },
+          });
+        }
+      } catch (error) {
+        logger.error({ event: "wa.credentials.persist_failed", error }, "Failed to persist WhatsApp credentials");
+        auditBaileys({
+          level: "error",
+          category: "security",
+          code: "baileys.credentials.persist_failed",
+          title: "WhatsApp credential persistence failed",
+          description: "Baileys credential state could not be persisted.",
+          metadata: {
+            socketGeneration: generation,
+            errorName: error instanceof Error ? error.name : "UNKNOWN",
+          },
+        });
+      }
     });
 }
 
@@ -98,13 +217,25 @@ function clearReconnectTimer(): void {
   reconnectTimer = undefined;
 }
 
-function scheduleReconnect(): void {
+function scheduleReconnect(closedGeneration: number): void {
   if (reconnectTimer) {
     return;
   }
 
   const delayMs = getReconnectDelayMs(reconnectAttempt);
   reconnectAttempt = nextReconnectAttempt(reconnectAttempt);
+  auditBaileys({
+    level: "warning",
+    category: "connection",
+    code: "baileys.reconnect.scheduled",
+    title: "WhatsApp reconnect scheduled",
+    description: "A recoverable disconnect will be retried with bounded backoff.",
+    metadata: {
+      socketGeneration: closedGeneration,
+      reconnectAttempt,
+      delayMs,
+    },
+  });
   reconnectTimer = setTimeout(() => {
     reconnectTimer = undefined;
     void initializeWhatsApp();
@@ -131,13 +262,23 @@ export async function initializeWhatsApp(): Promise<void> {
     });
 
     socket = nextSocket;
+    auditBaileys({
+      level: "info",
+      category: "connection",
+      code: "baileys.socket.created",
+      title: "WhatsApp socket created",
+      description: "A new Baileys socket lifecycle started.",
+      metadata: {
+        socketGeneration: generation,
+      },
+    });
 
     nextSocket.ev.on("creds.update", () => {
       if (generation !== socketGeneration) {
         return;
       }
 
-      enqueueCredentialWrite(saveCreds);
+      enqueueCredentialWrite(saveCreds, generation);
     });
 
     nextSocket.ev.on("messages.update", (updates) => {
@@ -159,10 +300,22 @@ export async function initializeWhatsApp(): Promise<void> {
             messageId,
             reason: mapped.error,
           });
+          auditBaileys({
+            level: "warning",
+            category: "messaging",
+            code: "baileys.message.rejected",
+            title: "WhatsApp rejected a message",
+            description: "Baileys reported an outbound message rejection.",
+            metadata: {
+              socketGeneration: generation,
+              status: entry.update.status,
+              reason: mapped.error,
+            },
+          });
 
           if (mapped.error === "REACHOUT_RESTRICTED") {
             markReachoutRestricted();
-            void refreshAccountHealth(makeAccountHealthFetcher(nextSocket), { force: true });
+            void refreshAccountHealth(makeAccountHealthFetcher(nextSocket, generation), { force: true });
           }
 
           updateMessageStatus(messageId, {
@@ -176,6 +329,17 @@ export async function initializeWhatsApp(): Promise<void> {
         if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
           updateMessageStatus(messageId, {
             status: "accepted",
+          });
+          auditBaileys({
+            level: "info",
+            category: "messaging",
+            code: "baileys.message.ack",
+            title: "WhatsApp acknowledged a message",
+            description: "Baileys reported a server acknowledgement for an outbound message.",
+            metadata: {
+              socketGeneration: generation,
+              status: entry.update.status,
+            },
           });
         }
       }
@@ -191,6 +355,16 @@ export async function initializeWhatsApp(): Promise<void> {
         logger.info({
           event: "wa.connection",
           state: "qr",
+        });
+        auditBaileys({
+          level: "info",
+          category: "connection",
+          code: "baileys.connection.qr_ready",
+          title: "WhatsApp pairing QR is ready",
+          description: "A pairing QR became available. The QR value is intentionally not persisted.",
+          metadata: {
+            socketGeneration: generation,
+          },
         });
       }
 
@@ -212,7 +386,18 @@ export async function initializeWhatsApp(): Promise<void> {
           event: "wa.connection",
           state: "connected",
         });
-        void refreshAccountHealth(makeAccountHealthFetcher(nextSocket), { force: true });
+        auditBaileys({
+          level: "success",
+          category: "connection",
+          code: "baileys.connection.open",
+          title: "WhatsApp connection opened",
+          description: "The Baileys socket is connected to WhatsApp.",
+          metadata: {
+            socketGeneration: generation,
+            bound: Boolean(accountJid),
+          },
+        });
+        void refreshAccountHealth(makeAccountHealthFetcher(nextSocket, generation), { force: true });
       }
 
       if (update.reachoutTimeLock) {
@@ -221,6 +406,19 @@ export async function initializeWhatsApp(): Promise<void> {
           event: "wa.reachout_timelock",
           active: update.reachoutTimeLock.isActive,
           retryAt: update.reachoutTimeLock.timeEnforcementEnds,
+        });
+        auditBaileys({
+          level: update.reachoutTimeLock.isActive ? "warning" : "info",
+          category: "connection",
+          code: "baileys.health.reachout_timelock_changed",
+          title: "Reach-out restriction changed",
+          description: "WhatsApp pushed a reach-out restriction state update.",
+          metadata: {
+            socketGeneration: generation,
+            active: Boolean(update.reachoutTimeLock.isActive),
+            retryAt: auditDate(update.reachoutTimeLock.timeEnforcementEnds),
+            enforcementType: update.reachoutTimeLock.enforcementType ?? null,
+          },
         });
       }
 
@@ -231,6 +429,24 @@ export async function initializeWhatsApp(): Promise<void> {
           statusCode,
           rebindInProgress,
           shuttingDown,
+        });
+
+        auditBaileys({
+          level: classification.terminal ? "error" : "warning",
+          category: "connection",
+          code: "baileys.connection.close",
+          title: "WhatsApp connection closed",
+          description: classification.terminal
+            ? "The WhatsApp session closed and requires a new pairing."
+            : "The WhatsApp connection closed and may be retried.",
+          metadata: {
+            socketGeneration: generation,
+            statusCode: classification.statusCode ?? null,
+            reason: classification.reason,
+            terminal: classification.terminal,
+            reconnect: classification.shouldReconnect,
+            reconnectAttempt,
+          },
         });
 
         markDisconnected();
@@ -244,6 +460,18 @@ export async function initializeWhatsApp(): Promise<void> {
         if (classification.terminal && !rebindInProgress) {
           clearWhatsAppBinding();
           clearReconnectTimer();
+          auditBaileys({
+            level: "error",
+            category: "connection",
+            code: "baileys.session.invalidated",
+            title: "WhatsApp session invalidated",
+            description: "The linked WhatsApp session is no longer valid and must be paired again.",
+            metadata: {
+              socketGeneration: generation,
+              statusCode: classification.statusCode ?? null,
+              reason: classification.reason,
+            },
+          });
         }
 
         logger.warn({
@@ -256,7 +484,7 @@ export async function initializeWhatsApp(): Promise<void> {
         });
 
         if (classification.shouldReconnect) {
-          scheduleReconnect();
+          scheduleReconnect(generation);
         }
       }
     });
@@ -264,6 +492,17 @@ export async function initializeWhatsApp(): Promise<void> {
     socket = undefined;
     markDisconnected();
     invalidateAccountHealth("not_connected");
+    auditBaileys({
+      level: "error",
+      category: "connection",
+      code: "baileys.socket.init_failed",
+      title: "WhatsApp socket initialization failed",
+      description: "Baileys could not initialize the WhatsApp socket.",
+      metadata: {
+        socketGeneration: generation,
+        errorName: error instanceof Error ? error.name : "UNKNOWN",
+      },
+    });
     throw error;
   } finally {
     reconnecting = false;
@@ -276,6 +515,13 @@ export async function resumeWhatsAppSession(): Promise<void> {
     clearWhatsAppBinding();
     markDisconnected();
     invalidateAccountHealth("session_invalid");
+    auditBaileys({
+      level: "warning",
+      category: "connection",
+      code: "baileys.session.auth_missing",
+      title: "WhatsApp session credentials are missing",
+      description: "No persisted Baileys credentials were found, so pairing is required.",
+    });
     return;
   }
 
@@ -312,6 +558,7 @@ export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
   }
 
   const activeSocket = socket;
+  const generation = socketGeneration;
   rebindInProgress = true;
   clearReconnectTimer();
   socketGeneration += 1;
@@ -319,6 +566,16 @@ export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
   clearWhatsAppBinding();
   invalidateAccountHealth("not_connected");
   markConnecting();
+  auditBaileys({
+    level: "warning",
+    category: "connection",
+    code: "baileys.session.rebind_started",
+    title: "WhatsApp rebind started",
+    description: "The existing WhatsApp session is being cleared before a new pairing.",
+    metadata: {
+      socketGeneration: generation,
+    },
+  });
 
   try {
     await flushCredentialWrites();
@@ -342,10 +599,22 @@ export async function shutdownWhatsApp(): Promise<void> {
   shuttingDown = true;
   clearReconnectTimer();
   const activeSocket = socket;
+  const generation = socketGeneration;
   socketGeneration += 1;
   socket = undefined;
   markDisconnected();
   invalidateAccountHealth("not_connected");
+  auditBaileys({
+    level: "info",
+    category: "connection",
+    code: "baileys.socket.shutdown",
+    title: "WhatsApp socket shutdown",
+    description: "Wago is shutting down the active Baileys socket without logging out the WhatsApp account.",
+    metadata: {
+      socketGeneration: generation,
+      hadActiveSocket: Boolean(activeSocket),
+    },
+  });
 
   await flushCredentialWrites();
 
