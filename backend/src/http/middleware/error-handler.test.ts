@@ -37,7 +37,9 @@ describe("shared HTTP error middleware", () => {
   });
 
   it("normalizes oversized JSON", async () => {
-    const response = await request(makeApp()).post("/echo").send({ value: "x".repeat(2_000) });
+    const response = await request(makeApp())
+      .post("/echo")
+      .send({ value: "x".repeat(2_000) });
     expect(response.status).toBe(413);
     expect(response.body).toEqual({
       success: false,
