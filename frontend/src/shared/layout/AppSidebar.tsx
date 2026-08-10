@@ -34,7 +34,9 @@ export function AppSidebar({ collapsed, mobileOpen, onToggleCollapsed, onCloseMo
           collapsed ? "w-[68px]" : "w-[208px]"
         }`}
       >
-        <div className={`flex min-h-12 items-center border-b border-wago-line px-3 ${collapsed ? "justify-center" : "justify-between"}`}>
+        <div
+          className={`flex min-h-12 items-center border-b border-wago-line px-3 ${collapsed ? "justify-center" : "justify-between"}`}
+        >
           <AppBrand collapsed={collapsed} />
           {!collapsed ? (
             <button

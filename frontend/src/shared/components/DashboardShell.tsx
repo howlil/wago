@@ -26,7 +26,8 @@ export function DashboardShell({ children, health, status, isRefreshing, onRefre
   );
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const displayStatus = health === "error" ? "Backend offline" : health === "checking" ? "Checking" : statusLabel[status];
+  const displayStatus =
+    health === "error" ? "Backend offline" : health === "checking" ? "Checking" : statusLabel[status];
   const statusTone =
     health === "error"
       ? "danger"
