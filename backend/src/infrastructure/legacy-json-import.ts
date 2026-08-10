@@ -47,7 +47,8 @@ function importSettings(database: DatabaseSync, dataDirectory: string): void {
   }
 
   const rawApiKey = optionalString(settings.apiKey);
-  const apiKeyHash = optionalString(settings.apiKeyHash) ?? (rawApiKey ? createHash("sha256").update(rawApiKey).digest("hex") : null);
+  const apiKeyHash =
+    optionalString(settings.apiKeyHash) ?? (rawApiKey ? createHash("sha256").update(rawApiKey).digest("hex") : null);
 
   database
     .prepare(
