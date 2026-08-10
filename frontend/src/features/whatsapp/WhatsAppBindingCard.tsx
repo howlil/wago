@@ -48,16 +48,16 @@ export function WhatsAppBindingCard({
 
   return (
     <section className={cardBodyClass}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-2.5">
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>WhatsApp connection</h2>
           <p className={sectionDescriptionClass}>{connectionDescription}</p>
         </div>
 
         {qrReady ? (
-          <span className="inline-flex min-h-8 items-center gap-2 rounded-md bg-[#edf5f1] px-2.5 text-xs font-medium text-[#35614f]">
-            <QrCode size={14} />
-            Scan QR below
+          <span className="inline-flex h-8 items-center gap-2 rounded-md bg-[#edf5f1] px-2.5 text-[11px] font-medium text-[#35614f]">
+            <QrCode size={13} />
+            Scan QR
           </span>
         ) : canStartPairing ? (
           <button
@@ -87,18 +87,18 @@ export function WhatsAppBindingCard({
       </div>
 
       {qrImage && status !== "connected" ? (
-        <div className="mt-3 border-t border-[#e7ebe8] pt-3">
+        <div className="mt-2.5 border-t border-[#e7ebe8] pt-2.5">
           <QrPairingCard qrImage={qrImage} />
         </div>
       ) : null}
 
       {binding.state === "bound" ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-2.5">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#2f8b67]" />
-            <strong className="font-mono text-sm font-semibold text-[#285f49]">{binding.phone}</strong>
+            <strong className="font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
           </div>
-          <span className="text-[11px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
+          <span className="text-[10px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
         </div>
       ) : null}
     </section>

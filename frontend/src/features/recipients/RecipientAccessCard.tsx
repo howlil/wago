@@ -115,17 +115,17 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
   }
 
   return (
-    <section className={`${cardBodyClass} h-full`}>
+    <section className={cardBodyClass}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className={sectionTitleClass}>Recipient access</h2>
           <p className={sectionDescriptionClass}>Control who is approved for outbound messages.</p>
         </div>
-        {enabled ? <span className="text-xs text-[#7b8680]">{recipients.length} saved</span> : null}
+        {enabled ? <span className="text-[10px] text-[#7b8680]">{recipients.length} saved</span> : null}
       </div>
 
       {!enabled ? (
-        <p className="mb-0 mt-4 rounded-md border border-dashed border-wago-line px-3 py-4 text-sm text-wago-muted">
+        <p className="mb-0 mt-3 rounded-md border border-dashed border-wago-line px-3 py-3 text-xs text-wago-muted">
           Authenticate the gateway to manage recipients.
         </p>
       ) : (

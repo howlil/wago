@@ -57,7 +57,7 @@ export function GatewayCredentialsCard({
         ) : null}
       </div>
 
-      <div className="mt-4 grid gap-3">
+      <div className="mt-3 grid gap-2.5">
         <label>
           <span className={fieldLabelClass}>App ID</span>
           <div className="flex gap-2">
@@ -116,7 +116,7 @@ export function GatewayCredentialsCard({
               </button>
             )}
           </div>
-          <span className="mt-1.5 block text-[11px] leading-4 text-[#7b8680]">{credentialHint}</span>
+          <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
         </label>
       </div>
     </section>
