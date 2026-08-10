@@ -90,7 +90,7 @@ Scope:
 
 ## Milestone 4: Audit Observability and Honest Session State
 
-**Status:** completed — Iterations 17–20 implemented and verified; Iteration 20 is being reconciled onto the latest `main` through PR `#22`.
+**Status:** completed and merged — Iterations 17–20 are on `main`; Iteration 20 landed through PR `#22` as `752d456628eb3b6805f0eadc8f751830ca6c276c`.
 
 Detailed execution ledger: `.agent/plans/2026-08-10-audit-observability.md`
 
