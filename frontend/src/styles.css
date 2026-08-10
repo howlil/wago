@@ -2,15 +2,15 @@
 
 @theme {
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --color-wago-canvas: #f5f6f3;
+  --color-wago-canvas: #f4f7f5;
   --color-wago-surface: #ffffff;
-  --color-wago-ink: #1c2722;
-  --color-wago-muted: #69756f;
-  --color-wago-line: #dfe4df;
-  --color-wago-brand: #1e634b;
-  --color-wago-brand-strong: #164938;
-  --color-wago-brand-soft: #eaf2ee;
-  --color-wago-sidebar: #ffffff;
+  --color-wago-ink: #17221d;
+  --color-wago-muted: #68756f;
+  --color-wago-line: #dce5e0;
+  --color-wago-brand: #176b4d;
+  --color-wago-brand-strong: #0f4f39;
+  --color-wago-brand-soft: #e9f4ef;
+  --color-wago-sidebar: #fbfcfb;
   --color-wago-danger: #a63a42;
   --color-wago-danger-soft: #fbebed;
   --color-wago-warning: #866100;
@@ -24,10 +24,14 @@
 
   html {
     background: var(--color-wago-canvas);
+    scroll-behavior: smooth;
   }
 
   body {
     @apply m-0 min-h-screen min-w-80 bg-wago-canvas text-wago-ink antialiased;
+    background-image:
+      radial-gradient(circle at 12% 0%, rgba(23, 107, 77, 0.08), transparent 28rem),
+      radial-gradient(circle at 92% 8%, rgba(37, 211, 102, 0.055), transparent 24rem);
   }
 
   button,
@@ -43,7 +47,17 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid rgba(23, 107, 77, 0.42);
+    outline-offset: 2px;
+  }
+
   ::selection {
-    background: #d8e8e1;
+    background: #d4ebe1;
+    color: #123f2f;
   }
 }
