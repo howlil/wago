@@ -1,11 +1,5 @@
 import { getDatabase } from "../infrastructure/database.js";
-import type {
-  ActivityCategory,
-  ActivityLevel,
-  AuditEvent,
-  AuditMetadata,
-  AuditSource,
-} from "./audit-event.js";
+import type { ActivityCategory, ActivityLevel, AuditEvent, AuditMetadata, AuditSource } from "./audit-event.js";
 
 export type AuditQuery = {
   limit: number;
