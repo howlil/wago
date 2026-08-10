@@ -17,10 +17,8 @@ export function DashboardPage() {
 
   return (
     <DashboardShell
-      appId={dashboard.appId}
       health={dashboard.health}
       status={dashboard.status}
-      binding={dashboard.binding}
       isRefreshing={dashboard.isRefreshing}
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
     >
