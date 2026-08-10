@@ -4,22 +4,39 @@
 
 Security fixes target the latest `main` branch and the latest published container image.
 
-Wago stores WhatsApp auth state and app settings under the configured data directory, normally `/app/data` in Docker. Treat this data like a private key.
+Wago stores durable application state and WhatsApp authentication material under the configured data directory, normally `/app/data` in Docker. Treat the entire directory and its backups like private credentials.
+
+Sensitive runtime files include:
+
+- `/app/data/wago.db` — gateway settings, API-key hash, binding metadata, recipient consent state, outbound safety history, and operator activity
+- `/app/data/wago.db-wal` and `/app/data/wago.db-shm` while SQLite WAL mode is active
+- `/app/data/auth/` — long-lived Baileys/WhatsApp session credentials
+- legacy JSON recovery files retained after an upgrade from the previous persistence format
 
 ## Reporting a Vulnerability
 
-Report vulnerabilities through GitHub private security advisories when available. Do not open a public issue for credential exposure, auth bypass, request forgery, or message-sending abuse paths.
+Report vulnerabilities through GitHub private security advisories when available. Do not open a public issue for credential exposure, auth bypass, request forgery, persistence corruption that weakens safety decisions, or message-sending abuse paths.
 
-Do not include these values in public issues, discussions, screenshots, or logs:
+Do not include these values in public issues, discussions, screenshots, logs, pull requests, or CI artifacts:
 
-- `backend/data/auth`
-- `creds.json` or any Baileys auth file
+- `wago.db`, WAL/SHM files, or `/app/data` backups
+- `backend/data/auth`, `creds.json`, or any Baileys auth file
 - QR payloads or QR screenshots from a live session
 - API keys, auth cookies, or bearer tokens
 - full phone numbers, full JIDs, or message text
 - raw production logs containing WhatsApp metadata
 
 If logs are needed, redact secrets and mask identifiers first.
+
+## Operational Guidance
+
+- Keep Wago behind HTTPS when exposed outside localhost.
+- Set `CORS_ORIGIN` to the exact public origin in production.
+- Pre-provision `API_KEY` when a fresh public deployment could be reached before the owner completes first-run setup.
+- Keep `/app/data` on a persistent volume with restricted host access.
+- Stop the service before filesystem-style backups so SQLite can checkpoint and the database/auth snapshot is consistent.
+- Never use `docker compose down -v` during a normal upgrade unless the persistent gateway state is intentionally being destroyed.
+- Rebind WhatsApp and rotate external secrets if `/app/data`, an auth directory, backup, or API credential is suspected to be exposed.
 
 ## Transport Boundary
 

@@ -32,7 +32,7 @@ const id = lang === 'id';
   </tbody></table></div>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Activity</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Dashboard menampilkan operator activity log. Backend menyimpan maksimal 300 event di /app/data/activity-log.json dan mereduksi metadata sensitif sebelum persistence.' : 'The dashboard exposes an operator activity log. The backend persists up to 300 events at /app/data/activity-log.json and redacts sensitive metadata before persistence.'}</p>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Dashboard menampilkan operator activity log. Backend menyimpan maksimal 300 event di SQLite /app/data/wago.db dan mereduksi metadata sensitif sebelum persistence.' : 'The dashboard exposes an operator activity log. The backend persists up to 300 events in SQLite at /app/data/wago.db and redacts sensitive metadata before persistence.'}</p>
   <CodeBlock label="cURL" code={`curl "$WAGO_URL/activity?limit=50" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"`} />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Logs</h2>
@@ -56,11 +56,14 @@ const id = lang === 'id';
     <li>{id ? 'Reconnect counters dan timer proses.' : 'Reconnect counters and process timers.'}</li>
   </ul>
   <Callout title={id ? 'Safety state tetap durable' : 'Safety state remains durable'}>
-    {id ? 'Selama /app/data dipertahankan, Wago menyimpan Baileys auth, app settings/API-key hash, recipient allow/opt-out dan riwayat successful outbound, WhatsApp binding, activity log, idempotency keys, account/per-recipient/new-chat rate windows, known-recipient classification, outbound pause, dan reach-out cooldown.' : 'As long as /app/data is preserved, Wago retains Baileys auth, app settings/API-key hash, recipient allow/opt-out and successful-outbound history, WhatsApp binding, activity log, idempotency keys, account/per-recipient/new-chat rate windows, known-recipient classification, outbound pause, and reach-out cooldowns.'}
+    {id ? 'Selama /app/data dipertahankan, wago.db menyimpan app settings/API-key hash, recipient allow/opt-out dan riwayat successful outbound, WhatsApp binding, activity log, idempotency keys, account/per-recipient/new-chat rate windows, known-recipient classification, outbound pause, dan reach-out cooldown. Baileys auth tetap berada di /app/data/auth.' : 'As long as /app/data is preserved, wago.db retains app settings/API-key hash, recipient allow/opt-out and successful-outbound history, WhatsApp binding, activity log, idempotency keys, account/per-recipient/new-chat rate windows, known-recipient classification, outbound pause, and reach-out cooldowns. Baileys auth remains under /app/data/auth.'}
   </Callout>
 
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade dari persistence JSON lama' : 'Upgrade from legacy JSON persistence'}</h2>
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Pada startup pertama versi SQLite, Wago mengimpor state JSON lama ke wago.db dalam satu transaksi lalu merekam migration marker. File JSON lama tidak dihapus otomatis dan tidak dibaca lagi setelah marker tersedia.' : 'On the first SQLite-backed startup, Wago imports the legacy JSON state into wago.db in one transaction and records a migration marker. Legacy JSON files are not deleted automatically and are not read again after the marker exists.'}</p>
+
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Backup & restore /app/data' : 'Back up & restore /app/data'}</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Backup dilakukan saat service berhenti agar snapshot konsisten. Perintah berikut menemukan named volume yang benar dari mount /app/data, jadi tidak bergantung pada nama project Docker Compose.' : 'Stop the service while creating a backup so the snapshot is consistent. The commands below discover the actual named volume from the /app/data mount, so they do not depend on the Docker Compose project name.'}</p>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Backup dilakukan saat service berhenti agar SQLite checkpoint dan snapshot auth konsisten. Perintah berikut menemukan named volume yang benar dari mount /app/data, jadi tidak bergantung pada nama project Docker Compose.' : 'Stop the service while creating a backup so the SQLite checkpoint and auth snapshot are consistent. The commands below discover the actual named volume from the /app/data mount, so they do not depend on the Docker Compose project name.'}</p>
   <CodeBlock label={id ? 'Backup' : 'Backup'} code={`docker compose stop wago
 VOLUME=$(docker inspect "$(docker compose ps -aq wago)" --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Name}}{{end}}{{end}}')
 mkdir -p backups
@@ -79,7 +82,7 @@ docker run --rm \\
   alpine:3.22 sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf {} + && tar -C /data -xzf /backup/wago-data.tgz'
 docker compose start wago`} />
   <Callout title={id ? 'Backup adalah credential sensitif' : 'Backups contain sensitive credentials'} tone="warning">
-    {id ? 'Arsip /app/data berisi credential sesi WhatsApp dan state keamanan gateway. Simpan terenkripsi/berpermission ketat, jangan upload ke repository, artifact publik, atau tiket support.' : 'The /app/data archive contains WhatsApp session credentials and gateway security state. Store it encrypted or with strict permissions; never upload it to the repository, public artifacts, or support tickets.'}
+    {id ? 'Arsip /app/data berisi wago.db, credential sesi WhatsApp, dan state keamanan gateway. Simpan terenkripsi/berpermission ketat, jangan upload ke repository, artifact publik, atau tiket support.' : 'The /app/data archive contains wago.db, WhatsApp session credentials, and gateway security state. Store it encrypted or with strict permissions; never upload it to the repository, public artifacts, or support tickets.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">Troubleshooting</h2>

@@ -28,8 +28,9 @@ node "Wago container" as Container {
     rectangle "Baileys client\nconnection · QR · reconnect\nrecipient resolution · send/status" as Baileys
   }
 
-  database "Persistent /app/data\nauth/\napp-settings.json\nrecipients.json\nwhatsapp-binding.json\nactivity-log.json" as Persistent
-  collections "Transient process memory\nrate-limit windows\nidempotency keys\nknown recipients\nmessage status/recent-message cache\naccount-health cache" as Memory
+  database "SQLite durable state\n/app/data/wago.db\nsettings · binding · recipients\nindexed outbound safety · activity" as Database
+  database "Baileys auth files\n/app/data/auth/" as AuthFiles
+  collections "Transient process memory\nQR / connection / reconnect\naccount-health cache\nmessage status / recent-message cache" as Memory
 }
 
 Operator --> Frontend : HTTPS
@@ -37,15 +38,21 @@ Frontend --> Http : relative fetch\nBearer + credentials: include
 ApiClient --> Http : HTTPS + Bearer
 Http --> Auth
 Auth --> Routes
-Routes --> Persistent : app / recipient / activity state
+Routes --> Database : application durable state
 Routes --> Baileys : status · QR · pair · rebind
 Routes --> Policy : outbound send
-Policy --> Persistent : recipient consent state
-Policy --> Memory : counters / idempotency
+Policy --> Database : indexed safety queries\ntransactional accepted-send writes
 Policy --> Baileys : account-health query
-Baileys --> Persistent : multi-file auth + binding
-Baileys --> Memory : connection/message caches
+Baileys --> AuthFiles : multi-file auth
+Baileys --> Database : account binding / recipient history
+Baileys --> Memory : connection / health / message caches
 Baileys <--> WhatsApp : WhatsApp Web protocol
+
+note bottom of Database
+WAL mode with schema migrations.
+Idempotency, outbound events, cooldowns, and pause state use normalized tables.
+Legacy JSON state is imported once on upgrade.
+end note
 
 note bottom of Container
 One process and one WhatsApp account per instance.

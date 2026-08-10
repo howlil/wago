@@ -42,21 +42,23 @@ const id = lang === 'id';
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Persistence</h2>
   <div class="border border-[#262626] rounded-lg divide-y divide-[#262626] text-sm mb-8">
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/wago.db</code><p class="text-[#71717a] mt-1">{id ? 'SQLite application state: App ID/API-key hash, binding, recipient policy, outbound safety, migration metadata, dan operator activity.' : 'SQLite application state: App ID/API-key hash, binding, recipient policy, outbound safety, migration metadata, and operator activity.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/wago.db-wal</code> / <code class="text-[#fafafa]">wago.db-shm</code><p class="text-[#71717a] mt-1">{id ? 'File runtime SQLite saat WAL mode aktif. Jangan dipisahkan dari database ketika mengambil snapshot live.' : 'SQLite runtime files while WAL mode is active. Do not separate them from the database when taking a live snapshot.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/auth/</code><p class="text-[#71717a] mt-1">{id ? 'Baileys multi-file credential/session state. Perlakukan seperti private key.' : 'Baileys multi-file credential/session state. Treat it like a private key.'}</p></div>
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'Generated app ID dan hash API key untuk first-run generated credential.' : 'Generated app ID and API-key hash for a first-run generated credential.'}</p></div>
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/recipients.json</code><p class="text-[#71717a] mt-1">{id ? 'Allowlist/opt-out recipient.' : 'Recipient allowlist/opt-out records.'}</p></div>
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/whatsapp-binding.json</code><p class="text-[#71717a] mt-1">{id ? 'Akun yang sedang terikat ke instance beserta waktu binding.' : 'The account currently bound to the instance and its binding timestamp.'}</p></div>
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/activity-log.json</code><p class="text-[#71717a] mt-1">{id ? 'Operator activity log persisten, maksimal 300 event.' : 'Persistent operator activity log, capped at 300 events.'}</p></div>
   </div>
 
-  <Callout title={id ? 'Yang tidak persisten' : 'What is not persistent'} tone="warning">
-    {id ? 'Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, dan message-status cache reset ketika proses restart.' : 'Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, and the message-status cache reset when the process restarts.'}
+  <Callout title={id ? 'Yang tetap transient' : 'What remains transient'} tone="warning">
+    {id ? 'Current QR/connection/reconnect state, account-health cache, recent-message content, dan message-status cache dibangun ulang setelah proses restart. Outbound safety state tidak lagi reset karena disimpan di SQLite.' : 'Current QR/connection/reconnect state, the account-health cache, recent-message content, and message-status cache are rebuilt after restart. Outbound safety state no longer resets because it is stored in SQLite.'}
   </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Backup</h2>
-  <CodeBlock label="shell" code={`docker run --rm \\\n  -v wago_data:/data \\\n  -v "$PWD:/backup" \\\n  alpine \\\n  tar czf /backup/wago_data-backup.tgz -C /data .`} />
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade dari JSON store lama' : 'Upgrade from the legacy JSON store'}</h2>
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Pada startup pertama setelah upgrade, Wago mengimpor app settings, WhatsApp binding, recipients, outbound policy, dan activity log lama ke wago.db dalam satu transaksi. Import ditandai di database sehingga tidak dijalankan ulang. File JSON lama tidak dihapus otomatis agar tetap tersedia sebagai recovery artifact.' : 'On the first startup after upgrading, Wago imports legacy app settings, WhatsApp binding, recipients, outbound policy, and activity log into wago.db in one transaction. The database records an import marker so the migration is not repeated. Legacy JSON files are not deleted automatically and remain available as recovery artifacts.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Backup</h2>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Untuk snapshot filesystem paling sederhana, hentikan service agar SQLite checkpoint selesai sebelum volume diarsipkan.' : 'For the simplest filesystem snapshot, stop the service so SQLite can checkpoint before archiving the volume.'}</p>
+  <CodeBlock label="shell" code={`docker compose stop wago\nVOLUME=$(docker inspect "$(docker compose ps -aq wago)" --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Name}}{{end}}{{end}}')\nmkdir -p backups\ndocker run --rm \\\n  -v "$VOLUME:/data:ro" \\\n  -v "$PWD/backups:/backup" \\\n  alpine:3.22 tar -C /data -czf /backup/wago-data.tgz .\nchmod 600 backups/wago-data.tgz\ndocker compose start wago`} />
   <Callout title={id ? 'Jangan hapus volume saat upgrade' : 'Do not delete the volume during upgrades'} tone="danger">
-    {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan pairing state, gateway settings, binding, recipient records, dan activity log.' : 'docker compose down -v removes the named volume and can delete pairing state, gateway settings, binding, recipient records, and the activity log.'}
+    {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan database, pairing state, gateway settings, recipient records, outbound safety state, dan activity log.' : 'docker compose down -v removes the named volume and can delete the database, pairing state, gateway settings, recipient records, outbound safety state, and activity log.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade' : 'Upgrade'}</h2>

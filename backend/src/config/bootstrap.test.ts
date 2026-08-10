@@ -1,21 +1,14 @@
-import { rmSync } from "node:fs";
-import { resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { bootstrapApiKey, config, hashApiKey } from "./index.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { bootstrapApiKey, config, hashApiKey, resetPersistedSettingsForTest } from "./index.js";
 
-const settingsFile = resolve(config.dataDirectory, "app-settings.json");
 const candidate = `wa_${"b".repeat(64)}`;
 
 beforeEach(() => {
-  rmSync(settingsFile, { force: true });
+  resetPersistedSettingsForTest();
   config.allowWebBootstrap = true;
   config.apiKey = null;
   config.apiKeyHash = null;
   config.apiKeySource = "unset";
-});
-
-afterEach(() => {
-  rmSync(settingsFile, { force: true });
 });
 
 describe("bootstrap API key", () => {

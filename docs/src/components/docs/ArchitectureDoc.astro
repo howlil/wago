@@ -14,8 +14,8 @@ const id = lang === 'id';
     eyebrow="Internals"
     title={id ? 'Arsitektur aplikasi' : 'Application architecture'}
     description={id
-      ? 'Wago sengaja memakai satu proses Node.js untuk API, dashboard React statis, policy outbound, activity log, dan satu koneksi Baileys.'
-      : 'Wago deliberately uses one Node.js process for the API, static React dashboard, outbound policy, activity log, and one Baileys connection.'}
+      ? 'Wago memakai satu proses Node.js untuk API, dashboard React statis, policy outbound, SQLite durable state, activity log, dan satu koneksi Baileys.'
+      : 'Wago uses one Node.js process for the API, static React dashboard, outbound policy, SQLite durable state, activity log, and one Baileys connection.'}
   />
 
   <PlantUmlDiagram
@@ -28,12 +28,13 @@ const id = lang === 'id';
   <div class="overflow-x-auto mb-9">
     <table class="w-full text-sm">
       <tbody class="divide-y divide-[#1a1a1a]">
-        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">config/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Environment, app ID, API-key hash persisten, dan validasi production.' : 'Environment parsing, persistent app ID/API-key hash, and production validation.'}</td></tr>
+        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">config/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Environment, runtime paths, App ID, API-key hash, dan validasi production.' : 'Environment parsing, runtime paths, App ID, API-key hash, and production validation.'}</td></tr>
+        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">infrastructure/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Koneksi SQLite, schema migration, transaksi, import state JSON lama, logging, dan lifecycle persistence.' : 'SQLite connection, schema migrations, transactions, legacy JSON import, logging, and persistence lifecycle.'}</td></tr>
         <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">middleware/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Auth Bearer/cookie, request logging, dan route-level rate limiting.' : 'Bearer/cookie authentication, request logging, and route-level rate limiting.'}</td></tr>
         <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">routes/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Kontrak HTTP untuk app, activity, recipients, WhatsApp, dan messages.' : 'HTTP contracts for app, activity, recipients, WhatsApp, and messages.'}</td></tr>
-        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">policy/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Consent, opt-out, idempotency, account/recipient/new-chat limits, dan health checks.' : 'Consent, opt-out, idempotency, account/recipient/new-chat limits, and account-health checks.'}</td></tr>
-        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">recipients/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Recipient policy records berbasis file.' : 'File-backed recipient policy records.'}</td></tr>
-        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">activity/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Operator activity log persisten, dibatasi 300 event, dengan metadata yang direduksi sebelum ditulis.' : 'Persistent operator activity log capped at 300 events with metadata redaction before persistence.'}</td></tr>
+        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">policy/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Consent, opt-out, idempotency, account/recipient/new-chat limits, health checks, dan query safety state langsung ke tabel SQLite terindeks.' : 'Consent, opt-out, idempotency, account/recipient/new-chat limits, account-health checks, and direct safety-state queries against indexed SQLite tables.'}</td></tr>
+        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">recipients/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Repository recipient SQLite untuk allow/opt-out, resolved JID, dan successful-outbound history.' : 'SQLite recipient repository for allow/opt-out, resolved JID, and successful-outbound history.'}</td></tr>
+        <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">activity/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Operator activity log di SQLite, dibatasi 300 event, dengan metadata yang direduksi sebelum persistence.' : 'SQLite-backed operator activity log capped at 300 events with metadata redaction before persistence.'}</td></tr>
         <tr><td class="py-3 pr-5 text-[#fafafa] font-medium">whatsapp/</td><td class="py-3 text-[#a1a1aa]">{id ? 'Lifecycle socket, QR, reconnect, binding, account health, recipient resolution, dan message status.' : 'Socket lifecycle, QR, reconnect, binding, account health, recipient resolution, and message status.'}</td></tr>
       </tbody>
     </table>
@@ -48,7 +49,7 @@ const id = lang === 'id';
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-9">
     <li>{id ? 'Polling adaptif: 5 detik saat connecting/QR, 15 detik saat disconnected, 30 detik saat connected, dan tidak melakukan request ketika tab tersembunyi.' : 'Adaptive polling: 5 seconds while connecting/QR, 15 seconds while disconnected, 30 seconds while connected, with backend requests paused while the tab is hidden.'}</li>
     <li>{id ? 'Pair WhatsApp dapat melakukan first-run credential bootstrap otomatis sebelum memulai QR pairing.' : 'Pair WhatsApp can perform first-run credential bootstrap automatically before starting QR pairing.'}</li>
-    <li>{id ? 'Dashboard sekarang mencakup recipient access, manual send, message status, account health, dan activity log.' : 'The dashboard now includes recipient access, manual sending, message status, account health, and the activity log.'}</li>
+    <li>{id ? 'Dashboard mencakup recipient access, manual send, message status, account health, dan activity log.' : 'The dashboard includes recipient access, manual sending, message status, account health, and the activity log.'}</li>
   </ul>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Flow bootstrap dan pairing' : 'Bootstrap and pairing flow'}</h2>
@@ -70,28 +71,36 @@ const id = lang === 'id';
     <div class="border border-[#262626] rounded-lg p-5">
       <h3 class="font-semibold text-sm text-[#fafafa] mb-2">Persistent</h3>
       <ul class="text-sm text-[#71717a] space-y-1.5">
-        <li><code>/app/data/auth/</code></li>
-        <li><code>/app/data/app-settings.json</code></li>
-        <li><code>/app/data/recipients.json</code></li>
-        <li><code>/app/data/whatsapp-binding.json</code></li>
-        <li><code>/app/data/activity-log.json</code></li>
+        <li><code>/app/data/wago.db</code> — {id ? 'settings, binding, recipients, outbound safety, activity' : 'settings, binding, recipients, outbound safety, activity'}</li>
+        <li><code>/app/data/auth/</code> — {id ? 'credential/session Baileys' : 'Baileys credentials/session'}</li>
       </ul>
     </div>
     <div class="border border-[#262626] rounded-lg p-5">
       <h3 class="font-semibold text-sm text-[#fafafa] mb-2">Transient</h3>
       <ul class="text-sm text-[#71717a] space-y-1.5">
-        <li>{id ? 'idempotency keys (1 jam)' : 'idempotency keys (1 hour)'}</li>
-        <li>{id ? 'account/recipient/new-chat windows' : 'account/recipient/new-chat windows'}</li>
-        <li>{id ? 'known-recipient memory' : 'known-recipient memory'}</li>
+        <li>{id ? 'QR dan connection snapshot' : 'QR and connection snapshot'}</li>
+        <li>{id ? 'reconnect timer/counter' : 'reconnect timer/counter'}</li>
+        <li>{id ? 'account-health cache' : 'account-health cache'}</li>
         <li>{id ? 'message status/recent-message cache' : 'message status/recent-message cache'}</li>
-        <li>{id ? 'account-health cache dan reconnect state' : 'account-health cache and reconnect state'}</li>
       </ul>
     </div>
   </div>
 
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">SQLite</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-5">
+    {id
+      ? 'Wago menggunakan node:sqlite bawaan Node.js tanpa ORM atau service database tambahan. Database memakai WAL mode, synchronous=NORMAL, busy timeout 5 detik, prepared statements, migration table, dan indeks untuk window outbound. Idempotency, accepted outbound event, reach-out cooldown, pause state, recipient history, dan activity disimpan sebagai row terstruktur—bukan satu blob policy yang ditulis ulang setiap send.'
+      : 'Wago uses Node.js built-in node:sqlite without an ORM or separate database service. The database uses WAL mode, synchronous=NORMAL, a 5-second busy timeout, prepared statements, a migration table, and indexes for outbound windows. Idempotency keys, accepted outbound events, reach-out cooldowns, pause state, recipient history, and activity are stored as structured rows rather than one policy blob rewritten on every send.'}
+  </p>
+  <Callout title={id ? 'Accepted outbound memakai satu transaksi' : 'Accepted outbound uses one transaction'}>
+    {id
+      ? 'Setelah send diterima Baileys, Wago menambahkan outbound event/idempotency dan memperbarui lastSuccessfulOutboundAt recipient dalam satu transaksi SQLite. Jika salah satu write gagal, seluruh transaksi database di-rollback.'
+      : 'After Baileys accepts a send, Wago inserts the outbound event/idempotency state and updates the recipient lastSuccessfulOutboundAt value in one SQLite transaction. If any database write fails, the full database transaction is rolled back.'}
+  </Callout>
+
   <Callout title={id ? 'Skalabilitas sengaja dibatasi' : 'Scaling is intentionally constrained'} tone="warning">
     {id
-      ? 'Jangan menjalankan beberapa replica menggunakan /app/data yang sama. Arsitektur ini tidak dirancang untuk horizontal scaling, distributed rate limits, atau multi-session.'
-      : 'Do not run multiple replicas against the same /app/data volume. This architecture is not designed for horizontal scaling, distributed rate limits, or multiple sessions.'}
+      ? 'Jangan menjalankan beberapa replica menggunakan /app/data yang sama. Arsitektur ini tetap single-instance dan tidak dirancang untuk horizontal scaling, distributed rate limits, atau multi-session.'
+      : 'Do not run multiple replicas against the same /app/data volume. The architecture remains single-instance and is not designed for horizontal scaling, distributed rate limits, or multiple sessions.'}
   </Callout>
 </DocsLayout>

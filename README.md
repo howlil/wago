@@ -7,7 +7,7 @@
 
 A lightweight, self-hosted, single-account WhatsApp gateway with a protected HTTP API and web control dashboard.
 
-Wago is built with **Node.js**, **TypeScript**, **Express**, **React**, and **Baileys**. The production image runs one Node.js process that serves both the API and compiled React dashboard while maintaining one WhatsApp session.
+Wago is built with **Node.js**, **TypeScript**, **Express**, **React**, **SQLite**, and **Baileys**. The production image runs one Node.js process that serves both the API and compiled React dashboard while maintaining one WhatsApp session.
 
 > [!IMPORTANT]
 > Wago uses Baileys, an unofficial WhatsApp Web client. It is not affiliated with, endorsed by, or supported by WhatsApp or Meta. Wago does not guarantee account safety or ban prevention.
@@ -30,7 +30,8 @@ It is **not** a bulk sender, campaign platform, multi-tenant SaaS, scraping tool
 - API-key authentication through Bearer token or bootstrap HttpOnly cookie
 - Idempotency and account/recipient/new-chat outbound limits
 - WhatsApp account-health and reach-out restriction checks
-- Persistent Baileys auth, account binding, recipient state, and activity log
+- SQLite-backed gateway settings, binding, recipient state, outbound safety, and activity log
+- Persistent Baileys auth under the same `/app/data` volume
 - Structured logging with sensitive-field redaction
 - Health and readiness endpoints
 - Hardened single-container Docker Compose deployment
@@ -59,9 +60,11 @@ Express middleware -> auth/rate limits -> route layer
                                                     |
                                                     +-> recipient + account-health checks
 
-Persistent: /app/data
-Transient: process-local policy/message/cache state
+Persistent: /app/data/wago.db + /app/data/auth/
+Transient: QR/connection/reconnect + health/message caches
 ```
+
+Application durable state uses the Node.js built-in SQLite driver. The database runs in WAL mode with schema migrations and a busy timeout. Accepted outbound safety state and recipient successful-send metadata are committed transactionally.
 
 ## Distribution Boundary
 
@@ -208,21 +211,24 @@ Before `Baileys.sendMessage()` runs, Wago evaluates:
 
 `POST /messages/send` also has a 30-request/minute HTTP route limiter. `POST /whatsapp/pair` and `POST /whatsapp/rebind` are each limited to 5 requests/minute.
 
-Policy counters and idempotency state are intentionally process-local and reset on restart.
+Outbound safety state is durable. Idempotency TTLs, account/per-recipient/new-chat windows, known-recipient classification, reach-out cooldowns, and outbound pause state survive normal process/container restarts.
 
 ## Persistence
 
 The `wago_data` volume stores:
 
 ```text
-/app/data/auth/                    Baileys multi-file authentication state
-/app/data/app-settings.json        App ID and generated API-key hash
-/app/data/recipients.json          Recipient allowlist and opt-out records
-/app/data/whatsapp-binding.json    Bound WhatsApp account metadata
-/app/data/activity-log.json        Operator activity log (max 300 events)
+/app/data/wago.db          SQLite application state
+/app/data/wago.db-wal      SQLite WAL file while the database is active
+/app/data/wago.db-shm      SQLite shared-memory file while WAL is active
+/app/data/auth/            Baileys multi-file authentication state
 ```
 
-Transient state includes message-status/recent-message caches, idempotency keys, policy sliding windows, known-recipient memory, account-health cache, and reconnect counters.
+`wago.db` contains gateway settings/API-key hash, WhatsApp binding metadata, recipient allow/opt-out and successful-outbound history, outbound safety state, schema migrations, and the bounded operator activity log.
+
+Transient state is intentionally limited to current QR/connection/reconnect state, account-health cache, recent-message content, and temporary message-status cache. Message bodies are not persisted to SQLite.
+
+When upgrading from the previous JSON-backed persistence format, Wago imports the existing app settings, binding, recipients, outbound policy, and activity log into SQLite once. Existing legacy JSON files are left untouched as a recovery artifact and are ignored after the import marker is recorded.
 
 Never use `docker compose down -v` during a normal upgrade because `-v` removes the persistent volume.
 
@@ -265,7 +271,7 @@ pnpm build:docs
 
 ## Security
 
-Read [SECURITY.md](SECURITY.md) before reporting a vulnerability. Never publish WhatsApp auth files, live QR payloads, API keys, auth cookies, full phone/JID identifiers, message content, or raw unredacted production logs.
+Read [SECURITY.md](SECURITY.md) before reporting a vulnerability. Never publish WhatsApp auth files, `wago.db`/WAL files, live QR payloads, API keys, auth cookies, full phone/JID identifiers, message content, or raw unredacted production logs.
 
 For public deployments, complete first-run setup immediately or pre-provision `API_KEY` before exposing the URL.
 
