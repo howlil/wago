@@ -9,10 +9,7 @@ import {
   recordOutboundRejected,
 } from "../../policy/outbound-policy.js";
 import { toWhatsAppJid } from "../../utils/phone.js";
-import {
-  markReachoutRestricted,
-  refreshAccountHealth,
-} from "../../whatsapp/account-health.js";
+import { markReachoutRestricted, refreshAccountHealth } from "../../whatsapp/account-health.js";
 import { getConnectionStatus, type WhatsAppStatus } from "../../whatsapp/connection-state.js";
 import { rememberPendingMessageStatus } from "../../whatsapp/message-status-store.js";
 import { rememberRecentTextMessage } from "../../whatsapp/recent-message-store.js";
@@ -54,11 +51,7 @@ function normalizeBaileysSendError(error: unknown): unknown {
 
 export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
   return {
-    async sendText(
-      to: string,
-      text: string,
-      options: SendTextMessageOptions = {},
-    ): Promise<SendTextMessageResult> {
+    async sendText(to: string, text: string, options: SendTextMessageOptions = {}): Promise<SendTextMessageResult> {
       const activeSocket = deps.getSocket();
 
       if (!activeSocket || deps.getConnectionStatus() !== "connected") {
@@ -69,11 +62,9 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
       try {
         jid = toWhatsAppJid(to);
       } catch (error) {
-        throw new ApplicationError(
-          "INVALID_PHONE",
-          error instanceof Error ? error.message : "Invalid phone number",
-          { cause: error },
-        );
+        throw new ApplicationError("INVALID_PHONE", error instanceof Error ? error.message : "Invalid phone number", {
+          cause: error,
+        });
       }
 
       const generation = getSocketGeneration();
