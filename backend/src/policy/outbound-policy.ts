@@ -1,5 +1,6 @@
+import { withTransaction } from "../infrastructure/database.js";
 import { logger } from "../infrastructure/logger.js";
-import { getRecipientByJid, rememberSuccessfulOutbound } from "../recipients/store.js";
+import { getRecipientByJid, rememberSuccessfulOutboundSync } from "../recipients/store.js";
 import {
   type AccountHealthFetcher,
   checkAccountHealth,
@@ -10,6 +11,7 @@ import {
   forgetOutboundPolicyMemoryForTest,
   getOutboundPolicyState,
   mutateOutboundPolicyState,
+  reloadOutboundPolicyState,
   type OutboundPolicyState,
   resetOutboundPolicyStoreForTest,
 } from "./outbound-policy-store.js";
@@ -265,25 +267,28 @@ export async function recordOutboundAccepted(
 ): Promise<void> {
   const now = Date.now();
   const wasKnown = Boolean(getOutboundPolicyState().knownRecipients[input.jid]);
-  const { persisted } = mutateOutboundPolicyState((state) => {
-    if (input.idempotencyKey) {
-      state.seenIdempotencyKeys[input.idempotencyKey] = now + IDEMPOTENCY_TTL_MS;
-    }
-
-    state.accountSendTimestamps.push(now);
-    const recipientTimestamps = state.recipientSendTimestamps[input.jid] ?? [];
-    recipientTimestamps.push(now);
-    state.recipientSendTimestamps[input.jid] = recipientTimestamps;
-
-    if (!wasKnown) {
-      state.newChatTimestamps.push(now);
-    }
-    state.knownRecipients[input.jid] = now;
-  });
 
   try {
-    await Promise.all([persisted, rememberSuccessfulOutbound(input.jid, resolvedJid)]);
+    withTransaction(() => {
+      mutateOutboundPolicyState((state) => {
+        if (input.idempotencyKey) {
+          state.seenIdempotencyKeys[input.idempotencyKey] = now + IDEMPOTENCY_TTL_MS;
+        }
+
+        state.accountSendTimestamps.push(now);
+        const recipientTimestamps = state.recipientSendTimestamps[input.jid] ?? [];
+        recipientTimestamps.push(now);
+        state.recipientSendTimestamps[input.jid] = recipientTimestamps;
+
+        if (!wasKnown) {
+          state.newChatTimestamps.push(now);
+        }
+        state.knownRecipients[input.jid] = now;
+      });
+      rememberSuccessfulOutboundSync(input.jid, resolvedJid);
+    });
   } catch (error) {
+    reloadOutboundPolicyState();
     logger.error(
       { event: "outbound.persistence_failed", error },
       "Outbound message was sent but safety state could not be fully persisted",
