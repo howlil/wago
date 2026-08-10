@@ -82,9 +82,13 @@ export async function listRecipients(): Promise<RecipientRecord[]> {
   return (selectRecipients.all() as RecipientRow[]).map(mapRecipient);
 }
 
-export async function getRecipientByJid(jid: string): Promise<RecipientRecord | null> {
+export function getRecipientByJidSync(jid: string): RecipientRecord | null {
   const row = getRecipientRow(jid);
   return row ? mapRecipient(row) : null;
+}
+
+export async function getRecipientByJid(jid: string): Promise<RecipientRecord | null> {
+  return getRecipientByJidSync(jid);
 }
 
 export async function allowRecipient(phone: string, label?: string): Promise<RecipientRecord> {
