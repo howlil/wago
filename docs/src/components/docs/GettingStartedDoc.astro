@@ -60,5 +60,5 @@ const id = lang === 'id';
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">7. {id ? 'Cek status dan activity' : 'Check status and activity'}</h2>
   <CodeBlock label="cURL" code={`curl "$WAGO_URL/messages/<message-id>/status" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"\n\ncurl "$WAGO_URL/activity?limit=20" \\\n  -H "Authorization: Bearer $WAGO_API_KEY"`} />
-  <p class="text-sm text-[#71717a]">{id ? 'Message status bersifat transient dan hilang saat proses restart. Activity log operator disimpan secara persisten di /app/data/activity-log.json dengan batas 300 event.' : 'Message status is transient and is lost when the process restarts. The operator activity log is persisted at /app/data/activity-log.json and capped at 300 events.'}</p>
+  <p class="text-sm text-[#71717a]">{id ? 'Message status bersifat transient dan hilang saat proses restart. Operator activity disimpan di SQLite /app/data/wago.db dan dibatasi maksimal 300 event.' : 'Message status is transient and is lost when the process restarts. Operator activity is stored in SQLite at /app/data/wago.db and capped at 300 events.'}</p>
 </DocsLayout>
