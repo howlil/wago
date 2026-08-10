@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { listAudit } from "./query.js";
 import { recordActivity, resetActivityLogForTest } from "./store.js";
 
 describe("audit query", () => {
   afterEach(async () => {
+    vi.useRealTimers();
     await resetActivityLogForTest();
   });
 
@@ -36,6 +37,9 @@ describe("audit query", () => {
   });
 
   it("paginates newest-first without duplicate rows when timestamps are equal", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-10T12:00:00.000Z"));
+
     for (const code of ["one", "two", "three", "four"]) {
       await recordActivity({
         level: "info",
@@ -48,6 +52,7 @@ describe("audit query", () => {
 
     const first = await listAudit({ limit: 2 });
     expect(first.events).toHaveLength(2);
+    expect(first.events.every((event) => event.timestamp === "2026-08-10T12:00:00.000Z")).toBe(true);
     expect(first.nextCursor).toBeDefined();
 
     const second = await listAudit({ limit: 2, before: first.nextCursor });
