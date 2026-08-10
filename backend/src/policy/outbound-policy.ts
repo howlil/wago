@@ -11,8 +11,8 @@ import {
   forgetOutboundPolicyMemoryForTest,
   getOutboundPolicyState,
   mutateOutboundPolicyState,
-  reloadOutboundPolicyState,
   type OutboundPolicyState,
+  reloadOutboundPolicyState,
   resetOutboundPolicyStoreForTest,
 } from "./outbound-policy-store.js";
 
