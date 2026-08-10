@@ -1,42 +1,38 @@
 import { randomUUID } from "node:crypto";
 import { getDatabase, withTransaction } from "../infrastructure/database.js";
 import { redactLogFields } from "../infrastructure/logger.js";
+import type {
+  ActivityCategory,
+  ActivityLevel,
+  AuditEvent,
+  AuditInput,
+  AuditMetadata,
+  AuditSource,
+} from "./audit-event.js";
 
-export type ActivityLevel = "info" | "success" | "warning" | "error";
-export type ActivityCategory = "system" | "security" | "connection" | "recipient" | "messaging";
-
-export type ActivityMetadata = Record<string, string | number | boolean | null | undefined>;
-
-export type ActivityEvent = {
-  id: string;
-  timestamp: string;
-  level: ActivityLevel;
-  category: ActivityCategory;
-  code: string;
-  title: string;
-  description: string;
-  metadata?: ActivityMetadata;
-};
-
-export type ActivityInput = Omit<ActivityEvent, "id" | "timestamp">;
+export type { ActivityCategory, ActivityLevel, AuditSource } from "./audit-event.js";
+export type ActivityMetadata = AuditMetadata;
+export type ActivityEvent = AuditEvent;
+export type ActivityInput = AuditInput;
 
 type ActivityRow = {
   id: string;
   timestamp: string;
   level: ActivityLevel;
   category: ActivityCategory;
+  source: AuditSource;
   code: string;
   title: string;
   description: string;
   metadata_json: string | null;
 };
 
-const MAX_ACTIVITY_EVENTS = 300;
+const MAX_ACTIVITY_EVENTS = 2_000;
 const database = getDatabase();
 const insertActivity = database.prepare(`
   INSERT INTO activity_events (
-    id, timestamp, level, category, code, title, description, metadata_json
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    id, timestamp, level, category, source, code, title, description, metadata_json
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const pruneActivity = database.prepare(`
   DELETE FROM activity_events
@@ -47,31 +43,32 @@ const pruneActivity = database.prepare(`
   )
 `);
 const selectActivity = database.prepare(`
-  SELECT id, timestamp, level, category, code, title, description, metadata_json
+  SELECT id, timestamp, level, category, source, code, title, description, metadata_json
   FROM activity_events
   ORDER BY timestamp DESC, rowid DESC
   LIMIT ?
 `);
 
-function parseMetadata(raw: string | null): ActivityMetadata | undefined {
+function parseMetadata(raw: string | null): AuditMetadata | undefined {
   if (!raw) {
     return undefined;
   }
 
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as ActivityMetadata) : undefined;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as AuditMetadata) : undefined;
   } catch {
     return undefined;
   }
 }
 
-function mapActivity(row: ActivityRow): ActivityEvent {
+function mapActivity(row: ActivityRow): AuditEvent {
   return {
     id: row.id,
     timestamp: row.timestamp,
     level: row.level,
     category: row.category,
+    source: row.source,
     code: row.code,
     title: row.title,
     description: row.description,
@@ -79,9 +76,10 @@ function mapActivity(row: ActivityRow): ActivityEvent {
   };
 }
 
-export async function recordActivity(input: ActivityInput): Promise<ActivityEvent> {
-  const event: ActivityEvent = {
+export async function recordActivity(input: AuditInput): Promise<AuditEvent> {
+  const event: AuditEvent = {
     ...input,
+    source: input.source ?? "wago",
     id: randomUUID(),
     timestamp: new Date().toISOString(),
     metadata: input.metadata ? redactLogFields(input.metadata) : undefined,
@@ -93,6 +91,7 @@ export async function recordActivity(input: ActivityInput): Promise<ActivityEven
       event.timestamp,
       event.level,
       event.category,
+      event.source,
       event.code,
       event.title,
       event.description,
@@ -108,7 +107,7 @@ export async function flushActivityStore(): Promise<void> {
   // SQLite commits writes synchronously on the shared connection.
 }
 
-export async function listActivity(limit = 100): Promise<ActivityEvent[]> {
+export async function listActivity(limit = 100): Promise<AuditEvent[]> {
   const safeLimit = Math.min(Math.max(Math.trunc(limit) || 100, 1), MAX_ACTIVITY_EVENTS);
   return (selectActivity.all(safeLimit) as ActivityRow[]).map(mapActivity);
 }
