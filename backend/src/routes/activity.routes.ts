@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { listAudit } from "../activity/query.js";
 import type { ActivityCategory, ActivityLevel, AuditSource } from "../activity/store.js";
 import { requireApiKey } from "../middleware/auth.js";
@@ -9,7 +9,7 @@ const AUDIT_SOURCES = new Set<AuditSource>(["wago", "baileys"]);
 const AUDIT_CATEGORIES = new Set<ActivityCategory>(["system", "security", "connection", "recipient", "messaging"]);
 const AUDIT_LEVELS = new Set<ActivityLevel>(["info", "success", "warning", "error"]);
 
-function invalidFilterResponse(res: Parameters<typeof activityRouter.get>[1] extends never ? never : any) {
+function invalidFilterResponse(res: Response) {
   return res.status(400).json({
     success: false,
     error: "INVALID_AUDIT_FILTER",
