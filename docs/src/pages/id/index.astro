@@ -1,6 +1,6 @@
 ---
 import MainLayout from '../../layouts/MainLayout.astro';
-import { CodePlayground } from '../../components/CodePlayground';
+import { ApiExplorer } from '../../components/api/ApiExplorer';
 import { useTranslations } from '../../utils/i18n';
 
 const t = useTranslations('id');
@@ -34,7 +34,7 @@ const t = useTranslations('id');
       </div>
 
       <div class="mt-16">
-        <CodePlayground lang="id" client:load />
+        <ApiExplorer lang="id" client:load />
       </div>
     </div>
   </section>

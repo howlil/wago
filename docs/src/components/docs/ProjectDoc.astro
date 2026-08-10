@@ -10,7 +10,7 @@ const id = lang === 'id';
 const repo = 'https://github.com/howlil/wago';
 ---
 
-<DocsLayout title={id ? 'Project & Community' : 'Project & Community'}>
+<DocsLayout title="Project & Community">
   <PageHeader
     eyebrow="Open Source"
     title={id ? 'Project, security, dan community' : 'Project, security, and community'}
@@ -18,12 +18,12 @@ const repo = 'https://github.com/howlil/wago';
   />
 
   <Callout title={id ? 'Distribution boundary' : 'Distribution boundary'}>
-    {id ? 'Artifact runtime yang didistribusikan adalah core backend + frontend. Site docs/branding ini dipelihara dan di-host terpisah dan tidak dibundel ke image GHCR.' : 'The distributed runtime artifact is the backend + frontend core. This docs/branding site is maintained and hosted separately and is not bundled into the GHCR image.'}
+    {id ? 'Artifact runtime yang didistribusikan adalah backend + frontend core. Public Astro docs di docs/ dibangun terpisah; artefak kerja internal agent berada di .agent/ dan bukan bagian dokumentasi user.' : 'The distributed runtime artifact is the backend + frontend core. Public Astro docs under docs/ are built separately; internal agent work lives under .agent/ and is not user documentation.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-4">{id ? 'Dokumen OSS' : 'OSS documents'}</h2>
   <div class="grid sm:grid-cols-2 gap-4 mb-10">
-    <DocCard href={`${repo}/blob/main/README.md`} title="README" description={id ? 'Landing repository, quick start, arsitektur, feature, dan support boundary.' : 'Repository landing page, quick start, architecture, features, and support boundary.'} />
+    <DocCard href={`${repo}/blob/main/README.md`} title="README" description={id ? 'Landing repository, quick start, arsitektur, integrasi eksternal, dan support boundary.' : 'Repository landing page, quick start, architecture, external integration, and support boundary.'} />
     <DocCard href={`${repo}/blob/main/CONTRIBUTING.md`} title="CONTRIBUTING.md" description={id ? 'Scope kontribusi, local setup, testing, dan PR expectations.' : 'Contribution scope, local setup, testing, and PR expectations.'} />
     <DocCard href={`${repo}/blob/main/SECURITY.md`} title="SECURITY.md" description={id ? 'Supported scope dan private vulnerability reporting.' : 'Supported scope and private vulnerability reporting.'} />
     <DocCard href={`${repo}/blob/main/CODE_OF_CONDUCT.md`} title="CODE_OF_CONDUCT.md" description={id ? 'Standar perilaku community.' : 'Community behavior expectations.'} />
@@ -35,26 +35,27 @@ const repo = 'https://github.com/howlil/wago';
   <div class="grid sm:grid-cols-2 gap-4 mb-10">
     <DocCard href={`${repo}/issues/new/choose`} title={id ? 'Issue templates' : 'Issue templates'} description={id ? 'Form terstruktur untuk bug report dan feature request.' : 'Structured forms for bug reports and feature requests.'} />
     <DocCard href={`${repo}/blob/main/.github/PULL_REQUEST_TEMPLATE.md`} title="Pull request template" description={id ? 'Checklist konsisten untuk perubahan contributor.' : 'A consistent checklist for contributor pull requests.'} />
-    <DocCard href={`${repo}/actions/workflows/ci.yml`} title="CI" description={id ? 'Format/lint, backend/frontend tests, core build, dan Docker core build.' : 'Formatting/lint, backend/frontend tests, core build, and Docker core build.'} />
+    <DocCard href={`${repo}/actions/workflows/ci.yml`} title="Core CI" description={id ? 'Format/lint, backend/frontend tests, core build, dan Docker core build.' : 'Formatting/lint, backend/frontend tests, core build, and Docker core build.'} />
+    <DocCard href={`${repo}/actions/workflows/docs-ci.yml`} title="Docs CI" description={id ? 'Docs helper tests dan Astro static build untuk dokumentasi publik.' : 'Docs helper tests and the Astro static build for public documentation.'} />
     <DocCard href={`${repo}/actions/workflows/codeql.yml`} title="CodeQL" description={id ? 'Static security analysis untuk JavaScript/TypeScript core.' : 'Static security analysis for the JavaScript/TypeScript core.'} />
     <DocCard href={`${repo}/blob/main/.github/dependabot.yml`} title="Dependabot" description={id ? 'Pemeliharaan dependency dan GitHub Actions.' : 'Dependency and GitHub Actions maintenance.'} />
     <DocCard href={`${repo}/actions/workflows/release-container.yml`} title="Container release" description={id ? 'Build backend/frontend multi-architecture, GHCR publish, SBOM, dan provenance.' : 'Multi-architecture backend/frontend build, GHCR publishing, SBOM, and provenance.'} />
   </div>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Nama repository vs image' : 'Repository vs image naming'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Repository canonical saat ini adalah howlil/wago. Container registry tetap memakai ghcr.io/howlil/wago-simple sebagai identifier distribusi yang sudah ada; dokumentasi membedakan keduanya agar link repository tidak stale tanpa memutus nama image deployment.' : 'The canonical repository is now howlil/wago. The container registry still uses ghcr.io/howlil/wago-simple as the existing distribution identifier; the documentation keeps these separate so repository links stay current without changing the deployment image name.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Repository canonical adalah howlil/wago. Container registry tetap memakai ghcr.io/howlil/wago-simple sebagai identifier distribusi yang sudah ada; dokumentasi membedakan keduanya agar link repository tetap current tanpa memutus nama image deployment.' : 'The canonical repository is howlil/wago. The container registry still uses ghcr.io/howlil/wago-simple as the existing distribution identifier; the documentation keeps these separate so repository links remain current without changing the deployment image name.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Scope governance' : 'Scope governance'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Wago mempertahankan scope kecil: satu akun, satu instance, self-hosted, text messaging, recipient allowlist/opt-out, activity log, dan REST API/dashboard sederhana. Fitur yang mengubah produk menjadi bulk sender, campaign tool, multi-tenant platform, scraping tool, atau anti-detection system berada di luar scope.' : 'Wago keeps a narrow scope: one account, one instance, self-hosted, text messaging, recipient allowlist/opt-out, an activity log, and a small REST API/dashboard. Features that turn it into a bulk sender, campaign tool, multi-tenant platform, scraping tool, or anti-detection system are out of scope.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Wago mempertahankan scope kecil: satu akun, satu instance, self-hosted, text messaging, recipient allow/opt-out, outbound safety, structured audit, REST API, dan control dashboard. Fitur yang mengubah produk menjadi bulk sender, campaign tool, multi-tenant platform, scraping tool, atau anti-detection system berada di luar scope.' : 'Wago keeps a narrow scope: one account, one instance, self-hosted, text messaging, recipient allow/opt-out, outbound safety, structured audit, a REST API, and a control dashboard. Features that turn it into a bulk sender, campaign tool, multi-tenant platform, scraping tool, or anti-detection system are out of scope.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Security</h2>
   <Callout title={id ? 'Laporkan vulnerability secara private' : 'Report vulnerabilities privately'} tone="danger">
     {id ? 'Jangan buka public issue untuk credential exposure, auth bypass, request-forgery, atau message-sending abuse path. Gunakan GitHub private security advisory bila tersedia.' : 'Do not open public issues for credential exposure, auth bypass, request-forgery, or message-sending abuse paths. Use GitHub private security advisories when available.'}
   </Callout>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
-    <li>{id ? 'Jangan publikasikan /app/data/auth atau creds.json.' : 'Never publish /app/data/auth or creds.json.'}</li>
+    <li>{id ? 'Jangan publikasikan /app/data/auth, wago.db, WAL/SHM, atau backup volume.' : 'Never publish /app/data/auth, wago.db, WAL/SHM, or volume backups.'}</li>
     <li>{id ? 'Jangan publikasikan live QR payload/screenshot.' : 'Never publish live QR payloads/screenshots.'}</li>
-    <li>{id ? 'Mask API key, auth cookie, full phone/JID, dan message text.' : 'Mask API keys, auth cookies, full phone/JIDs, and message text.'}</li>
+    <li>{id ? 'Mask API key, auth cookie, full phone/JID, message text, dan raw production logs.' : 'Mask API keys, auth cookies, full phone/JIDs, message text, and raw production logs.'}</li>
   </ul>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Release & versioning' : 'Releases & versioning'}</h2>

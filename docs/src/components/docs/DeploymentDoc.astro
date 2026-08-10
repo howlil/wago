@@ -42,13 +42,13 @@ const id = lang === 'id';
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Persistence</h2>
   <div class="border border-[#262626] rounded-lg divide-y divide-[#262626] text-sm mb-8">
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/wago.db</code><p class="text-[#71717a] mt-1">{id ? 'SQLite application state: App ID/API-key hash, binding, recipient policy, outbound safety, migration metadata, dan operator activity.' : 'SQLite application state: App ID/API-key hash, binding, recipient policy, outbound safety, migration metadata, and operator activity.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/wago.db</code><p class="text-[#71717a] mt-1">{id ? 'SQLite application state: App ID/API-key hash, binding, recipient policy, outbound safety, migration metadata, dan structured audit event.' : 'SQLite application state: App ID/API-key hash, binding, recipient policy, outbound safety, migration metadata, and structured audit events.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/wago.db-wal</code> / <code class="text-[#fafafa]">wago.db-shm</code><p class="text-[#71717a] mt-1">{id ? 'File runtime SQLite saat WAL mode aktif. Jangan dipisahkan dari database ketika mengambil snapshot live.' : 'SQLite runtime files while WAL mode is active. Do not separate them from the database when taking a live snapshot.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/auth/</code><p class="text-[#71717a] mt-1">{id ? 'Baileys multi-file credential/session state. Perlakukan seperti private key.' : 'Baileys multi-file credential/session state. Treat it like a private key.'}</p></div>
   </div>
 
   <Callout title={id ? 'Yang tetap transient' : 'What remains transient'} tone="warning">
-    {id ? 'Current QR/connection/reconnect state, account-health cache, recent-message content, dan message-status cache dibangun ulang setelah proses restart. Outbound safety state tidak lagi reset karena disimpan di SQLite.' : 'Current QR/connection/reconnect state, the account-health cache, recent-message content, and message-status cache are rebuilt after restart. Outbound safety state no longer resets because it is stored in SQLite.'}
+    {id ? 'Current QR/connection/reconnect state, account-health cache, recent-message content, dan message-status cache dibangun ulang setelah proses restart. Recipient policy, outbound safety, binding, dan audit state tetap durable di SQLite.' : 'Current QR/connection/reconnect state, the account-health cache, recent-message content, and message-status cache are rebuilt after restart. Recipient policy, outbound safety, binding, and audit state remain durable in SQLite.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade dari JSON store lama' : 'Upgrade from the legacy JSON store'}</h2>
@@ -58,10 +58,10 @@ const id = lang === 'id';
   <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Untuk snapshot filesystem paling sederhana, hentikan service agar SQLite checkpoint selesai sebelum volume diarsipkan.' : 'For the simplest filesystem snapshot, stop the service so SQLite can checkpoint before archiving the volume.'}</p>
   <CodeBlock label="shell" code={`docker compose stop wago\nVOLUME=$(docker inspect "$(docker compose ps -aq wago)" --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Name}}{{end}}{{end}}')\nmkdir -p backups\ndocker run --rm \\\n  -v "$VOLUME:/data:ro" \\\n  -v "$PWD/backups:/backup" \\\n  alpine:3.22 tar -C /data -czf /backup/wago-data.tgz .\nchmod 600 backups/wago-data.tgz\ndocker compose start wago`} />
   <Callout title={id ? 'Jangan hapus volume saat upgrade' : 'Do not delete the volume during upgrades'} tone="danger">
-    {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan database, pairing state, gateway settings, recipient records, outbound safety state, dan activity log.' : 'docker compose down -v removes the named volume and can delete the database, pairing state, gateway settings, recipient records, outbound safety state, and activity log.'}
+    {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan database, pairing state, gateway settings, recipient records, outbound safety state, dan audit log.' : 'docker compose down -v removes the named volume and can delete the database, pairing state, gateway settings, recipient records, outbound safety state, and audit log.'}
   </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade' : 'Upgrade'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Upgrade</h2>
   <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d`} />
   <p class="text-sm text-[#71717a]">{id ? 'Compose default memakai latest. Untuk deployment reproducible, edit image tag di docker-compose.yml ke release atau sha-* yang diinginkan.' : 'Compose defaults to latest. For a reproducible deployment, edit the image tag in docker-compose.yml to the desired release or sha-* tag.'}</p>
 </DocsLayout>

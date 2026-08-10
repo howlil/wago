@@ -11,48 +11,33 @@ const id = lang === 'id';
 const base = id ? '/id' : '/en';
 ---
 
-<DocsLayout
-  title={id ? 'Ringkasan' : 'Overview'}
-  description={id ? 'Peta kemampuan, batasan, arsitektur, dan dokumentasi Wago.' : 'A map of Wago capabilities, boundaries, architecture, and documentation.'}
->
-  <PageHeader
-    eyebrow="Wago"
-    title={id ? 'Gateway WhatsApp self-hosted yang sengaja dibuat sederhana' : 'A deliberately small, self-hosted WhatsApp gateway'}
-    description={id
-      ? 'Wago menghubungkan satu akun WhatsApp melalui Baileys dan menyediakan REST API terautentikasi, dashboard web, state persisten, activity log, serta policy outbound untuk integrasi yang terkontrol.'
-      : 'Wago connects one WhatsApp account through Baileys and exposes an authenticated REST API, web dashboard, persistent state, an activity log, and outbound policy controls for focused integrations.'}
-  />
+<DocsLayout title={id ? 'Ringkasan' : 'Overview'} description={id ? 'Kemampuan, batasan, arsitektur, dan peta dokumentasi Wago.' : 'Wago capabilities, boundaries, architecture, and documentation map.'}>
+  <PageHeader eyebrow="Wago" title={id ? 'Gateway WhatsApp self-hosted untuk integrasi yang terkontrol' : 'A self-hosted WhatsApp gateway for controlled integrations'} description={id ? 'Wago menghubungkan satu akun WhatsApp melalui Baileys dan menyediakan REST API terautentikasi, dashboard React, SQLite durable state, recipient policy, outbound safety, serta structured audit Wago/Baileys.' : 'Wago connects one WhatsApp account through Baileys and provides an authenticated REST API, React dashboard, durable SQLite state, recipient policy, outbound safety, and structured Wago/Baileys audit events.'} />
 
-  <Callout title={id ? 'Batas produk' : 'Product boundary'} tone="warning">
-    {id
-      ? 'Wago bukan bulk sender, campaign platform, multi-tenant SaaS, scraper nomor, atau sistem anti-detection. Satu instance ditujukan untuk satu akun WhatsApp dan satu direktori data.'
-      : 'Wago is not a bulk sender, campaign platform, multi-tenant SaaS, number scraper, or anti-detection system. One instance is designed for one WhatsApp account and one data directory.'}
-  </Callout>
+  <Callout title={id ? 'Batas produk' : 'Product boundary'} tone="warning">{id ? 'Wago bukan bulk sender, campaign platform, multi-tenant SaaS, scraper, atau anti-detection toolkit. Satu instance ditujukan untuk satu akun WhatsApp.' : 'Wago is not a bulk sender, campaign platform, multi-tenant SaaS, scraper, or anti-detection toolkit. One instance is designed for one WhatsApp account.'}</Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">{id ? 'Kemampuan inti' : 'Core capabilities'}</h2>
   <div class="grid sm:grid-cols-2 gap-4 mb-10">
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">REST API</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Bearer/cookie auth, health, bootstrap, pairing, recipient policy, activity, text send, dan retained status.' : 'Bearer/cookie auth, health, bootstrap, pairing, recipient policy, activity, text sending, and retained status.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Dashboard</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Status gateway/WhatsApp, credential bootstrap, QR pairing, rebind, recipient access, manual send, account health, dan activity log.' : 'Gateway/WhatsApp status, credential bootstrap, QR pairing, rebind, recipient access, manual sending, account health, and activity log.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Persistent state</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Auth Baileys, app settings, recipient records, account binding, dan operator activity log disimpan di /app/data.' : 'Baileys auth, app settings, recipient records, account binding, and the operator activity log are stored under /app/data.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Outbound policy</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Allowlist, opt-out, idempotency, account/recipient/new-chat limits, serta pemeriksaan health/reach-out sebelum send.' : 'Allowlist, opt-out, idempotency, account/recipient/new-chat limits, and account-health/reach-out checks before sending.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">REST API</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Health/readiness, bootstrap, pairing/rebind, recipient policy, text send/status, account health, dan audit query.' : 'Health/readiness, bootstrap, pairing/rebind, recipient policy, text send/status, account health, and audit queries.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Control dashboard</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Control workspace untuk pairing/rebind, recipient access, manual send/status, dan account health; dedicated /audit workspace untuk operational events dan filter server-side.' : 'A Control workspace for pairing/rebind, recipient access, manual send/status, and account health; plus a dedicated /audit workspace for operational events and server-side filters.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Durable state</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'SQLite /app/data/wago.db menyimpan gateway settings, binding, recipient policy, outbound safety, migrations, dan bounded audit. Baileys auth berada di /app/data/auth.' : 'SQLite /app/data/wago.db stores gateway settings, binding, recipient policy, outbound safety, migrations, and bounded audit events. Baileys auth lives under /app/data/auth.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Outbound safety</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Explicit allow/opt-out, idempotency, account/recipient/new-chat limits, pause/cooldown state, dan WhatsApp reach-out/new-chat health checks.' : 'Explicit allow/opt-out, idempotency, account/recipient/new-chat limits, pause/cooldown state, and WhatsApp reach-out/new-chat health checks.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Structured audit</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Source wago/baileys, filter category/level/search, cursor pagination, retention 2.000 event, dan sanitizer untuk metadata Baileys.' : 'wago/baileys sources, category/level/search filters, cursor pagination, 2,000-event retention, and Baileys metadata sanitization.'}</p></div>
+    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">API documentation</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Hybrid API Explorer membuat contoh request dan dapat menembak instance Wago milik Anda langsung dari browser tanpa menyimpan secret.' : 'The Hybrid API Explorer generates requests and can call your own Wago instance directly from the browser without persisting secrets.'}</p></div>
   </div>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Model sistem' : 'System model'}</h2>
-  <PlantUmlDiagram
-    file="system-architecture.puml"
-    alt="Wago runtime architecture overview"
-    caption={id ? 'Source diagram disimpan sebagai PlantUML bersama dokumentasi.' : 'The diagram source is stored as PlantUML alongside the documentation.'}
-  />
+  <PlantUmlDiagram file="system-architecture.puml" alt="Wago runtime architecture overview" caption={id ? 'Source diagram disimpan sebagai PlantUML agar perubahan arsitektur dapat direview bersama code.' : 'The diagram source is stored as PlantUML so architecture changes can be reviewed with code.'} />
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Dokumentasi' : 'Documentation map'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Peta dokumentasi' : 'Documentation map'}</h2>
   <div class="grid sm:grid-cols-2 gap-4">
-    <DocCard href={`${base}/docs/getting-started`} title={id ? 'Memulai' : 'Getting Started'} description={id ? 'Deploy, bootstrap credential bila perlu, pairing, allow recipient, lalu kirim pesan pertama.' : 'Deploy, bootstrap credentials when needed, pair, allow a recipient, and send the first message.'} />
-    <DocCard href={`${base}/docs/architecture`} title={id ? 'Arsitektur' : 'Architecture'} description={id ? 'Runtime, bootstrap/pairing, outbound flow, state, dan lifecycle.' : 'Runtime, bootstrap/pairing, outbound flow, state, and lifecycle internals.'} />
-    <DocCard href={`${base}/docs/api`} title={id ? 'Referensi API' : 'API Reference'} description={id ? 'Endpoint, autentikasi, payload, error, activity, dan limit.' : 'Endpoints, authentication, payloads, errors, activity, and limits.'} />
-    <DocCard href={`${base}/docs/configuration`} title={id ? 'Konfigurasi' : 'Configuration'} description={id ? 'CORS_ORIGIN, API_KEY opsional, dan default runtime internal.' : 'CORS_ORIGIN, optional API_KEY, and internal runtime defaults.'} />
-    <DocCard href={`${base}/docs/deployment`} title="Deployment" description={id ? 'GHCR, Docker Compose, proxy, persistence, backup, dan upgrade.' : 'GHCR, Docker Compose, proxying, persistence, backup, and upgrades.'} />
-    <DocCard href={`${base}/docs/operations`} title={id ? 'Operasional' : 'Operations'} description={id ? 'Health, activity, logs, session lifecycle, status pesan, dan troubleshooting.' : 'Health, activity, logs, session lifecycle, message status, and troubleshooting.'} />
-    <DocCard href={`${base}/docs/development`} title="Development" description={id ? 'Toolchain, local workflow, test, build, dan standar PR.' : 'Toolchain, local workflow, tests, builds, and PR standards.'} />
-    <DocCard href={`${base}/docs/project`} title={id ? 'Project & Community' : 'Project & Community'} description={id ? 'Security, kontribusi, release, support, license, dan conduct.' : 'Security, contributing, releases, support, license, and conduct.'} />
+    <DocCard href={`${base}/docs/getting-started`} title={id ? 'Memulai' : 'Getting Started'} description={id ? 'Deploy, pair, simpan API key dengan benar, allow recipient, dan kirim pesan dari aplikasi eksternal.' : 'Deploy, pair, keep the API key correctly, allow a recipient, and send from an external application.'} />
+    <DocCard href={`${base}/docs/api`} title={id ? 'Referensi API' : 'API Reference'} description={id ? 'Semua route, Hybrid API Explorer, auth, payload, status, audit, error, dan limit.' : 'All routes, Hybrid API Explorer, auth, payloads, status, audit, errors, and limits.'} />
+    <DocCard href={`${base}/docs/architecture`} title={id ? 'Arsitektur' : 'Architecture'} description={id ? 'Runtime, lifecycle session, outbound flow, dan persistence boundary.' : 'Runtime, session lifecycle, outbound flow, and persistence boundaries.'} />
+    <DocCard href={`${base}/docs/configuration`} title={id ? 'Konfigurasi' : 'Configuration'} description={id ? 'CORS_ORIGIN, API_KEY opsional, SQLite, dan default internal.' : 'CORS_ORIGIN, optional API_KEY, SQLite, and internal defaults.'} />
+    <DocCard href={`${base}/docs/deployment`} title="Deployment" description={id ? 'GHCR, Compose, reverse proxy, volume, backup, dan upgrade.' : 'GHCR, Compose, reverse proxying, volumes, backup, and upgrades.'} />
+    <DocCard href={`${base}/docs/operations`} title={id ? 'Operasional' : 'Operations'} description={id ? 'Health, account health, structured audit, logs, persistence, dan troubleshooting.' : 'Health, account health, structured audit, logs, persistence, and troubleshooting.'} />
+    <DocCard href={`${base}/docs/development`} title="Development" description={id ? 'Toolchain, local workflow, test, build, dan PR checks.' : 'Toolchain, local workflow, tests, builds, and PR checks.'} />
+    <DocCard href={`${base}/docs/project`} title="Project & Community" description={id ? 'Security, contribution, release, support, license, dan conduct.' : 'Security, contributing, releases, support, license, and conduct.'} />
   </div>
 </DocsLayout>
