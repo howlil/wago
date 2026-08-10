@@ -62,17 +62,17 @@ function isRecipientMap(value: unknown): value is RecipientFile {
   return isRecord(value) && Object.values(value).every(isRecipientRecord);
 }
 
-function isStoredRecipientFile(value: unknown): value is StoredRecipientFile {
-  if (isRecipientMap(value)) {
-    return true;
-  }
-
+function isRecipientEnvelope(value: unknown): value is RecipientEnvelope {
   return (
     isRecord(value) &&
     value.version === RECIPIENT_STORE_VERSION &&
     "data" in value &&
     isRecipientMap(value.data)
   );
+}
+
+function isStoredRecipientFile(value: unknown): value is StoredRecipientFile {
+  return isRecipientMap(value) || isRecipientEnvelope(value);
 }
 
 async function readRecipientFileFromDisk(): Promise<RecipientFile> {
@@ -82,7 +82,7 @@ async function readRecipientFileFromDisk(): Promise<RecipientFile> {
     return {};
   }
 
-  return "version" in stored ? stored.data : stored;
+  return isRecipientEnvelope(stored) ? stored.data : stored;
 }
 
 async function writeRecipientFile(recipients: RecipientFile): Promise<void> {
