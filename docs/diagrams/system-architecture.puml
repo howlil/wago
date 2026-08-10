@@ -1,0 +1,54 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName sans-serif
+skinparam ArrowColor #3F5E52
+skinparam BorderColor #AFC2B9
+skinparam ComponentBackgroundColor #F7FAF8
+skinparam DatabaseBackgroundColor #F2F7F4
+skinparam NodeBackgroundColor #FBFCFB
+
+title Wago runtime architecture
+left to right direction
+
+actor "Operator\nBrowser" as Operator
+actor "External\nAPI client" as ApiClient
+cloud "WhatsApp Web" as WhatsApp
+
+node "Wago container" as Container {
+  rectangle "React dashboard\nstatic production build" as Frontend
+
+  package "Express 5 application" as Backend {
+    rectangle "HTTP middleware\nHelmet · CORS · origin guard\nJSON limit · request logging" as Http
+    rectangle "Authentication\nBearer API key or HttpOnly cookie\nroute-level rate limits" as Auth
+    rectangle "Route layer\n/health · /ready · /app · /activity\n/recipients · /whatsapp · /messages" as Routes
+    rectangle "Outbound policy\nconsent · opt-out · idempotency\naccount/recipient/new-chat limits\nWhatsApp account-health checks" as Policy
+    rectangle "Baileys client\nconnection · QR · reconnect\nrecipient resolution · send/status" as Baileys
+  }
+
+  database "Persistent /app/data\nauth/\napp-settings.json\nrecipients.json\nwhatsapp-binding.json\nactivity-log.json" as Persistent
+  collections "Transient process memory\nrate-limit windows\nidempotency keys\nknown recipients\nmessage status/recent-message cache\naccount-health cache" as Memory
+}
+
+Operator --> Frontend : HTTPS
+Frontend --> Http : relative fetch\nBearer + credentials: include
+ApiClient --> Http : HTTPS + Bearer
+Http --> Auth
+Auth --> Routes
+Routes --> Persistent : app / recipient / activity state
+Routes --> Baileys : status · QR · pair · rebind
+Routes --> Policy : outbound send
+Policy --> Persistent : recipient consent state
+Policy --> Memory : counters / idempotency
+Policy --> Baileys : account-health query
+Baileys --> Persistent : multi-file auth + binding
+Baileys --> Memory : connection/message caches
+Baileys <--> WhatsApp : WhatsApp Web protocol
+
+note bottom of Container
+One process and one WhatsApp account per instance.
+The production container serves the React build from the same Express origin.
+end note
+@enduml

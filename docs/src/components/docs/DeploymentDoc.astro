@@ -18,10 +18,11 @@ const id = lang === 'id';
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">GHCR</h2>
   <CodeBlock label="image" code={`ghcr.io/howlil/wago-simple:latest\nghcr.io/howlil/wago-simple:main\nghcr.io/howlil/wago-simple:sha-<short-sha>`} />
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Workflow release membangun linux/amd64 dan linux/arm64, menghasilkan SBOM/provenance, lalu push manifest ke GHCR.' : 'The release workflow builds linux/amd64 and linux/arm64, generates SBOM/provenance, and pushes the manifest to GHCR.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Nama image wago-simple dipertahankan sebagai identifier distribusi saat ini meskipun repository bernama howlil/wago. Workflow release membangun linux/amd64 dan linux/arm64, menghasilkan SBOM/provenance, lalu push manifest ke GHCR.' : 'The wago-simple image name remains the current distribution identifier even though the repository is howlil/wago. The release workflow builds linux/amd64 and linux/arm64, generates SBOM/provenance, and pushes the manifest to GHCR.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Docker Compose</h2>
-  <CodeBlock label=".env" code={`API_KEY=replace-with-a-long-random-secret\nCORS_ORIGIN=https://wago.example.com`} />
+  <CodeBlock label=".env" code={`CORS_ORIGIN=https://wago.example.com\nAPI_KEY=`} />
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'CORS_ORIGIN wajib. API_KEY opsional: kosongkan untuk first-run dashboard bootstrap, atau isi dengan secret random panjang untuk pre-provisioned authentication.' : 'CORS_ORIGIN is required. API_KEY is optional: leave it empty for first-run dashboard bootstrap, or set a long random secret for pre-provisioned authentication.'}</p>
   <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f wago`} />
   <Callout title={id ? 'Network default sengaja tetap' : 'Network default is intentionally fixed'}>
     {id ? 'Compose publish 127.0.0.1:3000. Letakkan Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS di depannya.' : 'Compose publishes 127.0.0.1:3000. Put Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router in front of it.'}
@@ -37,22 +38,28 @@ const id = lang === 'id';
   </ul>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Reverse proxy dan TLS' : 'Reverse proxy and TLS'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. CORS_ORIGIN harus sama dengan origin publik tersebut.' : 'Prefer one HTTPS origin for both dashboard and API. CORS_ORIGIN should match that public origin.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. CORS_ORIGIN harus sama persis dengan origin publik tersebut agar browser CORS dan first-run origin check konsisten.' : 'Prefer one HTTPS origin for both dashboard and API. CORS_ORIGIN should exactly match that public origin so browser CORS and the first-run origin check stay consistent.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Persistence</h2>
   <div class="border border-[#262626] rounded-lg divide-y divide-[#262626] text-sm mb-8">
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/auth</code><p class="text-[#71717a] mt-1">{id ? 'Credential/session Baileys. Perlakukan seperti private key.' : 'Baileys credential/session state. Treat it like a private key.'}</p></div>
-    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'Generated app ID dan development bootstrap key hash.' : 'Generated app ID and development bootstrap key hash.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/auth/</code><p class="text-[#71717a] mt-1">{id ? 'Baileys multi-file credential/session state. Perlakukan seperti private key.' : 'Baileys multi-file credential/session state. Treat it like a private key.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/app-settings.json</code><p class="text-[#71717a] mt-1">{id ? 'Generated app ID dan hash API key untuk first-run generated credential.' : 'Generated app ID and API-key hash for a first-run generated credential.'}</p></div>
     <div class="p-4"><code class="text-[#fafafa]">/app/data/recipients.json</code><p class="text-[#71717a] mt-1">{id ? 'Allowlist/opt-out recipient.' : 'Recipient allowlist/opt-out records.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/whatsapp-binding.json</code><p class="text-[#71717a] mt-1">{id ? 'Akun yang sedang terikat ke instance beserta waktu binding.' : 'The account currently bound to the instance and its binding timestamp.'}</p></div>
+    <div class="p-4"><code class="text-[#fafafa]">/app/data/activity-log.json</code><p class="text-[#71717a] mt-1">{id ? 'Operator activity log persisten, maksimal 300 event.' : 'Persistent operator activity log, capped at 300 events.'}</p></div>
   </div>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Backup</h2>
+  <Callout title={id ? 'Yang tidak persisten' : 'What is not persistent'} tone="warning">
+    {id ? 'Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, dan message-status cache reset ketika proses restart.' : 'Idempotency memory, account/recipient/new-chat sliding windows, known-recipient memory, and the message-status cache reset when the process restarts.'}
+  </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Backup</h2>
   <CodeBlock label="shell" code={`docker run --rm \\\n  -v wago_data:/data \\\n  -v "$PWD:/backup" \\\n  alpine \\\n  tar czf /backup/wago_data-backup.tgz -C /data .`} />
   <Callout title={id ? 'Jangan hapus volume saat upgrade' : 'Do not delete the volume during upgrades'} tone="danger">
-    {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan sesi pairing serta recipient records.' : 'docker compose down -v removes the named volume and can delete pairing state and recipient records.'}
+    {id ? 'docker compose down -v menghapus named volume dan dapat menghilangkan pairing state, gateway settings, binding, recipient records, dan activity log.' : 'docker compose down -v removes the named volume and can delete pairing state, gateway settings, binding, recipient records, and the activity log.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade' : 'Upgrade'}</h2>
   <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d`} />
-  <p class="text-sm text-[#71717a]">{id ? 'Compose default memakai latest. Jika perlu deployment reproducible, edit tag image di docker-compose.yml ke release atau sha-* yang diinginkan.' : 'Compose defaults to latest. For a reproducible deployment, edit the image tag in docker-compose.yml to the desired release or sha-* tag.'}</p>
+  <p class="text-sm text-[#71717a]">{id ? 'Compose default memakai latest. Untuk deployment reproducible, edit image tag di docker-compose.yml ke release atau sha-* yang diinginkan.' : 'Compose defaults to latest. For a reproducible deployment, edit the image tag in docker-compose.yml to the desired release or sha-* tag.'}</p>
 </DocsLayout>

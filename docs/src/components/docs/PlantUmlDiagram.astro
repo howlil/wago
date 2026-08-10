@@ -1,0 +1,30 @@
+---
+interface Props {
+  file: string;
+  alt: string;
+  caption?: string;
+}
+
+const { file, alt, caption } = Astro.props;
+const rawSourceUrl = `https://raw.githubusercontent.com/howlil/wago/main/docs/diagrams/${file}`;
+const sourceUrl = `https://github.com/howlil/wago/blob/main/docs/diagrams/${file}`;
+const diagramUrl = `https://www.plantuml.com/plantuml/proxy?src=${encodeURIComponent(rawSourceUrl)}&fmt=svg`;
+---
+
+<figure class="mb-10 overflow-hidden rounded-xl border border-[#262626] bg-[#111]">
+  <a
+    href={sourceUrl}
+    target="_blank"
+    rel="noreferrer"
+    class="block overflow-x-auto bg-white p-3 sm:p-5"
+    aria-label={`Open PlantUML source for ${alt}`}
+  >
+    <img src={diagramUrl} alt={alt} loading="lazy" decoding="async" class="mx-auto h-auto min-w-[680px] max-w-full" />
+  </a>
+  <figcaption class="flex flex-col gap-1 border-t border-[#262626] px-4 py-3 text-xs text-[#71717a] sm:flex-row sm:items-center sm:justify-between">
+    <span>{caption ?? alt}</span>
+    <a href={sourceUrl} target="_blank" rel="noreferrer" class="text-[#a1a1aa] hover:text-white">
+      PlantUML source
+    </a>
+  </figcaption>
+</figure>
