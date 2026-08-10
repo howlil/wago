@@ -36,11 +36,6 @@ describe("application lifecycle", () => {
 
     await Promise.all([lifecycle.stop("test"), lifecycle.stop("test")]);
 
-    expect(events).toEqual([
-      "whatsapp.shutdown",
-      "policy.flush",
-      "database.checkpoint",
-      "database.close",
-    ]);
+    expect(events).toEqual(["whatsapp.shutdown", "policy.flush", "database.checkpoint", "database.close"]);
   });
 });
