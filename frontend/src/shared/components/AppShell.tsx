@@ -1,13 +1,17 @@
 import { type ReactNode, useState } from "react";
 import { AppHeader } from "../layout/AppHeader.js";
-import { AppSidebar } from "../layout/AppSidebar.js";
+import { AppSidebar, type WorkspacePath } from "../layout/AppSidebar.js";
 
-type DashboardShellProps = {
+type AppShellProps = {
   children: ReactNode;
-  statusLabel: string;
-  statusTone: "positive" | "warning" | "danger" | "neutral";
-  isRefreshing: boolean;
-  onRefresh: () => void;
+  title: string;
+  description: string;
+  activePath: WorkspacePath;
+  statusLabel?: string;
+  statusTone?: "positive" | "warning" | "danger" | "neutral";
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+  refreshLabel?: string;
 };
 
 const SIDEBAR_STORAGE_KEY = "wago.sidebar.collapsed";
@@ -28,7 +32,17 @@ function persistSidebarCollapsed(value: boolean): void {
   }
 }
 
-export function DashboardShell({ children, statusLabel, statusTone, isRefreshing, onRefresh }: DashboardShellProps) {
+export function AppShell({
+  children,
+  title,
+  description,
+  activePath,
+  statusLabel,
+  statusTone,
+  isRefreshing,
+  onRefresh,
+  refreshLabel,
+}: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -43,6 +57,7 @@ export function DashboardShell({ children, statusLabel, statusTone, isRefreshing
   return (
     <div className="min-h-screen text-wago-ink">
       <AppSidebar
+        activePath={activePath}
         collapsed={sidebarCollapsed}
         mobileOpen={mobileNavOpen}
         onToggleCollapsed={toggleSidebar}
@@ -51,11 +66,13 @@ export function DashboardShell({ children, statusLabel, statusTone, isRefreshing
 
       <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-[224px]"}`}>
         <AppHeader
-          title="Control"
+          title={title}
+          description={description}
           statusLabel={statusLabel}
           statusTone={statusTone}
           isRefreshing={isRefreshing}
           onRefresh={onRefresh}
+          refreshLabel={refreshLabel}
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
         <main className="mx-auto max-w-[1440px] px-3 pb-8 pt-4 sm:px-5 sm:pt-5 lg:px-7 lg:pb-10">{children}</main>
