@@ -3,6 +3,7 @@ set -euo pipefail
 
 IMAGE="${IMAGE:-wago-hardening-smoke}"
 ROLLBACK_IMAGE="${ROLLBACK_IMAGE:-}"
+ROLLBACK_CORS_ORIGIN="${ROLLBACK_CORS_ORIGIN:-https://wago.example.com}"
 NAME="wago-hardening-smoke-$RANDOM"
 ROLLBACK_NAME="${NAME}-rollback"
 VOLUME="wago-hardening-smoke-$RANDOM"
@@ -36,11 +37,18 @@ wait_for_health() {
 run_container() {
   local container_name="$1"
   local image="$2"
+  local cors_origin="${3:-}"
+  local env_args=()
+
+  if [[ -n "$cors_origin" ]]; then
+    env_args=(-e "CORS_ORIGIN=$cors_origin")
+  fi
 
   docker run -d \
     --name "$container_name" \
     -p "127.0.0.1:${PORT}:3000" \
     -v "$VOLUME:/app/data" \
+    "${env_args[@]}" \
     "$image" >/dev/null
   wait_for_health "$container_name"
 }
@@ -83,7 +91,7 @@ MIGRATIONS_AFTER="$(docker exec "$NAME" node --input-type=module -e '
 
 if [[ -n "$ROLLBACK_IMAGE" ]]; then
   docker rm -f "$NAME" >/dev/null
-  run_container "$ROLLBACK_NAME" "$ROLLBACK_IMAGE"
+  run_container "$ROLLBACK_NAME" "$ROLLBACK_IMAGE" "$ROLLBACK_CORS_ORIGIN"
 
   curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"status":"ok"'
   ROLLBACK_READY="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
