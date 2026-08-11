@@ -1,18 +1,6 @@
 FROM node:26-alpine AS pnpm-base
 ARG PNPM_VERSION=11.21.0
-RUN set -eux; \
-    case "$(uname -m)" in \
-      x86_64) PNPM_ARCH=x64; PNPM_SHA256=8cad0a4d20318c0445d992630ace51edc0853fd259573f50ee5d0216dce9b420 ;; \
-      aarch64|arm64) PNPM_ARCH=arm64; PNPM_SHA256=43587a1f3d26ee009c640378ef377cac3531990579acf0f35646531b7832831d ;; \
-      *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
-    esac; \
-    wget -qO /tmp/pnpm.tar.gz "https://github.com/pnpm/pnpm/releases/download/v${PNPM_VERSION}/pnpm-linux-${PNPM_ARCH}-musl.tar.gz"; \
-    echo "${PNPM_SHA256}  /tmp/pnpm.tar.gz" | sha256sum -c -; \
-    mkdir -p /opt/pnpm; \
-    tar -xzf /tmp/pnpm.tar.gz -C /opt/pnpm; \
-    ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm; \
-    rm /tmp/pnpm.tar.gz; \
-    pnpm --version
+RUN npm install --global "pnpm@${PNPM_VERSION}" && pnpm --version
 
 FROM pnpm-base AS frontend-deps
 WORKDIR /app/frontend
