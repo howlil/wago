@@ -1,4 +1,4 @@
-import { fetchLatestBaileysVersion, type WAVersion } from "@whiskeysockets/baileys";
+import { fetchLatestWaWebVersion, type WAVersion } from "@whiskeysockets/baileys";
 
 let cachedLiveVersion: WAVersion | undefined;
 
@@ -7,7 +7,7 @@ export async function getLiveBaileysVersion(): Promise<WAVersion> {
     return cachedLiveVersion;
   }
 
-  const { version } = await fetchLatestBaileysVersion();
+  const { version } = await fetchLatestWaWebVersion();
   cachedLiveVersion = version;
 
   return version;
