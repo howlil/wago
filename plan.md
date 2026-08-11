@@ -75,16 +75,20 @@ For each implementation iteration:
 
 ## Operational: GHCR Release Queue Hotfix
 
-**Status:** root cause identified; pending separate workflow hotfix.
+**Status:** completed and verified on `main` — final Release Container run #54 (`31461762889`) succeeded from `b3a0145bc8b2acaff30605a7444227ecda1b2aa1` in approximately 1 minute 53 seconds.
 
-Detailed plan: `.agent/plans/2026-08-11-ghcr-release-queue-hotfix.md`
+Detailed execution ledger: `.agent/plans/2026-08-11-ghcr-release-queue-hotfix.md`
 
-Scope:
+Completed scope:
 
-- clear the stale release lock;
-- make newer `main/latest` releases supersede stale in-progress work where appropriate;
-- add bounded publish timeout;
-- verify GHCR `latest` publication and supported architectures.
+- newer same-ref releases cancel stale in-progress release work;
+- `linux/amd64` and `linux/arm64` build natively in parallel instead of through QEMU;
+- platform builds and final publication have bounded timeouts;
+- ARM64 pnpm runtime is covered by a native Docker regression job in CI;
+- platform images publish by digest and are combined into one OCI multi-architecture index;
+- `main`, `latest`, and SHA tags publish successfully;
+- final manifest verification confirms `linux/amd64` and `linux/arm64`;
+- build-provenance attestation remains enabled.
 
 ---
 
