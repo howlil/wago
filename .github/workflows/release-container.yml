@@ -174,8 +174,9 @@ jobs:
 
           docker buildx imagetools create "${tags[@]}" "${sources[@]}"
 
-          first_tag="$(printf '%s\n' "$DOCKER_METADATA_OUTPUT_TAGS" | head -n 1)"
-          digest="$(docker buildx imagetools inspect "$first_tag" | awk '/^Digest:/ {print $2; exit}')"
+          first_tag="${DOCKER_METADATA_OUTPUT_TAGS%%$'\n'*}"
+          manifest_output="$(docker buildx imagetools inspect "$first_tag")"
+          digest="$(awk '/^Digest:/ {print $2}' <<< "$manifest_output")"
           if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "Could not resolve published manifest digest" >&2
             exit 1
