@@ -38,6 +38,7 @@ const baileysMock = vi.hoisted(() => {
     end: vi.fn(),
     fetchAccountReachoutTimelock: vi.fn(),
     fetchNewChatMessageCap: vi.fn(),
+    fetchLatestWaWebVersion: vi.fn(),
     useMultiFileAuthState: vi.fn(),
   };
 });
@@ -73,6 +74,7 @@ vi.mock("@whiskeysockets/baileys", () => ({
     forbidden: 403,
     unavailableService: 503,
   },
+  fetchLatestWaWebVersion: baileysMock.fetchLatestWaWebVersion,
   useMultiFileAuthState: baileysMock.useMultiFileAuthState,
   WAMessageStatus: {
     ERROR: 0,
@@ -95,6 +97,7 @@ describe("WhatsApp lifecycle contracts", () => {
     baileysMock.end.mockReset();
     baileysMock.fetchAccountReachoutTimelock.mockReset();
     baileysMock.fetchNewChatMessageCap.mockReset();
+    baileysMock.fetchLatestWaWebVersion.mockReset();
     baileysMock.useMultiFileAuthState.mockReset();
 
     fsMock.existsSync.mockReturnValue(false);
@@ -103,6 +106,10 @@ describe("WhatsApp lifecycle contracts", () => {
     baileysMock.logout.mockResolvedValue(undefined);
     baileysMock.fetchAccountReachoutTimelock.mockResolvedValue(undefined);
     baileysMock.fetchNewChatMessageCap.mockResolvedValue(undefined);
+    baileysMock.fetchLatestWaWebVersion.mockResolvedValue({
+      version: [2, 3000, 1043857760],
+      isLatest: true,
+    });
     baileysMock.useMultiFileAuthState.mockResolvedValue({
       state: {},
       saveCreds: baileysMock.saveCreds,
@@ -164,6 +171,40 @@ describe("WhatsApp lifecycle contracts", () => {
     expect(baileysMock.useMultiFileAuthState).toHaveBeenCalledTimes(1);
     expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
     expect(getWhatsAppStatus().status).toBe("connecting");
+  });
+
+  it("uses the current WhatsApp Web version when starting a pairing socket", async () => {
+    const currentVersion = [2, 3000, 1049999999] as const;
+    baileysMock.fetchLatestWaWebVersion.mockResolvedValueOnce({
+      version: currentVersion,
+      isLatest: true,
+    });
+
+    const { pairWhatsApp } = await import("../whatsapp.js");
+    const { clearWhatsAppBinding } = await import("./binding-store.js");
+
+    clearWhatsAppBinding();
+    await pairWhatsApp();
+
+    expect(baileysMock.fetchLatestWaWebVersion).toHaveBeenCalledTimes(1);
+    expect(baileysMock.makeWASocket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        version: currentVersion,
+      }),
+    );
+  });
+
+  it("falls back to the bundled Baileys version if live WhatsApp Web version lookup fails", async () => {
+    baileysMock.fetchLatestWaWebVersion.mockRejectedValueOnce(new Error("version lookup unavailable"));
+
+    const { pairWhatsApp } = await import("../whatsapp.js");
+    const { clearWhatsAppBinding } = await import("./binding-store.js");
+
+    clearWhatsAppBinding();
+
+    await expect(pairWhatsApp()).resolves.toEqual({ status: "connecting" });
+    expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
+    expect(baileysMock.makeWASocket.mock.calls[0]?.[0]).not.toHaveProperty("version");
   });
 
   it("keeps Pair idempotent while a pairing connection is already starting", async () => {
