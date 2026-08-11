@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import makeWASocket, { useMultiFileAuthState, WAMessageStatus } from "@whiskeysockets/baileys";
+import makeWASocket, { type WAVersion, useMultiFileAuthState, WAMessageStatus } from "@whiskeysockets/baileys";
 import { config } from "../../config/index.js";
 import { baileysLogger, logger, maskIdentifier } from "../../infrastructure/logger.js";
 import {
@@ -27,6 +27,7 @@ import { mapMessageRejection } from "../../whatsapp/message-rejection.js";
 import { updateMessageStatus } from "../../whatsapp/message-status-store.js";
 import { getRecentMessage } from "../../whatsapp/recent-message-store.js";
 import { getReconnectDelayMs, nextReconnectAttempt, resetReconnectAttempts } from "../../whatsapp/reconnect-state.js";
+import { getLiveBaileysVersion } from "../../whatsapp/wa-version.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
 import {
   getActiveSocket,
@@ -146,10 +147,35 @@ export async function initializeWhatsApp(): Promise<void> {
     const { state, saveCreds } = await useMultiFileAuthState(authDirectory);
     if (!isCurrentGeneration(generation)) return;
 
+    let version: WAVersion | undefined;
+    try {
+      version = await getLiveBaileysVersion();
+      logger.info({ event: "wa.version.resolved", version: version.join(".") }, "Resolved WhatsApp Web version");
+    } catch (error) {
+      logger.warn(
+        { event: "wa.version.lookup_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" },
+        "Could not resolve current WhatsApp Web version; using Baileys bundled version",
+      );
+      auditBaileys({
+        level: "warning",
+        category: "connection",
+        code: "baileys.version.lookup_failed",
+        title: "WhatsApp Web version lookup failed",
+        description: "The gateway could not resolve the current WhatsApp Web version and will use Baileys defaults.",
+        metadata: {
+          socketGeneration: generation,
+          errorName: error instanceof Error ? error.name : "UNKNOWN",
+        },
+      });
+    }
+
+    if (!isCurrentGeneration(generation)) return;
+
     const nextSocket = makeWASocket({
       auth: state,
       getMessage: getRecentMessage,
       logger: baileysLogger,
+      ...(version ? { version } : {}),
     });
 
     setActiveSocket(nextSocket);
