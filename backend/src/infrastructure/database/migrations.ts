@@ -163,6 +163,20 @@ export const migrations: Migration[] = [
         ON browser_sessions(expires_at);
     `,
   },
+  {
+    version: 6,
+    sql: `
+      CREATE TABLE IF NOT EXISTS webhook_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+        url TEXT,
+        secret TEXT,
+        previous_secret TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
