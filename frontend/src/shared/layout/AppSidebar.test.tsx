@@ -23,13 +23,7 @@ describe("AppSidebar", () => {
 
   it("uses fixed square navigation targets in collapsed mode", () => {
     render(
-      <AppSidebar
-        activePath="/"
-        collapsed
-        mobileOpen={false}
-        onToggleCollapsed={vi.fn()}
-        onCloseMobile={vi.fn()}
-      />,
+      <AppSidebar activePath="/" collapsed mobileOpen={false} onToggleCollapsed={vi.fn()} onCloseMobile={vi.fn()} />,
     );
 
     const control = screen.getByRole("link", { name: "Control" });
