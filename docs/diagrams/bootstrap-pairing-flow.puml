@@ -28,19 +28,26 @@ App --> UI : app/auth/setup state
 
 alt Fresh gateway: no API key or hash exists
   Operator -> UI : Click Pair WhatsApp
-  UI -> UI : Generate wa_<random> API-key candidate
+  UI -> UI : Generate wa_<random> API-key candidate\n(in memory only)
   UI -> App : POST /app/bootstrap { apiKey }\nProduction Origin must use HTTPS\nand Origin host must match request Host
   App -> Database : Persist appId + SHA-256 API-key hash\n(raw generated key is not persisted)
-  App --> UI : 201 appId + raw API key\nSet HttpOnly auth cookie
-  UI -> UI : Keep raw key in sessionStorage
-else Existing gateway credentials
-  Operator -> UI : Enter existing API key
-  UI -> UI : Store key in sessionStorage
-  UI -> App : GET /app/info\nAuthorization: Bearer <API_KEY>
+  App -> Database : Persist SHA-256 browser-session token hash\n+ expiry/revocation metadata
+  App --> UI : 201 appId + raw API key once\nSet opaque HttpOnly session cookie
+  UI -> UI : Show raw API key for operator to save\nNever write it to browser storage
+else Existing gateway credentials, valid session cookie
+  UI -> App : GET /app/info\nHttpOnly browser-session cookie
+  App -> Database : Verify browser-session token hash + expiry
   App --> UI : authenticated=true
+else Existing gateway, browser session missing
+  Operator -> UI : Enter existing API key once
+  UI -> App : POST /app/session { apiKey }
+  App -> Database : Verify API-key hash
+  App -> Database : Create hashed browser session
+  App --> UI : authenticated=true\nSet opaque HttpOnly session cookie
+  UI -> UI : Discard API key input from memory
 end
 
-UI -> WaRoutes : POST /whatsapp/pair
+UI -> WaRoutes : POST /whatsapp/pair\nHttpOnly browser-session cookie
 WaRoutes -> Baileys : pairWhatsApp()
 Baileys -> Baileys : Resolve current WA Web version
 note right of Baileys
