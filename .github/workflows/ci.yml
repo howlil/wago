@@ -89,7 +89,7 @@ jobs:
           IMAGE: wago-simple:ci
           ROLLBACK_IMAGE: wago-simple:rollback-base
           SKIP_BUILD: "1"
-          EXPECTED_MIGRATIONS: "[1,2,3,4]"
+          EXPECTED_MIGRATIONS: "[1,2,3,4,5]"
         run: bash scripts/smoke-container.sh
 
   arm64-docker-build:

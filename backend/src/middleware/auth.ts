@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Request, RequestHandler } from "express";
+import { isBrowserSessionValid } from "../auth/browser-session-store.js";
 import { config } from "../config/index.js";
 
 function parseCookieHeader(header: string | undefined): Record<string, string> {
@@ -31,7 +32,7 @@ function hashApiKeyCandidate(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function isTokenValid(token: string): boolean {
+export function isApiKeyValid(token: string): boolean {
   if (config.apiKey && constantTimeEquals(token, config.apiKey)) {
     return true;
   }
@@ -43,19 +44,26 @@ function isTokenValid(token: string): boolean {
   return false;
 }
 
-export function requestHasValidApiKey(req: Request): boolean {
-  if (!config.apiKey && !config.apiKeyHash) {
-    return false;
-  }
-
-  const header = req.header("authorization");
-  const bearerToken = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
-  const cookieToken = parseCookieHeader(req.header("cookie"))[config.authCookieName];
-
-  return [bearerToken, cookieToken].some((token) => token && isTokenValid(token));
+export function getBrowserSessionToken(req: Request): string | null {
+  return parseCookieHeader(req.header("cookie"))[config.authCookieName] ?? null;
 }
 
-export const requireApiKey: RequestHandler = (req, res, next) => {
+export function requestHasValidBearerApiKey(req: Request): boolean {
+  const header = req.header("authorization");
+  const bearerToken = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
+  return Boolean(bearerToken && isApiKeyValid(bearerToken));
+}
+
+export function requestHasValidBrowserSession(req: Request): boolean {
+  const token = getBrowserSessionToken(req);
+  return Boolean(token && isBrowserSessionValid(token));
+}
+
+export function requestIsAuthenticated(req: Request): boolean {
+  return requestHasValidBearerApiKey(req) || requestHasValidBrowserSession(req);
+}
+
+export const requireAuthenticatedRequest: RequestHandler = (req, res, next) => {
   if (!config.apiKey && !config.apiKeyHash) {
     return res.status(403).json({
       success: false,
@@ -64,7 +72,7 @@ export const requireApiKey: RequestHandler = (req, res, next) => {
     });
   }
 
-  if (!requestHasValidApiKey(req)) {
+  if (!requestIsAuthenticated(req)) {
     return res.status(401).json({
       success: false,
       error: "UNAUTHORIZED",
@@ -74,3 +82,5 @@ export const requireApiKey: RequestHandler = (req, res, next) => {
 
   return next();
 };
+
+export const requireApiKey = requireAuthenticatedRequest;

@@ -147,6 +147,22 @@ export const migrations: Migration[] = [
         ON webhook_deliveries(created_at DESC);
     `,
   },
+  {
+    version: 5,
+    sql: `
+      CREATE TABLE IF NOT EXISTS browser_sessions (
+        id TEXT PRIMARY KEY,
+        token_hash TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        revoked_at INTEGER
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_browser_sessions_expires_at
+        ON browser_sessions(expires_at);
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {

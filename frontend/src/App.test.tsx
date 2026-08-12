@@ -6,13 +6,14 @@ import {
   allowRecipient,
   bootstrapApp,
   createApiKeyCandidate,
+  createBrowserSession,
   getAppInfo,
   getCurrentQr,
   getHealth,
   listActivity,
+  logoutBrowserSession,
   pairWhatsApp,
   sendMessage,
-  setStoredApiKey,
 } from "./api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
@@ -44,9 +45,16 @@ vi.mock("./api.js", () => ({
     appId: "wa-gateway-test",
     apiKey: candidate,
     recovered: false,
+    sessionExpiresAt: "2026-09-12T00:00:00.000Z",
     message: "App initialized",
   })),
   createApiKeyCandidate: vi.fn(() => generatedApiKey),
+  createBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: true,
+    expiresAt: "2026-09-12T00:00:00.000Z",
+    message: "Browser session created",
+  })),
   getCurrentQr: vi.fn(async () => ({ success: true, qr: null, status: "connected" })),
   getHealth: vi.fn(async () => ({ status: "ok" })),
   getMessageStatus: vi.fn(async () => ({
@@ -57,7 +65,6 @@ vi.mock("./api.js", () => ({
     updatedAt: "2026-08-10T00:00:00.000Z",
   })),
   getQrImageSvg: vi.fn(async () => "<svg />"),
-  getStoredApiKey: vi.fn(() => ""),
   getWhatsAppStatus: vi.fn(async () => ({
     success: true,
     status: "connected",
@@ -71,11 +78,15 @@ vi.mock("./api.js", () => ({
   })),
   listActivity: vi.fn(async () => ({ success: true, events: [] })),
   listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
+  logoutBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "Browser session ended",
+  })),
   optOutRecipient: vi.fn(),
   pairWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
   rebindWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
   sendMessage: vi.fn(),
-  setStoredApiKey: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -157,7 +168,7 @@ describe("dashboard", () => {
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("generates credentials first and then starts WhatsApp pairing", async () => {
+  it("generates credentials in memory first and then starts WhatsApp pairing", async () => {
     vi.mocked(getAppInfo).mockResolvedValueOnce({
       success: true,
       appId: "wa-gateway-test",
@@ -174,13 +185,48 @@ describe("dashboard", () => {
 
     await waitFor(() => {
       expect(createApiKeyCandidate).toHaveBeenCalledTimes(1);
-      expect(setStoredApiKey).toHaveBeenCalledWith(generatedApiKey);
       expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey);
       expect(pairWhatsApp).toHaveBeenCalledTimes(1);
     });
 
     expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe(generatedApiKey);
     expect(screen.getAllByRole("button", { name: /^copy$/i }).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("signs a returning browser in by exchanging the API key for a browser session", async () => {
+    vi.mocked(getAppInfo)
+      .mockResolvedValueOnce({
+        success: true,
+        appId: "wa-gateway-test",
+        apiKeyRequired: true,
+        apiKeyConfigured: true,
+        apiKeySource: "generated",
+        authenticated: false,
+        credentialSetupRequired: false,
+        setupRequired: false,
+      })
+      .mockResolvedValue({
+        success: true,
+        appId: "wa-gateway-test",
+        apiKeyRequired: true,
+        apiKeyConfigured: true,
+        apiKeySource: "generated",
+        authenticated: true,
+        credentialSetupRequired: false,
+        setupRequired: false,
+      });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    const input = await screen.findByLabelText("API Key", { selector: "input" });
+    await user.type(input, "wa_existing_secret");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => {
+      expect(createBrowserSession).toHaveBeenCalledWith("wa_existing_secret");
+    });
+    expect((input as HTMLInputElement).value).toBe("");
   });
 
   it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {
@@ -195,8 +241,26 @@ describe("dashboard", () => {
       setupRequired: false,
     });
     render(<App />);
-    expect(await screen.findByText(/enter the existing api key in gateway credentials/i)).toBeTruthy();
+    expect(await screen.findByText(/sign in with the existing api key/i)).toBeTruthy();
     expect(getCurrentQr).not.toHaveBeenCalled();
+  });
+
+  it("signs out only the browser session", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getAppInfo).mockResolvedValueOnce({
+      success: true,
+      appId: "wa-gateway-test",
+      apiKeyRequired: true,
+      apiKeyConfigured: true,
+      apiKeySource: "generated",
+      authenticated: true,
+      credentialSetupRequired: false,
+      setupRequired: false,
+    });
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
+    await waitFor(() => expect(logoutBrowserSession).toHaveBeenCalledTimes(1));
   });
 
   it("shows why pairing is unavailable when the backend is down", async () => {
