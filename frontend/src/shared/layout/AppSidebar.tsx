@@ -67,11 +67,11 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
     <>
       <aside
         className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-wago-line bg-wago-sidebar transition-[width] duration-200 lg:flex ${
-          collapsed ? "w-[76px]" : "w-[224px]"
+          collapsed ? "w-14" : "w-[196px]"
         }`}
       >
         <div
-          className={`flex min-h-[64px] items-center border-b border-wago-line px-3.5 ${
+          className={`flex min-h-14 items-center border-b border-wago-line px-3 ${
             collapsed ? "justify-center" : "justify-between"
           }`}
         >
@@ -89,25 +89,18 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
           ) : null}
         </div>
 
-        <div className={`px-3 pt-5 ${collapsed ? "text-center" : ""}`}>
-          {!collapsed ? (
+        {!collapsed ? (
+          <div className="px-3 pt-3">
             <span className="px-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">Workspace</span>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
-        <nav className="px-2.5 py-2.5" aria-label="Application navigation">
+        <nav className="px-2 py-2" aria-label="Application navigation">
           <WorkspaceNavigation activePath={activePath} collapsed={collapsed} />
         </nav>
 
-        {!collapsed ? (
-          <div className="mx-3 mt-auto mb-3 rounded-lg border border-wago-line bg-white p-3">
-            <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-wago-brand">Self-hosted</p>
-            <p className="mt-1 mb-0 text-[10px] leading-4 text-wago-muted">
-              Your session and gateway stay under your control.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-auto border-t border-wago-line p-2.5">
+        {collapsed ? (
+          <div className="mt-auto border-t border-wago-line p-2">
             <button
               className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
               type="button"
@@ -118,7 +111,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
               <PanelLeftOpen size={16} />
             </button>
           </div>
-        )}
+        ) : null}
       </aside>
 
       {mobileOpen ? (
@@ -129,30 +122,24 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
             onClick={onCloseMobile}
             aria-label="Close navigation"
           />
-          <aside className="relative flex h-full w-[272px] flex-col border-r border-wago-line bg-white shadow-2xl">
-            <div className="flex min-h-[64px] items-center justify-between border-b border-wago-line px-4">
+          <aside className="relative flex h-full w-[248px] flex-col border-r border-wago-line bg-white shadow-2xl">
+            <div className="flex min-h-14 items-center justify-between border-b border-wago-line px-3">
               <AppBrand />
               <button
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
                 type="button"
                 onClick={onCloseMobile}
                 aria-label="Close sidebar"
               >
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
-            <div className="px-4 pt-5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">
+            <div className="px-3 pt-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">
               Workspace
             </div>
-            <nav className="px-3 py-2.5" aria-label="Mobile application navigation">
+            <nav className="px-2 py-2" aria-label="Mobile application navigation">
               <WorkspaceNavigation activePath={activePath} onNavigate={onCloseMobile} />
             </nav>
-            <div className="mx-3 mt-auto mb-3 rounded-lg border border-wago-line bg-[#f8faf9] p-3">
-              <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-wago-brand">Self-hosted</p>
-              <p className="mt-1 mb-0 text-[10px] leading-4 text-wago-muted">
-                Your session and gateway stay under your control.
-              </p>
-            </div>
           </aside>
         </div>
       ) : null}

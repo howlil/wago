@@ -47,7 +47,7 @@ export function SendMessageCard({
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-3 grid gap-2.5">
+      <form onSubmit={onSubmit} className="mt-4 grid gap-3">
         <label>
           <span className={fieldLabelClass}>Recipient phone</span>
           <input
@@ -79,14 +79,19 @@ export function SendMessageCard({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button className={primaryButtonClass} type="submit" disabled={!canSend}>
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <button className={`${primaryButtonClass} w-full sm:w-auto`} type="submit" disabled={!canSend}>
             {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
             {isSending ? "Sending" : "Send"}
           </button>
 
           {approvalRequired ? (
-            <button className={secondaryButtonClass} type="button" onClick={onAllowAndSend} disabled={!canSend}>
+            <button
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              type="button"
+              onClick={onAllowAndSend}
+              disabled={!canSend}
+            >
               {isSending ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
               Allow &amp; Send
             </button>

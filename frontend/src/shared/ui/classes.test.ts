@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { cardClass, dangerButtonClass, inputClass, primaryButtonClass, secondaryButtonClass } from "./classes.js";
+import {
+  cardBodyClass,
+  cardClass,
+  dangerButtonClass,
+  inputClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "./classes.js";
 
 const standardControls = [inputClass, primaryButtonClass, secondaryButtonClass, dangerButtonClass];
 
@@ -9,6 +16,11 @@ describe("shared UI classes", () => {
     for (const control of standardControls) {
       expect(control).toContain("rounded-md");
     }
+  });
+
+  it("uses one 16px padding contract for standard cards", () => {
+    expect(cardBodyClass).toContain("p-4");
+    expect(cardBodyClass).not.toContain("p-3.5");
   });
 
   it("keeps standard surfaces flat instead of adding decorative elevation or motion", () => {

@@ -1,6 +1,6 @@
 export const cardClass = "rounded-lg border border-wago-line bg-wago-surface";
 
-export const cardBodyClass = `${cardClass} p-3.5 sm:p-4`;
+export const cardBodyClass = `${cardClass} p-4`;
 
 export const inputClass =
   "h-9 w-full rounded-md border border-[#cfd7d2] bg-white px-3 text-sm text-wago-ink outline-none transition focus:border-wago-brand focus:ring-2 focus:ring-[#dcebe5] disabled:cursor-not-allowed disabled:bg-[#f1f3f1] disabled:text-[#87908b]";

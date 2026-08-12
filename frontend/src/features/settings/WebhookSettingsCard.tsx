@@ -112,19 +112,19 @@ export function WebhookSettingsCard() {
   return (
     <section className={cardBodyClass}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h2 className={sectionTitleClass}>Webhook integration</h2>
           <p className={sectionDescriptionClass}>
             Send signed message-delivery events to another backend. Configuration is persisted by Wago.
           </p>
         </div>
-        <span className={`text-xs font-medium ${enabled ? "text-wago-brand" : "text-wago-muted"}`}>
+        <span className={`shrink-0 text-xs font-medium ${enabled ? "text-wago-brand" : "text-wago-muted"}`}>
           {enabled ? "Enabled" : "Disabled"}
         </span>
       </div>
 
       {error ? (
-        <div className="mt-4 rounded-lg border border-[#e4b8bc] bg-wago-danger-soft px-3 py-2 text-xs text-wago-danger">
+        <div className="mt-4 rounded-md border border-[#e4b8bc] bg-wago-danger-soft px-3 py-2 text-xs text-wago-danger">
           {error}
         </div>
       ) : null}
@@ -132,14 +132,14 @@ export function WebhookSettingsCard() {
       <div className="mt-4 grid gap-4">
         <label className="flex items-start gap-3">
           <input
-            className="mt-0.5 h-4 w-4 accent-wago-brand"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-wago-brand"
             type="checkbox"
             aria-label="Enable webhook delivery"
             checked={enabled}
             onChange={(event) => setEnabled(event.target.checked)}
             disabled={loading || saving}
           />
-          <span>
+          <span className="min-w-0">
             <span className="block text-sm font-medium text-wago-ink">Enable webhook delivery</span>
             <span className="mt-0.5 block text-xs leading-5 text-wago-muted">
               Wago will enqueue supported delivery events and retry transient failures automatically.
@@ -164,17 +164,22 @@ export function WebhookSettingsCard() {
         </label>
 
         <div className="border-y border-wago-line py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <div className="text-xs font-medium text-wago-ink">Signing secret</div>
-              <div className="mt-0.5 text-[11px] text-wago-muted">
+              <div className="mt-0.5 text-[11px] leading-5 text-wago-muted">
                 {secretConfigured
                   ? "Configured. Raw value is not returned by settings reads."
                   : "Created automatically on first enable."}
               </div>
             </div>
             {secretConfigured ? (
-              <button className={secondaryButtonClass} type="button" onClick={() => void rotate()} disabled={saving}>
+              <button
+                className={`${secondaryButtonClass} w-full sm:w-auto`}
+                type="button"
+                onClick={() => void rotate()}
+                disabled={saving}
+              >
                 <RefreshCcw size={14} />
                 Rotate secret
               </button>
@@ -182,12 +187,12 @@ export function WebhookSettingsCard() {
           </div>
 
           {rotationPending ? (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-wago-line pt-3">
-              <p className="m-0 text-[11px] leading-5 text-wago-muted">
+            <div className="mt-3 flex flex-col items-start gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="m-0 min-w-0 text-[11px] leading-5 text-wago-muted">
                 Rotation overlap is active. Update the receiver with the new secret before completing rotation.
               </p>
               <button
-                className={secondaryButtonClass}
+                className={`${secondaryButtonClass} w-full sm:w-auto`}
                 type="button"
                 onClick={() => void completeRotation()}
                 disabled={saving}
@@ -199,17 +204,17 @@ export function WebhookSettingsCard() {
         </div>
 
         {generatedSecret ? (
-          <div className="rounded-lg border border-[#c9ddd3] bg-wago-brand-soft p-3">
+          <div className="rounded-md border border-[#c9ddd3] bg-wago-brand-soft p-3">
             <strong className="block text-xs font-semibold text-wago-brand-strong">
               Copy the new signing secret now
             </strong>
             <p className="mb-2 mt-1 text-[11px] leading-5 text-[#53675e]">
               This value is shown only from the create/rotate response. Store it in the receiving backend.
             </p>
-            <div className="flex gap-2">
-              <input className={`${inputClass} min-w-0 flex-1 font-mono text-xs`} value={generatedSecret} readOnly />
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <input className={`${inputClass} min-w-0 font-mono text-xs`} value={generatedSecret} readOnly />
               <button
-                className={secondaryButtonClass}
+                className={`${secondaryButtonClass} w-full sm:w-auto`}
                 type="button"
                 onClick={() => void copy(generatedSecret, "webhookSecret")}
               >
@@ -220,13 +225,18 @@ export function WebhookSettingsCard() {
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-[10px] text-wago-muted">
+        <div className="flex flex-col gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-[10px] leading-4 text-wago-muted">
             {updatedAt
               ? `Last updated ${new Date(updatedAt).toLocaleString()}`
               : "No persisted webhook configuration yet."}
           </span>
-          <button className={primaryButtonClass} type="button" onClick={() => void save()} disabled={loading || saving}>
+          <button
+            className={`${primaryButtonClass} w-full sm:w-auto`}
+            type="button"
+            onClick={() => void save()}
+            disabled={loading || saving}
+          >
             {saving ? "Saving" : "Save changes"}
           </button>
         </div>
