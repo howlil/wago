@@ -167,7 +167,9 @@ export function WebhookSettingsCard() {
             <div>
               <div className="text-xs font-medium text-wago-ink">Signing secret</div>
               <div className="mt-0.5 text-[11px] text-wago-muted">
-                {secretConfigured ? "Configured. Raw value is not returned by settings reads." : "Created automatically on first enable."}
+                {secretConfigured
+                  ? "Configured. Raw value is not returned by settings reads."
+                  : "Created automatically on first enable."}
               </div>
             </div>
             {secretConfigured ? (
@@ -197,7 +199,9 @@ export function WebhookSettingsCard() {
 
         {generatedSecret ? (
           <div className="rounded-lg border border-[#c9ddd3] bg-wago-brand-soft p-3">
-            <strong className="block text-xs font-semibold text-wago-brand-strong">Copy the new signing secret now</strong>
+            <strong className="block text-xs font-semibold text-wago-brand-strong">
+              Copy the new signing secret now
+            </strong>
             <p className="mb-2 mt-1 text-[11px] leading-5 text-[#53675e]">
               This value is shown only from the create/rotate response. Store it in the receiving backend.
             </p>
@@ -217,7 +221,9 @@ export function WebhookSettingsCard() {
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-[10px] text-wago-muted">
-            {updatedAt ? `Last updated ${new Date(updatedAt).toLocaleString()}` : "No persisted webhook configuration yet."}
+            {updatedAt
+              ? `Last updated ${new Date(updatedAt).toLocaleString()}`
+              : "No persisted webhook configuration yet."}
           </span>
           <button className={primaryButtonClass} type="button" onClick={() => void save()} disabled={loading || saving}>
             {saving ? "Saving" : "Save changes"}
