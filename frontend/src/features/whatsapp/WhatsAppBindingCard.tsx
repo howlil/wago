@@ -96,7 +96,9 @@ export function WhatsAppBindingCard({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
           <div className="flex min-w-0 items-center gap-2">
             <span className="h-2 w-2 shrink-0 rounded-full bg-[#2f8b67]" />
-            <strong className="min-w-0 break-all font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
+            <strong className="min-w-0 break-all font-mono text-xs font-semibold text-[#285f49]">
+              {binding.phone}
+            </strong>
           </div>
           <span className="text-[10px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
         </div>
