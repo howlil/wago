@@ -14,7 +14,7 @@ type RecipientListProps = {
 export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReallow }: RecipientListProps) {
   if (loading) {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-md border border-wago-line px-3 py-4 text-xs text-wago-muted">
+      <div className="mt-3 flex items-center gap-2 border-t border-wago-line px-1 py-4 text-xs text-wago-muted">
         <Loader2 className="animate-spin" size={14} /> Loading recipients
       </div>
     );
@@ -22,7 +22,7 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
 
   if (recipients.length === 0) {
     return (
-      <p className="mb-0 mt-3 rounded-md border border-dashed border-wago-line px-3 py-4 text-xs text-wago-muted">
+      <p className="mb-0 mt-3 border-t border-wago-line px-1 pt-4 text-xs leading-5 text-wago-muted">
         No recipients have been added yet.
       </p>
     );
@@ -39,28 +39,33 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
           return (
             <div
               key={recipient.jid}
-              className="flex items-center justify-between gap-3 bg-white px-3 py-2.5 max-[620px]:flex-col max-[620px]:items-start"
+              className="flex items-center justify-between gap-3 bg-white px-3 py-2.5 max-[620px]:flex-col max-[620px]:items-stretch"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <strong className="font-mono text-xs font-semibold text-[#26362f]">{recipientPhone}</strong>
+                  <strong className="break-all font-mono text-xs font-semibold text-[#26362f]">{recipientPhone}</strong>
                   <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${status.className}`}>
                     {status.label}
                   </span>
                 </div>
                 {recipient.label ? (
-                  <span className="mt-0.5 block text-[11px] text-[#7b8680]">{recipient.label}</span>
+                  <span className="mt-0.5 block break-words text-[11px] text-[#7b8680]">{recipient.label}</span>
                 ) : null}
               </div>
 
               {recipient.allowed && !recipient.optedOut ? (
-                <button className={dangerButtonClass} type="button" onClick={() => onOptOut(recipient)} disabled={busy}>
+                <button
+                  className={`${dangerButtonClass} max-[620px]:w-full`}
+                  type="button"
+                  onClick={() => onOptOut(recipient)}
+                  disabled={busy}
+                >
                   {busy ? <Loader2 className="animate-spin" size={13} /> : <UserMinus size={13} />}
                   Opt out
                 </button>
               ) : (
                 <button
-                  className={secondaryButtonClass}
+                  className={`${secondaryButtonClass} max-[620px]:w-full`}
                   type="button"
                   onClick={() => onReallow(recipient)}
                   disabled={busy}
