@@ -134,6 +134,7 @@ export function WebhookSettingsCard() {
           <input
             className="mt-0.5 h-4 w-4 accent-wago-brand"
             type="checkbox"
+            aria-label="Enable webhook delivery"
             checked={enabled}
             onChange={(event) => setEnabled(event.target.checked)}
             disabled={loading || saving}
