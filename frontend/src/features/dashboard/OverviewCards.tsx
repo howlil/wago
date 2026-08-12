@@ -158,20 +158,17 @@ function StatusMetric({ metric }: { metric: Metric }) {
   const Icon = metric.icon;
 
   return (
-    <div className="group relative min-w-0 overflow-hidden bg-white px-4 py-4 transition hover:bg-[#fcfdfc] sm:px-5">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d7e7df] to-transparent opacity-0 transition group-hover:opacity-100" />
+    <div className="min-w-0 bg-white px-4 py-4 sm:px-5">
       <div className="flex items-center gap-3.5">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${toneIcon[metric.tone]}`}
-        >
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border ${toneIcon[metric.tone]}`}>
           <Icon size={18} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-wago-muted">{metric.label}</span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-wago-muted">{metric.label}</span>
             <span className={`h-1.5 w-1.5 rounded-full ${toneDot[metric.tone]}`} />
           </div>
-          <strong className="mt-1 block truncate text-[15px] font-bold tracking-[-0.02em] text-wago-ink">
+          <strong className="mt-1 block truncate text-[15px] font-semibold tracking-[-0.015em] text-wago-ink">
             {metric.value}
           </strong>
           <span className="mt-0.5 block truncate text-[10px] font-medium text-[#818b86]">{metric.detail}</span>
@@ -183,7 +180,7 @@ function StatusMetric({ metric }: { metric: Metric }) {
 
 export function OverviewCards({ health, status, accountHealth }: OverviewCardsProps) {
   return (
-    <section className="grid overflow-hidden rounded-2xl border border-[#dce7e1] bg-white shadow-[0_12px_34px_rgba(31,70,53,0.055)] md:grid-cols-3 md:divide-x md:divide-[#e4ebe7]">
+    <section className="grid overflow-hidden rounded-lg border border-wago-line bg-white md:grid-cols-3 md:divide-x md:divide-wago-line">
       <StatusMetric metric={backendMetric(health)} />
       <StatusMetric metric={whatsappMetric(status)} />
       <StatusMetric metric={policyMetric(health, status, accountHealth)} />
