@@ -141,7 +141,9 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
                 <X size={18} />
               </button>
             </div>
-            <div className="px-4 pt-5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">Workspace</div>
+            <div className="px-4 pt-5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">
+              Workspace
+            </div>
             <nav className="px-3 py-2.5" aria-label="Mobile application navigation">
               <WorkspaceNavigation activePath={activePath} onNavigate={onCloseMobile} />
             </nav>
