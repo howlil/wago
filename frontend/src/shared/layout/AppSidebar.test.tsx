@@ -34,13 +34,7 @@ describe("AppSidebar", () => {
 
   it("does not render promotional self-hosted copy in the operator navigation", () => {
     render(
-      <AppSidebar
-        activePath="/"
-        collapsed={false}
-        mobileOpen
-        onToggleCollapsed={vi.fn()}
-        onCloseMobile={vi.fn()}
-      />,
+      <AppSidebar activePath="/" collapsed={false} mobileOpen onToggleCollapsed={vi.fn()} onCloseMobile={vi.fn()} />,
     );
 
     expect(screen.queryByText("Self-hosted")).toBeNull();
