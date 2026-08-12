@@ -31,4 +31,19 @@ describe("AppSidebar", () => {
     expect(control.className).toContain("w-10");
     expect(control.className).toContain("mx-auto");
   });
+
+  it("does not render promotional self-hosted copy in the operator navigation", () => {
+    render(
+      <AppSidebar
+        activePath="/"
+        collapsed={false}
+        mobileOpen
+        onToggleCollapsed={vi.fn()}
+        onCloseMobile={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Self-hosted")).toBeNull();
+    expect(screen.queryByText("Your session and gateway stay under your control.")).toBeNull();
+  });
 });
