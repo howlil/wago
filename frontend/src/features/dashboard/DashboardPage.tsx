@@ -123,7 +123,7 @@ export function DashboardPage() {
           {dashboard.isAuthenticated ? (
             <AccountHealthCard accountHealth={dashboard.accountHealth} />
           ) : (
-            <div className="rounded-2xl border border-dashed border-wago-line bg-white/65 p-4 text-sm text-wago-muted shadow-sm backdrop-blur">
+            <div className="rounded-lg border border-dashed border-wago-line bg-white p-4 text-sm text-wago-muted">
               Account health appears after the gateway is authenticated.
             </div>
           )}

@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { StoredWebhookDelivery } from "./delivery-store.js";
 import { createWebhookDeliveryWorker } from "./delivery-worker.js";
 
-function delivery(): StoredWebhookDelivery {
+function delivery(id = "delivery-1"): StoredWebhookDelivery {
   return {
-    id: "delivery-1",
+    id,
     schemaVersion: 1,
     event: "message.server_accepted",
-    messageId: "message-1",
+    messageId: `message-${id}`,
     payloadJson: "{}",
     status: "delivering",
     attemptCount: 0,
@@ -60,6 +60,55 @@ describe("webhook delivery worker", () => {
       expect.objectContaining({ event: "webhook.delivery.succeeded", deliveryId: "delivery-1" }),
       "Webhook delivery succeeded",
     );
+  });
+
+  it("resolves the active sender again for a later batch", async () => {
+    const firstDelivery = delivery("delivery-1");
+    const secondDelivery = delivery("delivery-2");
+    const claimDue = vi.fn().mockReturnValueOnce([firstDelivery]).mockReturnValueOnce([secondDelivery]);
+    const completeAttempt = vi.fn((id: string) => ({
+      ...(id === firstDelivery.id ? firstDelivery : secondDelivery),
+      status: "delivered" as const,
+      attemptCount: 1,
+      lastStatusCode: 204,
+    }));
+    const firstSend = vi.fn(async () => ({ ok: true as const, statusCode: 204 }));
+    const secondSend = vi.fn(async () => ({ ok: true as const, statusCode: 204 }));
+    let activeSender = { send: firstSend };
+
+    const worker = createWebhookDeliveryWorker({
+      store: { claimDue, completeAttempt, pruneTerminal: () => 0 },
+      getSender: () => activeSender,
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      now: () => 10_000,
+    });
+
+    await worker.tick();
+    activeSender = { send: secondSend };
+    await worker.tick();
+
+    expect(firstSend).toHaveBeenCalledTimes(1);
+    expect(firstSend).toHaveBeenCalledWith(firstDelivery);
+    expect(secondSend).toHaveBeenCalledTimes(1);
+    expect(secondSend).toHaveBeenCalledWith(secondDelivery);
+  });
+
+  it("does not claim due deliveries while runtime webhook delivery is disabled", async () => {
+    const claimDue = vi.fn(() => [delivery()]);
+    const worker = createWebhookDeliveryWorker({
+      store: {
+        claimDue,
+        completeAttempt: () => null,
+        pruneTerminal: () => 0,
+      },
+      getSender: () => null,
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      now: () => 10_000,
+    });
+
+    await worker.tick();
+
+    expect(claimDue).not.toHaveBeenCalled();
   });
 
   it("prunes terminal history only at the configured cadence", async () => {

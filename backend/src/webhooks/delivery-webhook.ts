@@ -1,4 +1,3 @@
-import { config } from "../config/index.js";
 import { getDatabase } from "../infrastructure/database.js";
 import { logger } from "../infrastructure/logger.js";
 import {
@@ -13,29 +12,31 @@ import {
   type MessageDeliveryWebhookInput,
 } from "./delivery-webhook-core.js";
 import { createWebhookDeliveryWorker } from "./delivery-worker.js";
+import { createWebhookSettingsStore } from "./settings-store.js";
 
-const store = createWebhookDeliveryStore(getDatabase());
-const signingSecrets = [config.deliveryWebhookSecret, config.deliveryWebhookPreviousSecret].filter(
-  (secret): secret is string => Boolean(secret),
-);
-const sender =
-  config.deliveryWebhookEnabled && config.deliveryWebhookUrl
-    ? createWebhookAttemptSender({
-        url: config.deliveryWebhookUrl,
-        secrets: signingSecrets,
-      })
-    : null;
-const worker = sender
-  ? createWebhookDeliveryWorker({
-      store,
-      sender,
-      logger: {
-        info: (fields, message) => logger.info(fields, message),
-        warn: (fields, message) => logger.warn(fields, message),
-        error: (fields, message) => logger.error(fields, message),
-      },
-    })
-  : null;
+const database = getDatabase();
+const store = createWebhookDeliveryStore(database);
+const settingsStore = createWebhookSettingsStore(database);
+
+function currentAttemptSender() {
+  const settings = settingsStore.get();
+  if (!settings?.enabled || !settings.url || !settings.secret) {
+    return null;
+  }
+
+  const secrets = [settings.secret, settings.previousSecret].filter((secret): secret is string => Boolean(secret));
+  return createWebhookAttemptSender({ url: settings.url, secrets });
+}
+
+const worker = createWebhookDeliveryWorker({
+  store,
+  getSender: currentAttemptSender,
+  logger: {
+    info: (fields, message) => logger.info(fields, message),
+    warn: (fields, message) => logger.warn(fields, message),
+    error: (fields, message) => logger.error(fields, message),
+  },
+});
 
 export type PublicWebhookDelivery = Omit<
   StoredWebhookDelivery,
@@ -76,7 +77,8 @@ export function serializeWebhookDelivery(delivery: StoredWebhookDelivery): Publi
 }
 
 export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput): void {
-  if (!config.deliveryWebhookEnabled) {
+  const settings = settingsStore.get();
+  if (!settings?.enabled || !settings.url || !settings.secret) {
     return;
   }
 
@@ -84,7 +86,7 @@ export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput
     const now = new Date();
     const envelope = createMessageDeliveryWebhookEnvelope(input, { now: () => now });
     store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
-    void worker?.tick();
+    void worker.tick();
   } catch (error) {
     logger.error(
       {
@@ -99,11 +101,11 @@ export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput
 }
 
 export function startWebhookDeliveryWorker(): void {
-  worker?.start();
+  worker.start();
 }
 
 export async function stopWebhookDeliveryWorker(): Promise<void> {
-  await worker?.stop();
+  await worker.stop();
 }
 
 export function listWebhookDeliveries(options: {
@@ -125,7 +127,8 @@ export function redeliverWebhookDelivery(
   | { kind: "not_found" }
   | { kind: "in_progress"; delivery: PublicWebhookDelivery }
   | { kind: "queued"; delivery: PublicWebhookDelivery } {
-  if (!config.deliveryWebhookEnabled) {
+  const settings = settingsStore.get();
+  if (!settings?.enabled || !settings.url || !settings.secret) {
     return { kind: "disabled" };
   }
 
@@ -135,7 +138,7 @@ export function redeliverWebhookDelivery(
   }
 
   if (result.kind === "queued") {
-    void worker?.tick();
+    void worker.tick();
   }
 
   return {

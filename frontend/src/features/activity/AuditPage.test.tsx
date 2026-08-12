@@ -49,16 +49,17 @@ afterEach(() => {
 });
 
 describe("AuditPage", () => {
-  it("sends source, category, level, and bounded search filters to the backend", async () => {
+  it("applies source, category, level, and bounded search filters automatically", async () => {
     const user = userEvent.setup();
     render(<AuditPage />);
 
     await screen.findByText("WhatsApp connection closed");
+    expect(screen.queryByRole("button", { name: "Apply filters" })).toBeNull();
+
     await user.selectOptions(screen.getByLabelText("Filter audit source"), "baileys");
     await user.selectOptions(screen.getByLabelText("Filter audit category"), "connection");
     await user.selectOptions(screen.getByLabelText("Filter audit level"), "warning");
     await user.type(screen.getByLabelText("Search audit events"), "logged out");
-    await user.click(screen.getByRole("button", { name: "Apply filters" }));
 
     await waitFor(() => {
       expect(listActivity).toHaveBeenLastCalledWith({

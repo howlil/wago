@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type ActivityCategory,
   type ActivityEvent,
@@ -13,6 +13,7 @@ export type CategoryFilter = "all" | ActivityCategory;
 export type LevelFilter = "all" | ActivityLevel;
 
 const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 300;
 
 function activityErrorMessage(error: unknown): string {
   const apiError = error as { error?: string; message?: string };
@@ -38,11 +39,29 @@ export function useActivityLog(enabled: boolean) {
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [level, setLevel] = useState<LevelFilter>("all");
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState<ActivityQuery>({ limit: PAGE_SIZE });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = globalThis.setTimeout(() => {
+      setDebouncedSearch(search.trim().slice(0, 100));
+    }, SEARCH_DEBOUNCE_MS);
+    return () => globalThis.clearTimeout(timer);
+  }, [search]);
+
+  const query = useMemo<ActivityQuery>(
+    () => ({
+      limit: PAGE_SIZE,
+      ...(source === "all" ? {} : { source }),
+      ...(category === "all" ? {} : { category }),
+      ...(level === "all" ? {} : { level }),
+      ...(debouncedSearch ? { q: debouncedSearch } : {}),
+    }),
+    [source, category, level, debouncedSearch],
+  );
 
   const loadPage = useCallback(
     async (request: ActivityQuery, append = false) => {
@@ -95,17 +114,6 @@ export function useActivityLog(enabled: boolean) {
     void loadPage(query);
   }, [loadPage, query]);
 
-  function applyFilters(): void {
-    const trimmedSearch = search.trim().slice(0, 100);
-    setQuery({
-      limit: PAGE_SIZE,
-      ...(source === "all" ? {} : { source }),
-      ...(category === "all" ? {} : { category }),
-      ...(level === "all" ? {} : { level }),
-      ...(trimmedSearch ? { q: trimmedSearch } : {}),
-    });
-  }
-
   function refresh(): Promise<void> {
     return loadPage(query);
   }
@@ -132,7 +140,6 @@ export function useActivityLog(enabled: boolean) {
     setCategory,
     setLevel,
     setSearch,
-    applyFilters,
     refresh,
     loadMore,
   };

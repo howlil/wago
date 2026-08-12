@@ -23,7 +23,7 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
         aria-label="Close pairing dialog"
       />
       <section
-        className="relative w-full max-w-[460px] rounded-2xl border border-[#dce5e1] bg-white p-5 shadow-[0_24px_80px_rgb(16_37_31_/_24%)]"
+        className="relative w-full max-w-[460px] rounded-xl border border-[#dce5e1] bg-white p-5 shadow-[0_24px_80px_rgb(16_37_31_/_24%)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="pairing-dialog-title"
@@ -31,7 +31,7 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff0f1] text-[#9c2932]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#fff0f1] text-[#9c2932]">
               <AlertTriangle size={19} />
             </span>
             <div>
@@ -44,7 +44,7 @@ export function RebindSessionDialog({ isOpen, isRebinding, onCancel, onConfirm }
             </div>
           </div>
           <button
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#dce5e1] text-[#52675d] hover:bg-[#f4f7f5] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#dce5e1] text-[#52675d] hover:bg-[#f4f7f5] disabled:cursor-not-allowed disabled:opacity-60"
             type="button"
             onClick={onCancel}
             disabled={isRebinding}
