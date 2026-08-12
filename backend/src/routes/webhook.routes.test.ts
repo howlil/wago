@@ -2,18 +2,23 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { app } from "../app.js";
 import { config } from "../config/index.js";
+import { getDatabase } from "../infrastructure/database.js";
+import { createWebhookSettingsStore } from "../webhooks/settings-store.js";
 
 const UNKNOWN_DELIVERY_ID = "11111111-1111-4111-8111-111111111111";
+const settingsStore = createWebhookSettingsStore(getDatabase());
 
 describe("webhook delivery routes", () => {
   beforeEach(() => {
     config.apiKey = "webhook-test-key";
     config.apiKeyHash = null;
     config.apiKeySource = "env";
+    settingsStore.clear();
   });
 
   afterEach(() => {
     config.apiKey = null;
+    settingsStore.clear();
   });
 
   it("requires API authentication", async () => {
@@ -56,5 +61,72 @@ describe("webhook delivery routes", () => {
 
     expect(response.status).toBe(404);
     expect(response.body.error).toBe("WEBHOOK_DELIVERY_NOT_FOUND");
+  });
+
+  it("returns webhook settings without exposing signing secrets", async () => {
+    settingsStore.importLegacyIfEmpty({
+      enabled: true,
+      url: "https://receiver.example.test/webhook",
+      secret: "a".repeat(32),
+      previousSecret: "b".repeat(32),
+    });
+
+    const response = await request(app)
+      .get("/webhooks/settings")
+      .set("Authorization", "Bearer webhook-test-key");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      enabled: true,
+      url: "https://receiver.example.test/webhook",
+      secretConfigured: true,
+      rotationPending: true,
+    });
+    expect(response.body.secret).toBeUndefined();
+    expect(response.body.previousSecret).toBeUndefined();
+  });
+
+  it("creates the signing secret once when webhook delivery is enabled", async () => {
+    const first = await request(app)
+      .put("/webhooks/settings")
+      .set("Authorization", "Bearer webhook-test-key")
+      .send({ enabled: true, url: "https://receiver.example.test/webhook" });
+
+    expect(first.status).toBe(200);
+    expect(first.body.enabled).toBe(true);
+    expect(first.body.secretConfigured).toBe(true);
+    expect(first.body.generatedSecret).toEqual(expect.any(String));
+
+    const originalSecret = first.body.generatedSecret;
+    const second = await request(app)
+      .put("/webhooks/settings")
+      .set("Authorization", "Bearer webhook-test-key")
+      .send({ enabled: true, url: "https://receiver.example.test/v2/webhook" });
+
+    expect(second.status).toBe(200);
+    expect(second.body.url).toBe("https://receiver.example.test/v2/webhook");
+    expect(second.body.generatedSecret).toBeUndefined();
+    expect(settingsStore.get()?.secret).toBe(originalSecret);
+  });
+
+  it("rotates and completes webhook signing-secret overlap", async () => {
+    const configured = settingsStore.save({ enabled: true, url: "https://receiver.example.test/webhook" });
+
+    const rotated = await request(app)
+      .post("/webhooks/settings/rotate-secret")
+      .set("Authorization", "Bearer webhook-test-key");
+
+    expect(rotated.status).toBe(200);
+    expect(rotated.body.generatedSecret).toEqual(expect.any(String));
+    expect(rotated.body.generatedSecret).not.toBe(configured.generatedSecret);
+    expect(rotated.body.rotationPending).toBe(true);
+
+    const completed = await request(app)
+      .post("/webhooks/settings/complete-rotation")
+      .set("Authorization", "Bearer webhook-test-key");
+
+    expect(completed.status).toBe(200);
+    expect(completed.body.rotationPending).toBe(false);
   });
 });
