@@ -158,7 +158,7 @@ function StatusMetric({ metric }: { metric: Metric }) {
   const Icon = metric.icon;
 
   return (
-    <div role="group" aria-label={`${metric.label} status`} className="min-w-0 bg-white px-4 py-4 sm:px-5">
+    <section aria-label={`${metric.label} status`} className="min-w-0 bg-white px-4 py-4 sm:px-5">
       <div className="flex items-center gap-3.5">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border ${toneIcon[metric.tone]}`}
@@ -176,7 +176,7 @@ function StatusMetric({ metric }: { metric: Metric }) {
           <span className="mt-0.5 block truncate text-[10px] font-medium text-[#818b86]">{metric.detail}</span>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
