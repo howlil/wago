@@ -66,22 +66,33 @@ export function GatewayCredentialsCard({
       </div>
 
       <div className="mt-4 grid gap-3">
-        <label>
-          <span className={fieldLabelClass}>App ID</span>
+        <div>
+          <label className={fieldLabelClass} htmlFor="gateway-app-id">
+            App ID
+          </label>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <input className={`${inputClass} min-w-0 font-mono text-xs`} value={appId} readOnly aria-label="App ID" />
+            <input
+              id="gateway-app-id"
+              className={`${inputClass} min-w-0 font-mono text-xs`}
+              value={appId}
+              readOnly
+              aria-label="App ID"
+            />
             <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onCopyAppId}>
               {copiedField === "appId" ? <Check size={14} /> : <Copy size={14} />}
               {copiedField === "appId" ? "Copied" : "Copy"}
             </button>
           </div>
-        </label>
+        </div>
 
-        <label>
-          <span className={fieldLabelClass}>API key</span>
+        <div>
+          <label className={fieldLabelClass} htmlFor="gateway-api-key">
+            API key
+          </label>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="relative min-w-0">
               <input
+                id="gateway-api-key"
                 className={`${inputClass} pr-9 font-mono text-xs`}
                 value={apiKeyInput}
                 onChange={(event) => onApiKeyChange(event.target.value)}
@@ -130,7 +141,7 @@ export function GatewayCredentialsCard({
             )}
           </div>
           <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
-        </label>
+        </div>
 
         {isAuthenticated ? (
           <div className="flex justify-end">
