@@ -365,7 +365,10 @@ export function getWebhookSettings(): Promise<WebhookSettingsResponse> {
   return requestJson<WebhookSettingsResponse>("/webhooks/settings");
 }
 
-export function updateWebhookSettings(input: { enabled: boolean; url: string | null }): Promise<WebhookSettingsResponse> {
+export function updateWebhookSettings(input: {
+  enabled: boolean;
+  url: string | null;
+}): Promise<WebhookSettingsResponse> {
   return requestJson<WebhookSettingsResponse>("/webhooks/settings", {
     method: "PUT",
     headers: {
