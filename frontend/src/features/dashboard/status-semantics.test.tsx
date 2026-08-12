@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 function outboundMetricScope() {
-  return within(screen.getByRole("group", { name: "Outbound status" }));
+  return within(screen.getByRole("region", { name: "Outbound status" }));
 }
 
 describe("operator status semantics", () => {
