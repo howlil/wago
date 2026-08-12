@@ -125,12 +125,12 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
       </div>
 
       {!enabled ? (
-        <p className="mb-0 mt-3 rounded-md border border-dashed border-wago-line px-3 py-3 text-xs text-wago-muted">
+        <p className="mb-0 mt-3 border-t border-wago-line pt-3 text-xs leading-5 text-wago-muted">
           Authenticate the gateway to manage recipients.
         </p>
       ) : (
         <>
-          <div className="mt-3">
+          <div className="mt-4">
             <RecipientForm
               phone={phone}
               label={label}
