@@ -160,7 +160,9 @@ function StatusMetric({ metric }: { metric: Metric }) {
   return (
     <div className="min-w-0 bg-white px-4 py-4 sm:px-5">
       <div className="flex items-center gap-3.5">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border ${toneIcon[metric.tone]}`}>
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border ${toneIcon[metric.tone]}`}
+        >
           <Icon size={18} />
         </div>
         <div className="min-w-0 flex-1">
