@@ -38,14 +38,14 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
   return (
     <section className={cardBodyClass}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h2 className={sectionTitleClass}>{heading}</h2>
           <p className={sectionDescriptionClass}>
             Sanitized gateway and Baileys lifecycle evidence. Message content and session secrets are not shown here.
           </p>
         </div>
         <button
-          className={secondaryButtonClass}
+          className={`${secondaryButtonClass} shrink-0`}
           type="button"
           onClick={() => void refresh()}
           disabled={!enabled || loading}
@@ -56,8 +56,8 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
         </button>
       </div>
 
-      <div className="mt-4 grid gap-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(130px,0.7fr))]">
-        <label className="relative">
+      <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-[minmax(260px,1fr)_repeat(3,minmax(130px,160px))]">
+        <label className="relative md:col-span-3 xl:col-span-1">
           <span className="sr-only">Search audit events</span>
           <Search className="pointer-events-none absolute left-3 top-2.5 text-[#7f8a84]" size={14} />
           <input
@@ -118,21 +118,21 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
       </div>
 
       {!enabled ? (
-        <p className="mb-0 mt-4 rounded-lg border border-dashed border-wago-line px-4 py-5 text-sm text-wago-muted">
+        <p className="mb-0 mt-4 border-t border-wago-line pt-4 text-sm text-wago-muted">
           Authenticate the gateway to view operational activity.
         </p>
       ) : error ? (
-        <div className="mt-4 rounded-lg border border-[#ead6a2] bg-[#fff9e9] px-4 py-3">
+        <div className="mt-4 rounded-md border border-[#ead6a2] bg-[#fff9e9] px-3 py-3">
           <strong className="block text-xs font-semibold text-[#705617]">Audit log unavailable</strong>
           <p className="mb-0 mt-1 text-xs leading-5 text-[#7d6a36]">{error}</p>
         </div>
       ) : loading && events.length === 0 ? (
-        <div className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed border-wago-line px-4 py-8 text-sm text-wago-muted">
+        <div className="mt-4 flex items-center justify-center gap-2 border-t border-wago-line px-3 py-7 text-sm text-wago-muted">
           <Loader2 className="animate-spin" size={16} />
           Loading audit events
         </div>
       ) : events.length === 0 ? (
-        <p className="mb-0 mt-4 rounded-lg border border-dashed border-wago-line px-4 py-6 text-sm text-wago-muted">
+        <p className="mb-0 mt-4 border-t border-wago-line px-3 pt-5 text-sm text-wago-muted">
           No audit events match the current filters.
         </p>
       ) : (
