@@ -49,7 +49,10 @@ describe("WebhookSettingsCard", () => {
 
     const enabled = await screen.findByRole("checkbox", { name: "Enable webhook delivery" });
     await user.click(enabled);
-    await user.type(screen.getByPlaceholderText("https://your-backend.example.com/webhooks/wago"), "https://receiver.example.test/webhooks/wago");
+    await user.type(
+      screen.getByPlaceholderText("https://your-backend.example.com/webhooks/wago"),
+      "https://receiver.example.test/webhooks/wago",
+    );
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
