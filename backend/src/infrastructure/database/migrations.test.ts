@@ -29,7 +29,9 @@ describe("database migrations", () => {
       ]),
     );
 
-    const browserSessionColumns = database.prepare("PRAGMA table_info(browser_sessions)").all() as Array<{ name: string }>;
+    const browserSessionColumns = database.prepare("PRAGMA table_info(browser_sessions)").all() as Array<{
+      name: string;
+    }>;
     expect(browserSessionColumns.map((column) => column.name)).toEqual(
       expect.arrayContaining(["id", "token_hash", "created_at", "last_seen_at", "expires_at", "revoked_at"]),
     );
