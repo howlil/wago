@@ -76,7 +76,7 @@ export const requireAuthenticatedRequest: RequestHandler = (req, res, next) => {
     return res.status(401).json({
       success: false,
       error: "UNAUTHORIZED",
-      message: "Invalid API key or browser session",
+      message: "Invalid API key",
     });
   }
 
