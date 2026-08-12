@@ -11,7 +11,7 @@ describe("database migrations", () => {
     runMigrations(database, migrations);
 
     const rows = database.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
-    expect(rows).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
+    expect(rows).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
     expect(webhookColumns.map((column) => column.name)).toEqual(
@@ -34,6 +34,13 @@ describe("database migrations", () => {
     }>;
     expect(browserSessionColumns.map((column) => column.name)).toEqual(
       expect.arrayContaining(["id", "token_hash", "created_at", "last_seen_at", "expires_at", "revoked_at"]),
+    );
+
+    const webhookSettingsColumns = database.prepare("PRAGMA table_info(webhook_settings)").all() as Array<{
+      name: string;
+    }>;
+    expect(webhookSettingsColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(["id", "enabled", "url", "secret", "previous_secret", "created_at", "updated_at"]),
     );
     database.close();
   });
