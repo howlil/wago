@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { type Response, Router } from "express";
 import { getDatabase } from "../infrastructure/database.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
@@ -52,7 +52,10 @@ webhookRouter.get("/settings", requireApiKey, (_req, res) => {
 
 webhookRouter.put("/settings", requireApiKey, (req, res) => {
   const body = req.body as { enabled?: unknown; url?: unknown };
-  if (typeof body.enabled !== "boolean" || (body.url !== null && body.url !== undefined && typeof body.url !== "string")) {
+  if (
+    typeof body.enabled !== "boolean" ||
+    (body.url !== null && body.url !== undefined && typeof body.url !== "string")
+  ) {
     return res.status(400).json({
       success: false,
       error: "INVALID_WEBHOOK_SETTINGS",
