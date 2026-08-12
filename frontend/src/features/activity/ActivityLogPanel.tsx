@@ -1,5 +1,4 @@
 import { ChevronDown, Loader2, RefreshCcw, Search } from "lucide-react";
-import type { FormEvent } from "react";
 import {
   cardBodyClass,
   secondaryButtonClass,
@@ -15,7 +14,7 @@ type ActivityLogPanelProps = {
 };
 
 const selectClass =
-  "h-10 w-full appearance-none rounded-xl border border-[#d6dfda] bg-white py-2 pl-3 pr-8 text-xs font-medium text-[#415048] outline-none transition focus:border-wago-brand focus:ring-2 focus:ring-[#dcefe6]";
+  "h-9 w-full appearance-none rounded-md border border-[#d6dfda] bg-white py-2 pl-3 pr-8 text-xs font-medium text-[#415048] outline-none transition-colors focus:border-wago-brand focus:ring-2 focus:ring-[#dcefe6]";
 
 export function ActivityLogPanel({ enabled, heading = "Activity Log" }: ActivityLogPanelProps) {
   const {
@@ -32,15 +31,9 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
     setCategory,
     setLevel,
     setSearch,
-    applyFilters,
     refresh,
     loadMore,
   } = useActivityLog(enabled);
-
-  function submitFilters(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    applyFilters();
-  }
 
   return (
     <section className={cardBodyClass}>
@@ -63,15 +56,12 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
         </button>
       </div>
 
-      <form
-        className="mt-4 grid gap-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(130px,0.7fr))_auto]"
-        onSubmit={submitFilters}
-      >
+      <div className="mt-4 grid gap-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(130px,0.7fr))]">
         <label className="relative">
           <span className="sr-only">Search audit events</span>
-          <Search className="pointer-events-none absolute left-3 top-3 text-[#7f8a84]" size={14} />
+          <Search className="pointer-events-none absolute left-3 top-2.5 text-[#7f8a84]" size={14} />
           <input
-            className="h-10 w-full rounded-xl border border-[#d6dfda] bg-white py-2 pl-9 pr-3 text-xs text-[#415048] outline-none transition placeholder:text-[#9aa49f] focus:border-wago-brand focus:ring-2 focus:ring-[#dcefe6]"
+            className="h-9 w-full rounded-md border border-[#d6dfda] bg-white py-2 pl-9 pr-3 text-xs text-[#415048] outline-none transition-colors placeholder:text-[#9aa49f] focus:border-wago-brand focus:ring-2 focus:ring-[#dcefe6]"
             value={search}
             maxLength={100}
             onChange={(event) => setSearch(event.target.value)}
@@ -90,7 +80,7 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
             <option value="wago">Wago</option>
             <option value="baileys">Baileys</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-3 text-[#7f8a84]" size={14} />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
         </label>
 
         <label className="relative">
@@ -107,7 +97,7 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
             <option value="security">Security</option>
             <option value="system">System</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-3 text-[#7f8a84]" size={14} />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
         </label>
 
         <label className="relative">
@@ -123,34 +113,26 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
             <option value="warning">Warning</option>
             <option value="error">Error</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-3 text-[#7f8a84]" size={14} />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
         </label>
-
-        <button
-          className="inline-flex h-10 items-center justify-center rounded-xl bg-wago-brand px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-wago-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
-          type="submit"
-          disabled={!enabled || loading}
-        >
-          Apply filters
-        </button>
-      </form>
+      </div>
 
       {!enabled ? (
-        <p className="mb-0 mt-4 rounded-xl border border-dashed border-wago-line px-4 py-5 text-sm text-wago-muted">
+        <p className="mb-0 mt-4 rounded-lg border border-dashed border-wago-line px-4 py-5 text-sm text-wago-muted">
           Authenticate the gateway to view operational activity.
         </p>
       ) : error ? (
-        <div className="mt-4 rounded-xl border border-[#ead6a2] bg-[#fff9e9] px-4 py-3">
+        <div className="mt-4 rounded-lg border border-[#ead6a2] bg-[#fff9e9] px-4 py-3">
           <strong className="block text-xs font-semibold text-[#705617]">Audit log unavailable</strong>
           <p className="mb-0 mt-1 text-xs leading-5 text-[#7d6a36]">{error}</p>
         </div>
       ) : loading && events.length === 0 ? (
-        <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-dashed border-wago-line px-4 py-8 text-sm text-wago-muted">
+        <div className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-dashed border-wago-line px-4 py-8 text-sm text-wago-muted">
           <Loader2 className="animate-spin" size={16} />
           Loading audit events
         </div>
       ) : events.length === 0 ? (
-        <p className="mb-0 mt-4 rounded-xl border border-dashed border-wago-line px-4 py-6 text-sm text-wago-muted">
+        <p className="mb-0 mt-4 rounded-lg border border-dashed border-wago-line px-4 py-6 text-sm text-wago-muted">
           No audit events match the current filters.
         </p>
       ) : (
