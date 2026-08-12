@@ -8,7 +8,7 @@ export function SettingsPage() {
       description="Configure gateway integrations and operator-facing behavior."
       activePath="/settings"
     >
-      <div className="grid max-w-4xl gap-4">
+      <div className="grid w-full max-w-[720px] gap-4">
         <WebhookSettingsCard />
       </div>
     </AppShell>
