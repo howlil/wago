@@ -79,8 +79,10 @@ export const config = {
   apiKey: envApiKey || null,
   apiKeyHash: envApiKey ? null : persistedApiKeyHash,
   apiKeySource: (envApiKey ? "env" : persistedApiKeyHash ? "generated" : "unset") as ApiKeySource,
-  authCookieName: "wa_gateway_api_key",
+  authCookieName: "wago_session",
+  legacyAuthCookieName: "wa_gateway_api_key",
   authCookieSecure: nodeEnv === "production",
+  browserSessionMaxAgeMs: 1000 * 60 * 60 * 24 * 30,
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
   dataDirectory,
@@ -125,7 +127,7 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     return {
       success: false,
       error: "APP_ALREADY_INITIALIZED",
-      message: "This app is already initialized. Use the existing API key or auth cookie.",
+      message: "This app is already initialized. Use the existing API key to sign in or authenticate API requests.",
     };
   }
 

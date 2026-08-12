@@ -1,4 +1,4 @@
-import { Check, Copy, Eye, EyeOff } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, LogOut } from "lucide-react";
 import type { AppInfoResponse } from "../../api.js";
 import {
   cardBodyClass,
@@ -20,11 +20,14 @@ type GatewayCredentialsCardProps = {
   showApiKey: boolean;
   copiedField: CopiedField;
   credentialHint: string;
+  isSigningIn: boolean;
+  isSigningOut: boolean;
   onApiKeyChange: (value: string) => void;
   onToggleApiKey: () => void;
   onCopyAppId: () => void;
   onCopyApiKey: () => void;
-  onUseApiKey: () => void;
+  onSignIn: () => void;
+  onSignOut: () => void;
 };
 
 export function GatewayCredentialsCard({
@@ -37,18 +40,21 @@ export function GatewayCredentialsCard({
   showApiKey,
   copiedField,
   credentialHint,
+  isSigningIn,
+  isSigningOut,
   onApiKeyChange,
   onToggleApiKey,
   onCopyAppId,
   onCopyApiKey,
-  onUseApiKey,
+  onSignIn,
+  onSignOut,
 }: GatewayCredentialsCardProps) {
   return (
     <section className={cardBodyClass}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className={sectionTitleClass}>Gateway credentials</h2>
-          <p className={sectionDescriptionClass}>Stable identity for API clients.</p>
+          <p className={sectionDescriptionClass}>API key for machine clients; browser access uses a separate session.</p>
         </div>
         {apiKeyConfigured ? (
           <span className="rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
@@ -81,7 +87,7 @@ export function GatewayCredentialsCard({
                   credentialSetupRequired
                     ? "Generated on first pairing"
                     : isAuthenticated
-                      ? "Hidden after setup"
+                      ? "Not stored in browser"
                       : "Enter existing API key"
                 }
                 type={showApiKey ? "text" : "password"}
@@ -101,8 +107,13 @@ export function GatewayCredentialsCard({
               ) : null}
             </div>
             {!isAuthenticated && apiKeyConfigured ? (
-              <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onUseApiKey}>
-                Use key
+              <button
+                className={`${secondaryButtonClass} shrink-0`}
+                type="button"
+                onClick={onSignIn}
+                disabled={isSigningIn}
+              >
+                {isSigningIn ? "Signing in" : "Sign in"}
               </button>
             ) : (
               <button
@@ -118,6 +129,20 @@ export function GatewayCredentialsCard({
           </div>
           <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
         </label>
+
+        {isAuthenticated ? (
+          <div className="flex justify-end">
+            <button
+              className={`${secondaryButtonClass} shrink-0`}
+              type="button"
+              onClick={onSignOut}
+              disabled={isSigningOut}
+            >
+              <LogOut size={14} />
+              {isSigningOut ? "Signing out" : "Sign out"}
+            </button>
+          </div>
+        ) : null}
       </div>
     </section>
   );

@@ -110,11 +110,14 @@ export function DashboardPage() {
             showApiKey={dashboard.showApiKey}
             copiedField={dashboard.copiedField}
             credentialHint={dashboard.credentialHint}
+            isSigningIn={dashboard.isSigningIn}
+            isSigningOut={dashboard.isSigningOut}
             onApiKeyChange={dashboard.setApiKeyInput}
             onToggleApiKey={dashboard.toggleApiKey}
             onCopyAppId={dashboard.copyAppId}
             onCopyApiKey={dashboard.copyApiKey}
-            onUseApiKey={() => void dashboard.handleSaveApiKey()}
+            onSignIn={() => void dashboard.handleSignIn()}
+            onSignOut={() => void dashboard.handleSignOut()}
           />
 
           {dashboard.isAuthenticated ? (

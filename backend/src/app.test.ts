@@ -1,6 +1,7 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
+import { resetBrowserSessionsForTest } from "./auth/browser-session-store.js";
 import { config, hashApiKey } from "./config/index.js";
 import { resetRecipientStoreForTest } from "./recipients/store.js";
 
@@ -12,6 +13,14 @@ const apiKeyRequiredResponse = {
 
 const pairingCandidate = `wa_${"a".repeat(64)}`;
 
+function firstCookie(response: request.Response): string {
+  const header = response.headers["set-cookie"]?.[0];
+  if (!header) {
+    throw new Error("expected Set-Cookie header");
+  }
+  return header.split(";", 1)[0];
+}
+
 describe("app", () => {
   beforeEach(async () => {
     config.allowWebBootstrap = true;
@@ -20,6 +29,7 @@ describe("app", () => {
     config.apiKeySource = "unset";
     config.nodeEnv = "test";
     config.requestLogging = false;
+    resetBrowserSessionsForTest();
     await resetRecipientStoreForTest();
   });
 
@@ -146,13 +156,14 @@ describe("app", () => {
     });
   });
 
-  it("bootstraps the pairing-generated API key without production env configuration", async () => {
+  it("bootstraps the pairing-generated API key and a separate browser session", async () => {
     const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
     expect(response.body.appId).toBe(config.appId);
     expect(response.body.apiKey).toBe(pairingCandidate);
     expect(response.headers["set-cookie"]?.[0]).toContain(config.authCookieName);
+    expect(response.headers["set-cookie"]?.[0]).not.toContain(pairingCandidate);
     expect(config.apiKey).toBeNull();
     expect(config.apiKeyHash).toBe(hashApiKey(pairingCandidate));
     expect(config.apiKeySource).toBe("generated");
@@ -199,12 +210,16 @@ describe("app", () => {
   it("rejects cookie-authenticated state changes from a different request origin", async () => {
     config.apiKeyHash = hashApiKey("generated-key");
     config.apiKeySource = "generated";
+    config.allowWebBootstrap = false;
+
+    const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
+    const cookie = firstCookie(login);
 
     const response = await request(app)
       .post("/recipients/allow")
       .set("Host", "wago.example.com")
       .set("Origin", "https://evil.example.com")
-      .set("Cookie", `${config.authCookieName}=generated-key`)
+      .set("Cookie", cookie)
       .send({ phone: "6281234567890" });
 
     expect(response.status).toBe(403);
@@ -218,12 +233,16 @@ describe("app", () => {
   it("accepts cookie-authenticated state changes from the detected Wago origin", async () => {
     config.apiKeyHash = hashApiKey("generated-key");
     config.apiKeySource = "generated";
+    config.allowWebBootstrap = false;
+
+    const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
+    const cookie = firstCookie(login);
 
     const response = await request(app)
       .post("/recipients/allow")
       .set("Host", "wago.example.com")
       .set("Origin", "https://wago.example.com")
-      .set("Cookie", `${config.authCookieName}=generated-key`)
+      .set("Cookie", cookie)
       .send({ phone: "6281234567890" });
 
     expect(response.status).toBe(201);
@@ -248,7 +267,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "APP_ALREADY_INITIALIZED",
-      message: "This app is already initialized. Use the existing API key or auth cookie.",
+      message: "This app is already initialized. Use the existing API key to sign in or authenticate API requests.",
     });
   });
 });

@@ -1,15 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const API_KEY_SESSION_STORAGE_KEY = "wago.apiKey";
+const LEGACY_API_KEY_SESSION_STORAGE_KEY = "wago.apiKey";
 
-function readSessionApiKey(): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return window.sessionStorage.getItem(API_KEY_SESSION_STORAGE_KEY)?.trim() ?? "";
+if (typeof window !== "undefined") {
+  window.sessionStorage.removeItem(LEGACY_API_KEY_SESSION_STORAGE_KEY);
 }
-
-let apiKey = readSessionApiKey();
 
 export type AppInfoResponse = {
   success: true;
@@ -28,6 +22,20 @@ export type BootstrapAppResponse =
       appId: string;
       apiKey: string;
       recovered: boolean;
+      sessionExpiresAt: string;
+      message: string;
+    }
+  | {
+      success: false;
+      error: string;
+      message: string;
+    };
+
+export type BrowserSessionResponse =
+  | {
+      success: true;
+      authenticated: boolean;
+      expiresAt?: string;
       message: string;
     }
   | {
@@ -187,16 +195,9 @@ export type ActivityQuery = {
 export type RebindResponse = PairingResponse;
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers);
-
-  if (apiKey) {
-    headers.set("Authorization", `Bearer ${apiKey}`);
-  }
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers,
   });
   const contentType = response.headers.get("content-type") ?? "";
   const data = contentType.includes("application/json")
@@ -215,13 +216,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function requestText(path: string): Promise<string> {
-  const headers = new Headers();
-
-  if (apiKey) {
-    headers.set("Authorization", `Bearer ${apiKey}`);
-  }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include", headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
 
   if (!response.ok) {
     throw new Error(await response.text());
@@ -238,25 +233,6 @@ export function createApiKeyCandidate(): string {
   return `wa_${hex}`;
 }
 
-export function getStoredApiKey(): string {
-  return apiKey;
-}
-
-export function setStoredApiKey(value: string): void {
-  apiKey = value.trim();
-
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (apiKey) {
-    window.sessionStorage.setItem(API_KEY_SESSION_STORAGE_KEY, apiKey);
-    return;
-  }
-
-  window.sessionStorage.removeItem(API_KEY_SESSION_STORAGE_KEY);
-}
-
 export function getAppInfo(): Promise<AppInfoResponse> {
   return requestJson<AppInfoResponse>("/app/info");
 }
@@ -268,6 +244,22 @@ export function bootstrapApp(candidate: string): Promise<BootstrapAppResponse> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ apiKey: candidate }),
+  });
+}
+
+export function createBrowserSession(apiKey: string): Promise<BrowserSessionResponse> {
+  return requestJson<BrowserSessionResponse>("/app/session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ apiKey }),
+  });
+}
+
+export function logoutBrowserSession(): Promise<BrowserSessionResponse> {
+  return requestJson<BrowserSessionResponse>("/app/session/logout", {
+    method: "POST",
   });
 }
 

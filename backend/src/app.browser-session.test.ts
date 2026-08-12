@@ -6,11 +6,18 @@ import { config, hashApiKey } from "./config/index.js";
 
 const pairingCandidate = `wa_${"a".repeat(64)}`;
 
-function cookieFrom(response: request.Response): string {
-  const header = response.headers["set-cookie"]?.[0];
+type ResponseWithHeaders = {
+  headers: Record<string, string | string[] | undefined>;
+};
+
+function cookieFrom(response: ResponseWithHeaders): string {
+  const raw = response.headers["set-cookie"];
+  const header = Array.isArray(raw) ? raw[0] : raw;
+
   if (!header) {
     throw new Error("expected Set-Cookie header");
   }
+
   return header.split(";", 1)[0];
 }
 
@@ -81,5 +88,19 @@ describe("browser session authentication", () => {
 
     expect((await request(app).get("/recipients").set("Cookie", cookie)).status).toBe(401);
     expect((await request(app).get("/recipients").set("Authorization", "Bearer existing-key")).status).toBe(200);
+  });
+
+  it("clears the legacy raw API-key cookie without accepting it as authentication", async () => {
+    config.apiKeyHash = hashApiKey("existing-key");
+    config.apiKeySource = "generated";
+    config.allowWebBootstrap = false;
+
+    const response = await request(app)
+      .get("/app/info")
+      .set("Cookie", `${config.legacyAuthCookieName}=existing-key`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.authenticated).toBe(false);
+    expect(response.headers["set-cookie"]?.[0]).toContain(`${config.legacyAuthCookieName}=;`);
   });
 });
