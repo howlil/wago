@@ -20,7 +20,7 @@ describe("browser authentication API client", () => {
     vi.restoreAllMocks();
   });
 
-  it("exchanges an API key for an HttpOnly browser session without touching browser storage", async () => {
+  it("exchanges an API key for an HttpOnly browser session without persisting it in browser storage", async () => {
     const getItem = vi.spyOn(Storage.prototype, "getItem");
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     const removeItem = vi.spyOn(Storage.prototype, "removeItem");
@@ -38,6 +38,6 @@ describe("browser authentication API client", () => {
     );
     expect(getItem).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
-    expect(removeItem).not.toHaveBeenCalled();
+    expect(removeItem).toHaveBeenCalledWith("wago.apiKey");
   });
 });
