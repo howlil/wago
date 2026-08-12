@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { type Response, Router } from "express";
 import { recordActivity } from "../activity/store.js";
 import { createBrowserSession, revokeBrowserSession } from "../auth/browser-session-store.js";
 import { bootstrapApiKey, config } from "../config/index.js";
