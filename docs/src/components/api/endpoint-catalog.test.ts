@@ -18,6 +18,9 @@ const routes = [
   "POST /whatsapp/rebind",
   "POST /messages/send",
   "GET /messages/:id/status",
+  "GET /webhooks/deliveries",
+  "GET /webhooks/deliveries/:id",
+  "POST /webhooks/deliveries/:id/redeliver",
 ];
 
 describe("API endpoint catalog", () => {

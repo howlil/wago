@@ -2,10 +2,10 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { getDatabase } from "../infrastructure/database.js";
 import { dataDirectory, nodeEnv } from "./runtime-paths.js";
+import { parseDeliveryWebhookConfig } from "./webhook-config.js";
 
 const envApiKey = process.env.API_KEY?.trim();
-const deliveryWebhookUrl = process.env.WEBHOOK_URL?.trim() || null;
-const deliveryWebhookSecret = process.env.WEBHOOK_SECRET?.trim() || null;
+const deliveryWebhook = parseDeliveryWebhookConfig(process.env);
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 
 type ApiKeySource = "env" | "generated" | "unset";
@@ -84,8 +84,10 @@ export const config = {
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
   dataDirectory,
-  deliveryWebhookUrl,
-  deliveryWebhookSecret,
+  deliveryWebhookEnabled: deliveryWebhook.enabled,
+  deliveryWebhookUrl: deliveryWebhook.url,
+  deliveryWebhookSecret: deliveryWebhook.secret,
+  deliveryWebhookPreviousSecret: deliveryWebhook.previousSecret,
   frontendDirectory: nodeEnv === "production" ? "/app/public" : null,
   nodeEnv,
   requestLogging: true,

@@ -116,6 +116,37 @@ export const migrations: Migration[] = [
         ON activity_events(level, timestamp DESC);
     `,
   },
+  {
+    version: 4,
+    sql: `
+      CREATE TABLE IF NOT EXISTS webhook_deliveries (
+        id TEXT PRIMARY KEY,
+        schema_version INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'delivering', 'delivered', 'failed', 'expired')),
+        attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+        redelivery_count INTEGER NOT NULL DEFAULT 0 CHECK (redelivery_count >= 0),
+        next_attempt_at INTEGER,
+        first_attempt_at INTEGER,
+        last_attempt_at INTEGER,
+        last_status_code INTEGER,
+        last_error_code TEXT,
+        created_at INTEGER NOT NULL,
+        delivered_at INTEGER,
+        expires_at INTEGER NOT NULL,
+        claimed_at INTEGER
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_deliveries_message_event
+        ON webhook_deliveries(message_id, event_type);
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_due
+        ON webhook_deliveries(status, next_attempt_at);
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_created
+        ON webhook_deliveries(created_at DESC);
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {

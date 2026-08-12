@@ -4,12 +4,15 @@ import { app } from "./app.js";
 import { checkpointDatabase, closeDatabase } from "./infrastructure/database.js";
 import { logger } from "./infrastructure/logger.js";
 import { flushOutboundPolicyPersistence } from "./policy/outbound-policy.js";
+import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./webhooks/delivery-webhook.js";
 import { resumeWhatsAppSession, shutdownWhatsApp } from "./whatsapp.js";
 
 const port = 3000;
 const host = "0.0.0.0";
 
 const lifecycle = createApplicationLifecycle({
+  startWebhookDeliveryWorker,
+  stopWebhookDeliveryWorker,
   resumeWhatsAppSession,
   shutdownWhatsApp,
   flushOutboundPolicyPersistence,

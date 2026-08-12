@@ -7,6 +7,7 @@ services:
     environment:
       WEBHOOK_URL: ${WEBHOOK_URL:-}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+      WEBHOOK_SECRET_PREVIOUS: ${WEBHOOK_SECRET_PREVIOUS:-}
     volumes:
       - wago_data:/app/data
     read_only: true

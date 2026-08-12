@@ -1,6 +1,9 @@
 import { createHmac, randomUUID } from "node:crypto";
 
+export const WEBHOOK_SCHEMA_VERSION = "1" as const;
+
 export type MessageDeliveryWebhookStatus = "accepted" | "rejected";
+export type MessageDeliveryWebhookEvent = "message.server_accepted" | "message.rejected";
 
 export type MessageDeliveryWebhookInput = {
   messageId: string;
@@ -8,9 +11,10 @@ export type MessageDeliveryWebhookInput = {
   error?: string;
 };
 
-export type MessageDeliveryWebhookPayload = {
+export type MessageDeliveryWebhookEnvelope = {
+  version: typeof WEBHOOK_SCHEMA_VERSION;
   id: string;
-  event: `message.${MessageDeliveryWebhookStatus}`;
+  event: MessageDeliveryWebhookEvent;
   createdAt: string;
   data: {
     messageId: string;
@@ -19,6 +23,26 @@ export type MessageDeliveryWebhookPayload = {
   };
 };
 
+export type WebhookAttemptTarget = {
+  id: string;
+  event: MessageDeliveryWebhookEvent;
+  payloadJson: string;
+};
+
+export type WebhookAttemptResult =
+  | { ok: true; statusCode: number }
+  | {
+      ok: false;
+      retryable: boolean;
+      statusCode: number | null;
+      errorCode:
+        | "WEBHOOK_TIMEOUT"
+        | "WEBHOOK_NETWORK_ERROR"
+        | "WEBHOOK_REDIRECT_REJECTED"
+        | "WEBHOOK_HTTP_CLIENT_ERROR"
+        | "WEBHOOK_HTTP_SERVER_ERROR";
+    };
+
 type WebhookFetchResponse = {
   ok: boolean;
   status: number;
@@ -26,50 +50,32 @@ type WebhookFetchResponse = {
 
 type WebhookFetch = (url: string, init: RequestInit) => Promise<WebhookFetchResponse>;
 
-type WebhookLogger = {
-  info(fields: Record<string, unknown>, message?: string): void;
-  warn(fields: Record<string, unknown>, message?: string): void;
-  error(fields: Record<string, unknown>, message?: string): void;
-};
-
-type DeliveryWebhookDispatcherDependencies = {
-  url: string | null;
-  secret: string | null;
-  fetchImpl?: WebhookFetch;
-  sleep?: (delayMs: number) => Promise<void>;
-  now?: () => Date;
+type EnvelopeDependencies = {
   createDeliveryId?: () => string;
-  timeoutMs?: number;
-  retryDelaysMs?: readonly number[];
-  logger?: WebhookLogger;
+  now?: () => Date;
 };
 
-const DEFAULT_RETRY_DELAYS_MS = [0, 5_000, 30_000, 120_000, 600_000] as const;
+type WebhookAttemptSenderDependencies = {
+  url: string;
+  secrets: readonly string[];
+  fetchImpl?: WebhookFetch;
+  now?: () => Date;
+  timeoutMs?: number;
+};
+
 const DEFAULT_TIMEOUT_MS = 5_000;
 
-const silentLogger: WebhookLogger = {
-  info: () => undefined,
-  warn: () => undefined,
-  error: () => undefined,
-};
-
-function defaultSleep(delayMs: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, delayMs);
-    timer.unref();
-  });
+function eventForStatus(status: MessageDeliveryWebhookStatus): MessageDeliveryWebhookEvent {
+  return status === "accepted" ? "message.server_accepted" : "message.rejected";
 }
 
-function shouldRetry(status: number): boolean {
-  return status === 408 || status === 429 || status >= 500;
-}
-
-function createPayload(
+export function createMessageDeliveryWebhookEnvelope(
   input: MessageDeliveryWebhookInput,
-  deliveryId: string,
-  createdAt: string,
-): MessageDeliveryWebhookPayload {
-  const data: MessageDeliveryWebhookPayload["data"] = {
+  deps: EnvelopeDependencies = {},
+): MessageDeliveryWebhookEnvelope {
+  const createDeliveryId = deps.createDeliveryId ?? randomUUID;
+  const now = deps.now ?? (() => new Date());
+  const data: MessageDeliveryWebhookEnvelope["data"] = {
     messageId: input.messageId,
     status: input.status,
   };
@@ -79,132 +85,131 @@ function createPayload(
   }
 
   return {
-    id: deliveryId,
-    event: `message.${input.status}`,
-    createdAt,
+    version: WEBHOOK_SCHEMA_VERSION,
+    id: createDeliveryId(),
+    event: eventForStatus(input.status),
+    createdAt: now().toISOString(),
     data,
   };
 }
 
-function signBody(body: string, secret: string): string {
-  return `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
+export function serializeWebhookEnvelope(envelope: MessageDeliveryWebhookEnvelope): string {
+  return JSON.stringify(envelope);
 }
 
-export function createDeliveryWebhookDispatcher(deps: DeliveryWebhookDispatcherDependencies) {
-  const fetchImpl = deps.fetchImpl ?? fetch;
-  const sleep = deps.sleep ?? defaultSleep;
-  const now = deps.now ?? (() => new Date());
-  const createDeliveryId = deps.createDeliveryId ?? randomUUID;
-  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const retryDelaysMs = deps.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
-  const log = deps.logger ?? silentLogger;
+function signingMaterial(id: string, timestamp: string, body: string): string {
+  return `${id}.${timestamp}.${body}`;
+}
+
+export function createWebhookSignatureHeader(input: {
+  id: string;
+  timestamp: string;
+  body: string;
+  secrets: readonly string[];
+}): string {
+  const uniqueSecrets = [...new Set(input.secrets.filter(Boolean))];
+  if (uniqueSecrets.length === 0) {
+    throw new Error("At least one webhook signing secret is required");
+  }
+
+  const material = signingMaterial(input.id, input.timestamp, input.body);
+  return uniqueSecrets
+    .map((secret) => `v1,${createHmac("sha256", secret).update(material).digest("base64")}`)
+    .join(" ");
+}
+
+function classifyHttpFailure(status: number): Exclude<WebhookAttemptResult, { ok: true }> {
+  if (status >= 300 && status < 400) {
+    return {
+      ok: false,
+      retryable: false,
+      statusCode: status,
+      errorCode: "WEBHOOK_REDIRECT_REJECTED",
+    };
+  }
+
+  if (status === 408 || status === 429) {
+    return {
+      ok: false,
+      retryable: true,
+      statusCode: status,
+      errorCode: "WEBHOOK_HTTP_CLIENT_ERROR",
+    };
+  }
+
+  if (status >= 500) {
+    return {
+      ok: false,
+      retryable: true,
+      statusCode: status,
+      errorCode: "WEBHOOK_HTTP_SERVER_ERROR",
+    };
+  }
 
   return {
-    async dispatch(input: MessageDeliveryWebhookInput): Promise<void> {
-      const url = deps.url?.trim() || null;
-      const secret = deps.secret?.trim() || null;
+    ok: false,
+    retryable: false,
+    statusCode: status,
+    errorCode: "WEBHOOK_HTTP_CLIENT_ERROR",
+  };
+}
 
-      if (!url || !secret) {
-        return;
-      }
+export function createWebhookAttemptSender(deps: WebhookAttemptSenderDependencies) {
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const now = deps.now ?? (() => new Date());
+  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-      const payload = createPayload(input, createDeliveryId(), now().toISOString());
-      const body = JSON.stringify(payload);
-      const signature = signBody(body, secret);
+  return {
+    async send(delivery: WebhookAttemptTarget): Promise<WebhookAttemptResult> {
+      const timestamp = Math.floor(now().getTime() / 1000).toString();
+      const signature = createWebhookSignatureHeader({
+        id: delivery.id,
+        timestamp,
+        body: delivery.payloadJson,
+        secrets: deps.secrets,
+      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      timeout.unref();
 
-      for (let attemptIndex = 0; attemptIndex < retryDelaysMs.length; attemptIndex += 1) {
-        const delayMs = retryDelaysMs[attemptIndex] ?? 0;
-        if (delayMs > 0) {
-          await sleep(delayMs);
+      try {
+        const response = await fetchImpl(deps.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "Wago-Webhooks/1.0",
+            "Webhook-Id": delivery.id,
+            "Webhook-Timestamp": timestamp,
+            "Webhook-Signature": signature,
+            "X-Wago-Delivery": delivery.id,
+            "X-Wago-Event": delivery.event,
+          },
+          body: delivery.payloadJson,
+          signal: controller.signal,
+          redirect: "manual",
+        });
+
+        if (response.ok) {
+          return { ok: true, statusCode: response.status };
         }
 
-        const attempt = attemptIndex + 1;
-        const isLastAttempt = attemptIndex === retryDelaysMs.length - 1;
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), timeoutMs);
-        timeout.unref();
-
-        try {
-          const response = await fetchImpl(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Wago-Event": payload.event,
-              "X-Wago-Delivery": payload.id,
-              "X-Wago-Signature": signature,
-            },
-            body,
-            signal: controller.signal,
-          });
-
-          if (response.ok) {
-            log.info(
-              {
-                event: "webhook.delivery.succeeded",
-                deliveryId: payload.id,
-                webhookEvent: payload.event,
-                attempt,
-              },
-              "Delivery webhook succeeded",
-            );
-            return;
-          }
-
-          if (!shouldRetry(response.status) || isLastAttempt) {
-            log.warn(
-              {
-                event: "webhook.delivery.failed",
-                deliveryId: payload.id,
-                webhookEvent: payload.event,
-                attempt,
-                statusCode: response.status,
-                retryable: shouldRetry(response.status),
-              },
-              "Delivery webhook failed",
-            );
-            return;
-          }
-
-          log.warn(
-            {
-              event: "webhook.delivery.retry_scheduled",
-              deliveryId: payload.id,
-              webhookEvent: payload.event,
-              attempt,
-              statusCode: response.status,
-              nextDelayMs: retryDelaysMs[attemptIndex + 1] ?? null,
-            },
-            "Delivery webhook retry scheduled",
-          );
-        } catch (error) {
-          if (isLastAttempt) {
-            log.error(
-              {
-                event: "webhook.delivery.failed",
-                deliveryId: payload.id,
-                webhookEvent: payload.event,
-                attempt,
-                errorType: error instanceof Error ? error.name : typeof error,
-              },
-              "Delivery webhook exhausted retries",
-            );
-            return;
-          }
-
-          log.warn(
-            {
-              event: "webhook.delivery.retry_scheduled",
-              deliveryId: payload.id,
-              webhookEvent: payload.event,
-              attempt,
-              errorType: error instanceof Error ? error.name : typeof error,
-              nextDelayMs: retryDelaysMs[attemptIndex + 1] ?? null,
-            },
-            "Delivery webhook retry scheduled",
-          );
-        } finally {
-          clearTimeout(timeout);
-        }
+        return classifyHttpFailure(response.status);
+      } catch {
+        return controller.signal.aborted
+          ? {
+              ok: false,
+              retryable: true,
+              statusCode: null,
+              errorCode: "WEBHOOK_TIMEOUT",
+            }
+          : {
+              ok: false,
+              retryable: true,
+              statusCode: null,
+              errorCode: "WEBHOOK_NETWORK_ERROR",
+            };
+      } finally {
+        clearTimeout(timeout);
       }
     },
   };

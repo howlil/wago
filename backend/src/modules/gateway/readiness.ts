@@ -4,6 +4,7 @@ export type ReadinessSnapshot = {
   status: "ok";
   appId: string;
   apiKeyConfigured: boolean;
+  webhookConfigured: boolean;
 };
 
 export function getReadinessSnapshot(): ReadinessSnapshot {
@@ -11,5 +12,6 @@ export function getReadinessSnapshot(): ReadinessSnapshot {
     status: "ok",
     appId: config.appId,
     apiKeyConfigured: Boolean(config.apiKey || config.apiKeyHash),
+    webhookConfigured: config.deliveryWebhookEnabled,
   };
 }

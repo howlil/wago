@@ -1,4 +1,6 @@
 export type ApplicationLifecycleDeps = {
+  startWebhookDeliveryWorker: () => void;
+  stopWebhookDeliveryWorker: () => Promise<void>;
   resumeWhatsAppSession: () => Promise<void>;
   shutdownWhatsApp: () => Promise<void>;
   flushOutboundPolicyPersistence: () => Promise<void>;
@@ -15,12 +17,16 @@ export function createApplicationLifecycle(deps: ApplicationLifecycleDeps): {
 
   return {
     start(): Promise<void> {
-      startPromise ??= deps.resumeWhatsAppSession();
+      startPromise ??= (async () => {
+        deps.startWebhookDeliveryWorker();
+        await deps.resumeWhatsAppSession();
+      })();
       return startPromise;
     },
 
     stop(_signal: NodeJS.Signals | "test"): Promise<void> {
       stopPromise ??= (async () => {
+        await deps.stopWebhookDeliveryWorker();
         await deps.shutdownWhatsApp();
         await deps.flushOutboundPolicyPersistence();
         deps.checkpointDatabase();

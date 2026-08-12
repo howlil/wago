@@ -12,12 +12,15 @@ describe("SQLite persistence", () => {
     }>;
 
     expect(journal?.journal_mode).toBe("wal");
-    expect(migrations.map((migration) => migration.version)).toEqual([1, 2, 3]);
+    expect(migrations.map((migration) => migration.version)).toEqual([1, 2, 3, 4]);
     expect(
       database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'outbound_events'").get(),
     ).toBeDefined();
     expect(
       database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'idempotency_keys'").get(),
+    ).toBeDefined();
+    expect(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_deliveries'").get(),
     ).toBeDefined();
   });
 

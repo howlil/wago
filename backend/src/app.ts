@@ -11,6 +11,7 @@ import { activityRouter } from "./routes/activity.routes.js";
 import { appRouter } from "./routes/app.routes.js";
 import { messageRouter } from "./routes/message.routes.js";
 import { recipientRouter } from "./routes/recipient.routes.js";
+import { webhookRouter } from "./routes/webhook.routes.js";
 import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();
@@ -61,6 +62,7 @@ app.use("/activity", activityRouter);
 app.use("/recipients", recipientRouter);
 app.use("/whatsapp", whatsappRouter);
 app.use("/messages", messageRouter);
+app.use("/webhooks", webhookRouter);
 
 const frontendDirectory = config.frontendDirectory;
 

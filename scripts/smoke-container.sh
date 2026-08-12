@@ -4,6 +4,7 @@ set -euo pipefail
 IMAGE="${IMAGE:-wago-hardening-smoke}"
 ROLLBACK_IMAGE="${ROLLBACK_IMAGE:-}"
 ROLLBACK_CORS_ORIGIN="${ROLLBACK_CORS_ORIGIN:-https://wago.example.com}"
+EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4]}"
 NAME="wago-hardening-smoke-$RANDOM"
 ROLLBACK_NAME="${NAME}-rollback"
 VOLUME="wago-hardening-smoke-$RANDOM"
@@ -31,6 +32,7 @@ wait_for_health() {
     sleep 1
   done
 
+  docker logs "$container_name" >&2 || true
   return 1
 }
 
@@ -53,6 +55,17 @@ run_container() {
   wait_for_health "$container_name"
 }
 
+read_migrations() {
+  local container_name="$1"
+  docker exec "$container_name" node --input-type=module -e '
+    import { DatabaseSync } from "node:sqlite";
+    const db = new DatabaseSync("/app/data/wago.db");
+    const rows = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
+    process.stdout.write(JSON.stringify(rows.map((row) => row.version)));
+    db.close();
+  '
+}
+
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   docker build -t "$IMAGE" .
 fi
@@ -65,14 +78,8 @@ READY_BEFORE="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 echo "$READY_BEFORE" | grep -q '"apiKeyConfigured":false'
 curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
 
-MIGRATIONS_BEFORE="$(docker exec "$NAME" node --input-type=module -e '
-  import { DatabaseSync } from "node:sqlite";
-  const db = new DatabaseSync("/app/data/wago.db");
-  const rows = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
-  process.stdout.write(JSON.stringify(rows.map((row) => row.version)));
-  db.close();
-')"
-[[ "$MIGRATIONS_BEFORE" == "[1,2,3]" ]]
+MIGRATIONS_BEFORE="$(read_migrations "$NAME")"
+[[ "$MIGRATIONS_BEFORE" == "$EXPECTED_MIGRATIONS" ]]
 
 docker restart "$NAME" >/dev/null
 wait_for_health "$NAME"
@@ -80,14 +87,8 @@ wait_for_health "$NAME"
 READY_AFTER="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 [[ "$READY_BEFORE" == "$READY_AFTER" ]]
 
-MIGRATIONS_AFTER="$(docker exec "$NAME" node --input-type=module -e '
-  import { DatabaseSync } from "node:sqlite";
-  const db = new DatabaseSync("/app/data/wago.db");
-  const rows = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
-  process.stdout.write(JSON.stringify(rows.map((row) => row.version)));
-  db.close();
-')"
-[[ "$MIGRATIONS_AFTER" == "[1,2,3]" ]]
+MIGRATIONS_AFTER="$(read_migrations "$NAME")"
+[[ "$MIGRATIONS_AFTER" == "$EXPECTED_MIGRATIONS" ]]
 
 if [[ -n "$ROLLBACK_IMAGE" ]]; then
   docker rm -f "$NAME" >/dev/null
@@ -95,17 +96,11 @@ if [[ -n "$ROLLBACK_IMAGE" ]]; then
 
   curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"status":"ok"'
   ROLLBACK_READY="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-  [[ "$ROLLBACK_READY" == "$READY_BEFORE" ]]
+  echo "$ROLLBACK_READY" | grep -q '"apiKeyConfigured":false'
   curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
 
-  ROLLBACK_MIGRATIONS="$(docker exec "$ROLLBACK_NAME" node --input-type=module -e '
-    import { DatabaseSync } from "node:sqlite";
-    const db = new DatabaseSync("/app/data/wago.db");
-    const rows = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
-    process.stdout.write(JSON.stringify(rows.map((row) => row.version)));
-    db.close();
-  ')"
-  [[ "$ROLLBACK_MIGRATIONS" == "[1,2,3]" ]]
+  ROLLBACK_MIGRATIONS="$(read_migrations "$ROLLBACK_NAME")"
+  [[ "$ROLLBACK_MIGRATIONS" == "$EXPECTED_MIGRATIONS" ]]
 fi
 
 echo "Container smoke, restart persistence, and rollback compatibility checks passed."

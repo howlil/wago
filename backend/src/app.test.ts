@@ -49,7 +49,12 @@ describe("app", () => {
   it("returns readiness status before first-run setup", async () => {
     const response = await request(app).get("/ready");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: "ok", appId: config.appId, apiKeyConfigured: false });
+    expect(response.body).toEqual({
+      status: "ok",
+      appId: config.appId,
+      apiKeyConfigured: false,
+      webhookConfigured: config.deliveryWebhookEnabled,
+    });
   });
 
   it("treats generated API key hashes as ready", async () => {

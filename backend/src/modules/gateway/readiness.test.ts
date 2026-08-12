@@ -9,11 +9,12 @@ describe("gateway readiness", () => {
     config.apiKeySource = "unset";
   });
 
-  it("derives the existing public readiness shape from credential state", () => {
+  it("derives the public readiness shape from credential and webhook state", () => {
     expect(getReadinessSnapshot()).toEqual({
       status: "ok",
       appId: config.appId,
       apiKeyConfigured: false,
+      webhookConfigured: config.deliveryWebhookEnabled,
     });
 
     config.apiKey = "configured";
@@ -23,6 +24,7 @@ describe("gateway readiness", () => {
       status: "ok",
       appId: config.appId,
       apiKeyConfigured: true,
+      webhookConfigured: config.deliveryWebhookEnabled,
     });
   });
 });

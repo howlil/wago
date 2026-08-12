@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  dispatchMessageDeliveryWebhook: vi.fn(async () => undefined),
+  enqueueMessageDeliveryWebhook: vi.fn(() => undefined),
   recordActivity: vi.fn(async () => undefined),
 }));
 
 vi.mock("../webhooks/delivery-webhook.js", () => ({
-  dispatchMessageDeliveryWebhook: mocks.dispatchMessageDeliveryWebhook,
+  enqueueMessageDeliveryWebhook: mocks.enqueueMessageDeliveryWebhook,
 }));
 
 vi.mock("../activity/store.js", () => ({
@@ -18,11 +18,11 @@ import { rememberMessageStatus, resetMessageStatusStoreForTest, updateMessageSta
 describe("message status webhook integration", () => {
   afterEach(() => {
     resetMessageStatusStoreForTest();
-    mocks.dispatchMessageDeliveryWebhook.mockClear();
+    mocks.enqueueMessageDeliveryWebhook.mockClear();
     mocks.recordActivity.mockClear();
   });
 
-  it("emits accepted exactly once when a pending message becomes accepted", () => {
+  it("enqueues accepted exactly once when a pending message becomes accepted", () => {
     rememberMessageStatus({
       id: "message-1",
       to: "6281234567890@s.whatsapp.net",
@@ -33,14 +33,14 @@ describe("message status webhook integration", () => {
     updateMessageStatus("message-1", { status: "accepted" });
     updateMessageStatus("message-1", { status: "accepted" });
 
-    expect(mocks.dispatchMessageDeliveryWebhook).toHaveBeenCalledTimes(1);
-    expect(mocks.dispatchMessageDeliveryWebhook).toHaveBeenCalledWith({
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
       messageId: "message-1",
       status: "accepted",
     });
   });
 
-  it("emits rejected with the normalized error code", () => {
+  it("enqueues rejected with the normalized error code", () => {
     rememberMessageStatus({
       id: "message-2",
       to: "6281234567890@s.whatsapp.net",
@@ -54,8 +54,8 @@ describe("message status webhook integration", () => {
       message: "Outbound rejected",
     });
 
-    expect(mocks.dispatchMessageDeliveryWebhook).toHaveBeenCalledTimes(1);
-    expect(mocks.dispatchMessageDeliveryWebhook).toHaveBeenCalledWith({
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
       messageId: "message-2",
       status: "rejected",
       error: "REACHOUT_RESTRICTED",

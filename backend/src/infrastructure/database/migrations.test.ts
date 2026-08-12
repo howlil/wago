@@ -11,7 +11,23 @@ describe("database migrations", () => {
     runMigrations(database, migrations);
 
     const rows = database.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
-    expect(rows).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
+    expect(rows).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+
+    const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
+    expect(webhookColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "schema_version",
+        "event_type",
+        "message_id",
+        "payload_json",
+        "status",
+        "attempt_count",
+        "next_attempt_at",
+        "expires_at",
+        "redelivery_count",
+      ]),
+    );
     database.close();
   });
 });

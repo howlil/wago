@@ -9,4 +9,5 @@ This project uses semantic versioning while the public API is still stabilizing.
 - Added production-readiness planning and contributor guidance.
 - Added outbound policy guardrails for consent, opt-out, idempotency, rate limits, reachout timelock, and new-chat cap.
 - Changed message send responses to return truthful `pending` status with status polling.
+- Added durable delivery webhooks with replay-resistant HMAC signing, schema versioning, SQLite retry/restart recovery, secret rotation, delivery history, and manual redelivery.
 - Added production Docker, secure compose defaults, structured logging, CI, CodeQL, Dependabot, and GHCR release workflow.
