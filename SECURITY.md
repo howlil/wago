@@ -8,7 +8,7 @@ Wago stores durable application state and WhatsApp authentication material under
 
 Sensitive runtime files include:
 
-- `/app/data/wago.db` — gateway settings, API-key hash, browser-session hashes, binding metadata, recipient consent state, outbound safety history, webhook delivery state, and operator audit events
+- `/app/data/wago.db` — gateway settings, API-key hash, browser-session hashes, webhook callback URL and signing secret, binding metadata, recipient consent state, outbound safety history, webhook delivery state, and operator audit events
 - `/app/data/wago.db-wal` and `/app/data/wago.db-shm` while SQLite WAL mode is active
 - `/app/data/auth/` — long-lived Baileys/WhatsApp session credentials
 - legacy JSON recovery files retained after an upgrade from the previous persistence format
@@ -22,7 +22,7 @@ Do not include these values in public issues, discussions, screenshots, logs, pu
 - `wago.db`, WAL/SHM files, or `/app/data` backups
 - `backend/data/auth`, `creds.json`, or any Baileys auth file
 - QR payloads or QR screenshots from a live session
-- API keys, browser-session cookies, or bearer tokens
+- API keys, webhook signing secrets, browser-session cookies, or bearer tokens
 - full phone numbers, full JIDs, or message text
 - raw production logs containing WhatsApp metadata
 
@@ -40,10 +40,11 @@ Audit rows still belong to the private gateway state. They can reveal timing, li
 - Prefer one HTTPS origin for the bundled dashboard and API. Production browser bootstrap and API-key-to-session sign-in require an HTTPS `Origin` whose host matches the request `Host`; state-changing cookie-authenticated requests also reject mismatched origins.
 - Wago does not expose a configurable CORS allowlist. Keep external application integration server-to-server unless you intentionally provide browser cross-origin behavior at your routing/proxy layer.
 - Pre-provision `API_KEY` when a fresh public deployment could be reached before the owner completes first-run setup; otherwise the default dashboard bootstrap flow can create the first generated credential.
-- Keep `/app/data` on a persistent volume with restricted host access.
+- Manage webhook callback URL and signing-secret lifecycle from the authenticated Wago Settings workspace. Legacy webhook environment variables are only a compatibility import path when SQLite has no webhook settings yet.
+- Keep `/app/data` on a persistent volume with restricted host access. The webhook signing secret is intentionally recoverable by Wago from this private state because the original secret is required to create HMAC signatures; unlike API keys and browser-session tokens it cannot be stored hash-only.
 - Stop the service before filesystem-style backups so SQLite can checkpoint and the database/auth snapshot is consistent.
 - Never use `docker compose down -v` during a normal upgrade unless the persistent gateway state is intentionally being destroyed.
-- Rebind WhatsApp and rotate external secrets if `/app/data`, an auth directory, backup, API credential, or browser session is suspected to be exposed.
+- Rebind WhatsApp and rotate external secrets if `/app/data`, an auth directory, backup, API credential, webhook signing secret, or browser session is suspected to be exposed.
 - Treat terminal session invalidation as a recovery event: inspect sanitized audit evidence, then pair again rather than forcing an aggressive reconnect loop.
 
 ## Browser Credential Boundary
