@@ -1,4 +1,5 @@
 import { recordActivity } from "../activity/store.js";
+import { dispatchMessageDeliveryWebhook } from "../webhooks/delivery-webhook.js";
 
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
 
@@ -71,6 +72,11 @@ export function updateMessageStatus(messageId: string, update: Partial<Omit<Stor
   }
 
   if (next.status === "accepted") {
+    void dispatchMessageDeliveryWebhook({
+      messageId,
+      status: "accepted",
+    });
+
     void recordActivity({
       level: "success",
       category: "messaging",
@@ -86,6 +92,12 @@ export function updateMessageStatus(messageId: string, update: Partial<Omit<Stor
   }
 
   if (next.status === "rejected") {
+    void dispatchMessageDeliveryWebhook({
+      messageId,
+      status: "rejected",
+      ...(next.error ? { error: next.error } : {}),
+    });
+
     void recordActivity({
       level: "warning",
       category: "messaging",

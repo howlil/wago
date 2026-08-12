@@ -24,13 +24,14 @@ Current capabilities include:
 - recipient allow and opt-out controls
 - protected outbound text messaging with idempotency
 - retained recent message state: `pending`, `accepted`, or `rejected`
+- signed delivery webhooks for `accepted` and `rejected` message-status transitions
 - WhatsApp reach-out/new-chat account-health signals
 - local account, recipient, and new-chat outbound guardrails
 - structured Wago/Baileys audit events with filtering and cursor pagination
 - SQLite-backed durable application state and persistent Baileys auth
 - redacted structured logs, liveness/readiness endpoints, Docker/GHCR distribution, CI, and CodeQL
 
-Wago intentionally does **not** provide bulk campaigns, scraping, multi-session/multi-tenant behavior, anti-detection features, restriction bypassing, or message-history storage. Inbound messages, webhooks, media, groups, and delivery/read receipts are not part of the current public API.
+Wago intentionally does **not** provide bulk campaigns, scraping, multi-session/multi-tenant behavior, anti-detection features, restriction bypassing, or message-history storage. Inbound messages, media, groups, and device delivery/read receipts are not part of the current public API.
 
 ## Architecture
 
@@ -102,6 +103,17 @@ API_KEY=<long-random-secret>
 
 When `API_KEY` is absent and no generated credential hash exists in SQLite, first-run bootstrap is available. Once a credential exists, bootstrap is not a general key-rotation endpoint.
 
+### Optional delivery webhook
+
+Set both variables to receive final outbound status transitions in another backend:
+
+```env
+WEBHOOK_URL=https://app.example.com/api/internal/wago/webhook
+WEBHOOK_SECRET=<long-random-secret>
+```
+
+`WEBHOOK_URL` and `WEBHOOK_SECRET` must be configured together. The stock Compose file forwards both variables when present and still starts normally when they are absent. Use a high-entropy secret; at least 32 random bytes is recommended.
+
 ## Browser-origin security
 
 Wago does not expose a configurable CORS allowlist.
@@ -124,7 +136,7 @@ External applications authenticate with:
 Authorization: Bearer <API_KEY>
 ```
 
-A normal server-to-server integration needs three operations.
+A normal server-to-server integration needs three operations, with an optional webhook for asynchronous final status.
 
 ### 1. Allow a recipient when permission is recorded
 
@@ -169,7 +181,42 @@ curl "$WAGO_URL/messages/<message-id>/status" \
   -H "Authorization: Bearer $WAGO_API_KEY"
 ```
 
-The exposed retained states are `pending`, `accepted`, and `rejected`. Message-status storage is transient and can expire or disappear after process restart.
+The exposed retained states are `pending`, `accepted`, and `rejected`. `accepted` means WhatsApp produced at least a server acknowledgement; it does not mean the recipient device delivered or read the message. Message-status storage is transient and can expire or disappear after process restart.
+
+### 4. Optionally receive signed delivery webhooks
+
+When both webhook variables are configured, Wago emits a callback only when a retained message changes to `accepted` or `rejected`.
+
+Example accepted payload:
+
+```json
+{
+  "id": "2f6a7ef0-4f59-4ed4-9846-820d7f7b37c3",
+  "event": "message.accepted",
+  "createdAt": "2026-08-12T14:00:00.000Z",
+  "data": {
+    "messageId": "3EB0...",
+    "status": "accepted"
+  }
+}
+```
+
+A rejected event uses `event: "message.rejected"`, `status: "rejected"`, and may include a stable `data.error` code. Wago deliberately does not place message text, API credentials, or recipient phone/JID data in the webhook payload.
+
+Webhook requests include:
+
+```http
+Content-Type: application/json
+X-Wago-Event: message.accepted
+X-Wago-Delivery: <delivery-uuid>
+X-Wago-Signature: sha256=<hex-hmac>
+```
+
+`X-Wago-Signature` is HMAC-SHA256 over the **raw JSON request body** using `WEBHOOK_SECRET`. Verify the signature before parsing or trusting the event and compare signatures in constant time. Consumers should also deduplicate callbacks by `X-Wago-Delivery` because delivery is retryable.
+
+The initial callback is immediate. Wago retries network errors, HTTP `408`, `429`, and `5xx` responses with bounded delays of 5 seconds, 30 seconds, 2 minutes, and 10 minutes. Other `4xx` responses are treated as permanent configuration/consumer errors and are not retried.
+
+Webhook delivery runs asynchronously and does not block the Baileys socket or change an already-final WhatsApp message status when the consumer is unavailable.
 
 ## API summary
 
@@ -220,7 +267,7 @@ The `wago_data` volume contains secret-bearing state:
 
 `wago.db` contains gateway settings and generated API-key hash, WhatsApp binding metadata, recipient policy/state, outbound-safety state, schema migrations, and a bounded structured audit log. Current audit retention keeps the newest 2,000 events.
 
-Message bodies are not persisted in SQLite. Current QR/connection/reconnect state, account-health cache, and recent message-status cache remain transient.
+Message bodies are not persisted in SQLite. Current QR/connection/reconnect state, account-health cache, recent message-status cache, and pending webhook retry state remain transient.
 
 Never use `docker compose down -v` for a normal upgrade; `-v` removes persistent gateway state.
 

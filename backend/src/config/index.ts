@@ -4,6 +4,8 @@ import { getDatabase } from "../infrastructure/database.js";
 import { dataDirectory, nodeEnv } from "./runtime-paths.js";
 
 const envApiKey = process.env.API_KEY?.trim();
+const deliveryWebhookUrl = process.env.WEBHOOK_URL?.trim() || null;
+const deliveryWebhookSecret = process.env.WEBHOOK_SECRET?.trim() || null;
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 
 type ApiKeySource = "env" | "generated" | "unset";
@@ -82,6 +84,8 @@ export const config = {
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
   dataDirectory,
+  deliveryWebhookUrl,
+  deliveryWebhookSecret,
   frontendDirectory: nodeEnv === "production" ? "/app/public" : null,
   nodeEnv,
   requestLogging: true,

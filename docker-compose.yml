@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
+    environment:
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
     volumes:
       - wago_data:/app/data
     read_only: true
