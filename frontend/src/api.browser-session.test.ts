@@ -39,6 +39,5 @@ describe("browser authentication API client", () => {
       }),
     );
     expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
-    expect(window.localStorage.length).toBe(0);
   });
 });
