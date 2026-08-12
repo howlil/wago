@@ -102,6 +102,66 @@ Do not weaken or delete a valid regression merely to make CI green.
 
 Use real SQLite behavior in persistence tests where practical. For Baileys, test Wago adapters, classifiers, and lifecycle/state transitions rather than depending on external WhatsApp connectivity in unit tests.
 
+## Git Workflow Discipline
+
+Keep repository history and temporary Git state small and intentional.
+
+The normal lifecycle is:
+
+```text
+main
+  -> one task branch
+  -> work / test / review / fix on the same branch
+  -> one PR
+  -> verify current head and mandatory gates
+  -> squash merge
+  -> delete task branch and remove task worktree
+```
+
+### Branch lifecycle
+
+- One task, bugfix, documentation update, or coherent feature gets at most one working branch.
+- Before creating a branch, check whether an active branch or PR already represents the same task. If it does, continue it.
+- Use short purpose-prefixed names such as `feat/<task-slug>`, `fix/<task-slug>`, `docs/<task-slug>`, `chore/<task-slug>`, or `refactor/<task-slug>`.
+- A failed test, failed CI run, formatting correction, typo, small review follow-up, another RED/GREEN cycle, retry, or base-branch update is not a reason to create another branch.
+- Do not create branch churn such as `fix/foo-v2`, `fix/foo-final`, `fix/foo-retry`, `iteration-*`, or `review-fixes-*` when the work is still the same task.
+- Normal work must not be performed directly on `main`. Direct changes to `main` require an explicit exceptional reason.
+- Do not introduce long-lived `develop`, iteration, staging-code, personal, or experiment branches by default. `main` is the integration branch.
+
+### Commit discipline
+
+- Working commits must represent useful engineering checkpoints, not every edit or command run.
+- Meaningful TDD RED/GREEN checkpoints are allowed when they help diagnosis, review, or preserve useful evidence, but they are optional.
+- Do not create a separate retained commit merely for formatting, a typo, lint cleanup, CI retry, a tiny same-task review fix, artifact regeneration caused by the same task, or `fix previous commit` cleanup.
+- Prefer folding small corrections into the next meaningful checkpoint. Amend or squash local history when it is safe to do so.
+- There is no artificial maximum commit count on a task branch. Every retained working commit should simply earn its existence.
+- A test or CI failure is feedback within the current task, not a new task identity.
+
+### Pull requests and merge
+
+- One normal task uses one PR. Review corrections, failed CI, added tests, and implementation revisions stay on the same branch and PR.
+- Use a draft PR only when early CI or review is materially useful; do not create draft PRs automatically.
+- Keep the task coherent: include tests and documentation required by the task, but do not mix unrelated opportunistic cleanup into the same branch.
+- If `main` advances, update the existing task branch when needed instead of replacing it with a new branch.
+- Avoid force-pushing shared branches unless rewriting is necessary and safe. Never rewrite another contributor's active history casually.
+- Default normal merge method is **squash merge**, so `main` receives one clean logical commit for the completed task even when the working branch contained useful checkpoints.
+- Before merge, verify the current PR head, required acceptance/focused tests, mandatory CI/build/security gates for the scope, and that no unresolved review thread or known blocker remains.
+- If the verified PR head changes, verify the relevant gates again before merge.
+- When the user has already authorized completion of the task and all merge gates are satisfied, do not ask for a redundant merge confirmation.
+- Merge commits or rebase merges require an explicit reason; they are not the normal completion path.
+
+### Cleanup
+
+A task is not operationally complete until temporary Git state is cleaned up.
+
+- After merge, delete the remote task branch when tooling permits.
+- Remove the task worktree if one was created, then delete its local task branch and prune stale worktree metadata when applicable.
+- If a task is abandoned, close its PR when appropriate and remove the abandoned remote branch, local branch, and worktree after intentionally preserving any valuable work.
+- Do not keep stale `experiment-*`, `iteration-*`, `retry-*`, or merged task branches as an informal archive. Git history, PRs, tags, or explicit patches are the archive.
+- A worktree is an isolation mechanism, not a reason to create a second branch for the same task. Normally use at most one task worktree for one active task branch.
+- Never delete a worktree that contains uncommitted work without intentionally preserving or discarding that work first.
+- If available tooling cannot delete a remote branch or worktree, report exactly what cleanup remains. Never claim cleanup succeeded without evidence.
+
 ## Anti-Over-Engineering Rules
 
 Do not add these by default:
