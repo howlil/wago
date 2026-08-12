@@ -74,7 +74,7 @@ export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
           return (
             <article
               key={event.id}
-              className="grid gap-2 px-4 py-3 sm:grid-cols-[120px_80px_minmax(0,1fr)_90px] sm:gap-4"
+              className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[120px_80px_minmax(0,1fr)_90px] sm:gap-4"
             >
               <time className="text-[10px] leading-5 text-[#7b8781]" dateTime={event.timestamp}>
                 {formatTime(event.timestamp)}
@@ -88,18 +88,18 @@ export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
               <div className="min-w-0">
                 <strong className="block text-xs font-semibold text-wago-ink">{event.title}</strong>
                 <p className="mb-0 mt-0.5 text-[11px] leading-5 text-wago-muted">{event.description}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-[#78847e]">
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-[#78847e]">
                   <span>{categoryLabel[event.category]}</span>
                   <span aria-hidden="true">·</span>
-                  <code className="font-mono text-[#66736d]">{event.code}</code>
+                  <code className="min-w-0 break-all font-mono text-[#66736d]">{event.code}</code>
                 </div>
 
                 {metadata.length > 0 ? (
-                  <details className="mt-2 text-[10px] text-[#718079]">
+                  <details className="mt-2 min-w-0 text-[10px] text-[#718079]">
                     <summary className="w-fit cursor-pointer select-none font-medium hover:text-wago-brand">
                       Technical details
                     </summary>
-                    <dl className="mb-0 mt-2 grid gap-x-4 gap-y-2 border-l-2 border-wago-line bg-[#f7f9f8] px-3 py-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                    <dl className="mb-0 mt-2 grid min-w-0 gap-x-4 gap-y-2 border-l-2 border-wago-line bg-[#f7f9f8] px-3 py-2.5 sm:grid-cols-2 lg:grid-cols-3">
                       {metadata.map(([key, value]) => (
                         <div key={key} className="min-w-0">
                           <dt className="text-[9px] uppercase tracking-[0.05em] text-[#8a948f]">{humanizeKey(key)}</dt>
