@@ -71,9 +71,7 @@ describe("webhook delivery routes", () => {
       previousSecret: "b".repeat(32),
     });
 
-    const response = await request(app)
-      .get("/webhooks/settings")
-      .set("Authorization", "Bearer webhook-test-key");
+    const response = await request(app).get("/webhooks/settings").set("Authorization", "Bearer webhook-test-key");
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
