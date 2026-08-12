@@ -48,20 +48,20 @@ export function WhatsAppBindingCard({
 
   return (
     <section className={cardBodyClass}>
-      <div className="flex flex-wrap items-start justify-between gap-2.5">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>WhatsApp connection</h2>
           <p className={sectionDescriptionClass}>{connectionDescription}</p>
         </div>
 
         {qrReady ? (
-          <span className="inline-flex h-8 items-center gap-2 rounded-md bg-[#edf5f1] px-2.5 text-[11px] font-medium text-[#35614f]">
+          <span className="inline-flex h-8 w-fit items-center gap-2 rounded-md bg-[#edf5f1] px-2.5 text-[11px] font-medium text-[#35614f]">
             <QrCode size={13} />
             Scan QR
           </span>
         ) : canStartPairing ? (
           <button
-            className={primaryButtonClass}
+            className={`${primaryButtonClass} w-full shrink-0 sm:w-auto`}
             type="button"
             onClick={onPair}
             disabled={health !== "ok" || isPairing || pairingInProgress}
@@ -75,7 +75,7 @@ export function WhatsAppBindingCard({
           </button>
         ) : binding.state === "bound" ? (
           <button
-            className={dangerButtonClass}
+            className={`${dangerButtonClass} w-full shrink-0 sm:w-auto`}
             type="button"
             onClick={onChangeAccount}
             disabled={health !== "ok" || isRebinding}
@@ -87,16 +87,16 @@ export function WhatsAppBindingCard({
       </div>
 
       {qrImage && status !== "connected" ? (
-        <div className="mt-2.5 border-t border-[#e7ebe8] pt-2.5">
+        <div className="mt-3 border-t border-[#e7ebe8] pt-3">
           <QrPairingCard qrImage={qrImage} />
         </div>
       ) : null}
 
       {binding.state === "bound" ? (
-        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-2.5">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#2f8b67]" />
-            <strong className="font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[#2f8b67]" />
+            <strong className="min-w-0 break-all font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
           </div>
           <span className="text-[10px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
         </div>
