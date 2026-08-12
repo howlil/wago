@@ -6,49 +6,52 @@
 [![Container](https://github.com/howlil/wago/actions/workflows/release-container.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/release-container.yml)
 [![License](https://img.shields.io/github/license/howlil/wago)](LICENSE)
 
-Wago is a lightweight, self-hosted WhatsApp gateway for one WhatsApp account. It exposes a protected HTTP API and React control dashboard while keeping application state in SQLite and the Baileys session under the same persistent `/app/data` volume.
+Wago is a lightweight, self-hosted WhatsApp gateway for one WhatsApp account. It combines a protected HTTP API, a React control dashboard, SQLite application state, and a Baileys session in one small runtime.
 
 > [!IMPORTANT]
-> Wago uses [Baileys](https://github.com/WhiskeySockets/Baileys), an unofficial WhatsApp Web client. Wago is not affiliated with or endorsed by WhatsApp or Meta, and it cannot guarantee that an account will never be restricted or banned.
+> Wago uses [Baileys](https://github.com/WhiskeySockets/Baileys), an unofficial WhatsApp Web client. Wago is not affiliated with or endorsed by WhatsApp or Meta and cannot guarantee that an account will never be restricted or banned.
 
-## What Wago provides
+## Why Wago
 
-- One WhatsApp account per Wago instance
-- First-run browser credential bootstrap or a pre-provisioned API key
-- QR pairing, automatic reconnect, connection status, and explicit account rebind
+Wago is intentionally narrow. It is designed for developers and self-hosters who want one inspectable gateway behind an existing application, not a campaign platform or multi-tenant messaging SaaS.
+
+Current capabilities include:
+
+- one WhatsApp account per Wago instance
+- first-run browser credential bootstrap or an optional pre-provisioned `API_KEY`
+- QR pairing, reconnect handling, connection status, terminal-session invalidation, and explicit account rebind
 - Bearer-authenticated REST API for external applications
-- Recipient allowlist and opt-out controls
-- Protected outbound text messaging with idempotency
-- Retained recent message state: `pending`, `accepted`, or `rejected`
+- recipient allow and opt-out controls
+- protected outbound text messaging with idempotency
+- retained recent message state: `pending`, `accepted`, or `rejected`
 - WhatsApp reach-out/new-chat account-health signals
-- Local account, recipient, and new-chat outbound guardrails
-- Structured Wago/Baileys audit events with filtering and cursor pagination
+- local account, recipient, and new-chat outbound guardrails
+- structured Wago/Baileys audit events with filtering and cursor pagination
 - SQLite-backed durable application state and persistent Baileys auth
-- Redacted structured logs, health/readiness endpoints, Docker/GHCR distribution, CI, and CodeQL
+- redacted structured logs, liveness/readiness endpoints, Docker/GHCR distribution, CI, and CodeQL
 
-Wago intentionally does **not** provide bulk campaigns, scraping, multi-session/multi-tenant SaaS behavior, anti-detection features, restriction bypassing, or message-history storage. Inbound messages, webhooks, media, groups, and delivery/read receipts are not part of the current public API.
+Wago intentionally does **not** provide bulk campaigns, scraping, multi-session/multi-tenant behavior, anti-detection features, restriction bypassing, or message-history storage. Inbound messages, webhooks, media, groups, and delivery/read receipts are not part of the current public API.
 
 ## Architecture
 
 ```text
-Browser frontend
-      |
-      | your application's own API
-      v
+Browser / mobile client
+         |
+         v
 Application backend
-      |
-      | Authorization: Bearer <WAGO_API_KEY>
-      v
-     Wago
-      |
-      | Baileys
-      v
- WhatsApp Web
+         |
+         | Authorization: Bearer <WAGO_API_KEY>
+         v
+        Wago
+         |
+         | Baileys
+         v
+    WhatsApp Web
 ```
 
 Keep the Wago API key on the **server side** of the application integrating Wago. Do not embed it in a public React/Vue/browser bundle.
 
-The Wago runtime itself stays intentionally small:
+The Wago runtime itself stays small:
 
 ```text
 HTTP API + React dashboard
@@ -56,37 +59,22 @@ HTTP API + React dashboard
            v
        one Node.js process
         /             \
-   SQLite state     Baileys session
+   SQLite state     Baileys auth
  /app/data/wago.db  /app/data/auth/
                          |
                          v
                     WhatsApp Web
 ```
 
-The reviewable PlantUML source is in [`docs/diagrams/system-architecture.puml`](docs/diagrams/system-architecture.puml).
+Reviewable PlantUML sources live under [`docs/diagrams/`](docs/diagrams/).
 
 ## Quick start
 
-Requirements: Docker Engine, Docker Compose v2, and an HTTPS reverse proxy/tunnel/PaaS route for a public deployment.
+Requirements: Docker Engine, Docker Compose v2, and an HTTPS reverse proxy/tunnel/PaaS route when Wago is exposed outside localhost.
 
 ```bash
 git clone https://github.com/howlil/wago.git
 cd wago
-cp .env.production.example .env
-```
-
-For first-run browser setup:
-
-```env
-CORS_ORIGIN=https://wago.example.com
-API_KEY=
-```
-
-`CORS_ORIGIN` is required in production and cannot be `*`. `API_KEY` is optional: leave it empty to let a fresh dashboard create a generated credential once, or pre-provision a long random secret before the service becomes publicly reachable.
-
-Start the gateway:
-
-```bash
 docker compose pull
 docker compose up -d
 curl http://127.0.0.1:3000/health
@@ -98,9 +86,35 @@ Expected liveness response:
 {"status":"ok"}
 ```
 
-Compose publishes Wago only on `127.0.0.1:3000`; put your public HTTPS routing layer in front of it.
+The stock Compose file needs no environment file. It publishes Wago only on `127.0.0.1:3000`, mounts the persistent `wago_data` volume at `/app/data`, uses a read-only root filesystem, drops Linux capabilities, and enables `no-new-privileges`.
 
-Open the Wago dashboard, complete credential setup if required, choose **Pair WhatsApp**, then scan the QR from **WhatsApp → Linked devices → Link a device**.
+Open the Wago dashboard through your HTTPS route. On a fresh data volume with no pre-provisioned API credential, the dashboard can bootstrap a generated credential once and then start WhatsApp pairing. Scan the QR from **WhatsApp → Linked devices → Link a device**.
+
+### Optional pre-provisioned API key
+
+The runtime reads `API_KEY` when it is explicitly supplied to the container environment. This is optional; the stock Compose workflow uses first-run browser bootstrap instead.
+
+For platforms or custom Compose overrides that inject environment variables:
+
+```env
+API_KEY=<long-random-secret>
+```
+
+When `API_KEY` is absent and no generated credential hash exists in SQLite, first-run bootstrap is available. Once a credential exists, bootstrap is not a general key-rotation endpoint.
+
+## Browser-origin security
+
+Wago does not expose a configurable CORS allowlist.
+
+For production browser bootstrap and state-changing requests authenticated by the dashboard cookie, Wago validates the request origin against the request host. Bootstrap requires an HTTPS origin in production, and the origin host must match the Wago host.
+
+This is separate from server-to-server Bearer authentication. External applications should normally call Wago from their backend rather than directly from a public browser bundle.
+
+## Pairing and WhatsApp Web version
+
+Before creating a new Baileys socket, Wago attempts to resolve the current WhatsApp Web version. If live version resolution fails, the lifecycle falls back to the Baileys bundled/default version so pairing can still proceed without hard-coding a stale version through deployment configuration.
+
+The resolved live version is cached for the process lifetime after a successful lookup.
 
 ## Use Wago from another application
 
@@ -110,7 +124,7 @@ External applications authenticate with:
 Authorization: Bearer <API_KEY>
 ```
 
-A normal server-to-server integration needs only three operations.
+A normal server-to-server integration needs three operations.
 
 ### 1. Allow a recipient when permission is recorded
 
@@ -124,7 +138,7 @@ curl -X POST "$WAGO_URL/recipients/allow" \
   -d '{"phone":"6281234567890","label":"Example recipient"}'
 ```
 
-Do this when your application has a real basis to send to that recipient. Do not call `allow` before every message just to bypass the recipient policy. A later `POST /recipients/:phone/opt-out` blocks future outbound sends until permission is explicitly restored.
+Do this when your application has a real basis to send to that recipient. Do not call `allow` before every message just to bypass recipient policy. A later `POST /recipients/:phone/opt-out` blocks future outbound sends until permission is explicitly restored.
 
 ### 2. Send a text message
 
@@ -148,14 +162,14 @@ Successful submission returns HTTP `202`:
 
 `202 pending` means the Wago/Baileys outbound operation was accepted for processing. It is **not** proof of delivery or read status.
 
-### 3. Optionally check the retained message state
+### 3. Optionally check retained message state
 
 ```bash
 curl "$WAGO_URL/messages/<message-id>/status" \
   -H "Authorization: Bearer $WAGO_API_KEY"
 ```
 
-The currently exposed retained states are `pending`, `accepted`, and `rejected`. Message-status storage is transient and can expire or disappear after a process restart.
+The exposed retained states are `pending`, `accepted`, and `rejected`. Message-status storage is transient and can expire or disappear after process restart.
 
 ## API summary
 
@@ -191,7 +205,7 @@ Current Wago-local defaults are:
 - `/messages/send`: 30 HTTP requests/minute
 - `/whatsapp/pair` and `/whatsapp/rebind`: 5 HTTP requests/minute each
 
-These are **local defensive defaults, not official WhatsApp “safe limits.”**
+These are **local defensive defaults, not official WhatsApp safe limits or anti-ban guarantees.**
 
 ## Persistence
 
@@ -208,19 +222,21 @@ The `wago_data` volume contains secret-bearing state:
 
 Message bodies are not persisted in SQLite. Current QR/connection/reconnect state, account-health cache, and recent message-status cache remain transient.
 
-Never use `docker compose down -v` for a normal upgrade; `-v` removes the persistent volume.
+Never use `docker compose down -v` for a normal upgrade; `-v` removes persistent gateway state.
 
 ## Public documentation
 
-The public Astro documentation lives in [`docs/`](docs/) and is bilingual (`/en` and `/id`). The API page includes a Hybrid API Explorer that can:
+The public Astro site lives in [`docs/`](docs/) and is bilingual (`/en` and `/id`). The product landing pages are intentionally separate from technical API tooling. The Hybrid API Explorer lives under the API reference and can:
 
 - select every current public endpoint
 - build path/query/header/body fields
 - generate cURL, JavaScript, Python, and Node.js examples
-- optionally send a request directly from the browser to a Wago instance you provide
+- optionally send a request directly from the browser to a Wago base URL you provide
 - display HTTP status, latency, content type, and formatted response
 
-The explorer never proxies requests through the documentation server. The entered API key stays in component memory and generated snippets always use `YOUR_API_KEY`. Cross-origin live requests still require the Wago instance's `CORS_ORIGIN` to allow the documentation origin.
+The explorer never proxies requests through the documentation server. The entered API key stays in component memory and generated snippets always use `YOUR_API_KEY`.
+
+Because Wago core does not enable cross-origin browser access, live explorer calls work only when browser origin rules are satisfied by your deployment (for example, same-origin routing or an intentionally configured reverse proxy). For real integrations, prefer server-to-server calls.
 
 Run the public docs locally with:
 
@@ -248,7 +264,7 @@ The repository name is `wago`; `wago-simple` remains the existing GHCR image ide
 Requirements: Node.js 26 and pnpm 11.21.0.
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm check
 pnpm test
 pnpm build
