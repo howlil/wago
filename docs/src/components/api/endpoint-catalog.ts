@@ -51,8 +51,8 @@ export const apiEndpoints: ApiEndpoint[] = [
     auth: "first-run",
     title: { en: "Bootstrap gateway credentials", id: "Bootstrap credential gateway" },
     description: {
-      en: "Create or recover first-run browser credentials. Production requests must originate from CORS_ORIGIN.",
-      id: "Membuat atau memulihkan credential browser saat first run. Di production request harus berasal dari CORS_ORIGIN.",
+      en: "Create or recover first-run browser credentials. In production, Origin must use HTTPS and its host must match the request Host.",
+      id: "Membuat atau memulihkan credential browser saat first run. Di production, Origin harus HTTPS dan host-nya harus sama dengan Host request.",
     },
     fields: [
       {
