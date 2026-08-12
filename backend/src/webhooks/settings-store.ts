@@ -143,7 +143,7 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
 
   function save(input: { enabled: boolean; url?: string | null }): SaveWebhookSettingsResult {
     const current = get();
-    const url = normalizeUrl(input.url);
+    const url = input.url === undefined ? (current?.url ?? null) : normalizeUrl(input.url);
     if (input.enabled && !url) {
       throw new Error("Webhook URL is required when webhook delivery is enabled");
     }
