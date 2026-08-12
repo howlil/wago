@@ -8,10 +8,7 @@ afterEach(() => {
 });
 
 function outboundMetricScope() {
-  const label = screen.getByText("Outbound");
-  const metric = label.closest(".group");
-  expect(metric).toBeTruthy();
-  return within(metric as HTMLElement);
+  return within(screen.getByRole("group", { name: "Outbound status" }));
 }
 
 describe("operator status semantics", () => {
