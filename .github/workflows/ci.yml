@@ -1,16 +1,10 @@
 name: CI
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "docs/**"
   push:
-    branches:
-      - main
-    paths-ignore:
-      - "docs/**"
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -20,9 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
+  check-test-build:
     name: Check, Test, Build Core and Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -33,7 +28,6 @@ jobs:
           version: 11.21.0
           runtime: node@26
           cache: true
-          install: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -45,26 +39,24 @@ jobs:
         run: pnpm test
 
       - name: Build core apps
-        run: pnpm build
+        run: pnpm build:core
 
       - name: Build documentation
-        run: pnpm run build:docs
+        run: pnpm --dir docs build
 
-  docker-build:
+  docker-smoke:
     name: Docker Build and Persistence Smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
 
       - name: Build Docker image
         run: docker build -t wago-simple:ci .
 
       - name: Resolve rollback baseline
         id: rollback
-        shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -89,7 +81,7 @@ jobs:
           IMAGE: wago-simple:ci
           ROLLBACK_IMAGE: wago-simple:rollback-base
           SKIP_BUILD: "1"
-          EXPECTED_MIGRATIONS: "[1,2,3,4,5]"
+          EXPECTED_MIGRATIONS: "[1,2,3,4,5,6]"
         run: bash scripts/smoke-container.sh
 
   arm64-docker-build:
