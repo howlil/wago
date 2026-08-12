@@ -64,7 +64,7 @@ export function AppShell({
         onCloseMobile={() => setMobileNavOpen(false)}
       />
 
-      <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-[224px]"}`}>
+      <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-14" : "lg:pl-[196px]"}`}>
         <AppHeader
           title={title}
           description={description}
@@ -75,7 +75,7 @@ export function AppShell({
           refreshLabel={refreshLabel}
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
-        <main className="mx-auto max-w-[1440px] px-3 pb-8 pt-4 sm:px-5 sm:pt-5 lg:px-7 lg:pb-10">{children}</main>
+        <main className="px-4 pb-8 pt-4 md:px-5 lg:px-6 lg:pb-10">{children}</main>
       </div>
     </div>
   );
