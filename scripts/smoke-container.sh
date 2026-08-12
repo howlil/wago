@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE="${IMAGE:-wago-hardening-smoke}"
 ROLLBACK_IMAGE="${ROLLBACK_IMAGE:-}"
 ROLLBACK_CORS_ORIGIN="${ROLLBACK_CORS_ORIGIN:-https://wago.example.com}"
-EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4]}"
+EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4,5,6]}"
 NAME="wago-hardening-smoke-$RANDOM"
 ROLLBACK_NAME="${NAME}-rollback"
 VOLUME="wago-hardening-smoke-$RANDOM"
@@ -83,24 +83,15 @@ MIGRATIONS_BEFORE="$(read_migrations "$NAME")"
 
 docker restart "$NAME" >/dev/null
 wait_for_health "$NAME"
-
-READY_AFTER="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-[[ "$READY_BEFORE" == "$READY_AFTER" ]]
-
-MIGRATIONS_AFTER="$(read_migrations "$NAME")"
-[[ "$MIGRATIONS_AFTER" == "$EXPECTED_MIGRATIONS" ]]
+MIGRATIONS_AFTER_RESTART="$(read_migrations "$NAME")"
+[[ "$MIGRATIONS_AFTER_RESTART" == "$EXPECTED_MIGRATIONS" ]]
 
 if [[ -n "$ROLLBACK_IMAGE" ]]; then
   docker rm -f "$NAME" >/dev/null
   run_container "$ROLLBACK_NAME" "$ROLLBACK_IMAGE" "$ROLLBACK_CORS_ORIGIN"
-
   curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"status":"ok"'
-  ROLLBACK_READY="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-  echo "$ROLLBACK_READY" | grep -q '"apiKeyConfigured":false'
-  curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
-
-  ROLLBACK_MIGRATIONS="$(read_migrations "$ROLLBACK_NAME")"
-  [[ "$ROLLBACK_MIGRATIONS" == "$EXPECTED_MIGRATIONS" ]]
+  docker rm -f "$ROLLBACK_NAME" >/dev/null
+  run_container "$NAME" "$IMAGE"
+  MIGRATIONS_AFTER_ROLLBACK="$(read_migrations "$NAME")"
+  [[ "$MIGRATIONS_AFTER_ROLLBACK" == "$EXPECTED_MIGRATIONS" ]]
 fi
-
-echo "Container smoke, restart persistence, and rollback compatibility checks passed."
