@@ -24,7 +24,8 @@ type WebhookWorkerLogger = {
 
 type WebhookDeliveryWorkerDependencies = {
   store: WebhookDeliveryWorkerStore;
-  sender: WebhookAttemptSender;
+  sender?: WebhookAttemptSender;
+  getSender?: () => WebhookAttemptSender | null;
   logger: WebhookWorkerLogger;
   now?: () => number;
   random?: () => number;
@@ -47,6 +48,10 @@ export function createWebhookDeliveryWorker(deps: WebhookDeliveryWorkerDependenc
   let inFlight: Promise<void> | undefined;
   let nextPruneAt = 0;
 
+  function resolveSender(): WebhookAttemptSender | null {
+    return deps.getSender?.() ?? deps.sender ?? null;
+  }
+
   async function processBatch(): Promise<void> {
     const batchNow = now();
     if (batchNow >= nextPruneAt) {
@@ -60,12 +65,17 @@ export function createWebhookDeliveryWorker(deps: WebhookDeliveryWorkerDependenc
       }
     }
 
+    const sender = resolveSender();
+    if (!sender) {
+      return;
+    }
+
     const deliveries = deps.store.claimDue(batchNow, batchSize);
 
     for (const delivery of deliveries) {
       let result: WebhookAttemptResult;
       try {
-        result = await deps.sender.send(delivery);
+        result = await sender.send(delivery);
       } catch (error) {
         result = {
           ok: false,
