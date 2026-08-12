@@ -60,11 +60,15 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
         run: |
           if [[ "$EVENT_NAME" == "pull_request" && -n "$BASE_SHA" ]]; then
             echo "ref=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$BEFORE_SHA" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
           else
-            echo "ref=$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
+            echo "ref=$CURRENT_SHA" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Checkout rollback baseline
