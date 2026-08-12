@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  cardClass,
-  dangerButtonClass,
-  inputClass,
-  primaryButtonClass,
-  secondaryButtonClass,
-} from "./classes.js";
+import { cardClass, dangerButtonClass, inputClass, primaryButtonClass, secondaryButtonClass } from "./classes.js";
 
 const standardControls = [inputClass, primaryButtonClass, secondaryButtonClass, dangerButtonClass];
 
