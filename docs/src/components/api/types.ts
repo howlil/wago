@@ -1,10 +1,9 @@
 export type ApiLanguage = "en" | "id";
-export type ApiMethod = "GET" | "POST" | "PUT";
+export type ApiMethod = "GET" | "POST";
 export type ApiAuth = "public" | "api-key" | "first-run";
 export type ApiGroup = "system" | "app" | "whatsapp" | "recipients" | "messages" | "audit";
 export type ApiFieldLocation = "path" | "query" | "header" | "body";
 export type ApiInputKind = "text" | "textarea" | "select";
-export type ApiFieldValueType = "string" | "boolean";
 
 export type ApiField = {
   key: string;
@@ -15,7 +14,6 @@ export type ApiField = {
   defaultValue?: string;
   input?: ApiInputKind;
   options?: string[];
-  valueType?: ApiFieldValueType;
   label: Record<ApiLanguage, string>;
   description: Record<ApiLanguage, string>;
 };
