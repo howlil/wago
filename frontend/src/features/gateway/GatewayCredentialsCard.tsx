@@ -52,25 +52,25 @@ export function GatewayCredentialsCard({
   return (
     <section className={cardBodyClass}>
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h2 className={sectionTitleClass}>Gateway credentials</h2>
           <p className={sectionDescriptionClass}>
             API key for machine clients; browser access uses a separate session.
           </p>
         </div>
         {apiKeyConfigured ? (
-          <span className="rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
+          <span className="shrink-0 rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
             {apiKeySource}
           </span>
         ) : null}
       </div>
 
-      <div className="mt-3 grid gap-2.5">
+      <div className="mt-4 grid gap-3">
         <label>
           <span className={fieldLabelClass}>App ID</span>
-          <div className="flex gap-2">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <input className={`${inputClass} min-w-0 font-mono text-xs`} value={appId} readOnly aria-label="App ID" />
-            <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onCopyAppId}>
+            <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onCopyAppId}>
               {copiedField === "appId" ? <Check size={14} /> : <Copy size={14} />}
               {copiedField === "appId" ? "Copied" : "Copy"}
             </button>
@@ -79,8 +79,8 @@ export function GatewayCredentialsCard({
 
         <label>
           <span className={fieldLabelClass}>API key</span>
-          <div className="flex gap-2">
-            <div className="relative min-w-0 flex-1">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="relative min-w-0">
               <input
                 className={`${inputClass} pr-9 font-mono text-xs`}
                 value={apiKeyInput}
@@ -110,7 +110,7 @@ export function GatewayCredentialsCard({
             </div>
             {!isAuthenticated && apiKeyConfigured ? (
               <button
-                className={`${secondaryButtonClass} shrink-0`}
+                className={`${secondaryButtonClass} w-full sm:w-auto`}
                 type="button"
                 onClick={onSignIn}
                 disabled={isSigningIn}
@@ -119,7 +119,7 @@ export function GatewayCredentialsCard({
               </button>
             ) : (
               <button
-                className={`${secondaryButtonClass} shrink-0`}
+                className={`${secondaryButtonClass} w-full sm:w-auto`}
                 type="button"
                 onClick={onCopyApiKey}
                 disabled={!apiKeyInput}
@@ -135,7 +135,7 @@ export function GatewayCredentialsCard({
         {isAuthenticated ? (
           <div className="flex justify-end">
             <button
-              className={`${secondaryButtonClass} shrink-0`}
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
               type="button"
               onClick={onSignOut}
               disabled={isSigningOut}
