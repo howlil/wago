@@ -3,6 +3,7 @@ import type { ApiEndpoint, ApiField } from "./types";
 export type ExplorerValues = Record<string, string>;
 export type SnippetLanguage = "curl" | "javascript" | "python" | "nodejs";
 export type BuiltRequest = { url: string; init: RequestInit };
+type BodyValue = string | boolean;
 
 function fieldWireName(field: ApiField): string {
   return field.wireName ?? field.key;
@@ -55,13 +56,20 @@ function buildUrl(endpoint: ApiEndpoint, baseUrl: string, values: ExplorerValues
   return `${normalizedBase}${path}${queryText ? `?${queryText}` : ""}`;
 }
 
-function collectBody(endpoint: ApiEndpoint, values: ExplorerValues, useExamples: boolean): Record<string, string> {
-  const body: Record<string, string> = {};
+function coerceBodyValue(field: ApiField, raw: string): BodyValue {
+  if (field.valueType === "boolean") {
+    return raw === "true";
+  }
+  return raw;
+}
+
+function collectBody(endpoint: ApiEndpoint, values: ExplorerValues, useExamples: boolean): Record<string, BodyValue> {
+  const body: Record<string, BodyValue> = {};
 
   for (const field of endpoint.fields.filter((item) => item.location === "body")) {
     const raw = useExamples ? exampleValueForField(field, values) : valueForField(field, values);
     if (raw) {
-      body[fieldWireName(field)] = raw;
+      body[fieldWireName(field)] = coerceBodyValue(field, raw);
     }
   }
 
@@ -100,7 +108,7 @@ export function buildLiveRequest(input: {
   }
 
   const body = collectBody(endpoint, values, false);
-  const hasBody = endpoint.method === "POST" && Object.keys(body).length > 0;
+  const hasBody = endpoint.method !== "GET" && Object.keys(body).length > 0;
 
   if (hasBody) {
     headers.set("Content-Type", "application/json");
@@ -119,10 +127,10 @@ export function buildLiveRequest(input: {
 function curlSnippet(
   endpoint: ApiEndpoint,
   url: string,
-  body: Record<string, string>,
+  body: Record<string, BodyValue>,
   headers: Record<string, string>,
 ): string {
-  const lines = [`curl${endpoint.method === "POST" ? " -X POST" : ""} "${url}"`];
+  const lines = [`curl${endpoint.method === "GET" ? "" : ` -X ${endpoint.method}`} "${url}"`];
 
   if (endpoint.auth === "api-key") {
     lines.push('  -H "Authorization: Bearer YOUR_API_KEY"');
@@ -143,7 +151,7 @@ function curlSnippet(
 function javascriptSnippet(
   endpoint: ApiEndpoint,
   url: string,
-  body: Record<string, string>,
+  body: Record<string, BodyValue>,
   headers: Record<string, string>,
 ): string {
   const headerLines: string[] = [];
@@ -174,7 +182,7 @@ function javascriptSnippet(
 function pythonSnippet(
   endpoint: ApiEndpoint,
   url: string,
-  body: Record<string, string>,
+  body: Record<string, BodyValue>,
   headers: Record<string, string>,
 ): string {
   const pythonHeaders: Record<string, string> = { ...headers };
