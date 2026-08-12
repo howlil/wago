@@ -54,7 +54,9 @@ export function GatewayCredentialsCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className={sectionTitleClass}>Gateway credentials</h2>
-          <p className={sectionDescriptionClass}>API key for machine clients; browser access uses a separate session.</p>
+          <p className={sectionDescriptionClass}>
+            API key for machine clients; browser access uses a separate session.
+          </p>
         </div>
         {apiKeyConfigured ? (
           <span className="rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
