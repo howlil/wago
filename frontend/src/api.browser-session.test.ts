@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 describe("browser authentication API client", () => {
   beforeEach(() => {
     vi.resetModules();
+    window.sessionStorage.clear();
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -16,15 +17,16 @@ describe("browser authentication API client", () => {
   });
 
   afterEach(() => {
+    window.sessionStorage.clear();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
   it("exchanges an API key for an HttpOnly browser session without persisting it in browser storage", async () => {
-    const getItem = vi.spyOn(Storage.prototype, "getItem");
-    const setItem = vi.spyOn(Storage.prototype, "setItem");
-    const removeItem = vi.spyOn(Storage.prototype, "removeItem");
+    window.sessionStorage.setItem("wago.apiKey", "wa_legacy_secret");
     const { createBrowserSession } = await import("./api.js");
+
+    expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
 
     await createBrowserSession("wa_existing_secret");
 
@@ -36,8 +38,7 @@ describe("browser authentication API client", () => {
         body: JSON.stringify({ apiKey: "wa_existing_secret" }),
       }),
     );
-    expect(getItem).not.toHaveBeenCalled();
-    expect(setItem).not.toHaveBeenCalled();
-    expect(removeItem).toHaveBeenCalledWith("wago.apiKey");
+    expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
+    expect(window.localStorage.length).toBe(0);
   });
 });
