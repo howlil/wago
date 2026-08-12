@@ -27,6 +27,13 @@ const levelDot: Record<ActivityLevel, string> = {
   error: "bg-[#bd4a52]",
 };
 
+const levelText: Record<ActivityLevel, string> = {
+  info: "text-[#66736d]",
+  success: "text-[#277a59]",
+  warning: "text-[#8a641f]",
+  error: "text-wago-danger",
+};
+
 function formatTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -51,47 +58,40 @@ function humanizeKey(key: string): string {
 
 export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-wago-line bg-white">
-      <div className="divide-y divide-[#e8ece9]">
+    <div className="mt-4 overflow-hidden rounded-lg border border-wago-line bg-white">
+      <div className="hidden grid-cols-[120px_80px_minmax(0,1fr)_90px] gap-4 border-b border-wago-line bg-[#f7f9f8] px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#7b8781] sm:grid">
+        <span>Time</span>
+        <span>Source</span>
+        <span>Event</span>
+        <span>Level</span>
+      </div>
+      <div className="divide-y divide-wago-line">
         {events.map((event) => {
           const metadata = Object.entries(event.metadata ?? {}).filter(
             ([, value]) => value !== undefined && value !== null,
           );
 
           return (
-            <article key={event.id} className="grid gap-3 px-4 py-3.5 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-4">
-              <div className="flex items-start gap-2 sm:block">
-                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full sm:hidden ${levelDot[event.level]}`} />
-                <time className="text-[10px] leading-5 text-[#818b86]" dateTime={event.timestamp}>
-                  {formatTime(event.timestamp)}
-                </time>
+            <article
+              key={event.id}
+              className="grid gap-2 px-4 py-3 sm:grid-cols-[120px_80px_minmax(0,1fr)_90px] sm:gap-4"
+            >
+              <time className="text-[10px] leading-5 text-[#7b8781]" dateTime={event.timestamp}>
+                {formatTime(event.timestamp)}
+              </time>
+
+              <div className="text-[11px] font-medium leading-5 text-[#52615a]">
+                <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#a3ada8] align-middle sm:hidden" />
+                {sourceLabel[event.source]}
               </div>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-start gap-2.5">
-                    <span className={`mt-1.5 hidden h-2 w-2 shrink-0 rounded-full sm:block ${levelDot[event.level]}`} />
-                    <div className="min-w-0">
-                      <strong className="block text-xs font-semibold text-wago-ink">{event.title}</strong>
-                      <p className="mb-0 mt-0.5 text-[11px] leading-5 text-wago-muted">{event.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-                    <span className="rounded-full border border-[#dce7e2] bg-[#f7faf8] px-2 py-1 text-[9px] font-semibold text-[#52635b]">
-                      {sourceLabel[event.source]}
-                    </span>
-                    <span className="rounded-full border border-[#e0e5e2] bg-[#f7f8f7] px-2 py-1 text-[9px] font-semibold text-[#626d68]">
-                      {categoryLabel[event.category]}
-                    </span>
-                    <span className="rounded-full border border-[#e0e5e2] bg-white px-2 py-1 text-[9px] font-semibold text-[#626d68]">
-                      {levelLabel[event.level]}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <code className="rounded bg-[#f3f5f3] px-1.5 py-1 text-[9px] text-[#66736d]">{event.code}</code>
+                <strong className="block text-xs font-semibold text-wago-ink">{event.title}</strong>
+                <p className="mb-0 mt-0.5 text-[11px] leading-5 text-wago-muted">{event.description}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-[#78847e]">
+                  <span>{categoryLabel[event.category]}</span>
+                  <span aria-hidden="true">·</span>
+                  <code className="font-mono text-[#66736d]">{event.code}</code>
                 </div>
 
                 {metadata.length > 0 ? (
@@ -99,7 +99,7 @@ export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
                     <summary className="w-fit cursor-pointer select-none font-medium hover:text-wago-brand">
                       Technical details
                     </summary>
-                    <dl className="mb-0 mt-2 grid gap-x-4 gap-y-2 rounded-lg bg-[#f6f7f5] px-3 py-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                    <dl className="mb-0 mt-2 grid gap-x-4 gap-y-2 border-l-2 border-wago-line bg-[#f7f9f8] px-3 py-2.5 sm:grid-cols-2 lg:grid-cols-3">
                       {metadata.map(([key, value]) => (
                         <div key={key} className="min-w-0">
                           <dt className="text-[9px] uppercase tracking-[0.05em] text-[#8a948f]">{humanizeKey(key)}</dt>
@@ -111,6 +111,11 @@ export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
                     </dl>
                   </details>
                 ) : null}
+              </div>
+
+              <div className={`flex items-start gap-2 text-[11px] font-medium leading-5 ${levelText[event.level]}`}>
+                <span className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full ${levelDot[event.level]}`} />
+                {levelLabel[event.level]}
               </div>
             </article>
           );
