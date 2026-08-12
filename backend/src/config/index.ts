@@ -6,7 +6,6 @@ import { dataDirectory, nodeEnv } from "./runtime-paths.js";
 import { parseDeliveryWebhookConfig } from "./webhook-config.js";
 
 const envApiKey = process.env.API_KEY?.trim();
-const legacyDeliveryWebhook = parseDeliveryWebhookConfig(process.env);
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 
 type ApiKeySource = "env" | "generated" | "unset";
@@ -22,7 +21,20 @@ export type BootstrapApiKeyResult =
   | { success: false; error: "APP_ALREADY_INITIALIZED" | "INVALID_API_KEY"; message: string };
 
 const database = getDatabase();
-createWebhookSettingsStore(database).importLegacyIfEmpty(legacyDeliveryWebhook);
+const webhookSettingsStore = createWebhookSettingsStore(database);
+const persistedWebhookSettings = webhookSettingsStore.get();
+const legacyDeliveryWebhook = persistedWebhookSettings
+  ? {
+      enabled: persistedWebhookSettings.enabled,
+      url: persistedWebhookSettings.url,
+      secret: persistedWebhookSettings.secret,
+      previousSecret: persistedWebhookSettings.previousSecret,
+    }
+  : parseDeliveryWebhookConfig(process.env);
+
+if (!persistedWebhookSettings) {
+  webhookSettingsStore.importLegacyIfEmpty(legacyDeliveryWebhook);
+}
 
 const readSettingsStatement = database.prepare(
   "SELECT app_id, api_key_hash, generated_at FROM app_settings WHERE id = 1",
@@ -89,7 +101,7 @@ export const config = {
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
   dataDirectory,
-  // Legacy startup snapshot retained for compatibility only. Runtime webhook delivery reads SQLite.
+  // Startup compatibility snapshot only. Runtime webhook delivery reads SQLite.
   deliveryWebhookEnabled: legacyDeliveryWebhook.enabled,
   deliveryWebhookUrl: legacyDeliveryWebhook.url,
   deliveryWebhookSecret: legacyDeliveryWebhook.secret,
