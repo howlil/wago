@@ -58,6 +58,20 @@ describe("webhook settings store", () => {
     expect(second.settings.url).toBe("https://receiver.example.test/v2/webhook");
   });
 
+  it("keeps callback URL and signing secret when delivery is disabled", () => {
+    const store = createWebhookSettingsStore(database);
+    const configured = store.save({ enabled: true, url: "https://receiver.example.test/webhook" });
+
+    const disabled = store.save({ enabled: false });
+
+    expect(disabled.generatedSecret).toBeUndefined();
+    expect(disabled.settings).toMatchObject({
+      enabled: false,
+      url: "https://receiver.example.test/webhook",
+      secret: configured.settings.secret,
+    });
+  });
+
   it("rotates with a previous-secret overlap and can complete rotation", () => {
     const store = createWebhookSettingsStore(database);
     const initial = store.save({ enabled: true, url: "https://receiver.example.test/webhook" });
