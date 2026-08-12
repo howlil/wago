@@ -95,9 +95,7 @@ describe("browser session authentication", () => {
     config.apiKeySource = "generated";
     config.allowWebBootstrap = false;
 
-    const response = await request(app)
-      .get("/app/info")
-      .set("Cookie", `${config.legacyAuthCookieName}=existing-key`);
+    const response = await request(app).get("/app/info").set("Cookie", `${config.legacyAuthCookieName}=existing-key`);
 
     expect(response.status).toBe(200);
     expect(response.body.authenticated).toBe(false);
