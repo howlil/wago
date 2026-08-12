@@ -57,8 +57,8 @@ export function DashboardPage() {
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
       <NoticeBanner notice={dashboard.notice} />
 
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
-        <div className="grid content-start gap-4">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid min-w-0 content-start gap-4">
           <WhatsAppBindingCard
             health={dashboard.health}
             status={dashboard.status}
@@ -99,7 +99,7 @@ export function DashboardPage() {
           />
         </div>
 
-        <div className="grid content-start gap-4">
+        <div className="grid min-w-0 content-start gap-4">
           <GatewayCredentialsCard
             appId={dashboard.appId}
             apiKeyConfigured={dashboard.apiKeyConfigured}
@@ -123,9 +123,12 @@ export function DashboardPage() {
           {dashboard.isAuthenticated ? (
             <AccountHealthCard accountHealth={dashboard.accountHealth} />
           ) : (
-            <div className="rounded-lg border border-dashed border-wago-line bg-white p-4 text-sm text-wago-muted">
-              Account health appears after the gateway is authenticated.
-            </div>
+            <section className="rounded-lg border border-wago-line bg-white p-4">
+              <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-wago-ink">Account health</h2>
+              <p className="mb-0 mt-1 text-xs leading-5 text-wago-muted">
+                Available after the gateway is authenticated.
+              </p>
+            </section>
           )}
         </div>
       </div>
