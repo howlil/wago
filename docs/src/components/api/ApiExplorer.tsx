@@ -145,8 +145,8 @@ export function ApiExplorer({ lang = "en" }: { lang?: ApiLanguage }) {
         elapsedMs: Math.round(performance.now() - startedAt),
         body:
           lang === "id"
-            ? `Request browser gagal: ${message}\n\nJika docs dan Wago berada di origin berbeda, pastikan CORS_ORIGIN Wago memang mengizinkan origin docs yang sedang Anda buka. Browser tidak dapat melewati CORS dari sisi dokumentasi.`
-            : `Browser request failed: ${message}\n\nIf the docs and Wago use different origins, make sure Wago's CORS_ORIGIN actually allows the docs origin you are using. The documentation cannot bypass browser CORS.`,
+            ? `Request browser gagal: ${message}\n\nExplorer mengirim request langsung ke Base URL Wago. Jika docs dan Wago berada di origin berbeda, browser dapat memblokir request karena same-origin/CORS policy. Wago core tidak menambahkan cross-origin response headers; gunakan same-origin routing/reverse proxy yang sengaja dikonfigurasi, atau gunakan generated snippet dari backend Anda.`
+            : `Browser request failed: ${message}\n\nThe explorer sends requests directly to the Wago Base URL. If the docs and Wago use different origins, the browser may block the request under same-origin/CORS policy. Wago core does not add cross-origin response headers; use intentionally configured same-origin routing/reverse proxying, or use the generated snippet from your backend.`,
       });
     } finally {
       setSending(false);
@@ -279,7 +279,7 @@ export function ApiExplorer({ lang = "en" }: { lang?: ApiLanguage }) {
             <pre className="m-0 min-h-40 max-h-[430px] overflow-auto whitespace-pre-wrap break-words p-4 text-xs leading-6 text-[#d4d4d8]"><code>{response?.body ?? (lang === "id" ? "Response live akan muncul di sini. Tidak ada request yang dikirim sampai Anda menekan tombol Kirim request." : "Live response appears here. No request is sent until you click Send request.")}</code></pre>
           </div>
 
-          <p className="text-xs leading-relaxed text-[#52525b]">{lang === "id" ? "Live mode berjalan langsung dari browser ke Base URL Wago yang Anda isi. Dokumentasi ini tidak memiliki proxy, tidak menyimpan history request, dan tidak dapat melewati kebijakan CORS browser." : "Live mode runs directly from your browser to the Wago Base URL you enter. This documentation has no proxy, stores no request history, and cannot bypass browser CORS policy."}</p>
+          <p className="text-xs leading-relaxed text-[#52525b]">{lang === "id" ? "Live mode berjalan langsung dari browser ke Base URL Wago yang Anda isi. Dokumentasi ini tidak memiliki proxy, tidak menyimpan history request, dan tidak dapat melewati same-origin/CORS policy browser." : "Live mode runs directly from your browser to the Wago Base URL you enter. This documentation has no proxy, stores no request history, and cannot bypass browser same-origin/CORS policy."}</p>
         </div>
       </div>
     </div>
