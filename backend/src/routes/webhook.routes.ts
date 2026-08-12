@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { getDatabase } from "../infrastructure/database.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
@@ -35,7 +35,7 @@ function serializeSettings(settings: WebhookSettings | null) {
   };
 }
 
-function settingsError(res: Parameters<Parameters<typeof webhookRouter.put>[2]>[1], error: unknown) {
+function settingsError(res: Response, error: unknown) {
   return res.status(400).json({
     success: false,
     error: "INVALID_WEBHOOK_SETTINGS",
