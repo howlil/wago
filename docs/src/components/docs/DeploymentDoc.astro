@@ -13,7 +13,7 @@ const id = lang === 'id';
   <PageHeader
     eyebrow="Docker / GHCR"
     title={id ? 'Deployment production' : 'Production deployment'}
-    description={id ? 'Image production menggabungkan backend Express dan build React menjadi satu container non-root yang dipublish melalui GHCR.' : 'The production image combines the Express backend and compiled React frontend into one non-root container published through GHCR.'}
+    description={id ? 'Image production menggabungkan backend Express dan build React menjadi satu container non-root. Stock Compose sengaja tidak memerlukan file environment dan mem-publish service hanya ke loopback host.' : 'The production image combines the Express backend and compiled React frontend into one non-root container. Stock Compose intentionally requires no environment file and publishes the service only to host loopback.'}
   />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">GHCR</h2>
@@ -21,12 +21,15 @@ const id = lang === 'id';
   <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Nama image wago-simple dipertahankan sebagai identifier distribusi saat ini meskipun repository bernama howlil/wago. Workflow release membangun linux/amd64 dan linux/arm64, menghasilkan SBOM/provenance, lalu push manifest ke GHCR.' : 'The wago-simple image name remains the current distribution identifier even though the repository is howlil/wago. The release workflow builds linux/amd64 and linux/arm64, generates SBOM/provenance, and pushes the manifest to GHCR.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Docker Compose</h2>
-  <CodeBlock label=".env" code={`CORS_ORIGIN=https://wago.example.com\nAPI_KEY=`} />
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'CORS_ORIGIN wajib. API_KEY opsional: kosongkan untuk first-run dashboard bootstrap, atau isi dengan secret random panjang untuk pre-provisioned authentication.' : 'CORS_ORIGIN is required. API_KEY is optional: leave it empty for first-run dashboard bootstrap, or set a long random secret for pre-provisioned authentication.'}</p>
-  <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f wago`} />
+  <CodeBlock label="shell" code={`git clone https://github.com/howlil/wago.git\ncd wago\ndocker compose pull\ndocker compose up -d\ndocker compose ps\ncurl http://127.0.0.1:3000/health`} />
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Tidak ada .env yang wajib untuk stock Compose. Fresh persistent volume menggunakan first-run dashboard bootstrap untuk membuat credential gateway.' : 'No .env file is required for stock Compose. A fresh persistent volume uses first-run dashboard bootstrap to create gateway credentials.'}</p>
   <Callout title={id ? 'Network default sengaja tetap' : 'Network default is intentionally fixed'}>
-    {id ? 'Compose publish 127.0.0.1:3000. Letakkan Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS di depannya.' : 'Compose publishes 127.0.0.1:3000. Put Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router in front of it.'}
+    {id ? 'Compose mem-publish 127.0.0.1:3000. Letakkan Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS di depannya dan gunakan HTTPS ketika service diakses di luar localhost.' : 'Compose publishes 127.0.0.1:3000. Put Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router in front of it and use HTTPS when the service is accessed outside localhost.'}
   </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Pre-provisioned API key opsional' : 'Optional pre-provisioned API key'}</h2>
+  <CodeBlock label="container environment" code={`API_KEY=<long-random-secret>`} />
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Runtime menerima API_KEY bila deployment platform atau custom Compose override menyediakannya. File docker-compose.yml bawaan tidak meneruskan environment ini karena default deployment menggunakan browser bootstrap.' : 'The runtime accepts API_KEY when your deployment platform or custom Compose override provides it. The bundled docker-compose.yml does not forward this environment value because the default deployment uses browser bootstrap.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Hardening container' : 'Container hardening'}</h2>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
@@ -37,8 +40,8 @@ const id = lang === 'id';
     <li>{id ? 'Data persisten hanya melalui named volume wago_data.' : 'Persistent data goes through the wago_data named volume.'}</li>
   </ul>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Reverse proxy dan TLS' : 'Reverse proxy and TLS'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. CORS_ORIGIN harus sama persis dengan origin publik tersebut agar browser CORS dan first-run origin check konsisten.' : 'Prefer one HTTPS origin for both dashboard and API. CORS_ORIGIN should exactly match that public origin so browser CORS and the first-run origin check stay consistent.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Reverse proxy, TLS, dan origin' : 'Reverse proxy, TLS, and origin'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. Wago tidak memiliki configurable CORS allowlist. Production bootstrap memvalidasi bahwa Origin menggunakan HTTPS dan host Origin sama dengan Host request; state-changing cookie-authenticated requests juga menolak origin yang tidak sama.' : 'Prefer one HTTPS origin for both dashboard and API. Wago does not expose a configurable CORS allowlist. Production bootstrap validates that Origin uses HTTPS and the Origin host matches the request Host; state-changing cookie-authenticated requests also reject a mismatched origin.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Persistence</h2>
   <div class="border border-[#262626] rounded-lg divide-y divide-[#262626] text-sm mb-8">
@@ -51,7 +54,10 @@ const id = lang === 'id';
     {id ? 'Current QR/connection/reconnect state, account-health cache, recent-message content, dan message-status cache dibangun ulang setelah proses restart. Recipient policy, outbound safety, binding, dan audit state tetap durable di SQLite.' : 'Current QR/connection/reconnect state, the account-health cache, recent-message content, and message-status cache are rebuilt after restart. Recipient policy, outbound safety, binding, and audit state remain durable in SQLite.'}
   </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Upgrade dari JSON store lama' : 'Upgrade from the legacy JSON store'}</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'WhatsApp Web version saat pairing' : 'WhatsApp Web version during pairing'}</h2>
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Ketika membuat socket baru, Wago mencoba resolve versi WhatsApp Web terbaru melalui Baileys. Versi live yang berhasil di-resolve di-cache selama proses berjalan. Jika lookup gagal, lifecycle melanjutkan socket creation dengan versi default/bundled Baileys agar pairing tidak bergantung pada satu remote lookup.' : 'When creating a new socket, Wago attempts to resolve the latest WhatsApp Web version through Baileys. A successfully resolved live version is cached for the process lifetime. If lookup fails, the lifecycle continues socket creation with the Baileys default/bundled version so pairing does not depend on a single remote lookup.'}</p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Upgrade dari JSON store lama' : 'Upgrade from the legacy JSON store'}</h2>
   <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Pada startup pertama setelah upgrade, Wago mengimpor app settings, WhatsApp binding, recipients, outbound policy, dan activity log lama ke wago.db dalam satu transaksi. Import ditandai di database sehingga tidak dijalankan ulang. File JSON lama tidak dihapus otomatis agar tetap tersedia sebagai recovery artifact.' : 'On the first startup after upgrading, Wago imports legacy app settings, WhatsApp binding, recipients, outbound policy, and activity log into wago.db in one transaction. The database records an import marker so the migration is not repeated. Legacy JSON files are not deleted automatically and remain available as recovery artifacts.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Backup</h2>
