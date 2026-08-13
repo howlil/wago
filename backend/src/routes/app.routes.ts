@@ -1,8 +1,13 @@
 import { type Response, Router } from "express";
 import { recordActivity } from "../activity/store.js";
 import { createBrowserSession, revokeBrowserSession } from "../auth/browser-session-store.js";
-import { bootstrapApiKey, config } from "../config/index.js";
-import { getBrowserSessionToken, isApiKeyValid, requestIsAuthenticated } from "../middleware/auth.js";
+import { bootstrapApiKey, config, rotateGeneratedApiKey } from "../config/index.js";
+import {
+  getBrowserSessionToken,
+  isApiKeyValid,
+  requestIsAuthenticated,
+  requireAuthenticatedRequest,
+} from "../middleware/auth.js";
 import { requestHasSameOrigin } from "../middleware/origin.js";
 
 export const appRouter = Router();
@@ -161,6 +166,29 @@ appRouter.post("/session", (req, res) => {
     authenticated: true,
     expiresAt: new Date(session.expiresAt).toISOString(),
     message: "Browser session created.",
+  });
+});
+
+appRouter.post("/api-key/rotate", requireAuthenticatedRequest, (_req, res) => {
+  const result = rotateGeneratedApiKey();
+
+  if (!result.success) {
+    return res.status(409).json(result);
+  }
+
+  void recordActivity({
+    level: "warning",
+    category: "security",
+    code: "gateway.api_key.rotated",
+    title: "API key rotated",
+    description: "The machine API key was rotated. Existing browser sessions remain active and the previous key is invalid.",
+  });
+
+  return res.json({
+    success: true,
+    apiKey: result.apiKey,
+    generatedAt: result.generatedAt,
+    message: "API key rotated. Save it now and update external clients; the previous key is no longer valid.",
   });
 });
 
