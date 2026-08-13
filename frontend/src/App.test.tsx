@@ -13,11 +13,13 @@ import {
   listActivity,
   logoutBrowserSession,
   pairWhatsApp,
+  rotateApiKey,
   sendMessage,
 } from "./api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
+const rotatedApiKey = `wa_${"d".repeat(43)}`;
 
 vi.mock("./api.js", () => ({
   allowRecipient: vi.fn(async (phone: string) => ({
@@ -86,6 +88,12 @@ vi.mock("./api.js", () => ({
   optOutRecipient: vi.fn(),
   pairWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
   rebindWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
+  rotateApiKey: vi.fn(async () => ({
+    success: true,
+    apiKey: rotatedApiKey,
+    generatedAt: "2026-08-14T00:00:00.000Z",
+    message: "API key rotated",
+  })),
   sendMessage: vi.fn(),
 }));
 
@@ -261,6 +269,21 @@ describe("dashboard", () => {
 
     await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
     await waitFor(() => expect(logoutBrowserSession).toHaveBeenCalledTimes(1));
+  });
+
+  it("requires confirmation and shows the replacement API key after rotation", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /rotate api key/i }));
+    expect(await screen.findByRole("dialog", { name: /rotate api key/i })).toBeTruthy();
+    expect(rotateApiKey).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /rotate and invalidate old key/i }));
+    await waitFor(() => expect(rotateApiKey).toHaveBeenCalledTimes(1));
+
+    expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe(rotatedApiKey);
+    expect(screen.queryByRole("dialog", { name: /rotate api key/i })).toBeNull();
   });
 
   it("shows why pairing is unavailable when the backend is down", async () => {
