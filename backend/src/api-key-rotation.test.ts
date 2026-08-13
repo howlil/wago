@@ -47,7 +47,11 @@ describe("credential rotation endpoint", () => {
 
     expect((await request(app).get("/recipients").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(401);
     expect(
-      (await request(app).get("/recipients").set("Authorization", `Bearer ${rotate.body.apiKey as string}`)).status,
+      (
+        await request(app)
+          .get("/recipients")
+          .set("Authorization", `Bearer ${rotate.body.apiKey as string}`)
+      ).status,
     ).toBe(200);
     expect((await request(app).get("/recipients").set("Cookie", cookie)).status).toBe(200);
 
@@ -63,9 +67,7 @@ describe("credential rotation endpoint", () => {
     config.apiKeyHash = null;
     config.apiKeySource = "env";
 
-    const response = await request(app)
-      .post("/app/api-key/rotate")
-      .set("Authorization", "Bearer deployment-owned-key");
+    const response = await request(app).post("/app/api-key/rotate").set("Authorization", "Bearer deployment-owned-key");
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({
