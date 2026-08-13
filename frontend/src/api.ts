@@ -44,6 +44,19 @@ export type BrowserSessionResponse =
       message: string;
     };
 
+export type ApiKeyRotationResponse =
+  | {
+      success: true;
+      apiKey: string;
+      generatedAt: string;
+      message: string;
+    }
+  | {
+      success: false;
+      error: string;
+      message: string;
+    };
+
 type HealthResponse = {
   status: string;
 };
@@ -264,6 +277,12 @@ export function createBrowserSession(apiKey: string): Promise<BrowserSessionResp
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ apiKey }),
+  });
+}
+
+export function rotateApiKey(): Promise<ApiKeyRotationResponse> {
+  return requestJson<ApiKeyRotationResponse>("/app/api-key/rotate", {
+    method: "POST",
   });
 }
 
