@@ -3,6 +3,7 @@ import GettingStartedDoc from '../../../components/docs/GettingStartedDoc.astro'
 import ArchitectureDoc from '../../../components/docs/ArchitectureDoc.astro';
 import ApiDoc from '../../../components/docs/ApiDoc.astro';
 import ConfigurationDoc from '../../../components/docs/ConfigurationDoc.astro';
+import ApiKeyRotationDoc from '../../../components/docs/ApiKeyRotationDoc.astro';
 import DeploymentDoc from '../../../components/docs/DeploymentDoc.astro';
 import OperationsDoc from '../../../components/docs/OperationsDoc.astro';
 import DevelopmentDoc from '../../../components/docs/DevelopmentDoc.astro';
@@ -13,6 +14,7 @@ const pages = {
   architecture: ArchitectureDoc,
   api: ApiDoc,
   configuration: ConfigurationDoc,
+  'api-key-rotation': ApiKeyRotationDoc,
   deployment: DeploymentDoc,
   operations: OperationsDoc,
   development: DevelopmentDoc,
@@ -25,6 +27,7 @@ export function getStaticPaths() {
     'architecture',
     'api',
     'configuration',
+    'api-key-rotation',
     'deployment',
     'operations',
     'development',

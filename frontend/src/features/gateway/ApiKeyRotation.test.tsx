@@ -1,0 +1,52 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { GatewayCredentialsCard } from "./GatewayCredentialsCard.js";
+import { RotateApiKeyDialog } from "./RotateApiKeyDialog.js";
+
+const baseProps = {
+  appId: "wa-gateway-test",
+  apiKeyConfigured: true,
+  apiKeySource: "generated" as const,
+  apiKeyInput: "",
+  credentialSetupRequired: false,
+  isAuthenticated: true,
+  showApiKey: false,
+  copiedField: null,
+  credentialHint: "API key is configured.",
+  isSigningIn: false,
+  isSigningOut: false,
+  isRotatingApiKey: false,
+  onApiKeyChange: vi.fn(),
+  onToggleApiKey: vi.fn(),
+  onCopyAppId: vi.fn(),
+  onCopyApiKey: vi.fn(),
+  onSignIn: vi.fn(),
+  onSignOut: vi.fn(),
+  onRotateApiKey: vi.fn(),
+};
+
+describe("API key rotation dashboard controls", () => {
+  it("offers rotation only for authenticated generated credentials", async () => {
+    const user = userEvent.setup();
+    const onRotateApiKey = vi.fn();
+    const { rerender } = render(<GatewayCredentialsCard {...baseProps} onRotateApiKey={onRotateApiKey} />);
+
+    await user.click(screen.getByRole("button", { name: /rotate api key/i }));
+    expect(onRotateApiKey).toHaveBeenCalledTimes(1);
+
+    rerender(<GatewayCredentialsCard {...baseProps} apiKeySource="env" onRotateApiKey={onRotateApiKey} />);
+    expect(screen.queryByRole("button", { name: /rotate api key/i })).toBeNull();
+  });
+
+  it("requires an explicit confirmation before rotating", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    render(<RotateApiKeyDialog isOpen isRotating={false} onCancel={vi.fn()} onConfirm={onConfirm} />);
+
+    expect(screen.getByRole("dialog", { name: /rotate api key/i })).toBeTruthy();
+    expect(onConfirm).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /rotate and invalidate old key/i }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+});

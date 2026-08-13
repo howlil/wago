@@ -6,6 +6,7 @@ import {
   logoutBrowserSession,
   pairWhatsApp,
   rebindWhatsApp,
+  rotateApiKey,
 } from "../../api.js";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import type { Notice } from "../../shared/ui/feedback.js";
@@ -22,7 +23,9 @@ export function useDashboardController() {
   const [isPairing, setIsPairing] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isRotatingApiKey, setIsRotatingApiKey] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
+  const [isApiKeyRotationDialogOpen, setIsApiKeyRotationDialogOpen] = useState(false);
 
   const { copiedField, copy } = useClipboard<Exclude<CopiedField, null>>({
     onError: (message) => setNotice({ type: "error", message }),
@@ -165,6 +168,7 @@ export function useDashboardController() {
       await logoutBrowserSession();
       setApiKeyInput("");
       setShowApiKey(false);
+      setIsApiKeyRotationDialogOpen(false);
       await snapshot.refresh({ showLoading: true });
       setNotice({ type: "success", message: "Signed out from this browser. External API clients are unaffected." });
     } catch (error) {
@@ -172,6 +176,38 @@ export function useDashboardController() {
       setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to sign out" });
     } finally {
       setIsSigningOut(false);
+    }
+  }
+
+  async function handleRotateApiKey() {
+    if (!snapshot.isAuthenticated || snapshot.apiKeySource !== "generated") {
+      setNotice({ type: "error", message: "Only generated API keys can be rotated from the dashboard." });
+      return;
+    }
+
+    setIsRotatingApiKey(true);
+    setNotice(null);
+
+    try {
+      const result = await rotateApiKey();
+
+      if (!result.success) {
+        setNotice({ type: "error", message: result.message });
+        return;
+      }
+
+      setApiKeyInput(result.apiKey);
+      setShowApiKey(true);
+      setIsApiKeyRotationDialogOpen(false);
+      setNotice({
+        type: "success",
+        message: "API key rotated. Save it now and update every external REST client; the previous key is invalid.",
+      });
+    } catch (error) {
+      const apiError = error as { message?: string; error?: string };
+      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to rotate API key" });
+    } finally {
+      setIsRotatingApiKey(false);
     }
   }
 
@@ -259,7 +295,9 @@ export function useDashboardController() {
     isPairing,
     isSigningIn,
     isSigningOut,
+    isRotatingApiKey,
     isRebindDialogOpen,
+    isApiKeyRotationDialogOpen,
     phone: messaging.phone,
     message: messaging.message,
     recipientApprovalPhone: messaging.recipientApprovalPhone,
@@ -280,9 +318,12 @@ export function useDashboardController() {
     handlePair,
     handleSignIn,
     handleSignOut,
+    handleRotateApiKey,
     handleRebind,
     openRebindDialog: () => setIsRebindDialogOpen(true),
     closeRebindDialog: () => setIsRebindDialogOpen(false),
+    openApiKeyRotationDialog: () => setIsApiKeyRotationDialogOpen(true),
+    closeApiKeyRotationDialog: () => setIsApiKeyRotationDialogOpen(false),
     handlePhoneChange: messaging.handlePhoneChange,
     setMessage: messaging.setMessage,
     handleSubmit: messaging.handleSubmit,

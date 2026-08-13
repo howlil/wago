@@ -3,6 +3,7 @@ import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
 import { GatewayCredentialsCard } from "../gateway/GatewayCredentialsCard.js";
+import { RotateApiKeyDialog } from "../gateway/RotateApiKeyDialog.js";
 import { MessageStatusCard } from "../messages/MessageStatusCard.js";
 import { SendMessageCard } from "../messages/SendMessageCard.js";
 import { RecipientAccessCard } from "../recipients/RecipientAccessCard.js";
@@ -112,12 +113,14 @@ export function DashboardPage() {
             credentialHint={dashboard.credentialHint}
             isSigningIn={dashboard.isSigningIn}
             isSigningOut={dashboard.isSigningOut}
+            isRotatingApiKey={dashboard.isRotatingApiKey}
             onApiKeyChange={dashboard.setApiKeyInput}
             onToggleApiKey={dashboard.toggleApiKey}
             onCopyAppId={dashboard.copyAppId}
             onCopyApiKey={dashboard.copyApiKey}
             onSignIn={() => void dashboard.handleSignIn()}
             onSignOut={() => void dashboard.handleSignOut()}
+            onRotateApiKey={dashboard.openApiKeyRotationDialog}
           />
 
           {dashboard.isAuthenticated ? (
@@ -132,6 +135,13 @@ export function DashboardPage() {
           )}
         </div>
       </div>
+
+      <RotateApiKeyDialog
+        isOpen={dashboard.isApiKeyRotationDialogOpen}
+        isRotating={dashboard.isRotatingApiKey}
+        onCancel={dashboard.closeApiKeyRotationDialog}
+        onConfirm={() => void dashboard.handleRotateApiKey()}
+      />
 
       <RebindSessionDialog
         isOpen={dashboard.isRebindDialogOpen}

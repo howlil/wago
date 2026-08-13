@@ -1,4 +1,4 @@
-import { Check, Copy, Eye, EyeOff, LogOut } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, KeyRound, LogOut } from "lucide-react";
 import type { AppInfoResponse } from "../../api.js";
 import {
   cardBodyClass,
@@ -22,12 +22,14 @@ type GatewayCredentialsCardProps = {
   credentialHint: string;
   isSigningIn: boolean;
   isSigningOut: boolean;
+  isRotatingApiKey: boolean;
   onApiKeyChange: (value: string) => void;
   onToggleApiKey: () => void;
   onCopyAppId: () => void;
   onCopyApiKey: () => void;
   onSignIn: () => void;
   onSignOut: () => void;
+  onRotateApiKey: () => void;
 };
 
 export function GatewayCredentialsCard({
@@ -42,12 +44,14 @@ export function GatewayCredentialsCard({
   credentialHint,
   isSigningIn,
   isSigningOut,
+  isRotatingApiKey,
   onApiKeyChange,
   onToggleApiKey,
   onCopyAppId,
   onCopyApiKey,
   onSignIn,
   onSignOut,
+  onRotateApiKey,
 }: GatewayCredentialsCardProps) {
   return (
     <section className={cardBodyClass}>
@@ -144,12 +148,23 @@ export function GatewayCredentialsCard({
         </div>
 
         {isAuthenticated ? (
-          <div className="flex justify-end">
+          <div className="flex flex-col justify-end gap-2 sm:flex-row">
+            {apiKeySource === "generated" ? (
+              <button
+                className={`${secondaryButtonClass} w-full sm:w-auto`}
+                type="button"
+                onClick={onRotateApiKey}
+                disabled={isRotatingApiKey}
+              >
+                <KeyRound size={14} />
+                {isRotatingApiKey ? "Rotating" : "Rotate API key"}
+              </button>
+            ) : null}
             <button
               className={`${secondaryButtonClass} w-full sm:w-auto`}
               type="button"
               onClick={onSignOut}
-              disabled={isSigningOut}
+              disabled={isSigningOut || isRotatingApiKey}
             >
               <LogOut size={14} />
               {isSigningOut ? "Signing out" : "Sign out"}
