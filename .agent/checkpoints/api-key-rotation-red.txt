@@ -1,0 +1,1 @@
+RED phase: tests for API key rotation are being added before production code.
