@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a safe API-key rotation flow for Wago so an operator can recover from a lost or compromised machine credential without touching the WhatsApp/Baileys session.
+Add a safe API-key rotation flow for Wago so an operator can replace a lost, stale, or intentionally retired machine credential without touching the WhatsApp/Baileys session.
 
 ## Chosen approach
 
@@ -10,7 +10,7 @@ Use explicit server-side rotation. Wago generates a new cryptographically random
 
 This is preferred over storing the raw key in SQLite because plaintext storage would make database disclosure equivalent to API compromise. It is also preferred over client-only regeneration because a random key generated only in the browser would not match the hash held by Wago until the backend explicitly rotates the credential.
 
-Rotation is intentionally restricted to an authenticated Wago browser session. A Bearer API key cannot rotate itself. This prevents a leaked machine credential from being used remotely to replace the legitimate credential and lock out existing clients.
+Rotation is intentionally exposed as a dashboard-session operation rather than part of the normal Bearer machine-client contract. A direct Bearer request to the rotation endpoint is rejected; the browser-session and production same-origin checks keep credential lifecycle operations inside the operator-facing dashboard flow.
 
 ## Scope
 
@@ -23,7 +23,7 @@ Rotation is intentionally restricted to an authenticated Wago browser session. A
 - Keep existing browser sessions valid so rotating the machine credential does not log the operator out mid-action.
 - Add a dashboard action under Gateway credentials with an explicit destructive confirmation.
 - Show the replacement key in memory only and make it copyable until page refresh/navigation clears component state.
-- Update public documentation to explain rotation and the requirement to update external clients such as SOPFlow after rotation.
+- Publish bilingual documentation explaining rotation and the requirement to update external REST clients after rotation.
 
 ## Data model
 
@@ -39,7 +39,7 @@ Add `POST /app/api-key/rotate`.
 
 Requirements:
 
-- Request must have a valid Wago browser session; Bearer-only authentication is rejected.
+- Request must have a valid Wago browser session; a direct Bearer-only request is rejected.
 - In production, rotation must originate from the Wago dashboard origin.
 - Reject when `apiKeySource === "env"`.
 - Generate a new high-entropy key using the same server-side generator used by bootstrap.
@@ -74,18 +74,18 @@ Interaction:
 ## Security properties
 
 - Raw API keys are never persisted in SQLite, logs, localStorage, or sessionStorage.
-- A leaked Bearer key alone cannot rotate the active credential.
+- Direct Bearer-only requests cannot invoke the rotation endpoint.
 - Rotation does not affect WhatsApp/Baileys auth state.
 - Old API key becomes invalid immediately after committed rotation.
 - Browser sessions remain separate opaque credentials stored as hashes server-side.
-- No automatic propagation to SOPFlow is attempted; deployment secrets remain an explicit external responsibility.
+- No automatic propagation to external clients is attempted; deployment secrets remain an explicit external responsibility.
 
 ## Tests
 
 Backend tests prove:
 
 - generated-key rotation returns a fresh raw key and replaces the stored active hash;
-- Bearer-only rotation is rejected;
+- direct Bearer-only rotation is rejected;
 - old key is rejected after rotation;
 - new key authenticates after rotation;
 - active browser session remains valid;
@@ -101,4 +101,4 @@ Frontend tests prove:
 
 ## Acceptance criteria
 
-Rotation can be performed from the authenticated Wago dashboard without re-pairing WhatsApp. Bearer-only rotation is rejected. After rotation, the old API key receives `401`, the new API key can authenticate machine requests, the current dashboard session remains active, and the dashboard tells the operator to update dependent applications. No plaintext API key is persisted server-side or in browser storage.
+Rotation can be performed from the authenticated Wago dashboard without re-pairing WhatsApp. A direct Bearer-only rotation request is rejected. After rotation, the old API key receives `401`, the new API key can authenticate machine requests, the current dashboard session remains active, and the dashboard tells the operator to update dependent applications. No plaintext API key is persisted server-side or in browser storage.
