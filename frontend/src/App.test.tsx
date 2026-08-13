@@ -258,7 +258,7 @@ describe("dashboard", () => {
         credentialSetupRequired: false,
         setupRequired: false,
       })
-      .mockResolvedValue({
+      .mockResolvedValueOnce({
         success: true,
         appId: "wa-gateway-test",
         apiKeyRequired: true,
