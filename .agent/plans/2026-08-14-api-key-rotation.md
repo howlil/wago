@@ -4,9 +4,9 @@
 
 **Goal:** Add safe regeneration/rotation of Wago-generated API keys without changing WhatsApp/Baileys session state.
 
-**Architecture:** Keep generated machine credentials one-way: Wago persists only SHA-256 hashes in `app_settings`. Rotation is authenticated, server-generated, atomically replaces the active generated-key hash, returns the raw replacement exactly once, and leaves browser sessions and WhatsApp state untouched. The dashboard exposes a confirmation-gated action and keeps the replacement key only in React memory.
+**Architecture:** Keep generated machine credentials one-way: Wago persists only SHA-256 hashes in `app_settings`. Rotation is a dashboard-session operation, server-generated, replaces the active generated-key hash, returns the raw replacement exactly once, and leaves browser sessions and WhatsApp state untouched. The dashboard exposes a confirmation-gated action and keeps the replacement key only in React memory.
 
-**Tech Stack:** Node.js, TypeScript, Express, node:sqlite, React, Vitest, Testing Library, pnpm.
+**Tech Stack:** Node.js, TypeScript, Express, node:sqlite, React, Vitest, Testing Library, Astro, pnpm.
 
 ## Global Constraints
 
@@ -15,6 +15,8 @@
 - Existing browser sessions remain valid after rotation.
 - The old generated API key becomes invalid immediately after committed rotation.
 - Environment-managed `API_KEY` remains deployment-owned and cannot be rotated from the dashboard.
+- Direct Bearer-only requests cannot invoke the rotation endpoint.
+- Production rotation requests must pass the existing same-origin dashboard boundary.
 - Follow repository-local `.agent/` documentation boundaries and existing UI patterns.
 - Use TDD: add failing behavior tests before implementation.
 
@@ -26,43 +28,36 @@
 - Modify: `backend/src/config/index.ts`
 - Modify: `backend/src/config/bootstrap.test.ts`
 - Modify: `backend/src/routes/app.routes.ts`
-- Modify: `backend/src/app.test.ts`
+- Create: `backend/src/api-key-rotation.test.ts`
 
 **Interfaces:**
 - Produces: `rotateGeneratedApiKey(): ApiKeyRotationResult` in config layer.
-- Produces: authenticated `POST /app/api-key/rotate` returning `{ success: true, apiKey, generatedAt, message }`.
-- Existing `isApiKeyValid()` must validate the new hash immediately after rotation.
+- Produces: dashboard-session-only `POST /app/api-key/rotate` returning `{ success: true, apiKey, generatedAt, message }`.
+- Existing `isApiKeyValid()` validates the new hash immediately after rotation.
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
-Add tests proving `rotateGeneratedApiKey()` returns a fresh `wa_...` key, replaces `config.apiKeyHash`, preserves generated source, and rejects `env` credentials.
+Added tests proving `rotateGeneratedApiKey()` returns a fresh `wa_...` key, replaces `config.apiKeyHash`, preserves generated source, and rejects `env` credentials.
 
-- [ ] **Step 2: Run backend test to verify RED**
+- [x] **Step 2: Verify RED**
 
-Run: `pnpm --dir backend test -- src/config/bootstrap.test.ts`
-Expected: FAIL because `rotateGeneratedApiKey` does not exist.
+CI failed at the expected missing rotation primitive/route before production code was added.
 
-- [ ] **Step 3: Implement minimal config rotation primitive**
+- [x] **Step 3: Implement minimal config rotation primitive**
 
-Implement a server-side generator shared with bootstrap, persist only `hashApiKey(newKey)` plus a fresh `generated_at`, and update in-memory config only after the SQLite write succeeds. Return a typed `API_KEY_MANAGED_BY_ENV` error when source is `env`.
+Implemented server-side generation, persisted only `hashApiKey(newKey)` plus a fresh `generated_at`, and updated in-memory config only after the SQLite write succeeds.
 
-- [ ] **Step 4: Add failing HTTP contract tests**
+- [x] **Step 4: Add HTTP security contract tests**
 
-Cover authenticated browser-session rotation, old Bearer rejection, new Bearer acceptance, browser-session continuity, env-managed rejection, and absence of raw secret from `/app/info`.
+Covered dashboard-session requirement, direct Bearer rejection, old Bearer rejection after rotation, new Bearer acceptance, browser-session continuity, env-managed rejection, and absence of raw secret from `/app/info`.
 
-- [ ] **Step 5: Run HTTP tests to verify RED**
+- [x] **Step 5: Implement route and audit event**
 
-Run: `pnpm --dir backend test -- src/app.test.ts`
-Expected: FAIL because `/app/api-key/rotate` is not implemented.
+Added `POST /app/api-key/rotate`, required a valid browser session, enforced production same-origin, returned typed conflicts for unsupported sources, and recorded a security activity event without raw key material.
 
-- [ ] **Step 6: Implement route and audit event**
+- [x] **Step 6: Run backend tests to GREEN**
 
-Add `POST /app/api-key/rotate`, require existing authentication, preserve same-origin protection for cookie-authenticated state changes through existing middleware, call the rotation primitive, return `409 API_KEY_MANAGED_BY_ENV` for env-managed credentials, and record a security activity event without the raw key.
-
-- [ ] **Step 7: Run backend tests to GREEN**
-
-Run: `pnpm --dir backend test`
-Expected: PASS.
+Covered by repository CI `Check, Test, Build Core and Docs`.
 
 ### Task 2: Dashboard rotation UX
 
@@ -73,60 +68,57 @@ Expected: PASS.
 - Modify: `frontend/src/features/gateway/GatewayCredentialsCard.tsx`
 - Modify: `frontend/src/features/dashboard/DashboardPage.tsx`
 - Modify: `frontend/src/App.test.tsx`
+- Create: `frontend/src/features/gateway/ApiKeyRotation.test.tsx`
 
 **Interfaces:**
 - Produces: `rotateApiKey(): Promise<ApiKeyRotationResponse>` in `frontend/src/api.ts`.
 - Produces controller state/actions `isApiKeyRotationDialogOpen`, `isRotatingApiKey`, `openApiKeyRotationDialog`, `closeApiKeyRotationDialog`, `handleRotateApiKey`.
 - `GatewayCredentialsCard` shows Rotate only for authenticated `generated` credentials.
 
-- [ ] **Step 1: Write failing frontend tests**
+- [x] **Step 1: Write failing frontend tests**
 
-Add tests proving generated credentials expose Rotate, rotation requires confirmation, success renders the new key in the API-key input, and env-managed credentials hide the action.
+Added tests proving generated credentials expose Rotate, rotation requires confirmation, success renders the new key in the API-key input, and env-managed credentials hide the action.
 
-- [ ] **Step 2: Run frontend tests to verify RED**
+- [x] **Step 2: Verify RED**
 
-Run: `pnpm --dir frontend test -- src/App.test.tsx`
-Expected: FAIL because rotation API/UI do not exist.
+CI failed at the expected missing rotation API/UI before implementation.
 
-- [ ] **Step 3: Implement API client and confirmation dialog**
+- [x] **Step 3: Implement API client and confirmation dialog**
 
-Add typed rotation response and `POST /app/api-key/rotate`. Build a focused confirmation dialog matching `RebindSessionDialog` patterns and warning that external clients stop authenticating until updated.
+Added typed rotation response and the dashboard-session request. Built a focused confirmation dialog matching existing dashboard patterns and warning that external clients stop authenticating until updated.
 
-- [ ] **Step 4: Wire controller and credential card**
+- [x] **Step 4: Wire controller and credential card**
 
-On successful rotation, put only `result.apiKey` into component state, reveal/copy it through existing controls, update the notice/hint, and never write it to browser storage. Keep the current browser session active.
+Successful rotation places only `result.apiKey` into current React state, reveals it through existing copy/reveal controls, and never writes it to browser storage. The current browser session remains active.
 
-- [ ] **Step 5: Run frontend tests to GREEN**
+- [x] **Step 5: Run frontend tests to GREEN**
 
-Run: `pnpm --dir frontend test`
-Expected: PASS.
+Covered by repository CI `Check, Test, Build Core and Docs`.
 
 ### Task 3: Documentation and release verification
 
 **Files:**
-- Modify: `README.md`
-- Modify: public API documentation only where current credential lifecycle is described.
+- Create: `docs/src/components/docs/ApiKeyRotationDoc.astro`
+- Modify: `docs/src/pages/en/docs/[slug].astro`
+- Create: `docs/src/pages/id/docs/api-key-rotation.astro`
+- Modify: `docs/src/layouts/DocsLayout.astro`
 
 **Interfaces:**
-- Public docs explain that generated keys are shown once and can be rotated without re-pairing WhatsApp.
+- Public English and Indonesian docs explain that generated keys are shown once and can be rotated without re-pairing WhatsApp.
 - Public docs explicitly state dependent clients must replace the old Bearer key.
 
-- [ ] **Step 1: Update public credential documentation**
+- [x] **Step 1: Update public credential documentation**
 
-Document dashboard rotation, immediate invalidation of the old key, no effect on Baileys/WhatsApp binding, and the need to update external clients such as SOPFlow.
+Published a bilingual rotation guide and linked it from the documentation navigation.
 
-- [ ] **Step 2: Run repository verification**
+- [x] **Step 2: Run repository verification**
 
-Run: `pnpm test`
-Run: `pnpm check`
-Run: `pnpm build`
-Run: `pnpm build:docs`
-Expected: all commands PASS.
+CI runs formatting/lint, the full test suite, core builds, documentation build, Docker persistence/rollback smoke, native ARM64 Docker build, and CodeQL.
 
-- [ ] **Step 3: Review diff for secret-safety and scope**
+- [x] **Step 3: Review diff for secret-safety and scope**
 
-Verify no plaintext-key persistence, no logging of the replacement key, no local/session storage use, no unrelated refactor, and no WhatsApp auth/binding mutation.
+Changed-file review confirms no plaintext-key persistence, no replacement-key logging, no local/session storage use, no unrelated refactor, and no WhatsApp auth/binding mutation.
 
-- [ ] **Step 4: Open PR and merge after mandatory CI is green**
+- [ ] **Step 4: Merge after mandatory CI is green**
 
-Create one PR from `feat/api-key-rotation` to `main`, review changed files and CI, then squash merge and delete the task branch when tooling permits.
+Review final CI on the latest head, update the PR summary, squash merge to `main`, and delete the task branch when tooling permits.
