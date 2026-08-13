@@ -181,7 +181,8 @@ appRouter.post("/api-key/rotate", requireAuthenticatedRequest, (_req, res) => {
     category: "security",
     code: "gateway.api_key.rotated",
     title: "API key rotated",
-    description: "The machine API key was rotated. Existing browser sessions remain active and the previous key is invalid.",
+    description:
+      "The machine API key was rotated. Existing browser sessions remain active and the previous key is invalid.",
   });
 
   return res.json({
