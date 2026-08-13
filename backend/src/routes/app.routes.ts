@@ -5,8 +5,8 @@ import { bootstrapApiKey, config, rotateGeneratedApiKey } from "../config/index.
 import {
   getBrowserSessionToken,
   isApiKeyValid,
+  requestHasValidBrowserSession,
   requestIsAuthenticated,
-  requireAuthenticatedRequest,
 } from "../middleware/auth.js";
 import { requestHasSameOrigin } from "../middleware/origin.js";
 
@@ -169,7 +169,23 @@ appRouter.post("/session", (req, res) => {
   });
 });
 
-appRouter.post("/api-key/rotate", requireAuthenticatedRequest, (_req, res) => {
+appRouter.post("/api-key/rotate", (req, res) => {
+  if (!requestHasValidBrowserSession(req)) {
+    return res.status(401).json({
+      success: false,
+      error: "BROWSER_SESSION_REQUIRED",
+      message: "API key rotation requires an authenticated Wago dashboard session.",
+    });
+  }
+
+  if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_ROTATION_ORIGIN",
+      message: "API key rotation must come from the Wago dashboard origin.",
+    });
+  }
+
   const result = rotateGeneratedApiKey();
 
   if (!result.success) {
