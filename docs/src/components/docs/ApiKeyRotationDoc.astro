@@ -1,0 +1,43 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import PageHeader from './PageHeader.astro';
+import Callout from './Callout.astro';
+
+interface Props { lang: 'en' | 'id' }
+const { lang } = Astro.props;
+const id = lang === 'id';
+---
+
+<DocsLayout title={id ? 'Rotasi API key' : 'API key rotation'}>
+  <PageHeader
+    eyebrow="Gateway credentials"
+    title={id ? 'Rotasi generated API key tanpa pairing ulang WhatsApp' : 'Rotate a generated API key without re-pairing WhatsApp'}
+    description={id ? 'Gunakan rotasi ketika generated machine credential perlu diganti. Wago mengganti credential REST API saja; session browser dan session Baileys/WhatsApp tetap terpisah.' : 'Use rotation when a generated machine credential needs to be replaced. Wago changes only the REST API credential; browser and Baileys/WhatsApp sessions remain separate.'}
+  />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Cara kerja' : 'How it works'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">
+    {id ? 'Dari Control → Gateway credentials, pilih Rotate API key lalu konfirmasi. Wago membuat key baru di server, menyimpan hanya SHA-256 hash-nya di SQLite, dan menampilkan raw key pengganti satu kali di dashboard.' : 'From Control → Gateway credentials, choose Rotate API key and confirm. Wago creates the replacement on the server, stores only its SHA-256 hash in SQLite, and shows the raw replacement once in the dashboard.'}
+  </p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">
+    {id ? 'Key lama langsung tidak valid setelah rotasi berhasil. Browser session yang sedang dipakai tetap aktif dan Wago tidak mengubah WhatsApp binding maupun file autentikasi Baileys.' : 'The previous key becomes invalid immediately after a successful rotation. The current browser session stays active and Wago does not modify the WhatsApp binding or Baileys authentication files.'}
+  </p>
+
+  <Callout title={id ? 'Simpan key baru sebelum refresh' : 'Save the replacement before refreshing'} tone="warning">
+    {id ? 'Raw generated key tidak dapat di-fetch kembali. Salin key baru lalu update semua external REST client, misalnya backend SOPFlow, sebelum meninggalkan atau me-refresh dashboard.' : 'A generated raw key cannot be fetched again. Copy the replacement and update every external REST client, such as your application backend, before leaving or refreshing the dashboard.'}
+  </Callout>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Batas autentikasi' : 'Authentication boundary'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">
+    {id ? 'Aksi rotasi tersedia untuk generated credential pada dashboard yang sudah memiliki browser session aktif. Request Bearer langsung ke endpoint rotasi tidak diterima. Pada production, request rotasi juga harus berasal dari origin dashboard Wago.' : 'Rotation is available for generated credentials from a dashboard with an active browser session. A direct Bearer request to the rotation endpoint is not accepted. In production, the rotation request must also come from the Wago dashboard origin.'}
+  </p>
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Jika API_KEY berasal dari environment' : 'When API_KEY comes from the environment'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">
+    {id ? 'Credential dengan source env tidak dapat dirotasi dari dashboard karena deployment environment adalah source of truth. Ganti secret melalui platform deployment atau secret store, kemudian restart atau redeploy sesuai kebutuhan platform.' : 'An env-managed credential cannot be rotated from the dashboard because the deployment environment is the source of truth. Replace it in the deployment platform or secret store, then restart or redeploy as required by that platform.'}
+  </p>
+
+  <Callout title={id ? 'Tidak memengaruhi WhatsApp' : 'WhatsApp is unaffected'}>
+    {id ? 'Rotasi API key Wago tidak menghapus /app/data/auth, tidak melakukan rebind, dan tidak meminta scan QR ulang.' : 'Rotating the Wago API key does not delete /app/data/auth, rebind the account, or require a new QR scan.'}
+  </Callout>
+</DocsLayout>
