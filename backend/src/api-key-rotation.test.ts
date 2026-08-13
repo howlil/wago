@@ -33,7 +33,13 @@ describe("credential rotation endpoint", () => {
     config.requestLogging = false;
   });
 
-  it("replaces the generated Bearer credential while keeping the browser session active", async () => {
+  it("requires the dashboard session, replaces the generated Bearer credential, and keeps that session active", async () => {
+    const bearerAttempt = await request(app)
+      .post("/app/api-key/rotate")
+      .set("Authorization", `Bearer ${oldApiKey}`);
+    expect(bearerAttempt.status).toBe(401);
+    expect(bearerAttempt.body.error).toBe("BROWSER_SESSION_REQUIRED");
+
     const login = await request(app).post("/app/session").send({ apiKey: oldApiKey });
     expect(login.status).toBe(200);
     const cookie = cookieFrom(login);
@@ -67,7 +73,11 @@ describe("credential rotation endpoint", () => {
     config.apiKeyHash = null;
     config.apiKeySource = "env";
 
-    const response = await request(app).post("/app/api-key/rotate").set("Authorization", "Bearer deployment-owned-key");
+    const login = await request(app).post("/app/session").send({ apiKey: "deployment-owned-key" });
+    expect(login.status).toBe(200);
+    const cookie = cookieFrom(login);
+
+    const response = await request(app).post("/app/api-key/rotate").set("Cookie", cookie);
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({
