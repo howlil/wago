@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  bootstrapApiKey,
-  config,
-  hashApiKey,
-  resetPersistedSettingsForTest,
-  rotateGeneratedApiKey,
-} from "./index.js";
+import { bootstrapApiKey, config, hashApiKey, resetPersistedSettingsForTest, rotateGeneratedApiKey } from "./index.js";
 
 const candidate = `wa_${"b".repeat(64)}`;
 
