@@ -45,6 +45,7 @@ export function WhatsAppBindingCard({
   onChangeAccount,
 }: WhatsAppBindingCardProps) {
   const qrReady = Boolean(qrImage && status === "qr");
+  const showPairAction = canStartPairing || binding.state === "unbound";
 
   return (
     <section className={cardBodyClass}>
@@ -59,7 +60,7 @@ export function WhatsAppBindingCard({
             <QrCode size={13} />
             Scan QR
           </span>
-        ) : canStartPairing ? (
+        ) : showPairAction ? (
           <button
             className={`${primaryButtonClass} w-full shrink-0 sm:w-auto`}
             type="button"
