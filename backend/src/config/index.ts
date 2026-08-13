@@ -20,6 +20,10 @@ export type BootstrapApiKeyResult =
   | { success: true; appId: string; apiKey: string; recovered: boolean }
   | { success: false; error: "APP_ALREADY_INITIALIZED" | "INVALID_API_KEY"; message: string };
 
+export type ApiKeyRotationResult =
+  | { success: true; apiKey: string; generatedAt: string }
+  | { success: false; error: "API_KEY_MANAGED_BY_ENV" | "GATEWAY_NOT_INITIALIZED"; message: string };
+
 const database = getDatabase();
 const webhookSettingsStore = createWebhookSettingsStore(database);
 const persistedWebhookSettings = webhookSettingsStore.get();
@@ -166,6 +170,45 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     appId: config.appId,
     apiKey,
     recovered: false,
+  };
+}
+
+export function rotateGeneratedApiKey(): ApiKeyRotationResult {
+  if (config.apiKeySource === "env") {
+    return {
+      success: false,
+      error: "API_KEY_MANAGED_BY_ENV",
+      message: "This API key is managed by the deployment environment and must be rotated there.",
+    };
+  }
+
+  if (config.apiKeySource !== "generated" || !config.apiKeyHash) {
+    return {
+      success: false,
+      error: "GATEWAY_NOT_INITIALIZED",
+      message: "Initialize the gateway before rotating its API key.",
+    };
+  }
+
+  const apiKey = generateApiKey();
+  const apiKeyHash = hashApiKey(apiKey);
+  const generatedAt = new Date().toISOString();
+
+  writeSettings({
+    appId: config.appId,
+    apiKeyHash,
+    generatedAt,
+  });
+
+  config.apiKey = null;
+  config.apiKeyHash = apiKeyHash;
+  config.apiKeySource = "generated";
+  config.allowWebBootstrap = false;
+
+  return {
+    success: true,
+    apiKey,
+    generatedAt,
   };
 }
 
