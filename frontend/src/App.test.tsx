@@ -253,22 +253,35 @@ describe("dashboard", () => {
     expect(getCurrentQr).not.toHaveBeenCalled();
   });
 
-  it("signs out only the browser session", async () => {
+  it("keeps the pair action visible after signing out of the browser session", async () => {
     const user = userEvent.setup();
-    vi.mocked(getAppInfo).mockResolvedValueOnce({
-      success: true,
-      appId: "wa-gateway-test",
-      apiKeyRequired: true,
-      apiKeyConfigured: true,
-      apiKeySource: "generated",
-      authenticated: true,
-      credentialSetupRequired: false,
-      setupRequired: false,
-    });
+    vi.mocked(getAppInfo)
+      .mockResolvedValueOnce({
+        success: true,
+        appId: "wa-gateway-test",
+        apiKeyRequired: true,
+        apiKeyConfigured: true,
+        apiKeySource: "generated",
+        authenticated: true,
+        credentialSetupRequired: false,
+        setupRequired: false,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        appId: "wa-gateway-test",
+        apiKeyRequired: true,
+        apiKeyConfigured: true,
+        apiKeySource: "generated",
+        authenticated: false,
+        credentialSetupRequired: false,
+        setupRequired: false,
+      });
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
     await waitFor(() => expect(logoutBrowserSession).toHaveBeenCalledTimes(1));
+
+    expect(await screen.findByRole("button", { name: /pair whatsapp/i })).toBeTruthy();
   });
 
   it("requires confirmation and shows the replacement API key after rotation", async () => {
