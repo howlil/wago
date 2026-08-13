@@ -34,9 +34,7 @@ describe("credential rotation endpoint", () => {
   });
 
   it("requires the dashboard session, replaces the generated Bearer credential, and keeps that session active", async () => {
-    const bearerAttempt = await request(app)
-      .post("/app/api-key/rotate")
-      .set("Authorization", `Bearer ${oldApiKey}`);
+    const bearerAttempt = await request(app).post("/app/api-key/rotate").set("Authorization", `Bearer ${oldApiKey}`);
     expect(bearerAttempt.status).toBe(401);
     expect(bearerAttempt.body.error).toBe("BROWSER_SESSION_REQUIRED");
 
