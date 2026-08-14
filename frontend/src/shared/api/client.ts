@@ -1,6 +1,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
-export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+type RequestJsonOptions = {
+  allowedStatuses?: number[];
+};
+
+export async function requestJson<T>(
+  path: string,
+  init?: RequestInit,
+  options: RequestJsonOptions = {},
+): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
@@ -14,7 +22,7 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
         message: await response.text(),
       } as T);
 
-  if (!response.ok) {
+  if (!response.ok && !options.allowedStatuses?.includes(response.status)) {
     throw data;
   }
 
