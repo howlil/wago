@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
-import { listActivity } from "./api.js";
+import { listActivity } from "./features/activity/api.js";
 import {
   bootstrapApp,
   createApiKeyCandidate,
@@ -19,6 +19,10 @@ import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js"
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
 const rotatedApiKey = `wa_${"d".repeat(43)}`;
+
+vi.mock("./features/activity/api.js", () => ({
+  listActivity: vi.fn(async () => ({ success: true, events: [] })),
+}));
 
 vi.mock("./features/gateway/api.js", () => ({
   getAppInfo: vi.fn(async () => ({

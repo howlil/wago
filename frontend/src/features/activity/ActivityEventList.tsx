@@ -1,4 +1,4 @@
-import type { ActivityCategory, ActivityEvent, ActivityLevel, AuditSource } from "../../api.js";
+import type { ActivityCategory, ActivityEvent, ActivityLevel, AuditSource } from "./api.js";
 
 const categoryLabel: Record<ActivityCategory, string> = {
   system: "System",
