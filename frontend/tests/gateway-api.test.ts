@@ -39,4 +39,25 @@ describe("gateway API", () => {
     });
     expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
   });
+
+  it("rejects a malformed JSON readiness response even when 503 is allowed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "upstream_unavailable" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    const { getReadiness } = await import("../src/features/gateway/api.js");
+
+    await expect(getReadiness()).rejects.toEqual({
+      success: false,
+      error: "INVALID_READINESS_RESPONSE",
+      message: "Readiness endpoint returned an invalid JSON payload",
+    });
+  });
 });
