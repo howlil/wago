@@ -36,7 +36,11 @@ function resolvesToLegacyMessages(file: string, specifier: string): boolean {
     .replaceAll("\\", "/")
     .replace(/\.js$/, "");
 
-  return target === "routes/message.routes" || target === "routes/message.routes.service-contract" || target.startsWith("policy/");
+  return (
+    target === "routes/message.routes" ||
+    target === "routes/message.routes.service-contract" ||
+    target.startsWith("policy/")
+  );
 }
 
 describe("Messages architecture boundary", () => {
