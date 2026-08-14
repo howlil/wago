@@ -41,6 +41,26 @@ describe("shared HTTP client", () => {
     });
   });
 
+  it("rejects a non-JSON response even when its status is explicitly allowed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("Service Unavailable", {
+            status: 503,
+            headers: { "Content-Type": "text/html" },
+          }),
+      ),
+    );
+
+    const { requestJson } = await import("../src/shared/api/client.js");
+    await expect(requestJson("/ready", undefined, { allowedStatuses: [503] })).rejects.toEqual({
+      success: false,
+      error: "NON_JSON_RESPONSE",
+      message: "Service Unavailable",
+    });
+  });
+
   it("normalizes non-JSON HTTP failures before throwing", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("Bad Gateway", { status: 502 })));
 
