@@ -11,13 +11,15 @@ type RateLimitEntry = {
   resetAt: number;
 };
 
-function cleanupExpiredEntries(entries: Map<string, RateLimitEntry>, now: number, maxEntries: number): void {
+function cleanupExpiredEntries(entries: Map<string, RateLimitEntry>, now: number): void {
   for (const [key, entry] of entries) {
     if (entry.resetAt <= now) {
       entries.delete(key);
     }
   }
+}
 
+function trimOldestEntries(entries: Map<string, RateLimitEntry>, maxEntries: number): void {
   while (entries.size > maxEntries) {
     const oldestKey = entries.keys().next().value as string | undefined;
 
@@ -37,7 +39,7 @@ export function createRateLimit({ limit, windowMs, maxEntries = 1000 }: RateLimi
     const now = Date.now();
 
     if (now >= nextCleanupAt) {
-      cleanupExpiredEntries(entries, now, maxEntries);
+      cleanupExpiredEntries(entries, now);
       nextCleanupAt = now + windowMs;
     }
 
@@ -46,6 +48,7 @@ export function createRateLimit({ limit, windowMs, maxEntries = 1000 }: RateLimi
 
     if (!entry || entry.resetAt <= now) {
       entries.set(key, { count: 1, resetAt: now + windowMs });
+      trimOldestEntries(entries, maxEntries);
       return next();
     }
 
