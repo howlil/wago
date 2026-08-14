@@ -32,6 +32,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Format branch snapshot
+        run: pnpm check:fix
+
+      - name: Upload formatted source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatted-sources-${{ github.event.pull_request.head.sha }}
+          path: |
+            backend/src
+            frontend/src
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Check formatting and lint
         run: pnpm check
 
