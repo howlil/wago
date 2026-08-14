@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { runMigrations } from "./database/migrations.js";
 import { createInstanceLeaseManager } from "./instance-lease.js";
 
@@ -44,6 +44,19 @@ describe("gateway instance lease", () => {
 
     now += 10_001;
     expect(owner.isOwner()).toBe(true);
+  });
+
+  it("fails closed when a heartbeat cannot be persisted", () => {
+    const database = createDatabase();
+    const onOwnershipLost = vi.fn();
+    const owner = createInstanceLeaseManager(database, { ownerId: "owner", onOwnershipLost });
+
+    expect(owner.acquire()).toEqual({ acquired: true });
+    database.exec("DROP TABLE gateway_instance_lease");
+
+    expect(owner.heartbeat()).toBe(false);
+    expect(owner.getState()).toBe("lost");
+    expect(onOwnershipLost).toHaveBeenCalledTimes(1);
   });
 
   it("releases ownership for immediate takeover", () => {

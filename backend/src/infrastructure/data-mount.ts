@@ -17,6 +17,8 @@ export class PersistentDataRequiredError extends Error {
   }
 }
 
+const ephemeralFileSystems = new Set(["overlay", "tmpfs", "ramfs"]);
+
 function decodeMountInfoPath(value: string): string {
   return value.replace(/\\([0-7]{3})/g, (_match, octal: string) => String.fromCharCode(Number.parseInt(octal, 8)));
 }
@@ -57,7 +59,7 @@ export function inspectDataMount(mountInfo: string, dataDirectory: string): Data
   }
 
   return {
-    persistent: selected.mountPoint !== "/" && selected.fsType !== "overlay",
+    persistent: selected.mountPoint !== "/" && !ephemeralFileSystems.has(selected.fsType),
     mountPoint: selected.mountPoint,
     fsType: selected.fsType || null,
   };

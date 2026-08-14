@@ -109,12 +109,18 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
     heartbeat(): boolean {
       if (state !== "owned") return false;
       const timestamp = now();
-      const result = heartbeatLease.run(timestamp, timestamp + ttlMs, ownerId, timestamp);
-      if (Number(result.changes) !== 1) {
+
+      try {
+        const result = heartbeatLease.run(timestamp, timestamp + ttlMs, ownerId, timestamp);
+        if (Number(result.changes) !== 1) {
+          loseOwnership();
+          return false;
+        }
+        return true;
+      } catch {
         loseOwnership();
         return false;
       }
-      return true;
     },
 
     release(): boolean {
