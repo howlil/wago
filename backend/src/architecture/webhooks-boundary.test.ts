@@ -33,7 +33,9 @@ function resolvesToLegacyWebhooks(file: string, specifier: string): boolean {
     .replaceAll("\\", "/")
     .replace(/\.js$/, "");
 
-  return target === "routes/webhook.routes" || target === "routes/webhook.routes.test" || target.startsWith("webhooks/");
+  return (
+    target === "routes/webhook.routes" || target === "routes/webhook.routes.test" || target.startsWith("webhooks/")
+  );
 }
 
 describe("Webhooks architecture boundary", () => {
