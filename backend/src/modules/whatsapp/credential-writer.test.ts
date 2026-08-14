@@ -20,22 +20,16 @@ describe("credential writer", () => {
       logFailure: vi.fn(),
     });
 
-    writer.enqueue(
-      async () => {
-        calls.push("first:start");
-        await first.promise;
-        calls.push("first:end");
-      },
-      1,
-    );
-    writer.enqueue(
-      () => {
-        calls.push("second:start");
-        calls.push("second:end");
-        return Promise.resolve();
-      },
-      1,
-    );
+    writer.enqueue(async () => {
+      calls.push("first:start");
+      await first.promise;
+      calls.push("first:end");
+    }, 1);
+    writer.enqueue(() => {
+      calls.push("second:start");
+      calls.push("second:end");
+      return Promise.resolve();
+    }, 1);
 
     await vi.waitFor(() => expect(calls).toEqual(["first:start"]));
     first.resolve();
