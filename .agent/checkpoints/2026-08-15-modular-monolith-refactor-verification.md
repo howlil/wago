@@ -46,13 +46,22 @@ Tasks 1–8 from `.agent/plans/2026-08-14-modular-monolith-refactor.md` are impl
    - Outbound policy receives an `accountHealthCheck` callback; WhatsApp owns Baileys account-health behavior and supplies that callback from the sender.
    - The enforced production direction is now `WhatsApp -> Messages`; production `Messages -> WhatsApp` imports are forbidden by `module-dependency-boundary.test.ts`.
 
+### Final repository hygiene cleanup
+
+- Access-specific integration coverage is colocated with the Access module:
+  - `backend/src/api-key-rotation.test.ts` -> `backend/src/modules/access/api-key-rotation.test.ts`
+  - `backend/src/app.browser-session.test.ts` -> `backend/src/modules/access/browser-session.test.ts`
+- `backend/src/architecture/cleanup-boundary.test.ts` now rejects reintroduction of those misplaced root tests.
+- No runtime behavior or public HTTP contract changed in this cleanup.
+- Temporary cleanup workflows are removed after use; only normal project workflows remain tracked.
+
 ## Package-manager decision
 
 Package-local pnpm workspace and lockfiles are intentionally retained. The production `Dockerfile` installs frontend and backend dependencies in isolated stages and explicitly copies each package's `package.json`, `pnpm-lock.yaml`, and `pnpm-workspace.yaml` before `pnpm install --frozen-lockfile`. Removing those files would reduce standalone/Docker reproducibility without a compensating simplification.
 
-## Runtime-code verification
+## Verification history
 
-The completed four-item cleanup was verified on runtime-code head `a290e67d66005cb269312cc7af3bbeebc94ea28c`:
+The completed four-item audit cleanup was verified on runtime-code head `a290e67d66005cb269312cc7af3bbeebc94ea28c`:
 
 - CI run #710: success
   - formatting/lint: success
@@ -65,6 +74,15 @@ The completed four-item cleanup was verified on runtime-code head `a290e67d66005
 - Docs CI run #234: success
 - CodeQL run #711: success
 
-This checkpoint update is documentation-only. The branch head created by this checkpoint must receive the same fresh CI/Docs/CodeQL verification before the PR is considered merge-ready.
+The subsequent documentation checkpoint head `d738dd3114f8b4c781576e61ffa2d0d9894b51d0` was also freshly verified:
+
+- CI run #711: success
+- Docs CI run #235: success
+- CodeQL run #712: success
+- all current inline review threads were resolved after review.
+
+The final repository-hygiene test move was executed with an explicit RED -> GREEN helper gate. The RED guard proved both misplaced root tests; after `git mv` and import-only updates, full `pnpm check`, full backend/frontend tests, and full build passed before commit `b2b9fedcbbcbc7d15ac524fe697652aa53092dac` was pushed. The temporary helper workflow was then removed.
+
+Any later branch-head change must receive fresh normal CI/Docs/CodeQL verification before merge consideration.
 
 The branch must remain unmerged until the user explicitly authorizes merge.
