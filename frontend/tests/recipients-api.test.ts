@@ -38,4 +38,34 @@ describe("recipients feature API", () => {
       credentials: "include",
     });
   });
+
+  it("opts out the encoded recipient through the recipient resource endpoint", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              success: true,
+              recipient: {
+                jid: "6281234567890@s.whatsapp.net",
+                allowed: false,
+                optedOut: true,
+                createdAt: "2026-08-10T00:00:00.000Z",
+                updatedAt: "2026-08-14T00:00:00.000Z",
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const { optOutRecipient } = await import("../src/features/recipients/api.js");
+    await optOutRecipient("+62 812/345");
+
+    expect(fetch).toHaveBeenCalledWith("/recipients/%2B62%20812%2F345/opt-out", {
+      method: "POST",
+      credentials: "include",
+    });
+  });
 });
