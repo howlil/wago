@@ -1,16 +1,15 @@
 import { useState } from "react";
+import { pairWhatsApp, rebindWhatsApp } from "../../api.js";
+import { useClipboard } from "../../shared/hooks/useClipboard.js";
+import type { Notice } from "../../shared/ui/feedback.js";
 import {
   bootstrapApp,
   createApiKeyCandidate,
   createBrowserSession,
   logoutAllBrowserSessions,
   logoutBrowserSession,
-  pairWhatsApp,
-  rebindWhatsApp,
   rotateApiKey,
-} from "../../api.js";
-import { useClipboard } from "../../shared/hooks/useClipboard.js";
-import type { Notice } from "../../shared/ui/feedback.js";
+} from "../gateway/api.js";
 import type { CopiedField } from "../gateway/types.js";
 import { useMessageComposer } from "../messages/useMessageComposer.js";
 import { useDashboardSnapshot } from "./useDashboardSnapshot.js";

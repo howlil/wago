@@ -2,24 +2,65 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
+import { allowRecipient, getCurrentQr, listActivity, pairWhatsApp, sendMessage } from "./api.js";
 import {
-  allowRecipient,
   bootstrapApp,
   createApiKeyCandidate,
   createBrowserSession,
   getAppInfo,
-  getCurrentQr,
   getHealth,
-  listActivity,
   logoutBrowserSession,
-  pairWhatsApp,
   rotateApiKey,
-  sendMessage,
-} from "./api.js";
+} from "./features/gateway/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
 const rotatedApiKey = `wa_${"d".repeat(43)}`;
+
+vi.mock("./features/gateway/api.js", () => ({
+  getAppInfo: vi.fn(async () => ({
+    success: true,
+    appId: "wa-gateway-test",
+    apiKeyRequired: true,
+    apiKeyConfigured: true,
+    apiKeySource: "generated",
+    authenticated: true,
+    credentialSetupRequired: false,
+    setupRequired: false,
+  })),
+  bootstrapApp: vi.fn(async (candidate: string) => ({
+    success: true,
+    appId: "wa-gateway-test",
+    apiKey: candidate,
+    recovered: false,
+    sessionExpiresAt: "2026-09-12T00:00:00.000Z",
+    message: "App initialized",
+  })),
+  createApiKeyCandidate: vi.fn(() => generatedApiKey),
+  createBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: true,
+    expiresAt: "2026-09-12T00:00:00.000Z",
+    message: "Browser session created",
+  })),
+  getHealth: vi.fn(async () => ({ status: "ok" })),
+  logoutBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "Browser session ended",
+  })),
+  logoutAllBrowserSessions: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "All browser sessions ended",
+  })),
+  rotateApiKey: vi.fn(async () => ({
+    success: true,
+    apiKey: rotatedApiKey,
+    generatedAt: "2026-08-14T00:00:00.000Z",
+    message: "API key rotated",
+  })),
+}));
 
 vi.mock("./api.js", () => ({
   allowRecipient: vi.fn(async (phone: string) => ({

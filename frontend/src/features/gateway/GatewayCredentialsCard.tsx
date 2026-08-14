@@ -1,5 +1,4 @@
 import { Check, Copy, Eye, EyeOff, KeyRound, LogOut } from "lucide-react";
-import type { AppInfoResponse } from "../../api.js";
 import {
   cardBodyClass,
   fieldLabelClass,
@@ -8,6 +7,7 @@ import {
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
+import type { AppInfoResponse } from "./api.js";
 import type { CopiedField } from "./types.js";
 
 type GatewayCredentialsCardProps = {

@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type AccountHealthSnapshot,
-  type AppInfoResponse,
-  type BootstrapAppResponse,
-  getAppInfo,
   getCurrentQr,
-  getHealth,
   getQrImageSvg,
   getWhatsAppStatus,
   type WhatsAppBinding,
   type WhatsAppStatus,
 } from "../../api.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
+import { type AppInfoResponse, type BootstrapAppResponse, getAppInfo, getHealth } from "../gateway/api.js";
 
 const unboundBinding: WhatsAppBinding = {
   state: "unbound",
