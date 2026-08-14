@@ -166,35 +166,37 @@ Final merge verification evidence:
 
 ## Milestone 7: Production State Reliability and Deployment Hardening
 
-**Status:** planned from the 2026-08-14 storage/session/API-key/workflow audit.
+**Status:** completed and pre-merge verified through PR `#36` on 2026-08-14.
 
 Detailed implementation plan: `.agent/plans/2026-08-14-production-state-reliability-hardening.md`
 
-Priority scope:
+Verification checkpoint: `.agent/checkpoints/2026-08-14-production-state-reliability-hardening.md`
 
-- **P0:** production must refuse to boot when `/app/data` is only the disposable container writable layer;
-- **P0:** enforce one active Wago process per persistent volume/account using a bounded SQLite lease;
-- **P0:** corrupted or unreadable Baileys auth must degrade the WhatsApp subsystem without taking down the dashboard/control plane;
-- **P0:** expose Baileys credential-persistence failures so a connected-but-not-durable session is never reported as fully healthy;
-- **P1:** protect first-run production bootstrap with an explicit deployment `SETUP_TOKEN`, not same-origin alone;
-- **P1:** API-key rotation revokes other browser sessions and adds an explicit sign-out-all workflow without resetting WhatsApp auth;
-- **P1:** make `/ready` distinguish `ok`, `degraded`, and `not_ready` while keeping `/health` as pure process liveness;
-- **P1:** make GHCR tag ownership deterministic so version-tag builds cannot overwrite `latest`/branch-owned SHA tags;
-- **P2:** lock webhook delivery semantics as at-least-once with stable delivery IDs for receiver deduplication;
-- **P2:** document and verify controlled backup/restore of the entire secret-bearing `/app/data` state set.
+Completed scope:
 
-Release order:
+- production fails closed when `/app/data` is disposable/unverifiable storage, including root overlay, `tmpfs`, and `ramfs`;
+- verified mount state is cached at startup so readiness does not perform request-time filesystem reads;
+- a bounded SQLite lease enforces one active Wago owner per persistent volume/account and fails closed on ownership loss;
+- persisted Baileys auth corruption degrades the WhatsApp subsystem without taking down the dashboard/control plane;
+- Baileys credential-write failures surface as degraded readiness until persistence recovers;
+- fresh production dashboard bootstrap requires a deployment `SETUP_TOKEN` unless `API_KEY` is pre-provisioned;
+- API-key rotation revokes other browser sessions while preserving the initiating recovery session and leaving WhatsApp auth unchanged;
+- explicit sign-out-all revokes dashboard sessions without changing machine credentials or WhatsApp auth;
+- `/health` remains liveness while `/ready` distinguishes `ok`, `degraded`, and `not_ready` with actionable dashboard warnings;
+- GHCR mutable tag ownership is deterministic: `latest`/`main`/branch SHA tags are owned by `main`, while `v*` runs publish version tags only;
+- webhook at-least-once semantics are regression-locked with stable delivery identity across retry/manual redelivery;
+- controlled whole-`/app/data` backup/restore and secret-bearing backup handling are documented;
+- container smoke covers ephemeral-storage rejection, same-volume contender rejection, restart, graceful replacement persistence, and rollback compatibility;
+- native `linux/arm64` Docker build remains part of the mandatory CI gate.
 
-1. storage mount guard + replacement persistence smoke;
-2. single-instance ownership;
-3. degraded Baileys resume + credential-write health;
-4. bootstrap/API-key/browser-session security;
-5. truthful readiness/dashboard state;
-6. GHCR tag semantics;
-7. webhook and backup/restore operational contract;
-8. full scenario matrix, CI, build, docs, and container smoke gate.
+Pre-merge verification evidence on head `70d87c671f63d67c74346fce1c4fb77822950d8f`:
 
-Boundary: remain single-account/single-active-instance; do not introduce Redis/PostgreSQL/distributed locks, multi-session architecture, or a second persistence layer.
+- CI run `31800966215` / run #528: success;
+- Docs CI run `31800966199` / run #199: success;
+- CodeQL run `31800966209` / run #529: success;
+- the Advanced Security readiness finding was fixed by moving mount inspection to startup-only cached state and resolved after CodeQL passed.
+
+Boundary: Wago remains single-account/single-active-instance; no Redis/PostgreSQL/distributed lock, multi-session architecture, or second persistence layer was introduced.
 
 ---
 
