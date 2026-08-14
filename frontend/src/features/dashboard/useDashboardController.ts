@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { pairWhatsApp, rebindWhatsApp } from "../../api.js";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import type { Notice } from "../../shared/ui/feedback.js";
 import {
@@ -12,6 +11,7 @@ import {
 } from "../gateway/api.js";
 import type { CopiedField } from "../gateway/types.js";
 import { useMessageComposer } from "../messages/useMessageComposer.js";
+import { pairWhatsApp, rebindWhatsApp } from "../whatsapp/api.js";
 import { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 
 export function useDashboardController() {

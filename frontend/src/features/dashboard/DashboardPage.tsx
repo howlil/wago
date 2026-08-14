@@ -1,4 +1,3 @@
-import type { WhatsAppStatus } from "../../api.js";
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
@@ -8,6 +7,7 @@ import { MessageStatusCard } from "../messages/MessageStatusCard.js";
 import { SendMessageCard } from "../messages/SendMessageCard.js";
 import { RecipientAccessCard } from "../recipients/RecipientAccessCard.js";
 import { AccountHealthCard } from "../whatsapp/AccountHealthCard.js";
+import type { WhatsAppStatus } from "../whatsapp/api.js";
 import { RebindSessionDialog } from "../whatsapp/RebindSessionDialog.js";
 import { WhatsAppBindingCard } from "../whatsapp/WhatsAppBindingCard.js";
 import { OperationalReadinessBanner } from "./OperationalReadinessBanner.js";

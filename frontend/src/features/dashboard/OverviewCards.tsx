@@ -1,5 +1,5 @@
-import type { AccountHealthSnapshot, AccountHealthUnavailableReason, WhatsAppStatus } from "../../api.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
+import type { AccountHealthSnapshot, AccountHealthUnavailableReason, WhatsAppStatus } from "../whatsapp/api.js";
 
 type OverviewCardsProps = {
   health: BackendHealthState;

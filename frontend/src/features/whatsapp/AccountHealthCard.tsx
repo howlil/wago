@@ -1,5 +1,5 @@
-import type { AccountHealthSnapshot, AccountHealthUnavailableReason } from "../../api.js";
 import { cardBodyClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import type { AccountHealthSnapshot, AccountHealthUnavailableReason } from "./api.js";
 
 type AccountHealthCardProps = {
   accountHealth?: AccountHealthSnapshot;

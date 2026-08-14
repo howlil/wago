@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
-import { allowRecipient, getCurrentQr, listActivity, pairWhatsApp, sendMessage } from "./api.js";
+import { allowRecipient, listActivity, sendMessage } from "./api.js";
 import {
   bootstrapApp,
   createApiKeyCandidate,
@@ -12,6 +12,7 @@ import {
   logoutBrowserSession,
   rotateApiKey,
 } from "./features/gateway/api.js";
+import { getCurrentQr, pairWhatsApp } from "./features/whatsapp/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
@@ -60,6 +61,24 @@ vi.mock("./features/gateway/api.js", () => ({
     generatedAt: "2026-08-14T00:00:00.000Z",
     message: "API key rotated",
   })),
+}));
+
+vi.mock("./features/whatsapp/api.js", () => ({
+  getCurrentQr: vi.fn(async () => ({ success: true, qr: null, status: "connected" })),
+  getQrImageSvg: vi.fn(async () => "<svg />"),
+  getWhatsAppStatus: vi.fn(async () => ({
+    success: true,
+    status: "connected",
+    binding: {
+      state: "bound",
+      jid: "6281234567890@s.whatsapp.net",
+      phone: "6281234567890",
+      boundAt: "2026-08-10T00:00:00.000Z",
+    },
+    accountHealth: { availability: "available" },
+  })),
+  pairWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
+  rebindWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
 }));
 
 vi.mock("./api.js", () => ({

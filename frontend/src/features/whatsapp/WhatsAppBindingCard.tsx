@@ -1,5 +1,4 @@
 import { Link2Off, Loader2, QrCode } from "lucide-react";
-import type { WhatsAppBinding, WhatsAppStatus } from "../../api.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
 import {
   cardBodyClass,
@@ -8,6 +7,7 @@ import {
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
+import type { WhatsAppBinding, WhatsAppStatus } from "./api.js";
 import { QrPairingCard } from "./QrPairingCard.js";
 
 type WhatsAppBindingCardProps = {
