@@ -66,6 +66,17 @@ export type HealthResponse = {
   status: string;
 };
 
+export type ReadinessLevel = "ok" | "degraded" | "not_ready";
+export type ReadinessCheck = {
+  status: ReadinessLevel;
+  reason?: string;
+};
+
+export type GatewayReadinessSnapshot = {
+  status: ReadinessLevel;
+  checks: Record<string, ReadinessCheck>;
+};
+
 export function createApiKeyCandidate(): string {
   const bytes = new Uint8Array(32);
   globalThis.crypto.getRandomValues(bytes);
@@ -110,4 +121,8 @@ export function logoutAllBrowserSessions(): Promise<BrowserSessionResponse> {
 
 export function getHealth(): Promise<HealthResponse> {
   return requestJson<HealthResponse>("/health");
+}
+
+export function getReadiness(): Promise<GatewayReadinessSnapshot> {
+  return requestJson<GatewayReadinessSnapshot>("/ready", undefined, { allowedStatuses: [503] });
 }
