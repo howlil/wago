@@ -135,13 +135,11 @@ appRouter.post("/bootstrap", (req, res) => {
 
 appRouter.post("/session", (req, res) => {
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
-    return res
-      .status(403)
-      .json({
-        success: false,
-        error: "INVALID_SESSION_ORIGIN",
-        message: "Browser sign-in must come from the Wago dashboard origin.",
-      });
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_SESSION_ORIGIN",
+      message: "Browser sign-in must come from the Wago dashboard origin.",
+    });
   }
   const apiKey = (req.body as { apiKey?: unknown } | undefined)?.apiKey;
   if (typeof apiKey !== "string" || !apiKey.trim()) {
@@ -150,13 +148,11 @@ appRouter.post("/session", (req, res) => {
       .json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a non-empty string." });
   }
   if (!config.apiKey && !config.apiKeyHash) {
-    return res
-      .status(409)
-      .json({
-        success: false,
-        error: "GATEWAY_NOT_INITIALIZED",
-        message: "Initialize the gateway before creating a browser session.",
-      });
+    return res.status(409).json({
+      success: false,
+      error: "GATEWAY_NOT_INITIALIZED",
+      message: "Initialize the gateway before creating a browser session.",
+    });
   }
   if (!isApiKeyValid(apiKey.trim())) {
     return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
@@ -181,22 +177,18 @@ appRouter.post("/session", (req, res) => {
 
 appRouter.post("/api-key/rotate", (req, res) => {
   if (!requestHasValidBrowserSession(req)) {
-    return res
-      .status(401)
-      .json({
-        success: false,
-        error: "BROWSER_SESSION_REQUIRED",
-        message: "API key rotation requires an authenticated Wago dashboard session.",
-      });
+    return res.status(401).json({
+      success: false,
+      error: "BROWSER_SESSION_REQUIRED",
+      message: "API key rotation requires an authenticated Wago dashboard session.",
+    });
   }
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
-    return res
-      .status(403)
-      .json({
-        success: false,
-        error: "INVALID_ROTATION_ORIGIN",
-        message: "API key rotation must come from the Wago dashboard origin.",
-      });
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_ROTATION_ORIGIN",
+      message: "API key rotation must come from the Wago dashboard origin.",
+    });
   }
 
   const currentToken = getBrowserSessionToken(req);
@@ -239,22 +231,18 @@ appRouter.post("/session/logout", (req, res) => {
 
 appRouter.post("/session/logout-all", (req, res) => {
   if (!requestHasValidBrowserSession(req)) {
-    return res
-      .status(401)
-      .json({
-        success: false,
-        error: "BROWSER_SESSION_REQUIRED",
-        message: "Sign-out-all requires an authenticated Wago dashboard session.",
-      });
+    return res.status(401).json({
+      success: false,
+      error: "BROWSER_SESSION_REQUIRED",
+      message: "Sign-out-all requires an authenticated Wago dashboard session.",
+    });
   }
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
-    return res
-      .status(403)
-      .json({
-        success: false,
-        error: "INVALID_SESSION_ORIGIN",
-        message: "Dashboard session changes must come from the Wago dashboard origin.",
-      });
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_SESSION_ORIGIN",
+      message: "Dashboard session changes must come from the Wago dashboard origin.",
+    });
   }
 
   const revokedSessions = revokeAllBrowserSessions();
