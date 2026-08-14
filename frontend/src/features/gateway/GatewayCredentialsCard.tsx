@@ -1,177 +1,26 @@
 import { Check, Copy, Eye, EyeOff, KeyRound, LogOut } from "lucide-react";
 import type { AppInfoResponse } from "../../api.js";
-import {
-  cardBodyClass,
-  fieldLabelClass,
-  inputClass,
-  secondaryButtonClass,
-  sectionDescriptionClass,
-  sectionTitleClass,
-} from "../../shared/ui/classes.js";
+import { cardBodyClass, fieldLabelClass, inputClass, secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 import type { CopiedField } from "./types.js";
 
 type GatewayCredentialsCardProps = {
-  appId: string;
-  apiKeyConfigured: boolean;
-  apiKeySource: AppInfoResponse["apiKeySource"];
-  apiKeyInput: string;
-  credentialSetupRequired: boolean;
-  isAuthenticated: boolean;
-  showApiKey: boolean;
-  copiedField: CopiedField;
-  credentialHint: string;
-  isSigningIn: boolean;
-  isSigningOut: boolean;
-  isRotatingApiKey: boolean;
-  onApiKeyChange: (value: string) => void;
-  onToggleApiKey: () => void;
-  onCopyAppId: () => void;
-  onCopyApiKey: () => void;
-  onSignIn: () => void;
-  onSignOut: () => void;
-  onRotateApiKey: () => void;
+  appId: string; apiKeyConfigured: boolean; apiKeySource: AppInfoResponse["apiKeySource"]; apiKeyInput: string;
+  setupTokenInput: string; setupTokenRequired: boolean; webBootstrapEnabled: boolean; credentialSetupRequired: boolean;
+  isAuthenticated: boolean; showApiKey: boolean; copiedField: CopiedField; credentialHint: string; isSigningIn: boolean;
+  isSigningOut: boolean; isSigningOutAll: boolean; isRotatingApiKey: boolean; onApiKeyChange: (value: string) => void;
+  onSetupTokenChange: (value: string) => void; onToggleApiKey: () => void; onCopyAppId: () => void; onCopyApiKey: () => void;
+  onSignIn: () => void; onSignOut: () => void; onSignOutAll: () => void; onRotateApiKey: () => void;
 };
 
-export function GatewayCredentialsCard({
-  appId,
-  apiKeyConfigured,
-  apiKeySource,
-  apiKeyInput,
-  credentialSetupRequired,
-  isAuthenticated,
-  showApiKey,
-  copiedField,
-  credentialHint,
-  isSigningIn,
-  isSigningOut,
-  isRotatingApiKey,
-  onApiKeyChange,
-  onToggleApiKey,
-  onCopyAppId,
-  onCopyApiKey,
-  onSignIn,
-  onSignOut,
-  onRotateApiKey,
-}: GatewayCredentialsCardProps) {
-  return (
-    <section className={cardBodyClass}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className={sectionTitleClass}>Gateway credentials</h2>
-          <p className={sectionDescriptionClass}>
-            API key for machine clients; browser access uses a separate session.
-          </p>
-        </div>
-        {apiKeyConfigured ? (
-          <span className="shrink-0 rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
-            {apiKeySource}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-4 grid gap-3">
-        <div>
-          <label className={fieldLabelClass} htmlFor="gateway-app-id">
-            App ID
-          </label>
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <input
-              id="gateway-app-id"
-              className={`${inputClass} min-w-0 font-mono text-xs`}
-              value={appId}
-              readOnly
-              aria-label="App ID"
-            />
-            <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onCopyAppId}>
-              {copiedField === "appId" ? <Check size={14} /> : <Copy size={14} />}
-              {copiedField === "appId" ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className={fieldLabelClass} htmlFor="gateway-api-key">
-            API key
-          </label>
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="relative min-w-0">
-              <input
-                id="gateway-api-key"
-                className={`${inputClass} pr-9 font-mono text-xs`}
-                value={apiKeyInput}
-                onChange={(event) => onApiKeyChange(event.target.value)}
-                placeholder={
-                  credentialSetupRequired
-                    ? "Generated on first pairing"
-                    : isAuthenticated
-                      ? "Not stored in browser"
-                      : "Enter existing API key"
-                }
-                type={showApiKey ? "text" : "password"}
-                readOnly={credentialSetupRequired || isAuthenticated}
-                autoComplete="off"
-                aria-label="API Key"
-              />
-              {apiKeyInput ? (
-                <button
-                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-[#758079]"
-                  type="button"
-                  onClick={onToggleApiKey}
-                  aria-label={showApiKey ? "Hide API key" : "Show API key"}
-                >
-                  {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              ) : null}
-            </div>
-            {!isAuthenticated && apiKeyConfigured ? (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onSignIn}
-                disabled={isSigningIn}
-              >
-                {isSigningIn ? "Signing in" : "Sign in"}
-              </button>
-            ) : (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onCopyApiKey}
-                disabled={!apiKeyInput}
-              >
-                {copiedField === "apiKey" ? <Check size={14} /> : <Copy size={14} />}
-                {copiedField === "apiKey" ? "Copied" : "Copy"}
-              </button>
-            )}
-          </div>
-          <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
-        </div>
-
-        {isAuthenticated ? (
-          <div className="flex flex-col justify-end gap-2 sm:flex-row">
-            {apiKeySource === "generated" ? (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onRotateApiKey}
-                disabled={isRotatingApiKey}
-              >
-                <KeyRound size={14} />
-                {isRotatingApiKey ? "Rotating" : "Rotate API key"}
-              </button>
-            ) : null}
-            <button
-              className={`${secondaryButtonClass} w-full sm:w-auto`}
-              type="button"
-              onClick={onSignOut}
-              disabled={isSigningOut || isRotatingApiKey}
-            >
-              <LogOut size={14} />
-              {isSigningOut ? "Signing out" : "Sign out"}
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </section>
-  );
+export function GatewayCredentialsCard(props: GatewayCredentialsCardProps) {
+  const { appId, apiKeyConfigured, apiKeySource, apiKeyInput, setupTokenInput, setupTokenRequired, webBootstrapEnabled, credentialSetupRequired, isAuthenticated, showApiKey, copiedField, credentialHint, isSigningIn, isSigningOut, isSigningOutAll, isRotatingApiKey, onApiKeyChange, onSetupTokenChange, onToggleApiKey, onCopyAppId, onCopyApiKey, onSignIn, onSignOut, onSignOutAll, onRotateApiKey } = props;
+  return <section className={cardBodyClass}>
+    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className={sectionTitleClass}>Gateway credentials</h2><p className={sectionDescriptionClass}>API key for machine clients; browser access uses a separate session.</p></div>{apiKeyConfigured ? <span className="shrink-0 rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">{apiKeySource}</span> : null}</div>
+    <div className="mt-4 grid gap-3">
+      <div><label className={fieldLabelClass} htmlFor="gateway-app-id">App ID</label><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><input id="gateway-app-id" className={`${inputClass} min-w-0 font-mono text-xs`} value={appId} readOnly aria-label="App ID"/><button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onCopyAppId}>{copiedField === "appId" ? <Check size={14}/> : <Copy size={14}/>} {copiedField === "appId" ? "Copied" : "Copy"}</button></div></div>
+      {credentialSetupRequired ? <div><label className={fieldLabelClass} htmlFor="gateway-setup-token">Deployment setup token</label><input id="gateway-setup-token" className={`${inputClass} font-mono text-xs`} value={setupTokenInput} onChange={(event) => onSetupTokenChange(event.target.value)} placeholder={webBootstrapEnabled ? (setupTokenRequired ? "Enter SETUP_TOKEN" : "Not required in development") : "Configure SETUP_TOKEN on deployment"} type="password" autoComplete="off" disabled={!webBootstrapEnabled}/><span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">Used only to authorize the first production bootstrap. It is never stored in browser storage.</span></div> : null}
+      <div><label className={fieldLabelClass} htmlFor="gateway-api-key">API key</label><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="relative min-w-0"><input id="gateway-api-key" className={`${inputClass} pr-9 font-mono text-xs`} value={apiKeyInput} onChange={(event) => onApiKeyChange(event.target.value)} placeholder={credentialSetupRequired ? "Generated on first pairing" : isAuthenticated ? "Not stored in browser" : "Enter existing API key"} type={showApiKey ? "text" : "password"} readOnly={credentialSetupRequired || isAuthenticated} autoComplete="off" aria-label="API Key"/>{apiKeyInput ? <button className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-[#758079]" type="button" onClick={onToggleApiKey} aria-label={showApiKey ? "Hide API key" : "Show API key"}>{showApiKey ? <EyeOff size={14}/> : <Eye size={14}/>}</button> : null}</div>{!isAuthenticated && apiKeyConfigured ? <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onSignIn} disabled={isSigningIn}>{isSigningIn ? "Signing in" : "Sign in"}</button> : <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onCopyApiKey} disabled={!apiKeyInput}>{copiedField === "apiKey" ? <Check size={14}/> : <Copy size={14}/>} {copiedField === "apiKey" ? "Copied" : "Copy"}</button>}</div><span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span></div>
+      {isAuthenticated ? <div className="flex flex-col justify-end gap-2 sm:flex-row">{apiKeySource === "generated" ? <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onRotateApiKey} disabled={isRotatingApiKey}><KeyRound size={14}/>{isRotatingApiKey ? "Rotating" : "Rotate API key"}</button> : null}<button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onSignOutAll} disabled={isSigningOutAll || isRotatingApiKey}><LogOut size={14}/>{isSigningOutAll ? "Signing out all" : "Sign out all"}</button><button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onSignOut} disabled={isSigningOut || isRotatingApiKey || isSigningOutAll}><LogOut size={14}/>{isSigningOut ? "Signing out" : "Sign out"}</button></div> : null}
+    </div>
+  </section>;
 }
