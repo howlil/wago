@@ -1,7 +1,7 @@
 import type { Request, RequestHandler } from "express";
 import { config } from "../config/index.js";
-import { isBrowserSessionValid } from "../modules/access/browser-session-store.js";
 import { isApiKeyConfigured, isApiKeyValid } from "../modules/access/api-key.js";
+import { isBrowserSessionValid } from "../modules/access/browser-session-store.js";
 
 function parseCookieHeader(header: string | undefined): Record<string, string> {
   if (!header) return {};

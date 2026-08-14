@@ -81,17 +81,20 @@ describe("HTTP message contracts", () => {
     ["WA_REACHOUT_RESTRICTED", 429],
     ["WA_NEW_CHAT_CAPPED", 429],
     ["OUTBOUND_PAUSED", 503],
-  ] as const)("maps outbound policy error %s to HTTP %i without changing its public code", async (errorCode, status) => {
-    whatsappMock.sendTextMessage.mockRejectedValueOnce(applicationError(errorCode, `blocked: ${errorCode}`));
+  ] as const)(
+    "maps outbound policy error %s to HTTP %i without changing its public code",
+    async (errorCode, status) => {
+      whatsappMock.sendTextMessage.mockRejectedValueOnce(applicationError(errorCode, `blocked: ${errorCode}`));
 
-    const response = await authenticated(request(app).post("/messages/send")).send({
-      to: "6281234567890",
-      text: "Hello",
-    });
+      const response = await authenticated(request(app).post("/messages/send")).send({
+        to: "6281234567890",
+        text: "Hello",
+      });
 
-    expect(response.status).toBe(status);
-    expect(response.body).toEqual({ success: false, error: errorCode, message: `blocked: ${errorCode}` });
-  });
+      expect(response.status).toBe(status);
+      expect(response.body).toEqual({ success: false, error: errorCode, message: `blocked: ${errorCode}` });
+    },
+  );
 
   it("returns the stable unavailable contract when WhatsApp is disconnected", async () => {
     whatsappMock.sendTextMessage.mockRejectedValueOnce(

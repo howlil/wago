@@ -71,8 +71,7 @@ export function getAccessSnapshot(): AccessSnapshot {
     apiKeySource: state.apiKeySource,
     apiKeyConfigured,
     credentialSetupRequired: !apiKeyConfigured,
-    webBootstrapEnabled:
-      !apiKeyConfigured && (config.nodeEnv !== "production" || Boolean(config.setupToken)),
+    webBootstrapEnabled: !apiKeyConfigured && (config.nodeEnv !== "production" || Boolean(config.setupToken)),
   };
 }
 
@@ -102,7 +101,12 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     };
   }
 
-  if (candidate && state.apiKeySource === "generated" && state.apiKeyHash && hashApiKey(candidate) === state.apiKeyHash) {
+  if (
+    candidate &&
+    state.apiKeySource === "generated" &&
+    state.apiKeyHash &&
+    hashApiKey(candidate) === state.apiKeyHash
+  ) {
     return { success: true, appId: state.appId, apiKey: candidate, recovered: true };
   }
 
@@ -156,6 +160,10 @@ export function resetAccessStateForTest(
   const apiKeySource = overrides.apiKeySource ?? (apiKey ? "env" : apiKeyHash ? "generated" : "unset");
 
   settingsStore.clear();
-  settingsStore.save({ appId: state.appId, apiKeyHash: apiKeySource === "generated" ? apiKeyHash : null, generatedAt: null });
+  settingsStore.save({
+    appId: state.appId,
+    apiKeyHash: apiKeySource === "generated" ? apiKeyHash : null,
+    generatedAt: null,
+  });
   state = { appId: state.appId, apiKey, apiKeyHash, apiKeySource };
 }

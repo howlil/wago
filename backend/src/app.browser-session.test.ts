@@ -2,12 +2,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
 import { config } from "./config/index.js";
-import {
-  getAccessSnapshot,
-  hashApiKey,
-  isApiKeyValid,
-  resetAccessStateForTest,
-} from "./modules/access/api-key.js";
+import { getAccessSnapshot, hashApiKey, isApiKeyValid, resetAccessStateForTest } from "./modules/access/api-key.js";
 import { resetBrowserSessionsForTest } from "./modules/access/browser-session-store.js";
 
 const pairingCandidate = `wa_${"a".repeat(64)}`;

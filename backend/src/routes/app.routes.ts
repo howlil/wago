@@ -1,6 +1,8 @@
 import { type Response, Router } from "express";
 import { recordActivity } from "../activity/store.js";
 import { config } from "../config/index.js";
+import { getBrowserSessionToken, requestHasValidBrowserSession, requestIsAuthenticated } from "../middleware/auth.js";
+import { requestHasSameOrigin } from "../middleware/origin.js";
 import {
   bootstrapApiKey,
   getAccessSnapshot,
@@ -14,12 +16,6 @@ import {
   revokeBrowserSession,
   revokeOtherBrowserSessions,
 } from "../modules/access/browser-session-store.js";
-import {
-  getBrowserSessionToken,
-  requestHasValidBrowserSession,
-  requestIsAuthenticated,
-} from "../middleware/auth.js";
-import { requestHasSameOrigin } from "../middleware/origin.js";
 
 export const appRouter = Router();
 

@@ -25,7 +25,9 @@ describe("credential rotation endpoint", () => {
   });
 
   it("rotates the Bearer key, preserves the initiating session, and revokes other dashboard sessions", async () => {
-    expect((await request(app).post("/app/api-key/rotate").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(401);
+    expect((await request(app).post("/app/api-key/rotate").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(
+      401,
+    );
 
     const loginA = await request(app).post("/app/session").send({ apiKey: oldApiKey });
     const loginB = await request(app).post("/app/session").send({ apiKey: oldApiKey });
@@ -39,7 +41,13 @@ describe("credential rotation endpoint", () => {
     expect(rotate.body.revokedBrowserSessions).toBe(1);
 
     expect((await request(app).get("/recipients").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(401);
-    expect((await request(app).get("/recipients").set("Authorization", `Bearer ${rotate.body.apiKey as string}`)).status).toBe(200);
+    expect(
+      (
+        await request(app)
+          .get("/recipients")
+          .set("Authorization", `Bearer ${rotate.body.apiKey as string}`)
+      ).status,
+    ).toBe(200);
     expect((await request(app).get("/recipients").set("Cookie", cookieA)).status).toBe(200);
     expect((await request(app).get("/recipients").set("Cookie", cookieB)).status).toBe(401);
   });

@@ -20,7 +20,12 @@ beforeEach(() => {
 describe("bootstrap API key", () => {
   it("persists only the hash of a browser-generated API key", () => {
     const result = bootstrapApiKey(candidate);
-    expect(result).toMatchObject({ success: true, appId: getAccessSnapshot().appId, apiKey: candidate, recovered: false });
+    expect(result).toMatchObject({
+      success: true,
+      appId: getAccessSnapshot().appId,
+      apiKey: candidate,
+      recovered: false,
+    });
     expect(settingsStore.get()?.apiKeyHash).toBe(hashApiKey(candidate));
     expect(isApiKeyValid(candidate)).toBe(true);
   });
