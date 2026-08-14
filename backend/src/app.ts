@@ -36,13 +36,11 @@ app.use((req, res, next) => {
   const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
   const origin = req.header("origin");
   if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && !requestHasSameOrigin(req)) {
-    return res
-      .status(403)
-      .json({
-        success: false,
-        error: "INVALID_ORIGIN",
-        message: "Cookie-authenticated requests must come from the Wago origin",
-      });
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_ORIGIN",
+      message: "Cookie-authenticated requests must come from the Wago origin",
+    });
   }
   return next();
 });
