@@ -9,6 +9,7 @@ const legacySymbols = new Map([
   ["modules/activity/store.ts", "flushActivityStore"],
   ["modules/recipients/store.ts", "flushRecipientStore"],
 ]);
+const misplacedFeatureTests = new Set(["api-key-rotation.test.ts", "app.browser-session.test.ts"]);
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -35,11 +36,15 @@ function resolvedTarget(file: string, specifier: string): string | null {
 }
 
 describe("backend cleanup boundary", () => {
-  it("does not retain unused compatibility files or imports", () => {
+  it("does not retain unused compatibility files, misplaced feature tests, or imports", () => {
     const violations: string[] = [];
 
     for (const target of legacyTargets) {
       if (existsSync(join(sourceDirectory, `${target}.ts`))) violations.push(`${target}.ts still exists`);
+    }
+
+    for (const testFile of misplacedFeatureTests) {
+      if (existsSync(join(sourceDirectory, testFile))) violations.push(`${testFile} should live with modules/access`);
     }
 
     for (const [file, symbol] of legacySymbols) {
