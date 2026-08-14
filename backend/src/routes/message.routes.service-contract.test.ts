@@ -3,10 +3,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const serviceMock = vi.hoisted(() => ({
-  messageService: {
-    send: vi.fn(),
-    findStatus: vi.fn(),
-  },
+  messageService: { send: vi.fn(), findStatus: vi.fn() },
 }));
 
 const whatsappMock = vi.hoisted(() => ({
@@ -18,7 +15,7 @@ vi.mock("../modules/messages/message.service.js", () => serviceMock);
 vi.mock("../whatsapp.js", () => whatsappMock);
 vi.mock("../activity/store.js", () => ({ recordActivity: vi.fn() }));
 
-import { config } from "../config/index.js";
+import { resetAccessStateForTest } from "../modules/access/api-key.js";
 import { messageRouter } from "./message.routes.js";
 
 function makeApp() {
@@ -30,9 +27,7 @@ function makeApp() {
 
 describe("message route application boundary", () => {
   beforeEach(() => {
-    config.apiKey = "contract-key";
-    config.apiKeyHash = null;
-    config.apiKeySource = "env";
+    resetAccessStateForTest({ apiKey: "contract-key", apiKeySource: "env" });
 
     serviceMock.messageService.send.mockReset();
     serviceMock.messageService.findStatus.mockReset();

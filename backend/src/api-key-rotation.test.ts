@@ -1,8 +1,9 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
-import { resetBrowserSessionsForTest } from "./auth/browser-session-store.js";
-import { config, hashApiKey, resetPersistedSettingsForTest } from "./config/index.js";
+import { config } from "./config/index.js";
+import { hashApiKey, resetAccessStateForTest } from "./modules/access/api-key.js";
+import { resetBrowserSessionsForTest } from "./modules/access/browser-session-store.js";
 
 const oldApiKey = `wa_${"a".repeat(64)}`;
 type ResponseWithHeaders = { headers: Record<string, string | string[] | undefined> };
@@ -16,21 +17,15 @@ function cookieFrom(response: ResponseWithHeaders): string {
 
 describe("credential rotation endpoint", () => {
   beforeEach(() => {
-    resetPersistedSettingsForTest();
+    resetAccessStateForTest({ apiKeyHash: hashApiKey(oldApiKey), apiKeySource: "generated" });
     resetBrowserSessionsForTest();
-    config.allowWebBootstrap = false;
     config.setupToken = null;
-    config.apiKey = null;
-    config.apiKeyHash = hashApiKey(oldApiKey);
-    config.apiKeySource = "generated";
     config.nodeEnv = "test";
     config.requestLogging = false;
   });
 
   it("rotates the Bearer key, preserves the initiating session, and revokes other dashboard sessions", async () => {
-    expect((await request(app).post("/app/api-key/rotate").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(
-      401,
-    );
+    expect((await request(app).post("/app/api-key/rotate").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(401);
 
     const loginA = await request(app).post("/app/session").send({ apiKey: oldApiKey });
     const loginB = await request(app).post("/app/session").send({ apiKey: oldApiKey });
@@ -44,13 +39,7 @@ describe("credential rotation endpoint", () => {
     expect(rotate.body.revokedBrowserSessions).toBe(1);
 
     expect((await request(app).get("/recipients").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(401);
-    expect(
-      (
-        await request(app)
-          .get("/recipients")
-          .set("Authorization", `Bearer ${rotate.body.apiKey as string}`)
-      ).status,
-    ).toBe(200);
+    expect((await request(app).get("/recipients").set("Authorization", `Bearer ${rotate.body.apiKey as string}`)).status).toBe(200);
     expect((await request(app).get("/recipients").set("Cookie", cookieA)).status).toBe(200);
     expect((await request(app).get("/recipients").set("Cookie", cookieB)).status).toBe(401);
   });
@@ -70,9 +59,7 @@ describe("credential rotation endpoint", () => {
   });
 
   it("does not allow the dashboard to rotate an environment-managed credential", async () => {
-    config.apiKey = "deployment-owned-key";
-    config.apiKeyHash = null;
-    config.apiKeySource = "env";
+    resetAccessStateForTest({ apiKey: "deployment-owned-key", apiKeySource: "env" });
     const login = await request(app).post("/app/session").send({ apiKey: "deployment-owned-key" });
     const response = await request(app).post("/app/api-key/rotate").set("Cookie", cookieFrom(login));
     expect(response.status).toBe(409);

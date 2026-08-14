@@ -1,17 +1,16 @@
 import { type Response, Router } from "express";
-import { getDatabase } from "../infrastructure/database.js";
 import { requireApiKey } from "../middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
 import type { WebhookDeliveryStatus } from "../webhooks/delivery-store.js";
 import { getWebhookDelivery, listWebhookDeliveries, redeliverWebhookDelivery } from "../webhooks/delivery-webhook.js";
-import { createWebhookSettingsStore, type WebhookSettings } from "../webhooks/settings-store.js";
+import { webhookSettingsStore as settingsStore } from "../webhooks/settings-runtime.js";
+import type { WebhookSettings } from "../webhooks/settings-store.js";
 
 export const webhookRouter = Router();
 
 const WEBHOOK_STATUSES = new Set<WebhookDeliveryStatus>(["pending", "delivering", "delivered", "failed", "expired"]);
 const WEBHOOK_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const redeliveryRateLimit = createRateLimit({ limit: 20, windowMs: 60_000 });
-const settingsStore = createWebhookSettingsStore(getDatabase());
 
 function queryString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -44,10 +43,7 @@ function settingsError(res: Response, error: unknown) {
 }
 
 webhookRouter.get("/settings", requireApiKey, (_req, res) => {
-  return res.json({
-    success: true,
-    ...serializeSettings(settingsStore.get()),
-  });
+  return res.json({ success: true, ...serializeSettings(settingsStore.get()) });
 });
 
 webhookRouter.put("/settings", requireApiKey, (req, res) => {
@@ -91,10 +87,7 @@ webhookRouter.post("/settings/rotate-secret", requireApiKey, (_req, res) => {
 webhookRouter.post("/settings/complete-rotation", requireApiKey, (_req, res) => {
   try {
     const settings = settingsStore.completeRotation();
-    return res.json({
-      success: true,
-      ...serializeSettings(settings),
-    });
+    return res.json({ success: true, ...serializeSettings(settings) });
   } catch (error) {
     return settingsError(res, error);
   }
@@ -117,10 +110,7 @@ webhookRouter.get("/deliveries", requireApiKey, (req, res) => {
     limit,
   });
 
-  return res.json({
-    success: true,
-    deliveries,
-  });
+  return res.json({ success: true, deliveries });
 });
 
 webhookRouter.get("/deliveries/:id", requireApiKey, (req, res) => {
@@ -142,10 +132,7 @@ webhookRouter.get("/deliveries/:id", requireApiKey, (req, res) => {
     });
   }
 
-  return res.json({
-    success: true,
-    delivery,
-  });
+  return res.json({ success: true, delivery });
 });
 
 webhookRouter.post("/deliveries/:id/redeliver", requireApiKey, redeliveryRateLimit, (req, res) => {
@@ -184,8 +171,5 @@ webhookRouter.post("/deliveries/:id/redeliver", requireApiKey, redeliveryRateLim
     });
   }
 
-  return res.status(202).json({
-    success: true,
-    delivery: result.delivery,
-  });
+  return res.status(202).json({ success: true, delivery: result.delivery });
 });

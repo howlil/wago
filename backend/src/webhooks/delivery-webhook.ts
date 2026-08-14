@@ -12,11 +12,10 @@ import {
   type MessageDeliveryWebhookInput,
 } from "./delivery-webhook-core.js";
 import { createWebhookDeliveryWorker } from "./delivery-worker.js";
-import { createWebhookSettingsStore } from "./settings-store.js";
+import { webhookSettingsStore as settingsStore } from "./settings-runtime.js";
 
 const database = getDatabase();
 const store = createWebhookDeliveryStore(database);
-const settingsStore = createWebhookSettingsStore(database);
 
 function currentAttemptSender() {
   const settings = settingsStore.get();

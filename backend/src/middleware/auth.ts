@@ -1,12 +1,10 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import type { Request, RequestHandler } from "express";
-import { isBrowserSessionValid } from "../auth/browser-session-store.js";
 import { config } from "../config/index.js";
+import { isBrowserSessionValid } from "../modules/access/browser-session-store.js";
+import { isApiKeyConfigured, isApiKeyValid } from "../modules/access/api-key.js";
 
 function parseCookieHeader(header: string | undefined): Record<string, string> {
-  if (!header) {
-    return {};
-  }
+  if (!header) return {};
 
   return Object.fromEntries(
     header
@@ -15,33 +13,6 @@ function parseCookieHeader(header: string | undefined): Record<string, string> {
       .filter(([key, value]) => Boolean(key) && value !== undefined)
       .map(([key, value]) => [key, decodeURIComponent(value)]),
   );
-}
-
-function constantTimeEquals(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-
-  if (leftBuffer.length !== rightBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-function hashApiKeyCandidate(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-export function isApiKeyValid(token: string): boolean {
-  if (config.apiKey && constantTimeEquals(token, config.apiKey)) {
-    return true;
-  }
-
-  if (config.apiKeyHash && constantTimeEquals(hashApiKeyCandidate(token), config.apiKeyHash)) {
-    return true;
-  }
-
-  return false;
 }
 
 export function getBrowserSessionToken(req: Request): string | null {
@@ -64,7 +35,7 @@ export function requestIsAuthenticated(req: Request): boolean {
 }
 
 export const requireAuthenticatedRequest: RequestHandler = (req, res, next) => {
-  if (!config.apiKey && !config.apiKeyHash) {
+  if (!isApiKeyConfigured()) {
     return res.status(403).json({
       success: false,
       error: "API_KEY_REQUIRED",
@@ -73,11 +44,7 @@ export const requireAuthenticatedRequest: RequestHandler = (req, res, next) => {
   }
 
   if (!requestIsAuthenticated(req)) {
-    return res.status(401).json({
-      success: false,
-      error: "UNAUTHORIZED",
-      message: "Invalid API key",
-    });
+    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
   }
 
   return next();

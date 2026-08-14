@@ -2,12 +2,13 @@ import { config } from "../../config/index.js";
 import { getRuntimeDataMountInspection } from "../../infrastructure/data-mount.js";
 import { getDatabase } from "../../infrastructure/database.js";
 import { getRuntimeInstanceLeaseState, type InstanceLeaseState } from "../../infrastructure/instance-lease.js";
-import { createWebhookSettingsStore } from "../../webhooks/settings-store.js";
 import { getWhatsAppStatusSnapshot, type WhatsAppStatusSnapshot } from "../../whatsapp/connection-state.js";
 import {
   type CredentialPersistenceHealth,
   getCredentialPersistenceHealth,
 } from "../../whatsapp/credential-persistence-health.js";
+import { webhookSettingsStore } from "../../webhooks/settings-runtime.js";
+import { getAccessSnapshot } from "../access/api-key.js";
 
 export type ReadinessLevel = "ok" | "degraded" | "not_ready";
 export type ReadinessCheck = { status: ReadinessLevel; reason?: string };
@@ -36,7 +37,6 @@ type ReadinessOverrides = {
 };
 
 const database = getDatabase();
-const webhookSettingsStore = createWebhookSettingsStore(database);
 
 function worstStatus(checks: ReadinessCheck[]): ReadinessLevel {
   if (checks.some((check) => check.status === "not_ready")) return "not_ready";
@@ -79,22 +79,22 @@ function whatsappCheck(snapshot: WhatsAppStatusSnapshot): ReadinessCheck {
 
 export function getReadinessSnapshot(overrides: ReadinessOverrides = {}): ReadinessSnapshot {
   const webhookSettings = webhookSettingsStore.get();
-  const apiKeyConfigured = Boolean(config.apiKey || config.apiKeyHash);
+  const access = getAccessSnapshot();
   const webhookConfigured = Boolean(webhookSettings?.enabled && webhookSettings.url && webhookSettings.secret);
   const checks = {
     storage: overrides.storage ?? storageCheck(),
     database: overrides.database ?? databaseCheck(),
     instanceLease: leaseCheck(overrides.instanceLeaseState ?? getRuntimeInstanceLeaseState()),
     credentialPersistence: credentialCheck(overrides.credentialPersistence ?? getCredentialPersistenceHealth()),
-    apiKey: apiKeyConfigured ? { status: "ok" as const } : { status: "ok" as const, reason: "setup_required" },
+    apiKey: access.apiKeyConfigured ? { status: "ok" as const } : { status: "ok" as const, reason: "setup_required" },
     webhook: webhookConfigured ? { status: "ok" as const } : { status: "ok" as const, reason: "webhook_not_enabled" },
     whatsapp: whatsappCheck(overrides.whatsapp ?? getWhatsAppStatusSnapshot()),
   };
 
   return {
     status: worstStatus(Object.values(checks)),
-    appId: config.appId,
-    apiKeyConfigured,
+    appId: access.appId,
+    apiKeyConfigured: access.apiKeyConfigured,
     webhookConfigured,
     checks,
   };

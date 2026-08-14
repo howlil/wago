@@ -1,34 +1,26 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { app } from "../app.js";
-import { config } from "../config/index.js";
-import { getDatabase } from "../infrastructure/database.js";
-import { createWebhookSettingsStore } from "../webhooks/settings-store.js";
+import { resetAccessStateForTest } from "../modules/access/api-key.js";
+import { webhookSettingsStore as settingsStore } from "../webhooks/settings-runtime.js";
 
 const UNKNOWN_DELIVERY_ID = "11111111-1111-4111-8111-111111111111";
-const settingsStore = createWebhookSettingsStore(getDatabase());
 
 describe("webhook delivery routes", () => {
   beforeEach(() => {
-    config.apiKey = "webhook-test-key";
-    config.apiKeyHash = null;
-    config.apiKeySource = "env";
+    resetAccessStateForTest({ apiKey: "webhook-test-key", apiKeySource: "env" });
     settingsStore.clear();
   });
 
   afterEach(() => {
-    config.apiKey = null;
+    resetAccessStateForTest();
     settingsStore.clear();
   });
 
   it("requires API authentication", async () => {
     const response = await request(app).get("/webhooks/deliveries");
-
     expect(response.status).toBe(401);
-    expect(response.body).toMatchObject({
-      success: false,
-      error: "UNAUTHORIZED",
-    });
+    expect(response.body).toMatchObject({ success: false, error: "UNAUTHORIZED" });
   });
 
   it("rejects invalid delivery status filters", async () => {
@@ -49,7 +41,6 @@ describe("webhook delivery routes", () => {
     const response = await request(app)
       .get("/webhooks/deliveries/not-a-delivery-id")
       .set("Authorization", "Bearer webhook-test-key");
-
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("INVALID_WEBHOOK_DELIVERY_ID");
   });
@@ -58,7 +49,6 @@ describe("webhook delivery routes", () => {
     const response = await request(app)
       .get(`/webhooks/deliveries/${UNKNOWN_DELIVERY_ID}`)
       .set("Authorization", "Bearer webhook-test-key");
-
     expect(response.status).toBe(404);
     expect(response.body.error).toBe("WEBHOOK_DELIVERY_NOT_FOUND");
   });

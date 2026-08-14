@@ -1,15 +1,21 @@
 import { type Response, Router } from "express";
 import { recordActivity } from "../activity/store.js";
+import { config } from "../config/index.js";
+import {
+  bootstrapApiKey,
+  getAccessSnapshot,
+  isApiKeyValid,
+  isSetupTokenValid,
+  rotateGeneratedApiKey,
+} from "../modules/access/api-key.js";
 import {
   createBrowserSession,
   revokeAllBrowserSessions,
   revokeBrowserSession,
   revokeOtherBrowserSessions,
-} from "../auth/browser-session-store.js";
-import { bootstrapApiKey, config, isSetupTokenValid, rotateGeneratedApiKey } from "../config/index.js";
+} from "../modules/access/browser-session-store.js";
 import {
   getBrowserSessionToken,
-  isApiKeyValid,
   requestHasValidBrowserSession,
   requestIsAuthenticated,
 } from "../middleware/auth.js";
@@ -39,24 +45,23 @@ function clearBrowserSessionCookie(res: Response): void {
 }
 
 appRouter.get("/info", (req, res) => {
-  const credentialSetupRequired = !config.apiKey && !config.apiKeyHash;
+  const access = getAccessSnapshot();
   const productionBootstrap = config.nodeEnv === "production";
-  const setupTokenRequired = credentialSetupRequired && productionBootstrap && Boolean(config.setupToken);
-  const webBootstrapEnabled = config.allowWebBootstrap && (!productionBootstrap || Boolean(config.setupToken));
+  const setupTokenRequired = access.credentialSetupRequired && productionBootstrap && Boolean(config.setupToken);
 
   if (req.header("cookie")?.includes(`${config.legacyAuthCookieName}=`)) clearLegacyApiKeyCookie(res);
 
   res.json({
     success: true,
-    appId: config.appId,
+    appId: access.appId,
     apiKeyRequired: true,
-    apiKeyConfigured: !credentialSetupRequired,
-    apiKeySource: config.apiKeySource,
+    apiKeyConfigured: access.apiKeyConfigured,
+    apiKeySource: access.apiKeySource,
     authenticated: requestIsAuthenticated(req),
-    credentialSetupRequired,
-    setupRequired: credentialSetupRequired,
+    credentialSetupRequired: access.credentialSetupRequired,
+    setupRequired: access.credentialSetupRequired,
     setupTokenRequired,
-    webBootstrapEnabled,
+    webBootstrapEnabled: access.webBootstrapEnabled,
   });
 });
 
@@ -68,8 +73,8 @@ appRouter.post("/bootstrap", (req, res) => {
       .json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a string when provided." });
   }
 
-  const hasCredential = Boolean(config.apiKey || config.apiKeyHash);
-  if (!config.allowWebBootstrap && !hasCredential) {
+  const access = getAccessSnapshot();
+  if (!access.webBootstrapEnabled && !access.apiKeyConfigured) {
     return res.status(403).json({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
@@ -85,7 +90,7 @@ appRouter.post("/bootstrap", (req, res) => {
     });
   }
 
-  if (config.nodeEnv === "production" && !hasCredential) {
+  if (config.nodeEnv === "production" && !access.apiKeyConfigured) {
     if (!config.setupToken) {
       return res.status(403).json({
         success: false,
@@ -147,7 +152,7 @@ appRouter.post("/session", (req, res) => {
       .status(400)
       .json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a non-empty string." });
   }
-  if (!config.apiKey && !config.apiKeyHash) {
+  if (!getAccessSnapshot().apiKeyConfigured) {
     return res.status(409).json({
       success: false,
       error: "GATEWAY_NOT_INITIALIZED",

@@ -2,13 +2,11 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { recordActivity, resetActivityLogForTest } from "../activity/store.js";
 import { app } from "../app.js";
-import { config } from "../config/index.js";
+import { resetAccessStateForTest } from "../modules/access/api-key.js";
 
 describe("activity routes", () => {
   beforeEach(async () => {
-    config.apiKey = "audit-test-key";
-    config.apiKeyHash = null;
-    config.apiKeySource = "env";
+    resetAccessStateForTest({ apiKey: "audit-test-key", apiKeySource: "env" });
     await resetActivityLogForTest();
   });
 
@@ -18,12 +16,8 @@ describe("activity routes", () => {
 
   it("requires API authentication", async () => {
     const response = await request(app).get("/activity");
-
     expect(response.status).toBe(401);
-    expect(response.body).toMatchObject({
-      success: false,
-      error: "UNAUTHORIZED",
-    });
+    expect(response.body).toMatchObject({ success: false, error: "UNAUTHORIZED" });
   });
 
   it("filters audit events and returns cursor pagination", async () => {
@@ -47,13 +41,7 @@ describe("activity routes", () => {
 
     const first = await request(app)
       .get("/activity")
-      .query({
-        limit: 2,
-        source: "baileys",
-        category: "connection",
-        level: "warning",
-        q: "logged",
-      })
+      .query({ limit: 2, source: "baileys", category: "connection", level: "warning", q: "logged" })
       .set("Authorization", "Bearer audit-test-key");
 
     expect(first.status).toBe(200);

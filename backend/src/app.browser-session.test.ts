@@ -1,8 +1,14 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
-import { resetBrowserSessionsForTest } from "./auth/browser-session-store.js";
-import { config, hashApiKey } from "./config/index.js";
+import { config } from "./config/index.js";
+import {
+  getAccessSnapshot,
+  hashApiKey,
+  isApiKeyValid,
+  resetAccessStateForTest,
+} from "./modules/access/api-key.js";
+import { resetBrowserSessionsForTest } from "./modules/access/browser-session-store.js";
 
 const pairingCandidate = `wa_${"a".repeat(64)}`;
 
@@ -13,23 +19,17 @@ type ResponseWithHeaders = {
 function cookieFrom(response: ResponseWithHeaders): string {
   const raw = response.headers["set-cookie"];
   const header = Array.isArray(raw) ? raw[0] : raw;
-
-  if (!header) {
-    throw new Error("expected Set-Cookie header");
-  }
-
+  if (!header) throw new Error("expected Set-Cookie header");
   return header.split(";", 1)[0];
 }
 
 describe("browser session authentication", () => {
   beforeEach(() => {
-    config.allowWebBootstrap = true;
-    config.apiKey = null;
-    config.apiKeyHash = null;
-    config.apiKeySource = "unset";
+    resetAccessStateForTest();
+    resetBrowserSessionsForTest();
+    config.setupToken = null;
     config.nodeEnv = "test";
     config.requestLogging = false;
-    resetBrowserSessionsForTest();
   });
 
   it("bootstraps with a browser session cookie instead of placing the API key in the cookie", async () => {
@@ -40,6 +40,8 @@ describe("browser session authentication", () => {
     const cookie = cookieFrom(bootstrap);
     expect(cookie).toContain(`${config.authCookieName}=`);
     expect(cookie).not.toContain(pairingCandidate);
+    expect(getAccessSnapshot().apiKeySource).toBe("generated");
+    expect(isApiKeyValid(pairingCandidate)).toBe(true);
 
     const protectedResponse = await request(app).get("/recipients").set("Cookie", cookie);
     expect(protectedResponse.status).toBe(200);
@@ -51,9 +53,7 @@ describe("browser session authentication", () => {
   });
 
   it("exchanges an existing API key for a browser session without changing Bearer authentication", async () => {
-    config.apiKeyHash = hashApiKey("existing-key");
-    config.apiKeySource = "generated";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("existing-key"), apiKeySource: "generated" });
 
     const login = await request(app).post("/app/session").send({ apiKey: "existing-key" });
     expect(login.status).toBe(200);
@@ -65,9 +65,7 @@ describe("browser session authentication", () => {
   });
 
   it("rejects an invalid API key without issuing a browser session", async () => {
-    config.apiKeyHash = hashApiKey("existing-key");
-    config.apiKeySource = "generated";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("existing-key"), apiKeySource: "generated" });
 
     const response = await request(app).post("/app/session").send({ apiKey: "wrong-key" });
     expect(response.status).toBe(401);
@@ -75,9 +73,7 @@ describe("browser session authentication", () => {
   });
 
   it("revokes the browser session on logout while leaving the API key valid", async () => {
-    config.apiKeyHash = hashApiKey("existing-key");
-    config.apiKeySource = "generated";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("existing-key"), apiKeySource: "generated" });
 
     const login = await request(app).post("/app/session").send({ apiKey: "existing-key" });
     const cookie = cookieFrom(login);
@@ -91,9 +87,7 @@ describe("browser session authentication", () => {
   });
 
   it("clears the legacy raw API-key cookie without accepting it as authentication", async () => {
-    config.apiKeyHash = hashApiKey("existing-key");
-    config.apiKeySource = "generated";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("existing-key"), apiKeySource: "generated" });
 
     const response = await request(app).get("/app/info").set("Cookie", `${config.legacyAuthCookieName}=existing-key`);
 
