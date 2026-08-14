@@ -4,11 +4,7 @@ type RequestJsonOptions = {
   allowedStatuses?: number[];
 };
 
-export async function requestJson<T>(
-  path: string,
-  init?: RequestInit,
-  options: RequestJsonOptions = {},
-): Promise<T> {
+export async function requestJson<T>(path: string, init?: RequestInit, options: RequestJsonOptions = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",

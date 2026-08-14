@@ -1,12 +1,7 @@
 import { type Dispatch, type SetStateAction, useState } from "react";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import type { Notice } from "../../shared/ui/feedback.js";
-import {
-  createBrowserSession,
-  logoutAllBrowserSessions,
-  logoutBrowserSession,
-  rotateApiKey,
-} from "../gateway/api.js";
+import { createBrowserSession, logoutAllBrowserSessions, logoutBrowserSession, rotateApiKey } from "../gateway/api.js";
 import type { CopiedField } from "../gateway/types.js";
 import type { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 
