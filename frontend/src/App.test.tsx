@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
-import { allowRecipient, listActivity, sendMessage } from "./api.js";
+import { allowRecipient, listActivity } from "./api.js";
 import {
   bootstrapApp,
   createApiKeyCandidate,
@@ -12,6 +12,7 @@ import {
   logoutBrowserSession,
   rotateApiKey,
 } from "./features/gateway/api.js";
+import { sendMessage } from "./features/messages/api.js";
 import { getCurrentQr, pairWhatsApp } from "./features/whatsapp/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
@@ -61,6 +62,17 @@ vi.mock("./features/gateway/api.js", () => ({
     generatedAt: "2026-08-14T00:00:00.000Z",
     message: "API key rotated",
   })),
+}));
+
+vi.mock("./features/messages/api.js", () => ({
+  getMessageStatus: vi.fn(async () => ({
+    success: true,
+    id: "message-1",
+    to: "6281234567890@s.whatsapp.net",
+    status: "pending",
+    updatedAt: "2026-08-10T00:00:00.000Z",
+  })),
+  sendMessage: vi.fn(),
 }));
 
 vi.mock("./features/whatsapp/api.js", () => ({

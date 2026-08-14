@@ -1,6 +1,5 @@
 import { Check, Loader2, Send } from "lucide-react";
 import type { FormEvent } from "react";
-import type { WhatsAppStatus } from "../../api.js";
 import {
   cardBodyClass,
   fieldLabelClass,
@@ -10,6 +9,7 @@ import {
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
+import type { WhatsAppStatus } from "../whatsapp/api.js";
 
 type SendMessageCardProps = {
   status: WhatsAppStatus;

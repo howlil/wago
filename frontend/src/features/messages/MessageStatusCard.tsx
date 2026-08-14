@@ -1,12 +1,12 @@
 import { CheckCircle2, Clock3, Loader2, RefreshCcw, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { getMessageStatus, type MessageStatusResponse } from "../../api.js";
 import {
   cardBodyClass,
   secondaryButtonClass,
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
+import { getMessageStatus, type MessageStatusResponse } from "./api.js";
 
 type DeliveryStatus = Extract<MessageStatusResponse, { success: true }>;
 

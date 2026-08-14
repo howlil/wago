@@ -1,6 +1,8 @@
 import { type FormEvent, useMemo, useState } from "react";
-import { allowRecipient, sendMessage, type WhatsAppStatus } from "../../api.js";
+import { allowRecipient } from "../../api.js";
 import type { Notice } from "../../shared/ui/feedback.js";
+import type { WhatsAppStatus } from "../whatsapp/api.js";
+import { sendMessage } from "./api.js";
 import type { LastMessage } from "./types.js";
 
 type UseMessageComposerOptions = {
