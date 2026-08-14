@@ -23,6 +23,7 @@ import {
   type WhatsAppStatusSnapshot,
 } from "./connection-state.js";
 import { markCredentialPersistenceFailure, markCredentialPersistenceSuccess } from "./credential-persistence-health.js";
+import { createCredentialWriter } from "./credential-writer.js";
 import { classifyDisconnect } from "./disconnect-classifier.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { updateMessageStatus } from "./message-status-store.js";
@@ -47,68 +48,23 @@ import { getLiveBaileysVersion } from "./wa-version.js";
 
 export type { WhatsAppStatus, WhatsAppStatusSnapshot };
 
-const CREDENTIAL_AUDIT_INTERVAL_MS = 1000 * 60;
 const authDirectory = config.authDirectory;
 const credentialsFile = resolve(authDirectory, "creds.json");
 
 let reconnectAttempt = 0;
 let reconnectTimer: NodeJS.Timeout | undefined;
-let credentialWriteQueue: Promise<void> = Promise.resolve();
-let lastCredentialAuditGeneration = 0;
-let lastCredentialAuditAt = 0;
 
-function shouldAuditCredentialSuccess(generation: number, now: number): boolean {
-  if (generation !== lastCredentialAuditGeneration || now - lastCredentialAuditAt >= CREDENTIAL_AUDIT_INTERVAL_MS) {
-    lastCredentialAuditGeneration = generation;
-    lastCredentialAuditAt = now;
-    return true;
-  }
-
-  return false;
-}
-
-function enqueueCredentialWrite(saveCreds: () => Promise<void>, generation: number): void {
-  credentialWriteQueue = credentialWriteQueue
-    .catch(() => undefined)
-    .then(async () => {
-      try {
-        await saveCreds();
-        markCredentialPersistenceSuccess();
-        const now = Date.now();
-        if (shouldAuditCredentialSuccess(generation, now)) {
-          auditBaileys({
-            level: "info",
-            category: "security",
-            code: "baileys.credentials.persisted",
-            title: "WhatsApp credentials persisted",
-            description: "Updated Baileys credentials were persisted successfully.",
-            metadata: { socketGeneration: generation },
-          });
-        }
-      } catch (error) {
-        markCredentialPersistenceFailure();
-        logger.error(
-          { event: "wa.credentials.persist_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" },
-          "Failed to persist WhatsApp credentials",
-        );
-        auditBaileys({
-          level: "error",
-          category: "security",
-          code: "baileys.credentials.persist_failed",
-          title: "WhatsApp credential persistence failed",
-          description: "Baileys credential state could not be persisted.",
-          metadata: {
-            socketGeneration: generation,
-            errorName: error instanceof Error ? error.name : "UNKNOWN",
-          },
-        });
-      }
-    });
-}
-
-async function flushCredentialWrites(): Promise<void> {
-  await credentialWriteQueue.catch(() => undefined);
-}
+const credentialWriter = createCredentialWriter({
+  onSuccess: markCredentialPersistenceSuccess,
+  onFailure: markCredentialPersistenceFailure,
+  audit: auditBaileys,
+  logFailure: (error) => {
+    logger.error(
+      { event: "wa.credentials.persist_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" },
+      "Failed to persist WhatsApp credentials",
+    );
+  },
+});
 
 function clearReconnectTimer(): void {
   if (!reconnectTimer) return;
@@ -198,7 +154,7 @@ export async function initializeWhatsApp(): Promise<void> {
 
     nextSocket.ev.on("creds.update", () => {
       if (!isCurrentGeneration(generation)) return;
-      enqueueCredentialWrite(saveCreds, generation);
+      credentialWriter.enqueue(saveCreds, generation);
     });
 
     nextSocket.ev.on("messages.update", (updates) => {
@@ -482,7 +438,7 @@ export async function rebindWhatsApp(): Promise<{ status: WhatsAppStatus }> {
   });
 
   try {
-    await flushCredentialWrites();
+    await credentialWriter.flush();
     if (activeSocket) await activeSocket.logout("Rebinding WhatsApp session").catch(() => undefined);
     await rm(authDirectory, { recursive: true, force: true });
     await mkdir(authDirectory, { recursive: true });
@@ -524,7 +480,7 @@ export async function shutdownWhatsApp(): Promise<void> {
     },
   });
 
-  await flushCredentialWrites();
+  await credentialWriter.flush();
 
   try {
     activeSocket?.end(undefined);
