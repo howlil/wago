@@ -1,0 +1,98 @@
+name: Refactor Helper
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-socket-events:
+    if: github.event.pull_request.head.ref == 'refactor/modular-monolith-structure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout refactor branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Delegate socket events from lifecycle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/src/modules/whatsapp/lifecycle.ts')
+          text = path.read_text()
+
+          import_anchor = 'import { getLiveBaileysVersion } from "./wa-version.js";\n'
+          if text.count(import_anchor) != 1:
+              raise SystemExit('socket-events import anchor changed')
+          text = text.replace(
+              import_anchor,
+              'import { registerSocketEvents } from "./socket-events.js";\n' + import_anchor,
+          )
+
+          start_marker = '    nextSocket.ev.on("creds.update", () => {'
+          end_marker = '\n  } catch (error) {'
+          if text.count(start_marker) != 1:
+              raise SystemExit(f'expected one socket-event block start, found {text.count(start_marker)}')
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+
+          replacement = '''    registerSocketEvents({
+              socket: nextSocket,
+              generation,
+              saveCreds,
+              credentialWriter,
+              isCurrentGeneration,
+              getReconnectAttempt: () => reconnectAttempt,
+              resetReconnectAttempt: () => {
+                reconnectAttempt = resetReconnectAttempts();
+              },
+              scheduleReconnect,
+              clearReconnectTimer,
+            });
+          '''
+
+          text = text[:start] + replacement + text[end:]
+          path.write_text(text)
+          PY
+
+      - name: Format rewritten lifecycle
+        run: pnpm check:fix
+
+      - name: Verify socket event extraction
+        run: |
+          pnpm check
+          pnpm --dir backend exec vitest run \
+            src/modules/whatsapp/socket-events.test.ts \
+            src/modules/whatsapp/credential-writer.test.ts \
+            src/modules/whatsapp/lifecycle.test.ts \
+            src/whatsapp/lifecycle.contract.test.ts
+          pnpm --dir backend run build
+
+      - name: Commit verified extraction
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git add backend/src/modules/whatsapp/lifecycle.ts
+          if git diff --cached --quiet; then
+            echo "Socket event extraction already integrated."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "refactor: delegate WhatsApp socket events"
+          git push origin "HEAD:${HEAD_REF}"
