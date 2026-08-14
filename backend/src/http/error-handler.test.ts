@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApplicationError } from "../errors/application-error.js";
 import { logger } from "../infrastructure/logger.js";
-import { apiErrorHandler } from "./error-handler.js";
+import { errorHandler } from "./middleware/error-handler.js";
 
 function makeApp() {
   const app = express();
@@ -16,11 +16,11 @@ function makeApp() {
     throw new Error("database password leaked here");
   });
 
-  app.use(apiErrorHandler);
+  app.use(errorHandler);
   return app;
 }
 
-describe("apiErrorHandler", () => {
+describe("shared HTTP error handler logging", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });

@@ -147,14 +147,6 @@ export function setOutboundPause(paused: boolean, message = "Outbound messaging 
   updatePause.run(paused ? 1 : 0, message);
 }
 
-export async function flushOutboundPolicyStore(): Promise<void> {
-  // SQLite commits writes synchronously on the shared connection.
-}
-
-export async function forgetOutboundPolicyMemoryForTest(): Promise<void> {
-  // Normalized policy state is read directly from SQLite; there is no durable mirror in memory.
-}
-
 export function resetOutboundPolicyStoreForTest(): Promise<void> {
   withTransaction(() => {
     database.prepare("DELETE FROM idempotency_keys").run();

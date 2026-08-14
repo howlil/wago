@@ -9,7 +9,6 @@ export type ApplicationLifecycleDeps = {
   stopWebhookDeliveryWorker: () => Promise<void>;
   resumeWhatsAppSession: () => Promise<void>;
   shutdownWhatsApp: () => Promise<void>;
-  flushOutboundPolicyPersistence: () => Promise<void>;
   checkpointDatabase: () => void;
   closeDatabase: () => void;
 };
@@ -44,7 +43,6 @@ export function createApplicationLifecycle(deps: ApplicationLifecycleDeps): {
       stopPromise ??= (async () => {
         await deps.stopWebhookDeliveryWorker();
         await deps.shutdownWhatsApp();
-        await deps.flushOutboundPolicyPersistence();
         deps.stopInstanceLeaseHeartbeat();
         deps.releaseInstanceLease();
         deps.checkpointDatabase();

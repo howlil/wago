@@ -8,8 +8,6 @@ import {
   resetAccountHealthForTest,
 } from "../whatsapp/account-health.js";
 import {
-  flushOutboundPolicyStore,
-  forgetOutboundPolicyMemoryForTest,
   getAccountWindow,
   getNewChatWindow,
   getOutboundPauseState,
@@ -283,12 +281,7 @@ export function isOutboundPaused(): boolean {
   return getOutboundPauseState().paused;
 }
 
-export async function flushOutboundPolicyPersistence(): Promise<void> {
-  await flushOutboundPolicyStore();
-}
-
 export async function forgetOutboundPolicyStateForTest(): Promise<void> {
-  await forgetOutboundPolicyMemoryForTest();
   resetAccountHealthForTest();
 }
 
