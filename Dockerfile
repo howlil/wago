@@ -23,6 +23,7 @@ RUN pnpm run build
 FROM pnpm-base AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+LABEL io.mypaas.persistent-volumes="/app/data"
 
 COPY backend/package.json backend/pnpm-lock.yaml backend/pnpm-workspace.yaml ./backend/
 WORKDIR /app/backend
