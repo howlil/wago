@@ -11,7 +11,7 @@ const whatsappMock = vi.hoisted(() => ({
   sendTextMessage: vi.fn(),
 }));
 
-vi.mock("./whatsapp.js", () => whatsappMock);
+vi.mock("./modules/whatsapp/index.js", () => whatsappMock);
 
 import { app } from "./app.js";
 import { config } from "./config/index.js";
