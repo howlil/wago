@@ -1,0 +1,97 @@
+name: Refactor Helper
+
+on:
+  push:
+    branches:
+      - refactor/modular-monolith-structure
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-recipients-api:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout refactor branch
+        uses: actions/checkout@v7
+        with:
+          ref: refactor/modular-monolith-structure
+          fetch-depth: 0
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Move recipient consumers to feature API
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "frontend/src/features/recipients/RecipientAccessCard.tsx": [
+                  ('import { allowRecipient, listRecipients, optOutRecipient, type RecipientRecord } from "../../api.js";', 'import { allowRecipient, listRecipients, optOutRecipient, type RecipientRecord } from "./api.js";', 1),
+              ],
+              "frontend/src/features/recipients/RecipientList.tsx": [
+                  ('import type { RecipientRecord } from "../../api.js";', 'import type { RecipientRecord } from "./api.js";', 1),
+              ],
+              "frontend/src/features/recipients/utils.ts": [
+                  ('import type { RecipientRecord } from "../../api.js";', 'import type { RecipientRecord } from "./api.js";', 1),
+              ],
+              "frontend/src/features/messages/useMessageComposer.ts": [
+                  ('import { allowRecipient } from "../../api.js";', 'import { allowRecipient } from "../recipients/api.js";', 1),
+              ],
+              "frontend/src/App.test.tsx": [
+                  ('import { allowRecipient, listActivity } from "./api.js";', 'import { listActivity } from "./api.js";\nimport { allowRecipient } from "./features/recipients/api.js";', 1),
+                  ('vi.mock("./features/messages/api.js", () => ({', '''vi.mock("./features/recipients/api.js", () => ({
+            allowRecipient: vi.fn(async (phone: string) => ({
+              success: true,
+              recipient: {
+                jid: `${phone}@s.whatsapp.net`,
+                allowed: true,
+                optedOut: false,
+                createdAt: "2026-08-10T00:00:00.000Z",
+                updatedAt: "2026-08-10T00:00:00.000Z",
+              },
+            })),
+            listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
+            optOutRecipient: vi.fn(),
+          }));
+
+          vi.mock("./features/messages/api.js", () => ({''', 1),
+              ],
+          }
+
+          for filename, changes in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new, expected in changes:
+                  actual = text.count(old)
+                  if actual != expected:
+                      raise SystemExit(f"{filename}: expected {expected} occurrence(s) of {old!r}, found {actual}")
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+
+      - name: Verify recipients migration
+        run: |
+          pnpm exec biome check --write frontend/src/features/recipients frontend/src/features/messages/useMessageComposer.ts frontend/src/App.test.tsx frontend/tests/recipients-api.test.ts
+          pnpm check
+          pnpm --dir frontend exec vitest run --environment jsdom tests/recipients-api.test.ts src/App.test.tsx
+          pnpm --dir frontend build
+
+      - name: Commit verified migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src frontend/tests/recipients-api.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: move recipients API into feature"
+          git push origin HEAD:refactor/modular-monolith-structure
