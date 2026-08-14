@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getOperationalReadinessWarning, type GatewayReadinessSnapshot } from "./readiness-state.js";
+import { type GatewayReadinessSnapshot, getOperationalReadinessWarning } from "./readiness-state.js";
 
-function snapshot(
-  status: GatewayReadinessSnapshot["status"],
-  reason?: string,
-): GatewayReadinessSnapshot {
+function snapshot(status: GatewayReadinessSnapshot["status"], reason?: string): GatewayReadinessSnapshot {
   return {
     status,
     checks: {
