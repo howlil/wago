@@ -62,6 +62,26 @@ describe("application lifecycle", () => {
     expect(resumeWhatsAppSession).not.toHaveBeenCalled();
   });
 
+  it("releases the lease immediately when startup fails after acquisition", async () => {
+    const lease = leaseDeps();
+    const lifecycle = createApplicationLifecycle({
+      ...lease,
+      startWebhookDeliveryWorker: () => {
+        throw new Error("worker failed");
+      },
+      stopWebhookDeliveryWorker: async () => undefined,
+      resumeWhatsAppSession: async () => undefined,
+      shutdownWhatsApp: async () => undefined,
+      flushOutboundPolicyPersistence: async () => undefined,
+      checkpointDatabase: () => undefined,
+      closeDatabase: () => undefined,
+    });
+
+    await expect(lifecycle.start()).rejects.toThrow("worker failed");
+    expect(lease.stopInstanceLeaseHeartbeat).toHaveBeenCalledTimes(1);
+    expect(lease.releaseInstanceLease).toHaveBeenCalledTimes(1);
+  });
+
   it("stops in deterministic order and cleanup runs only once", async () => {
     const events: string[] = [];
     const lifecycle = createApplicationLifecycle({
