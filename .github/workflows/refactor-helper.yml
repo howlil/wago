@@ -61,6 +61,9 @@ jobs:
               path.write_text(text)
           PY
 
+      - name: Format rewritten files
+        run: pnpm check:fix
+
       - name: Verify focused refactor gates
         run: |
           pnpm check
