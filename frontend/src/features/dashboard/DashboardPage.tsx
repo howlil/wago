@@ -10,6 +10,7 @@ import { RecipientAccessCard } from "../recipients/RecipientAccessCard.js";
 import { AccountHealthCard } from "../whatsapp/AccountHealthCard.js";
 import { RebindSessionDialog } from "../whatsapp/RebindSessionDialog.js";
 import { WhatsAppBindingCard } from "../whatsapp/WhatsAppBindingCard.js";
+import { OperationalReadinessBanner } from "./OperationalReadinessBanner.js";
 import { OverviewCards } from "./OverviewCards.js";
 import { useDashboardController } from "./useDashboardController.js";
 
@@ -49,6 +50,7 @@ export function DashboardPage() {
       refreshLabel="Refresh status"
     >
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
+      <OperationalReadinessBanner />
       <NoticeBanner notice={dashboard.notice} />
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid min-w-0 content-start gap-4">
