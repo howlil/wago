@@ -4,7 +4,7 @@ import {
   type SendTextMessageResult,
   type StoredMessageStatus,
   sendTextMessage,
-} from "../../whatsapp.js";
+} from "../whatsapp/index.js";
 
 export type SendMessageCommand = {
   to: string;
