@@ -104,14 +104,16 @@ fi
 # Production image-mode deploys without durable /app/data must fail closed.
 docker run -d --name "$EPHEMERAL_NAME" "$IMAGE" >/dev/null
 wait_for_exit "$EPHEMERAL_NAME"
-docker logs "$EPHEMERAL_NAME" 2>&1 | grep -q 'PERSISTENT_DATA_REQUIRED'
+EPHEMERAL_LOGS="$(docker logs "$EPHEMERAL_NAME" 2>&1)"
+grep -q 'PERSISTENT_DATA_REQUIRED' <<< "$EPHEMERAL_LOGS"
 
 docker volume create "$VOLUME" >/dev/null
 run_container "$NAME" "$IMAGE"
 
-curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"status":"ok"'
+HEALTH_BEFORE="$(curl -fsS "http://127.0.0.1:${PORT}/health")"
+grep -q '"status":"ok"' <<< "$HEALTH_BEFORE"
 READY_BEFORE="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-echo "$READY_BEFORE" | grep -q '"apiKeyConfigured":false'
+grep -q '"apiKeyConfigured":false' <<< "$READY_BEFORE"
 curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
 
 MIGRATIONS_BEFORE="$(read_migrations "$NAME")"
@@ -122,7 +124,8 @@ APP_ID_BEFORE="$(read_app_id "$NAME")"
 # A second process sharing the same volume must not become active.
 docker run -d --name "$CONTENDER_NAME" -v "$VOLUME:/app/data" "$IMAGE" >/dev/null
 wait_for_exit "$CONTENDER_NAME"
-docker logs "$CONTENDER_NAME" 2>&1 | grep -q 'WAGO_INSTANCE_ALREADY_ACTIVE'
+CONTENDER_LOGS="$(docker logs "$CONTENDER_NAME" 2>&1)"
+grep -q 'WAGO_INSTANCE_ALREADY_ACTIVE' <<< "$CONTENDER_LOGS"
 
 docker restart "$NAME" >/dev/null
 wait_for_health "$NAME"
@@ -142,9 +145,10 @@ if [[ -n "$ROLLBACK_IMAGE" ]]; then
   stop_and_remove "$REPLACEMENT_NAME"
   run_container "$ROLLBACK_NAME" "$ROLLBACK_IMAGE" "$ROLLBACK_CORS_ORIGIN"
 
-  curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"status":"ok"'
+  ROLLBACK_HEALTH="$(curl -fsS "http://127.0.0.1:${PORT}/health")"
+  grep -q '"status":"ok"' <<< "$ROLLBACK_HEALTH"
   ROLLBACK_READY="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-  echo "$ROLLBACK_READY" | grep -q '"apiKeyConfigured":false'
+  grep -q '"apiKeyConfigured":false' <<< "$ROLLBACK_READY"
   curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
 fi
 
