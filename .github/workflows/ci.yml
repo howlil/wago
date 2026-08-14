@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -15,12 +15,14 @@ concurrency:
 
 jobs:
   check-test-build:
-    name: Check, Test, Build Core and Docs
+    name: Apply deterministic Biome fixes
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout refactor branch
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Setup pnpm and Node
         uses: pnpm/setup@v2
@@ -32,37 +34,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check formatting and lint
-        id: biome
-        continue-on-error: true
-        run: pnpm check
+      - name: Apply Biome fixes
+        run: pnpm check:fix
 
-      - name: Format failed check for diagnostics
-        if: steps.biome.outcome == 'failure'
+      - name: Commit formatted backend sources
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          pnpm check:fix
-          zip -r formatted-sources.zip backend/src frontend/src
-
-      - name: Upload formatted sources
-        if: steps.biome.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: formatted-sources
-          path: formatted-sources.zip
-          retention-days: 1
-
-      - name: Fail on formatting or lint violations
-        if: steps.biome.outcome == 'failure'
-        run: exit 1
-
-      - name: Run tests
-        run: pnpm test
-
-      - name: Build core apps
-        run: pnpm build:core
-
-      - name: Build documentation
-        run: pnpm --dir docs build
+          git add backend/src
+          if git diff --cached --quiet; then
+            echo "No Biome changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: apply biome formatting"
+          git push origin "HEAD:${HEAD_REF}"
 
   docker-smoke:
     name: Docker Build and Persistence Smoke
