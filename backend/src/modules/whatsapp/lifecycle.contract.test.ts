@@ -131,7 +131,7 @@ describe("WhatsApp lifecycle contracts", () => {
   });
 
   it("treats first boot without credentials as an unbound invalid session without opening a socket", async () => {
-    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("../whatsapp.js");
+    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("./index.js");
     const { bindWhatsAppAccount, clearWhatsAppBinding } = await import("./binding-store.js");
     const { refreshAccountHealth } = await import("./account-health.js");
 
@@ -160,7 +160,7 @@ describe("WhatsApp lifecycle contracts", () => {
   });
 
   it("resumes an existing credential set by starting exactly one socket", async () => {
-    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("../whatsapp.js");
+    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("./index.js");
     const { clearWhatsAppBinding } = await import("./binding-store.js");
 
     clearWhatsAppBinding();
@@ -180,7 +180,7 @@ describe("WhatsApp lifecycle contracts", () => {
       isLatest: true,
     });
 
-    const { pairWhatsApp } = await import("../whatsapp.js");
+    const { pairWhatsApp } = await import("./index.js");
     const { clearWhatsAppBinding } = await import("./binding-store.js");
 
     clearWhatsAppBinding();
@@ -197,7 +197,7 @@ describe("WhatsApp lifecycle contracts", () => {
   it("falls back to the bundled Baileys version if live WhatsApp Web version lookup fails", async () => {
     baileysMock.fetchLatestWaWebVersion.mockRejectedValueOnce(new Error("version lookup unavailable"));
 
-    const { pairWhatsApp } = await import("../whatsapp.js");
+    const { pairWhatsApp } = await import("./index.js");
     const { clearWhatsAppBinding } = await import("./binding-store.js");
 
     clearWhatsAppBinding();
@@ -208,7 +208,7 @@ describe("WhatsApp lifecycle contracts", () => {
   });
 
   it("keeps Pair idempotent while a pairing connection is already starting", async () => {
-    const { getWhatsAppStatus, pairWhatsApp } = await import("../whatsapp.js");
+    const { getWhatsAppStatus, pairWhatsApp } = await import("./index.js");
     const { clearWhatsAppBinding } = await import("./binding-store.js");
 
     clearWhatsAppBinding();
@@ -224,7 +224,7 @@ describe("WhatsApp lifecycle contracts", () => {
   });
 
   it("moves the public pairing state to qr when Baileys emits a QR payload", async () => {
-    const { getCurrentQr, pairWhatsApp } = await import("../whatsapp.js");
+    const { getCurrentQr, pairWhatsApp } = await import("./index.js");
     const { clearWhatsAppBinding } = await import("./binding-store.js");
 
     clearWhatsAppBinding();
@@ -239,7 +239,7 @@ describe("WhatsApp lifecycle contracts", () => {
   });
 
   it("rebind clears the old binding, logs out the active socket, clears auth files, and starts one replacement socket", async () => {
-    const { getWhatsAppStatus, initializeWhatsApp, rebindWhatsApp } = await import("../whatsapp.js");
+    const { getWhatsAppStatus, initializeWhatsApp, rebindWhatsApp } = await import("./index.js");
     const { clearWhatsAppBinding } = await import("./binding-store.js");
 
     clearWhatsAppBinding();

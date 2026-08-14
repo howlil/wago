@@ -108,7 +108,7 @@ describe("whatsapp send semantics", () => {
       },
     });
 
-    const { resetActivityLogForTest } = await import("./activity/store.js");
+    const { resetActivityLogForTest } = await import("../../activity/store.js");
     await resetActivityLogForTest();
   });
 
@@ -117,8 +117,8 @@ describe("whatsapp send semantics", () => {
   });
 
   it("returns pending immediately after Baileys accepts the send request", async () => {
-    const { initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipients/store.js");
+    const { initializeWhatsApp, sendTextMessage } = await import("./index.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("../../recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -132,8 +132,8 @@ describe("whatsapp send semantics", () => {
   });
 
   it("keeps message status pending until a Baileys status update arrives", async () => {
-    const { getMessageStatus, initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipients/store.js");
+    const { getMessageStatus, initializeWhatsApp, sendTextMessage } = await import("./index.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("../../recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -167,8 +167,8 @@ describe("whatsapp send semantics", () => {
   });
 
   it("caches successful recipient lookup for repeated sends", async () => {
-    const { initializeWhatsApp, sendTextMessage } = await import("./whatsapp.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("./recipients/store.js");
+    const { initializeWhatsApp, sendTextMessage } = await import("./index.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("../../recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -182,7 +182,7 @@ describe("whatsapp send semantics", () => {
   });
 
   it("updates account health from connection reachout timelock", async () => {
-    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./index.js");
     const retryAt = new Date("2026-08-09T00:30:00.000Z");
 
     await initializeWhatsApp();
@@ -203,7 +203,7 @@ describe("whatsapp send semantics", () => {
 
   it("schedules reconnect with backoff instead of reconnecting immediately", async () => {
     vi.useFakeTimers();
-    const { initializeWhatsApp } = await import("./whatsapp.js");
+    const { initializeWhatsApp } = await import("./index.js");
 
     await initializeWhatsApp();
     expect(baileysMock.makeWASocket).toHaveBeenCalledTimes(1);
@@ -227,9 +227,9 @@ describe("whatsapp send semantics", () => {
   });
 
   it("keeps binding but invalidates health after a recoverable disconnect", async () => {
-    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
-    const { bindWhatsAppAccount, clearWhatsAppBinding } = await import("./whatsapp/binding-store.js");
-    const { refreshAccountHealth } = await import("./whatsapp/account-health.js");
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./index.js");
+    const { bindWhatsAppAccount, clearWhatsAppBinding } = await import("./binding-store.js");
+    const { refreshAccountHealth } = await import("./account-health.js");
 
     clearWhatsAppBinding();
     bindWhatsAppAccount("6281234567890@s.whatsapp.net");
@@ -259,9 +259,9 @@ describe("whatsapp send semantics", () => {
 
   it("clears binding and marks the session invalid after logged-out close", async () => {
     vi.useFakeTimers();
-    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
-    const { bindWhatsAppAccount, clearWhatsAppBinding } = await import("./whatsapp/binding-store.js");
-    const { refreshAccountHealth } = await import("./whatsapp/account-health.js");
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./index.js");
+    const { bindWhatsAppAccount, clearWhatsAppBinding } = await import("./binding-store.js");
+    const { refreshAccountHealth } = await import("./account-health.js");
 
     clearWhatsAppBinding();
     bindWhatsAppAccount("6281234567890@s.whatsapp.net");
@@ -294,7 +294,7 @@ describe("whatsapp send semantics", () => {
 
   it("does not schedule reconnect after logged-out close", async () => {
     vi.useFakeTimers();
-    const { initializeWhatsApp } = await import("./whatsapp.js");
+    const { initializeWhatsApp } = await import("./index.js");
 
     await initializeWhatsApp();
 
@@ -316,8 +316,8 @@ describe("whatsapp send semantics", () => {
 
   it("closes the socket without logout during ordinary shutdown", async () => {
     vi.useFakeTimers();
-    const { getWhatsAppStatus, initializeWhatsApp, shutdownWhatsApp } = await import("./whatsapp.js");
-    const { refreshAccountHealth } = await import("./whatsapp/account-health.js");
+    const { getWhatsAppStatus, initializeWhatsApp, shutdownWhatsApp } = await import("./index.js");
+    const { refreshAccountHealth } = await import("./account-health.js");
 
     await refreshAccountHealth(
       {
@@ -354,7 +354,7 @@ describe("whatsapp send semantics", () => {
 
   it("returns to disconnected when initialization fails", async () => {
     baileysMock.useMultiFileAuthState.mockRejectedValueOnce(new Error("auth read failed"));
-    const { getWhatsAppStatus, initializeWhatsApp } = await import("./whatsapp.js");
+    const { getWhatsAppStatus, initializeWhatsApp } = await import("./index.js");
 
     await expect(initializeWhatsApp()).rejects.toThrow("auth read failed");
 
@@ -366,8 +366,8 @@ describe("whatsapp send semantics", () => {
   });
 
   it("records a completion checkpoint after rebind starts a fresh socket lifecycle", async () => {
-    const { initializeWhatsApp, rebindWhatsApp } = await import("./whatsapp.js");
-    const { listAudit } = await import("./activity/query.js");
+    const { initializeWhatsApp, rebindWhatsApp } = await import("./index.js");
+    const { listAudit } = await import("../../activity/query.js");
 
     await initializeWhatsApp();
     await rebindWhatsApp();
@@ -383,7 +383,7 @@ describe("whatsapp send semantics", () => {
   });
 
   it("uses bundled Baileys version", async () => {
-    const { initializeWhatsApp } = await import("./whatsapp.js");
+    const { initializeWhatsApp } = await import("./index.js");
 
     await initializeWhatsApp();
 

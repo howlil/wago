@@ -82,7 +82,7 @@ describe("Baileys lifecycle audit", () => {
     baileysMock.fetchAccountReachoutTimelock.mockResolvedValue(undefined);
     baileysMock.fetchNewChatMessageCap.mockResolvedValue(undefined);
 
-    const { resetActivityLogForTest } = await import("../activity/store.js");
+    const { resetActivityLogForTest } = await import("../../activity/store.js");
     await resetActivityLogForTest();
   });
 
@@ -91,8 +91,8 @@ describe("Baileys lifecycle audit", () => {
   });
 
   it("records QR availability and terminal disconnect without persisting the QR", async () => {
-    const { initializeWhatsApp } = await import("../whatsapp.js");
-    const { listAudit } = await import("../activity/query.js");
+    const { initializeWhatsApp } = await import("./index.js");
+    const { listAudit } = await import("../../activity/query.js");
 
     await initializeWhatsApp();
     baileysMock.ev.emit("connection.update", { qr: "raw-secret-qr" });
@@ -121,8 +121,8 @@ describe("Baileys lifecycle audit", () => {
 
   it("records reconnect scheduling for a recoverable disconnect", async () => {
     vi.useFakeTimers();
-    const { initializeWhatsApp } = await import("../whatsapp.js");
-    const { listAudit } = await import("../activity/query.js");
+    const { initializeWhatsApp } = await import("./index.js");
+    const { listAudit } = await import("../../activity/query.js");
 
     await initializeWhatsApp();
     baileysMock.ev.emit("connection.update", {
@@ -140,8 +140,8 @@ describe("Baileys lifecycle audit", () => {
 
   it("records unknown disconnect status explicitly and keeps it recoverable", async () => {
     vi.useFakeTimers();
-    const { initializeWhatsApp } = await import("../whatsapp.js");
-    const { listAudit } = await import("../activity/query.js");
+    const { initializeWhatsApp } = await import("./index.js");
+    const { listAudit } = await import("../../activity/query.js");
 
     await initializeWhatsApp();
     baileysMock.ev.emit("connection.update", {
@@ -165,8 +165,8 @@ describe("Baileys lifecycle audit", () => {
   });
 
   it("records missing persisted auth on restart and requires pairing", async () => {
-    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("../whatsapp.js");
-    const { listAudit } = await import("../activity/query.js");
+    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("./index.js");
+    const { listAudit } = await import("../../activity/query.js");
 
     await resumeWhatsAppSession();
 
@@ -186,8 +186,8 @@ describe("Baileys lifecycle audit", () => {
 
   it("records credential persistence failures without credential content", async () => {
     baileysMock.saveCreds.mockRejectedValueOnce(new Error("disk failed"));
-    const { initializeWhatsApp, shutdownWhatsApp } = await import("../whatsapp.js");
-    const { listAudit } = await import("../activity/query.js");
+    const { initializeWhatsApp, shutdownWhatsApp } = await import("./index.js");
+    const { listAudit } = await import("../../activity/query.js");
 
     await initializeWhatsApp();
     baileysMock.ev.emit("creds.update", { secret: "never-persist-this" });
@@ -200,8 +200,8 @@ describe("Baileys lifecycle audit", () => {
   });
 
   it("records message acknowledgement without persisting message identity or body", async () => {
-    const { initializeWhatsApp } = await import("../whatsapp.js");
-    const { listAudit } = await import("../activity/query.js");
+    const { initializeWhatsApp } = await import("./index.js");
+    const { listAudit } = await import("../../activity/query.js");
 
     await initializeWhatsApp();
     baileysMock.ev.emit("messages.update", [
