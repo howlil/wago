@@ -5,7 +5,7 @@ import helmet from "helmet";
 import { config } from "./config/index.js";
 import { errorHandler } from "./http/middleware/error-handler.js";
 import { requestHasSameOrigin } from "./http/middleware/origin.js";
-import { requestLogger } from "./middleware/request-logger.js";
+import { requestLogger } from "./http/middleware/request-logger.js";
 import { getReadinessSnapshot } from "./modules/gateway/readiness.js";
 import { activityRouter } from "./routes/activity.routes.js";
 import { appRouter } from "./routes/app.routes.js";
