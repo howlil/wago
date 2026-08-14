@@ -164,6 +164,40 @@ Final merge verification evidence:
 
 ---
 
+## Milestone 7: Production State Reliability and Deployment Hardening
+
+**Status:** planned from the 2026-08-14 storage/session/API-key/workflow audit.
+
+Detailed implementation plan: `.agent/plans/2026-08-14-production-state-reliability-hardening.md`
+
+Priority scope:
+
+- **P0:** production must refuse to boot when `/app/data` is only the disposable container writable layer;
+- **P0:** enforce one active Wago process per persistent volume/account using a bounded SQLite lease;
+- **P0:** corrupted or unreadable Baileys auth must degrade the WhatsApp subsystem without taking down the dashboard/control plane;
+- **P0:** expose Baileys credential-persistence failures so a connected-but-not-durable session is never reported as fully healthy;
+- **P1:** protect first-run production bootstrap with an explicit deployment `SETUP_TOKEN`, not same-origin alone;
+- **P1:** API-key rotation revokes other browser sessions and adds an explicit sign-out-all workflow without resetting WhatsApp auth;
+- **P1:** make `/ready` distinguish `ok`, `degraded`, and `not_ready` while keeping `/health` as pure process liveness;
+- **P1:** make GHCR tag ownership deterministic so version-tag builds cannot overwrite `latest`/branch-owned SHA tags;
+- **P2:** lock webhook delivery semantics as at-least-once with stable delivery IDs for receiver deduplication;
+- **P2:** document and verify controlled backup/restore of the entire secret-bearing `/app/data` state set.
+
+Release order:
+
+1. storage mount guard + replacement persistence smoke;
+2. single-instance ownership;
+3. degraded Baileys resume + credential-write health;
+4. bootstrap/API-key/browser-session security;
+5. truthful readiness/dashboard state;
+6. GHCR tag semantics;
+7. webhook and backup/restore operational contract;
+8. full scenario matrix, CI, build, docs, and container smoke gate.
+
+Boundary: remain single-account/single-active-instance; do not introduce Redis/PostgreSQL/distributed locks, multi-session architecture, or a second persistence layer.
+
+---
+
 ## Repository-Wide Implementation Rules
 
 - Prefer explicit failure/unknown state over optimistic status.
