@@ -6,10 +6,10 @@ import {
   getWebhookSettings,
   rotateWebhookSecret,
   updateWebhookSettings,
-} from "../../api.js";
+} from "./api.js";
 import { WebhookSettingsCard } from "./WebhookSettingsCard.js";
 
-vi.mock("../../api.js", () => ({
+vi.mock("./api.js", () => ({
   getWebhookSettings: vi.fn(),
   updateWebhookSettings: vi.fn(),
   rotateWebhookSecret: vi.fn(),
