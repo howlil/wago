@@ -177,6 +177,18 @@ export const migrations: Migration[] = [
       );
     `,
   },
+  {
+    version: 7,
+    sql: `
+      CREATE TABLE IF NOT EXISTS gateway_instance_lease (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        owner_id TEXT NOT NULL,
+        acquired_at INTEGER NOT NULL,
+        heartbeat_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {

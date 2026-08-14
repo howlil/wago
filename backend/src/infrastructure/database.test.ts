@@ -12,22 +12,13 @@ describe("SQLite persistence", () => {
     }>;
 
     expect(journal?.journal_mode).toBe("wal");
-    expect(migrations.map((migration) => migration.version)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(
-      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'outbound_events'").get(),
-    ).toBeDefined();
-    expect(
-      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'idempotency_keys'").get(),
-    ).toBeDefined();
-    expect(
-      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_deliveries'").get(),
-    ).toBeDefined();
-    expect(
-      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'browser_sessions'").get(),
-    ).toBeDefined();
-    expect(
-      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_settings'").get(),
-    ).toBeDefined();
+    expect(migrations.map((migration) => migration.version)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'outbound_events'").get()).toBeDefined();
+    expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'idempotency_keys'").get()).toBeDefined();
+    expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_deliveries'").get()).toBeDefined();
+    expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'browser_sessions'").get()).toBeDefined();
+    expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_settings'").get()).toBeDefined();
+    expect(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'gateway_instance_lease'").get()).toBeDefined();
   });
 
   it("adds audit source and filter indexes", () => {

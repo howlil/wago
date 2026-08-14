@@ -1,4 +1,10 @@
+import { WagoInstanceAlreadyActiveError, type InstanceLeaseResult } from "../infrastructure/instance-lease.js";
+
 export type ApplicationLifecycleDeps = {
+  acquireInstanceLease: () => InstanceLeaseResult;
+  startInstanceLeaseHeartbeat: () => void;
+  stopInstanceLeaseHeartbeat: () => void;
+  releaseInstanceLease: () => boolean;
   startWebhookDeliveryWorker: () => void;
   stopWebhookDeliveryWorker: () => Promise<void>;
   resumeWhatsAppSession: () => Promise<void>;
@@ -18,6 +24,10 @@ export function createApplicationLifecycle(deps: ApplicationLifecycleDeps): {
   return {
     start(): Promise<void> {
       startPromise ??= (async () => {
+        const lease = deps.acquireInstanceLease();
+        if (!lease.acquired) throw new WagoInstanceAlreadyActiveError();
+
+        deps.startInstanceLeaseHeartbeat();
         deps.startWebhookDeliveryWorker();
         await deps.resumeWhatsAppSession();
       })();
@@ -29,6 +39,8 @@ export function createApplicationLifecycle(deps: ApplicationLifecycleDeps): {
         await deps.stopWebhookDeliveryWorker();
         await deps.shutdownWhatsApp();
         await deps.flushOutboundPolicyPersistence();
+        deps.stopInstanceLeaseHeartbeat();
+        deps.releaseInstanceLease();
         deps.checkpointDatabase();
         deps.closeDatabase();
       })();

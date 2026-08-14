@@ -1,7 +1,8 @@
 import { recordActivity } from "./activity/store.js";
 import { createApplicationLifecycle } from "./app/lifecycle.js";
 import { app } from "./app.js";
-import { checkpointDatabase, closeDatabase } from "./infrastructure/database.js";
+import { checkpointDatabase, closeDatabase, getDatabase } from "./infrastructure/database.js";
+import { createInstanceLeaseManager } from "./infrastructure/instance-lease.js";
 import { logger } from "./infrastructure/logger.js";
 import { flushOutboundPolicyPersistence } from "./policy/outbound-policy.js";
 import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./webhooks/delivery-webhook.js";
@@ -10,7 +11,18 @@ import { resumeWhatsAppSession, shutdownWhatsApp } from "./whatsapp.js";
 const port = 3000;
 const host = "0.0.0.0";
 
+const instanceLease = createInstanceLeaseManager(getDatabase(), {
+  onOwnershipLost: () => {
+    logger.error({ event: "app.instance_lease_lost", code: "WAGO_INSTANCE_LEASE_LOST" });
+    process.kill(process.pid, "SIGTERM");
+  },
+});
+
 const lifecycle = createApplicationLifecycle({
+  acquireInstanceLease: () => instanceLease.acquire(),
+  startInstanceLeaseHeartbeat: () => instanceLease.startHeartbeat(),
+  stopInstanceLeaseHeartbeat: () => instanceLease.stopHeartbeat(),
+  releaseInstanceLease: () => instanceLease.release(),
   startWebhookDeliveryWorker,
   stopWebhookDeliveryWorker,
   resumeWhatsAppSession,
@@ -72,6 +84,7 @@ async function start(): Promise<void> {
 }
 
 start().catch((error: unknown) => {
-  logger.error({ event: "app.start_failed", errorType: error instanceof Error ? error.name : typeof error });
+  const errorCode = typeof error === "object" && error !== null && "code" in error ? String(error.code) : undefined;
+  logger.error({ event: "app.start_failed", errorType: error instanceof Error ? error.name : typeof error, errorCode });
   process.exit(1);
 });

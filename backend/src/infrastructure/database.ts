@@ -1,12 +1,14 @@
 import { chmodSync, mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { databaseFile, dataDirectory } from "../config/runtime-paths.js";
+import { assertPersistentDataMount } from "./data-mount.js";
 import { runMigrations } from "./database/migrations.js";
 import { withTransaction as withDatabaseTransaction } from "./database/transaction.js";
 import { importLegacyJsonState } from "./legacy-json-import.js";
 
 const DATABASE_TIMEOUT_MS = 5_000;
 
+assertPersistentDataMount();
 mkdirSync(dataDirectory, { recursive: true });
 
 const database = new DatabaseSync(databaseFile, {
