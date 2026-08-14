@@ -44,6 +44,7 @@ import {
   setReconnecting,
   setShuttingDown,
 } from "./runtime.js";
+import { registerSocketEvents } from "./socket-events.js";
 import { getLiveBaileysVersion } from "./wa-version.js";
 
 export type { WhatsAppStatus, WhatsAppStatusSnapshot };
@@ -152,186 +153,18 @@ export async function initializeWhatsApp(): Promise<void> {
       metadata: { socketGeneration: generation },
     });
 
-    nextSocket.ev.on("creds.update", () => {
-      if (!isCurrentGeneration(generation)) return;
-      credentialWriter.enqueue(saveCreds, generation);
-    });
-
-    nextSocket.ev.on("messages.update", (updates) => {
-      if (!isCurrentGeneration(generation)) return;
-
-      for (const entry of updates) {
-        const messageId = entry.key?.id;
-        if (!messageId || entry.update.status == null) continue;
-
-        if (entry.update.status === WAMessageStatus.ERROR) {
-          const mapped = mapMessageRejection(entry.update.messageStubParameters);
-          logger.warn({ event: "wa.message.rejected", messageId, reason: mapped.code });
-          auditBaileys({
-            level: "warning",
-            category: "messaging",
-            code: "baileys.message.rejected",
-            title: "WhatsApp rejected a message",
-            description: "Baileys reported an outbound message rejection.",
-            metadata: {
-              socketGeneration: generation,
-              status: entry.update.status,
-              reason: mapped.code,
-            },
-          });
-
-          if (mapped.code === "REACHOUT_RESTRICTED") {
-            markReachoutRestricted();
-            void refreshAccountHealth(createAccountHealthFetcher(nextSocket, generation), { force: true });
-          }
-
-          updateMessageStatus(messageId, {
-            status: "rejected",
-            error: mapped.code,
-            message: mapped.message,
-          });
-          continue;
-        }
-
-        if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
-          updateMessageStatus(messageId, { status: "accepted" });
-          auditBaileys({
-            level: "info",
-            category: "messaging",
-            code: "baileys.message.ack",
-            title: "WhatsApp acknowledged a message",
-            description: "Baileys reported a server acknowledgement for an outbound message.",
-            metadata: {
-              socketGeneration: generation,
-              status: entry.update.status,
-            },
-          });
-        }
-      }
-    });
-
-    nextSocket.ev.on("connection.update", (update) => {
-      if (!isCurrentGeneration(generation)) return;
-
-      if (update.qr) {
-        markQr(update.qr);
-        logger.info({ event: "wa.connection", state: "qr" });
-        auditBaileys({
-          level: "info",
-          category: "connection",
-          code: "baileys.connection.qr_ready",
-          title: "WhatsApp pairing QR is ready",
-          description: "A pairing QR became available. The QR value is intentionally not persisted.",
-          metadata: { socketGeneration: generation },
-        });
-      }
-
-      if (update.connection === "open") {
-        const accountJid = nextSocket.user?.id;
-        if (accountJid) {
-          const binding = bindWhatsAppAccount(accountJid);
-          logger.info({ event: "wa.binding", state: "bound", account: maskIdentifier(binding.jid) });
-        }
-
-        markConnected();
+    registerSocketEvents({
+      socket: nextSocket,
+      generation,
+      saveCreds,
+      credentialWriter,
+      isCurrentGeneration,
+      getReconnectAttempt: () => reconnectAttempt,
+      resetReconnectAttempt: () => {
         reconnectAttempt = resetReconnectAttempts();
-        logger.info({ event: "wa.connection", state: "connected" });
-        auditBaileys({
-          level: "success",
-          category: "connection",
-          code: "baileys.connection.open",
-          title: "WhatsApp connection opened",
-          description: "The Baileys socket is connected to WhatsApp.",
-          metadata: {
-            socketGeneration: generation,
-            bound: Boolean(accountJid),
-          },
-        });
-        void refreshAccountHealth(createAccountHealthFetcher(nextSocket, generation), { force: true });
-      }
-
-      if (update.reachoutTimeLock) {
-        updateReachoutTimeLock(update.reachoutTimeLock);
-        logger.warn({
-          event: "wa.reachout_timelock",
-          active: update.reachoutTimeLock.isActive,
-          retryAt: update.reachoutTimeLock.timeEnforcementEnds,
-        });
-        auditBaileys({
-          level: update.reachoutTimeLock.isActive ? "warning" : "info",
-          category: "connection",
-          code: "baileys.health.reachout_timelock_changed",
-          title: "Reach-out restriction changed",
-          description: "WhatsApp pushed a reach-out restriction state update.",
-          metadata: {
-            socketGeneration: generation,
-            active: Boolean(update.reachoutTimeLock.isActive),
-            retryAt: auditDate(update.reachoutTimeLock.timeEnforcementEnds),
-            enforcementType: update.reachoutTimeLock.enforcementType ?? null,
-          },
-        });
-      }
-
-      if (update.connection === "close") {
-        const statusCode = (update.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output
-          ?.statusCode;
-        const classification = classifyDisconnect({
-          statusCode,
-          rebindInProgress: isRebindInProgress(),
-          shuttingDown: isShuttingDown(),
-        });
-
-        auditBaileys({
-          level: classification.terminal ? "error" : "warning",
-          category: "connection",
-          code: "baileys.connection.close",
-          title: "WhatsApp connection closed",
-          description: classification.terminal
-            ? "The WhatsApp session closed and requires a new pairing."
-            : "The WhatsApp connection closed and may be retried.",
-          metadata: {
-            socketGeneration: generation,
-            statusCode: classification.statusCode ?? null,
-            reason: classification.reason,
-            terminal: classification.terminal,
-            reconnect: classification.shouldReconnect,
-            reconnectAttempt,
-          },
-        });
-
-        markDisconnected();
-        invalidateAccountHealth(classification.terminal ? "session_invalid" : "not_connected");
-        if (getActiveSocket() === nextSocket) setActiveSocket(undefined);
-        invalidateSocketGeneration();
-
-        if (classification.terminal && !isRebindInProgress()) {
-          clearWhatsAppBinding();
-          clearReconnectTimer();
-          auditBaileys({
-            level: "error",
-            category: "connection",
-            code: "baileys.session.invalidated",
-            title: "WhatsApp session invalidated",
-            description: "The linked WhatsApp session is no longer valid and must be paired again.",
-            metadata: {
-              socketGeneration: generation,
-              statusCode: classification.statusCode ?? null,
-              reason: classification.reason,
-            },
-          });
-        }
-
-        logger.warn({
-          event: "wa.connection",
-          state: "disconnected",
-          statusCode: classification.statusCode,
-          reason: classification.reason,
-          terminal: classification.terminal,
-          reconnect: classification.shouldReconnect,
-        });
-
-        if (classification.shouldReconnect) scheduleReconnect(generation);
-      }
+      },
+      scheduleReconnect,
+      clearReconnectTimer,
     });
   } catch (error) {
     setActiveSocket(undefined);
