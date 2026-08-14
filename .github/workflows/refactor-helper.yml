@@ -1,0 +1,107 @@
+name: Refactor Helper
+
+on:
+  push:
+    branches:
+      - refactor/modular-monolith-structure
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-webhooks:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout refactor branch
+        uses: actions/checkout@v7
+        with:
+          ref: refactor/modular-monolith-structure
+          fetch-depth: 0
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Move webhook worker facade and routes
+        run: |
+          set -euo pipefail
+          git mv backend/src/webhooks/delivery-worker.ts backend/src/modules/webhooks/delivery-worker.ts
+          git mv backend/src/webhooks/delivery-worker.test.ts backend/src/modules/webhooks/delivery-worker.test.ts
+          git mv backend/src/webhooks/delivery-webhook.ts backend/src/modules/webhooks/delivery-webhook.ts
+          git mv backend/src/routes/webhook.routes.ts backend/src/modules/webhooks/routes.ts
+          git mv backend/src/routes/webhook.routes.test.ts backend/src/modules/webhooks/routes.test.ts
+
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "backend/src/modules/webhooks/delivery-webhook.ts": [
+                  ('../infrastructure/database.js', '../../infrastructure/database.js', 1),
+                  ('../infrastructure/logger.js', '../../infrastructure/logger.js', 1),
+              ],
+              "backend/src/modules/webhooks/routes.ts": [
+                  ('../http/middleware/auth.js', '../../http/middleware/auth.js', 1),
+                  ('../http/middleware/rate-limit.js', '../../http/middleware/rate-limit.js', 1),
+                  ('../webhooks/delivery-store.js', './delivery-store.js', 1),
+                  ('../webhooks/delivery-webhook.js', './delivery-webhook.js', 1),
+                  ('../webhooks/settings-runtime.js', './settings-runtime.js', 1),
+                  ('../webhooks/settings-store.js', './settings-store.js', 1),
+              ],
+              "backend/src/modules/webhooks/routes.test.ts": [
+                  ('../app.js', '../../app.js', 1),
+                  ('../modules/access/api-key.js', '../access/api-key.js', 1),
+                  ('../webhooks/settings-runtime.js', './settings-runtime.js', 1),
+              ],
+              "backend/src/app.ts": [
+                  ('./routes/webhook.routes.js', './modules/webhooks/routes.js', 1),
+              ],
+              "backend/src/index.ts": [
+                  ('./webhooks/delivery-webhook.js', './modules/webhooks/delivery-webhook.js', 1),
+              ],
+              "backend/src/modules/whatsapp/message-status-store.ts": [
+                  ('../../webhooks/delivery-webhook.js', '../webhooks/delivery-webhook.js', 1),
+              ],
+              "backend/src/modules/whatsapp/message-status-store.test.ts": [
+                  ('../../webhooks/delivery-webhook.js', '../webhooks/delivery-webhook.js', 1),
+              ],
+          }
+
+          for filename, changes in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new, expected in changes:
+                  actual = text.count(old)
+                  if actual != expected:
+                      raise SystemExit(f"{filename}: expected {expected} occurrence(s) of {old!r}, found {actual}")
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+
+          rm backend/src/webhooks/settings-store.ts
+          rm backend/src/webhooks/settings-runtime.ts
+          rm backend/src/webhooks/delivery-webhook-core.ts
+          rm backend/src/webhooks/delivery-store.ts
+          rmdir backend/src/webhooks
+
+      - name: Verify complete webhook ownership
+        run: |
+          pnpm exec biome check --write backend/src/modules/webhooks backend/src/modules/whatsapp/message-status-store.ts backend/src/modules/whatsapp/message-status-store.test.ts backend/src/app.ts backend/src/index.ts
+          pnpm check
+          pnpm --dir backend test
+          pnpm --dir backend build
+
+      - name: Commit verified migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A backend/src
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: consolidate webhooks module"
+          git push origin HEAD:refactor/modular-monolith-structure
