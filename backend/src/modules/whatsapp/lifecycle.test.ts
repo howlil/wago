@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const fsMock = vi.hoisted(() => ({ existsSync: vi.fn() }));
 const baileysMock = vi.hoisted(() => {
   type Handler = (...args: unknown[]) => void;
   const handlers = new Map<string, Set<Handler>>();
@@ -29,6 +30,11 @@ const baileysMock = vi.hoisted(() => {
   };
 });
 
+vi.mock("node:fs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:fs")>()),
+  existsSync: fsMock.existsSync,
+}));
+
 vi.mock("@whiskeysockets/baileys", () => ({
   default: baileysMock.makeWASocket,
   useMultiFileAuthState: baileysMock.useMultiFileAuthState,
@@ -50,6 +56,8 @@ vi.mock("@whiskeysockets/baileys", () => ({
 describe("WhatsApp lifecycle", () => {
   beforeEach(() => {
     vi.resetModules();
+    fsMock.existsSync.mockReset();
+    fsMock.existsSync.mockReturnValue(false);
     baileysMock.ev.removeAllListeners();
     baileysMock.makeWASocket.mockReset();
     baileysMock.saveCreds.mockReset();
@@ -107,5 +115,32 @@ describe("WhatsApp lifecycle", () => {
     expect(getWhatsAppStatus().status).toBe("disconnected");
 
     vi.useRealTimers();
+  });
+
+  it("keeps the control plane startup alive when persisted auth cannot be resumed", async () => {
+    fsMock.existsSync.mockReturnValue(true);
+    baileysMock.useMultiFileAuthState.mockRejectedValue(new SyntaxError("corrupt auth state"));
+
+    const { getWhatsAppStatus, resumeWhatsAppSession } = await import("./lifecycle.js");
+
+    await expect(resumeWhatsAppSession()).resolves.toBeUndefined();
+    expect(getWhatsAppStatus().status).toBe("disconnected");
+    expect(baileysMock.makeWASocket).not.toHaveBeenCalled();
+  });
+
+  it("marks credential persistence degraded and recovers after the next successful save", async () => {
+    baileysMock.saveCreds.mockRejectedValueOnce(new Error("disk write failed")).mockResolvedValueOnce(undefined);
+    baileysMock.useMultiFileAuthState.mockResolvedValue({ state: {}, saveCreds: baileysMock.saveCreds });
+
+    const { initializeWhatsApp } = await import("./lifecycle.js");
+    const { getCredentialPersistenceHealth } = await import("../../whatsapp/credential-persistence-health.js");
+    await initializeWhatsApp();
+
+    baileysMock.ev.emit("creds.update");
+    await vi.waitFor(() => expect(getCredentialPersistenceHealth().status).toBe("degraded"));
+
+    baileysMock.ev.emit("creds.update");
+    await vi.waitFor(() => expect(getCredentialPersistenceHealth().status).toBe("healthy"));
+    expect(getCredentialPersistenceHealth().consecutiveFailures).toBe(0);
   });
 });
