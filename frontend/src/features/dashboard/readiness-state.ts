@@ -50,7 +50,8 @@ export function getOperationalReadinessWarning(
     if (reason === "instance_ownership_lost") {
       return {
         tone: "danger",
-        message: "This process lost single-instance ownership. Stop duplicate Wago replicas and restart only one owner.",
+        message:
+          "This process lost single-instance ownership. Stop duplicate Wago replicas and restart only one owner.",
       };
     }
     if (reason === "database_unavailable") {
@@ -75,7 +76,8 @@ export function getOperationalReadinessWarning(
   if (reason === "bound_session_disconnected") {
     return {
       tone: "warning",
-      message: "The bound WhatsApp session is disconnected. Inspect Audit first; rebind only if the session is invalid.",
+      message:
+        "The bound WhatsApp session is disconnected. Inspect Audit first; rebind only if the session is invalid.",
     };
   }
 
