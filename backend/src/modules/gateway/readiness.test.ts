@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { config } from "../../config/index.js";
-import { webhookSettingsStore } from "../../webhooks/settings-runtime.js";
 import { resetAccessStateForTest } from "../access/api-key.js";
+import { webhookSettingsStore } from "../webhooks/settings-runtime.js";
 import { resetCredentialPersistenceHealthForTest } from "../whatsapp/credential-persistence-health.js";
 import { getReadinessSnapshot } from "./readiness.js";
 

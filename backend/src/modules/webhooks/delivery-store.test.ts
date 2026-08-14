@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { runMigrations } from "../infrastructure/database/migrations.js";
+import { runMigrations } from "../../infrastructure/database/migrations.js";
 import {
   createWebhookDeliveryStore,
   WEBHOOK_CLAIM_TIMEOUT_MS,

@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it } from "vitest";
-import { migrations, runMigrations } from "../infrastructure/database/migrations.js";
+import { migrations, runMigrations } from "../../infrastructure/database/migrations.js";
 import { createWebhookSettingsStore } from "./settings-store.js";
 
 const legacySecret = "a".repeat(32);

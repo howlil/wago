@@ -2,8 +2,8 @@ import { config } from "../../config/index.js";
 import { getRuntimeDataMountInspection } from "../../infrastructure/data-mount.js";
 import { getDatabase } from "../../infrastructure/database.js";
 import { getRuntimeInstanceLeaseState, type InstanceLeaseState } from "../../infrastructure/instance-lease.js";
-import { webhookSettingsStore } from "../../webhooks/settings-runtime.js";
 import { getAccessSnapshot } from "../access/api-key.js";
+import { webhookSettingsStore } from "../webhooks/settings-runtime.js";
 import { getWhatsAppStatusSnapshot, type WhatsAppStatusSnapshot } from "../whatsapp/connection-state.js";
 import {
   type CredentialPersistenceHealth,
