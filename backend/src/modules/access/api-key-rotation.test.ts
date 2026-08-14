@@ -1,9 +1,9 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
-import { app } from "./app.js";
-import { config } from "./config/index.js";
-import { hashApiKey, resetAccessStateForTest } from "./modules/access/api-key.js";
-import { resetBrowserSessionsForTest } from "./modules/access/browser-session-store.js";
+import { app } from "../../app.js";
+import { config } from "../../config/index.js";
+import { hashApiKey, resetAccessStateForTest } from "./api-key.js";
+import { resetBrowserSessionsForTest } from "./browser-session-store.js";
 
 const oldApiKey = `wa_${"a".repeat(64)}`;
 type ResponseWithHeaders = { headers: Record<string, string | string[] | undefined> };
