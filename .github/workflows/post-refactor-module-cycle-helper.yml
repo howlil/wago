@@ -1,0 +1,111 @@
+name: Post-refactor module cycle helper
+
+on:
+  push:
+    branches:
+      - refactor/modular-monolith-structure
+    paths:
+      - .github/workflows/post-refactor-module-cycle-helper.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/modular-monolith-structure
+          fetch-depth: 0
+
+      - uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+          install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Remove Messages to WhatsApp production dependencies
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path: str, old: str, new: str, expected: int = 1):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"{path}: expected {expected} occurrences of {old!r}, found {count}")
+              p.write_text(text.replace(old, new))
+
+          policy = "backend/src/modules/messages/outbound-policy.ts"
+          replace_exact(
+              policy,
+              'import {\n  type AccountHealthFetcher,\n  checkAccountHealth,\n  resetAccountHealthForTest,\n} from "../whatsapp/account-health.js";\n',
+              '',
+          )
+          replace_exact(
+              policy,
+              'export type OutboundPolicyInput = {',
+              'export type OutboundAccountHealthCheck = (options: {\n  isNewRecipient: boolean;\n}) => Promise<OutboundPolicyDecision>;\n\nexport type OutboundPolicyInput = {',
+          )
+          replace_exact(
+              policy,
+              '  accountHealthFetcher?: AccountHealthFetcher;',
+              '  accountHealthCheck?: OutboundAccountHealthCheck;',
+          )
+          replace_exact(
+              policy,
+              '  const healthDecision = await checkAccountHealth(input.accountHealthFetcher, {\n    isNewRecipient: recipientContext.isNewRecipient,\n  });\n  if (!healthDecision.allowed) return healthDecision;',
+              '  if (input.accountHealthCheck) {\n    const healthDecision = await input.accountHealthCheck({\n      isNewRecipient: recipientContext.isNewRecipient,\n    });\n    if (!healthDecision.allowed) return healthDecision;\n  }',
+          )
+          replace_exact(policy, '  resetAccountHealthForTest();\n', '', expected=2)
+
+          sender = "backend/src/modules/whatsapp/sender.ts"
+          replace_exact(
+              sender,
+              'import { markReachoutRestricted, refreshAccountHealth } from "./account-health.js";',
+              'import { checkAccountHealth, markReachoutRestricted, refreshAccountHealth } from "./account-health.js";',
+          )
+          replace_exact(
+              sender,
+              '      const generation = getSocketGeneration();\n      const policyInput = {\n        to,\n        jid,\n        text,\n        idempotencyKey: options.idempotencyKey,\n        accountHealthFetcher: createAccountHealthFetcher(activeSocket, generation),\n      };',
+              '      const generation = getSocketGeneration();\n      const accountHealthFetcher = createAccountHealthFetcher(activeSocket, generation);\n      const policyInput = {\n        to,\n        jid,\n        text,\n        idempotencyKey: options.idempotencyKey,\n        accountHealthCheck: ({ isNewRecipient }: { isNewRecipient: boolean }) =>\n          checkAccountHealth(accountHealthFetcher, { isNewRecipient }),\n      };',
+          )
+          replace_exact(
+              sender,
+              '          await refreshAccountHealth(createAccountHealthFetcher(activeSocket, generation), { force: true });',
+              '          await refreshAccountHealth(accountHealthFetcher, { force: true });',
+          )
+
+          test_path = Path("backend/src/modules/messages/outbound-policy.test.ts")
+          test_text = test_path.read_text()
+          start = '  // --- WhatsApp account health ---\n'
+          end = '  // --- Account rate limit ---\n'
+          if test_text.count(start) != 1 or test_text.count(end) != 1:
+              raise SystemExit("outbound-policy.test.ts: account-health section markers changed")
+          before, rest = test_text.split(start, 1)
+          _, after = rest.split(end, 1)
+          replacement = '''  // --- Account health policy ---\n\n  describe("account health policy", () => {\n    it("propagates an active reachout restriction from the injected health check", async () => {\n      const retryAt = new Date(Date.now() + 60_000);\n      const decision = await checkOutboundPolicy(\n        makeInput({\n          accountHealthCheck: async () => ({\n            allowed: false,\n            reason: "WA_REACHOUT_RESTRICTED",\n            message: "WhatsApp reports this account is restricted from starting new outbound reach-outs",\n            retryAt,\n          }),\n        }),\n      );\n\n      expect(decision.allowed).toBe(false);\n      if (!decision.allowed) {\n        expect(decision.reason).toBe("WA_REACHOUT_RESTRICTED");\n        expect(decision.retryAt).toBe(retryAt);\n      }\n    });\n\n    it("propagates a capped new-chat decision from the injected health check", async () => {\n      const decision = await checkOutboundPolicy(\n        makeInput({\n          accountHealthCheck: async () => ({\n            allowed: false,\n            reason: "WA_NEW_CHAT_CAPPED",\n            message: "WhatsApp reports this account has reached its new-chat cap",\n          }),\n        }),\n      );\n\n      expect(decision).toEqual({\n        allowed: false,\n        reason: "WA_NEW_CHAT_CAPPED",\n        message: "WhatsApp reports this account has reached its new-chat cap",\n      });\n    });\n  });\n\n'''
+          test_path.write_text(before + replacement + end + after)
+          PY
+
+      - name: Format and verify
+        run: |
+          pnpm check:fix
+          pnpm check
+          pnpm test
+          pnpm --dir backend run build
+
+      - name: Commit verified cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: remove messages whatsapp dependency cycle"
+          git push origin HEAD:refactor/modular-monolith-structure
