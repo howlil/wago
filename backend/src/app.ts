@@ -16,7 +16,19 @@ import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();
 app.set("trust proxy", config.trustProxy ? 1 : false);
-app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], connectSrc: ["'self'"], imgSrc: ["'self'", "data:"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"] } } }));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
+  }),
+);
 app.use(express.json({ limit: config.bodyLimit }));
 app.use(requestLogger);
 app.use((req, res, next) => {
@@ -24,7 +36,13 @@ app.use((req, res, next) => {
   const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
   const origin = req.header("origin");
   if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && !requestHasSameOrigin(req)) {
-    return res.status(403).json({ success: false, error: "INVALID_ORIGIN", message: "Cookie-authenticated requests must come from the Wago origin" });
+    return res
+      .status(403)
+      .json({
+        success: false,
+        error: "INVALID_ORIGIN",
+        message: "Cookie-authenticated requests must come from the Wago origin",
+      });
   }
   return next();
 });

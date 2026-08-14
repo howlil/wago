@@ -2,9 +2,12 @@ import { config } from "../../config/index.js";
 import { assertPersistentDataMount } from "../../infrastructure/data-mount.js";
 import { getDatabase } from "../../infrastructure/database.js";
 import { getRuntimeInstanceLeaseState, type InstanceLeaseState } from "../../infrastructure/instance-lease.js";
-import { getCredentialPersistenceHealth, type CredentialPersistenceHealth } from "../../whatsapp/credential-persistence-health.js";
-import { getWhatsAppStatusSnapshot, type WhatsAppStatusSnapshot } from "../../whatsapp/connection-state.js";
 import { createWebhookSettingsStore } from "../../webhooks/settings-store.js";
+import { getWhatsAppStatusSnapshot, type WhatsAppStatusSnapshot } from "../../whatsapp/connection-state.js";
+import {
+  type CredentialPersistenceHealth,
+  getCredentialPersistenceHealth,
+} from "../../whatsapp/credential-persistence-health.js";
 
 export type ReadinessLevel = "ok" | "degraded" | "not_ready";
 export type ReadinessCheck = { status: ReadinessLevel; reason?: string };

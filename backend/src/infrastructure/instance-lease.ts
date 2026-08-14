@@ -91,7 +91,12 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
       const expiresAt = timestamp + ttlMs;
       return withTransaction(database, () => {
         const existing = readLease.get() as { owner_id?: string; expires_at?: number } | undefined;
-        if (existing?.owner_id && existing.owner_id !== ownerId && typeof existing.expires_at === "number" && existing.expires_at > timestamp) {
+        if (
+          existing?.owner_id &&
+          existing.owner_id !== ownerId &&
+          typeof existing.expires_at === "number" &&
+          existing.expires_at > timestamp
+        ) {
           setState("not_acquired");
           return { acquired: false, reason: "LEASE_HELD" };
         }
@@ -125,7 +130,9 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
     isOwner(): boolean {
       const timestamp = now();
       const existing = readLease.get() as { owner_id?: string; expires_at?: number } | undefined;
-      return existing?.owner_id === ownerId && typeof existing.expires_at === "number" && existing.expires_at > timestamp;
+      return (
+        existing?.owner_id === ownerId && typeof existing.expires_at === "number" && existing.expires_at > timestamp
+      );
     },
 
     startHeartbeat(): void {

@@ -1,4 +1,4 @@
-import { WagoInstanceAlreadyActiveError, type InstanceLeaseResult } from "../infrastructure/instance-lease.js";
+import { type InstanceLeaseResult, WagoInstanceAlreadyActiveError } from "../infrastructure/instance-lease.js";
 
 export type ApplicationLifecycleDeps = {
   acquireInstanceLease: () => InstanceLeaseResult;

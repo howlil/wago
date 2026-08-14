@@ -13,7 +13,12 @@ const unbound = {
 };
 const boundDisconnected = {
   status: "disconnected" as const,
-  binding: { state: "bound" as const, jid: "6281000000000@s.whatsapp.net", phone: "6281000000000", boundAt: "2026-08-14T00:00:00.000Z" },
+  binding: {
+    state: "bound" as const,
+    jid: "6281000000000@s.whatsapp.net",
+    phone: "6281000000000",
+    boundAt: "2026-08-14T00:00:00.000Z",
+  },
   accountHealth: { availability: "unavailable" as const, unavailableReason: "not_connected" as const },
 };
 
@@ -39,10 +44,18 @@ describe("gateway readiness", () => {
     const snapshot = getReadinessSnapshot({
       whatsapp: { ...boundDisconnected, status: "connected" },
       instanceLeaseState: "owned",
-      credentialPersistence: { status: "degraded", consecutiveFailures: 2, lastSuccessAt: null, lastFailureAt: "2026-08-14T00:00:00.000Z" },
+      credentialPersistence: {
+        status: "degraded",
+        consecutiveFailures: 2,
+        lastSuccessAt: null,
+        lastFailureAt: "2026-08-14T00:00:00.000Z",
+      },
     });
     expect(snapshot.status).toBe("degraded");
-    expect(snapshot.checks.credentialPersistence).toEqual({ status: "degraded", reason: "credential_persistence_failed" });
+    expect(snapshot.checks.credentialPersistence).toEqual({
+      status: "degraded",
+      reason: "credential_persistence_failed",
+    });
   });
 
   it("reports a bound disconnected WhatsApp session as degraded", () => {
@@ -52,7 +65,11 @@ describe("gateway readiness", () => {
   });
 
   it("reports core storage or instance ownership failure as not ready", () => {
-    const storageFailure = getReadinessSnapshot({ storage: { status: "not_ready", reason: "persistent_storage_unavailable" }, whatsapp: unbound, instanceLeaseState: "owned" });
+    const storageFailure = getReadinessSnapshot({
+      storage: { status: "not_ready", reason: "persistent_storage_unavailable" },
+      whatsapp: unbound,
+      instanceLeaseState: "owned",
+    });
     const ownershipFailure = getReadinessSnapshot({ whatsapp: unbound, instanceLeaseState: "lost" });
     expect(storageFailure.status).toBe("not_ready");
     expect(ownershipFailure.status).toBe("not_ready");

@@ -133,7 +133,12 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     };
   }
 
-  if (candidate && config.apiKeySource === "generated" && config.apiKeyHash && hashApiKey(candidate) === config.apiKeyHash) {
+  if (
+    candidate &&
+    config.apiKeySource === "generated" &&
+    config.apiKeyHash &&
+    hashApiKey(candidate) === config.apiKeyHash
+  ) {
     return { success: true, appId: config.appId, apiKey: candidate, recovered: true };
   }
 

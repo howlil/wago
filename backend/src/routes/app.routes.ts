@@ -63,7 +63,9 @@ appRouter.get("/info", (req, res) => {
 appRouter.post("/bootstrap", (req, res) => {
   const requestedApiKey = (req.body as { apiKey?: unknown } | undefined)?.apiKey;
   if (requestedApiKey !== undefined && typeof requestedApiKey !== "string") {
-    return res.status(400).json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a string when provided." });
+    return res
+      .status(400)
+      .json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a string when provided." });
   }
 
   const hasCredential = Boolean(config.apiKey || config.apiKeyHash);
@@ -133,14 +135,28 @@ appRouter.post("/bootstrap", (req, res) => {
 
 appRouter.post("/session", (req, res) => {
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
-    return res.status(403).json({ success: false, error: "INVALID_SESSION_ORIGIN", message: "Browser sign-in must come from the Wago dashboard origin." });
+    return res
+      .status(403)
+      .json({
+        success: false,
+        error: "INVALID_SESSION_ORIGIN",
+        message: "Browser sign-in must come from the Wago dashboard origin.",
+      });
   }
   const apiKey = (req.body as { apiKey?: unknown } | undefined)?.apiKey;
   if (typeof apiKey !== "string" || !apiKey.trim()) {
-    return res.status(400).json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a non-empty string." });
+    return res
+      .status(400)
+      .json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a non-empty string." });
   }
   if (!config.apiKey && !config.apiKeyHash) {
-    return res.status(409).json({ success: false, error: "GATEWAY_NOT_INITIALIZED", message: "Initialize the gateway before creating a browser session." });
+    return res
+      .status(409)
+      .json({
+        success: false,
+        error: "GATEWAY_NOT_INITIALIZED",
+        message: "Initialize the gateway before creating a browser session.",
+      });
   }
   if (!isApiKeyValid(apiKey.trim())) {
     return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
@@ -155,15 +171,32 @@ appRouter.post("/session", (req, res) => {
     title: "Browser session created",
     description: "The dashboard authenticated with the API key and received a separate browser session.",
   });
-  return res.json({ success: true, authenticated: true, expiresAt: new Date(session.expiresAt).toISOString(), message: "Browser session created." });
+  return res.json({
+    success: true,
+    authenticated: true,
+    expiresAt: new Date(session.expiresAt).toISOString(),
+    message: "Browser session created.",
+  });
 });
 
 appRouter.post("/api-key/rotate", (req, res) => {
   if (!requestHasValidBrowserSession(req)) {
-    return res.status(401).json({ success: false, error: "BROWSER_SESSION_REQUIRED", message: "API key rotation requires an authenticated Wago dashboard session." });
+    return res
+      .status(401)
+      .json({
+        success: false,
+        error: "BROWSER_SESSION_REQUIRED",
+        message: "API key rotation requires an authenticated Wago dashboard session.",
+      });
   }
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
-    return res.status(403).json({ success: false, error: "INVALID_ROTATION_ORIGIN", message: "API key rotation must come from the Wago dashboard origin." });
+    return res
+      .status(403)
+      .json({
+        success: false,
+        error: "INVALID_ROTATION_ORIGIN",
+        message: "API key rotation must come from the Wago dashboard origin.",
+      });
   }
 
   const currentToken = getBrowserSessionToken(req);
@@ -176,7 +209,8 @@ appRouter.post("/api-key/rotate", (req, res) => {
     category: "security",
     code: "gateway.api_key.rotated",
     title: "API key rotated",
-    description: "The machine API key was rotated, other dashboard sessions were revoked, and the current recovery session remains active.",
+    description:
+      "The machine API key was rotated, other dashboard sessions were revoked, and the current recovery session remains active.",
     metadata: { revokedBrowserSessions: revokedSessions },
   });
 
@@ -193,16 +227,34 @@ appRouter.post("/session/logout", (req, res) => {
   const token = getBrowserSessionToken(req);
   if (token) revokeBrowserSession(token);
   clearBrowserSessionCookie(res);
-  void recordActivity({ level: "info", category: "security", code: "gateway.browser_session.revoked", title: "Browser session ended", description: "The current dashboard browser session was revoked." });
+  void recordActivity({
+    level: "info",
+    category: "security",
+    code: "gateway.browser_session.revoked",
+    title: "Browser session ended",
+    description: "The current dashboard browser session was revoked.",
+  });
   return res.json({ success: true, authenticated: false, message: "Browser session ended." });
 });
 
 appRouter.post("/session/logout-all", (req, res) => {
   if (!requestHasValidBrowserSession(req)) {
-    return res.status(401).json({ success: false, error: "BROWSER_SESSION_REQUIRED", message: "Sign-out-all requires an authenticated Wago dashboard session." });
+    return res
+      .status(401)
+      .json({
+        success: false,
+        error: "BROWSER_SESSION_REQUIRED",
+        message: "Sign-out-all requires an authenticated Wago dashboard session.",
+      });
   }
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
-    return res.status(403).json({ success: false, error: "INVALID_SESSION_ORIGIN", message: "Dashboard session changes must come from the Wago dashboard origin." });
+    return res
+      .status(403)
+      .json({
+        success: false,
+        error: "INVALID_SESSION_ORIGIN",
+        message: "Dashboard session changes must come from the Wago dashboard origin.",
+      });
   }
 
   const revokedSessions = revokeAllBrowserSessions();
@@ -212,8 +264,14 @@ appRouter.post("/session/logout-all", (req, res) => {
     category: "security",
     code: "gateway.browser_sessions.revoked_all",
     title: "All browser sessions ended",
-    description: "Every dashboard browser session was revoked. Machine API credentials and WhatsApp auth were not changed.",
+    description:
+      "Every dashboard browser session was revoked. Machine API credentials and WhatsApp auth were not changed.",
     metadata: { revokedBrowserSessions: revokedSessions },
   });
-  return res.json({ success: true, authenticated: false, revokedBrowserSessions: revokedSessions, message: "All browser sessions ended." });
+  return res.json({
+    success: true,
+    authenticated: false,
+    revokedBrowserSessions: revokedSessions,
+    message: "All browser sessions ended.",
+  });
 });

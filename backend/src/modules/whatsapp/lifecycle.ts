@@ -432,7 +432,8 @@ export async function resumeWhatsAppSession(): Promise<void> {
       category: "connection",
       code: "baileys.session.resume_failed",
       title: "WhatsApp session resume failed",
-      description: "Persisted Baileys authentication could not be resumed. The dashboard remains available for an explicit rebind.",
+      description:
+        "Persisted Baileys authentication could not be resumed. The dashboard remains available for an explicit rebind.",
       metadata: { errorName: error instanceof Error ? error.name : "UNKNOWN" },
     });
   }

@@ -37,7 +37,10 @@ export function inspectDataMount(mountInfo: string, dataDirectory: string): Data
     if (separatorIndex === -1) continue;
 
     const left = line.slice(0, separatorIndex).trim().split(/\s+/);
-    const right = line.slice(separatorIndex + 3).trim().split(/\s+/);
+    const right = line
+      .slice(separatorIndex + 3)
+      .trim()
+      .split(/\s+/);
     if (left.length < 5 || right.length < 1) continue;
 
     const mountPoint = resolve(decodeMountInfoPath(left[4] ?? "/"));
@@ -60,11 +63,9 @@ export function inspectDataMount(mountInfo: string, dataDirectory: string): Data
   };
 }
 
-export function assertPersistentDataMount(options: {
-  nodeEnv?: string;
-  dataDirectory?: string;
-  mountInfoPath?: string;
-} = {}): DataMountInspection {
+export function assertPersistentDataMount(
+  options: { nodeEnv?: string; dataDirectory?: string; mountInfoPath?: string } = {},
+): DataMountInspection {
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV;
   const dataDirectory = options.dataDirectory ?? configuredDataDirectory;
 
