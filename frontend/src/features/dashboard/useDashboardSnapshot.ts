@@ -54,6 +54,7 @@ export function useDashboardSnapshot() {
 
   const isRefreshInFlight = useRef(false);
   const isReadinessRefreshInFlight = useRef(false);
+  const readinessGeneration = useRef(0);
   const pollTimer = useRef<number | null>(null);
   const statusRef = useRef<WhatsAppStatus>("disconnected");
 
@@ -84,16 +85,27 @@ export function useDashboardSnapshot() {
     setQrImage(null);
   }, [updateStatus]);
 
+  const invalidateReadiness = useCallback(() => {
+    readinessGeneration.current += 1;
+    setReadiness(null);
+  }, []);
+
   const refreshReadiness = useCallback(async () => {
     if (isReadinessRefreshInFlight.current) {
       return;
     }
 
+    const generation = readinessGeneration.current;
     isReadinessRefreshInFlight.current = true;
     try {
-      setReadiness(await getReadiness());
+      const nextReadiness = await getReadiness();
+      if (generation === readinessGeneration.current) {
+        setReadiness(nextReadiness);
+      }
     } catch {
-      setReadiness(null);
+      if (generation === readinessGeneration.current) {
+        setReadiness(null);
+      }
     } finally {
       isReadinessRefreshInFlight.current = false;
     }
@@ -120,13 +132,13 @@ export function useDashboardSnapshot() {
           setHealth(backendHealthy ? "ok" : "error");
 
           if (!backendHealthy) {
-            setReadiness(null);
+            invalidateReadiness();
             clearWhatsAppView();
             return;
           }
         } catch {
           setHealth("error");
-          setReadiness(null);
+          invalidateReadiness();
           clearWhatsAppView();
           return;
         }
@@ -166,7 +178,7 @@ export function useDashboardSnapshot() {
         }
       }
     },
-    [clearWhatsAppView, loadAppInfo, refreshReadiness, updateStatus],
+    [clearWhatsAppView, invalidateReadiness, loadAppInfo, refreshReadiness, updateStatus],
   );
 
   useEffect(() => {
