@@ -268,6 +268,7 @@ Commit only after response-contract tests and frontend build are green.
 - Every normal dashboard refresh triggers a best-effort readiness refresh.
 - Readiness failure or slowness must not block `getAppInfo`, WhatsApp status, QR, or the next main dashboard refresh.
 - At most one readiness request should be in flight at a time to avoid request pile-up.
+- A stale readiness request must not overwrite `readiness = null` after a later health failure invalidates that request.
 
 - [ ] **Step 3.1: RED — prove a hanging readiness request does not block the main snapshot**
 
@@ -285,7 +286,11 @@ After mounting `useDashboardSnapshot()`, assert—without resolving readiness—
 
 Also call `result.current.refresh({ showLoading: false })` while readiness is still unresolved and assert `getReadiness` has not spawned an additional overlapping request.
 
-- [ ] **Step 3.2: Verify RED**
+- [ ] **Step 3.2: RED — prove stale readiness cannot overwrite a later health failure**
+
+While the first readiness promise is unresolved, make the next `getHealth()` call fail and call `refresh({ showLoading: false })`. Assert `readiness` is `null`. Resolve the old readiness promise afterward and assert `readiness` remains `null`.
+
+- [ ] **Step 3.3: Verify RED**
 
 Run:
 
@@ -293,14 +298,24 @@ Run:
 pnpm --dir frontend test -- tests/dashboard-readiness-snapshot.test.tsx
 ```
 
-Expected: current implementation fails because the main refresh waits on the unresolved readiness promise.
+Expected: current implementation fails because the main refresh waits on the unresolved readiness promise and has no stale-result guard.
 
-- [ ] **Step 3.3: GREEN — extract a best-effort readiness refresh inside the hook**
+- [ ] **Step 3.4: GREEN — extract a best-effort readiness refresh with in-flight and generation guards**
 
-Add one ref:
+Add refs:
 
 ```ts
 const isReadinessRefreshInFlight = useRef(false);
+const readinessGeneration = useRef(0);
+```
+
+Add an invalidation helper:
+
+```ts
+const invalidateReadiness = useCallback(() => {
+  readinessGeneration.current += 1;
+  setReadiness(null);
+}, []);
 ```
 
 Add a focused callback:
@@ -308,11 +323,19 @@ Add a focused callback:
 ```ts
 const refreshReadiness = useCallback(async () => {
   if (isReadinessRefreshInFlight.current) return;
+
+  const generation = ++readinessGeneration.current;
   isReadinessRefreshInFlight.current = true;
+
   try {
-    setReadiness(await getReadiness());
+    const nextReadiness = await getReadiness();
+    if (generation === readinessGeneration.current) {
+      setReadiness(nextReadiness);
+    }
   } catch {
-    setReadiness(null);
+    if (generation === readinessGeneration.current) {
+      setReadiness(null);
+    }
   } finally {
     isReadinessRefreshInFlight.current = false;
   }
@@ -327,9 +350,9 @@ void refreshReadiness();
 
 Then continue immediately to `loadAppInfo()` and WhatsApp snapshot work.
 
-If backend health fails, keep the current behavior that clears readiness to `null`.
+When backend health is unhealthy or throws, call `invalidateReadiness()` before clearing the WhatsApp view. This invalidates completion from an older readiness request.
 
-- [ ] **Step 3.4: Verify scheduling semantics**
+- [ ] **Step 3.5: Verify scheduling semantics**
 
 Run:
 
@@ -342,9 +365,10 @@ Expected:
 - no `setInterval` owned by readiness/banner;
 - main dashboard state progresses while readiness is unresolved;
 - only one readiness request is in flight;
-- readiness eventually updates when its promise resolves.
+- readiness eventually updates when a current request resolves;
+- stale readiness completion cannot overwrite a later health failure.
 
-- [ ] **Step 3.5: Checkpoint commit**
+- [ ] **Step 3.6: Checkpoint commit**
 
 Commit only after focused dashboard tests and build are green.
 
@@ -509,12 +533,13 @@ bash scripts/smoke-container.sh
 
 - [ ] Create a new checkpoint file rather than rewriting history:
 
-`/.agent/checkpoints/2026-08-15-post-refactor-audit-cleanup-verification.md`
+`.agent/checkpoints/2026-08-15-post-refactor-audit-cleanup-verification.md`
 
 The checkpoint must record the actual final SHA and explicitly state:
 - Access and WhatsApp routes now have canonical module ownership;
 - readiness rejects non-JSON/malformed allowed-status responses;
 - readiness refresh is best-effort and cannot block the main dashboard snapshot;
+- stale readiness responses cannot overwrite a later health failure;
 - production dependency direction is one-way `WhatsApp -> Messages`, with no `Messages -> WhatsApp` import;
 - full tests/build/container/CodeQL are green;
 - PR #37 remains draft/unmerged until explicit user authorization.
