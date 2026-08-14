@@ -18,6 +18,7 @@ describe("database migrations", () => {
       { version: 4 },
       { version: 5 },
       { version: 6 },
+      { version: 7 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -49,6 +50,14 @@ describe("database migrations", () => {
     expect(webhookSettingsColumns.map((column) => column.name)).toEqual(
       expect.arrayContaining(["id", "enabled", "url", "secret", "previous_secret", "created_at", "updated_at"]),
     );
+
+    const instanceLeaseColumns = database.prepare("PRAGMA table_info(gateway_instance_lease)").all() as Array<{
+      name: string;
+    }>;
+    expect(instanceLeaseColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(["id", "owner_id", "acquired_at", "heartbeat_at", "expires_at"]),
+    );
+
     database.close();
   });
 });

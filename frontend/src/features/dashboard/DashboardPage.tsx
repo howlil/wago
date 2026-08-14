@@ -10,6 +10,7 @@ import { RecipientAccessCard } from "../recipients/RecipientAccessCard.js";
 import { AccountHealthCard } from "../whatsapp/AccountHealthCard.js";
 import { RebindSessionDialog } from "../whatsapp/RebindSessionDialog.js";
 import { WhatsAppBindingCard } from "../whatsapp/WhatsAppBindingCard.js";
+import { OperationalReadinessBanner } from "./OperationalReadinessBanner.js";
 import { OverviewCards } from "./OverviewCards.js";
 import { useDashboardController } from "./useDashboardController.js";
 
@@ -19,15 +20,9 @@ const statusLabel: Record<WhatsAppStatus, string> = {
   connected: "Connected",
   disconnected: "Disconnected",
 };
-
 function getHeaderStatus(health: BackendHealthState, status: WhatsAppStatus) {
-  if (health === "error") {
-    return { label: "Backend offline", tone: "danger" as const };
-  }
-  if (health === "checking") {
-    return { label: "Checking", tone: "neutral" as const };
-  }
-
+  if (health === "error") return { label: "Backend offline", tone: "danger" as const };
+  if (health === "checking") return { label: "Checking", tone: "neutral" as const };
   return {
     label: statusLabel[status],
     tone:
@@ -43,7 +38,6 @@ export function DashboardPage() {
   const dashboard = useDashboardController();
   const activeQrImage = dashboard.hasQr && dashboard.status !== "connected" ? dashboard.qrImage : null;
   const headerStatus = getHeaderStatus(dashboard.health, dashboard.status);
-
   return (
     <AppShell
       title="Control"
@@ -56,8 +50,8 @@ export function DashboardPage() {
       refreshLabel="Refresh status"
     >
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
+      <OperationalReadinessBanner />
       <NoticeBanner notice={dashboard.notice} />
-
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid min-w-0 content-start gap-4">
           <WhatsAppBindingCard
@@ -74,7 +68,6 @@ export function DashboardPage() {
             onPair={() => void dashboard.handlePair()}
             onChangeAccount={dashboard.openRebindDialog}
           />
-
           <SendMessageCard
             status={dashboard.status}
             phone={dashboard.phone}
@@ -87,11 +80,9 @@ export function DashboardPage() {
             onSubmit={dashboard.handleSubmit}
             onAllowAndSend={dashboard.allowAndSend}
           />
-
           {dashboard.lastMessage ? (
             <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
           ) : null}
-
           <RecipientAccessCard
             enabled={dashboard.isAuthenticated}
             refreshKey={dashboard.recipientRefreshKey}
@@ -99,13 +90,15 @@ export function DashboardPage() {
             onAllowed={dashboard.handleRecipientAllowed}
           />
         </div>
-
         <div className="grid min-w-0 content-start gap-4">
           <GatewayCredentialsCard
             appId={dashboard.appId}
             apiKeyConfigured={dashboard.apiKeyConfigured}
             apiKeySource={dashboard.apiKeySource}
             apiKeyInput={dashboard.apiKeyInput}
+            setupTokenInput={dashboard.setupTokenInput}
+            setupTokenRequired={dashboard.setupTokenRequired}
+            webBootstrapEnabled={dashboard.webBootstrapEnabled}
             credentialSetupRequired={dashboard.credentialSetupRequired}
             isAuthenticated={dashboard.isAuthenticated}
             showApiKey={dashboard.showApiKey}
@@ -113,16 +106,18 @@ export function DashboardPage() {
             credentialHint={dashboard.credentialHint}
             isSigningIn={dashboard.isSigningIn}
             isSigningOut={dashboard.isSigningOut}
+            isSigningOutAll={dashboard.isSigningOutAll}
             isRotatingApiKey={dashboard.isRotatingApiKey}
             onApiKeyChange={dashboard.setApiKeyInput}
+            onSetupTokenChange={dashboard.setSetupTokenInput}
             onToggleApiKey={dashboard.toggleApiKey}
             onCopyAppId={dashboard.copyAppId}
             onCopyApiKey={dashboard.copyApiKey}
             onSignIn={() => void dashboard.handleSignIn()}
             onSignOut={() => void dashboard.handleSignOut()}
+            onSignOutAll={() => void dashboard.handleSignOutAll()}
             onRotateApiKey={dashboard.openApiKeyRotationDialog}
           />
-
           {dashboard.isAuthenticated ? (
             <AccountHealthCard accountHealth={dashboard.accountHealth} />
           ) : (
@@ -135,14 +130,12 @@ export function DashboardPage() {
           )}
         </div>
       </div>
-
       <RotateApiKeyDialog
         isOpen={dashboard.isApiKeyRotationDialogOpen}
         isRotating={dashboard.isRotatingApiKey}
         onCancel={dashboard.closeApiKeyRotationDialog}
         onConfirm={() => void dashboard.handleRotateApiKey()}
       />
-
       <RebindSessionDialog
         isOpen={dashboard.isRebindDialogOpen}
         isRebinding={dashboard.isRebinding}

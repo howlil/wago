@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { resolve } from "node:path";
 import { getDatabase } from "../infrastructure/database.js";
 import { createWebhookSettingsStore } from "../webhooks/settings-store.js";
@@ -6,6 +6,8 @@ import { dataDirectory, nodeEnv } from "./runtime-paths.js";
 import { parseDeliveryWebhookConfig } from "./webhook-config.js";
 
 const envApiKey = process.env.API_KEY?.trim();
+const rawSetupToken = process.env.SETUP_TOKEN?.trim();
+const envSetupToken = rawSetupToken && Buffer.byteLength(rawSetupToken, "utf8") >= 32 ? rawSetupToken : null;
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 
 type ApiKeySource = "env" | "generated" | "unset";
@@ -57,10 +59,7 @@ function readSettings(): PersistedSettings | null {
     | { app_id?: string; api_key_hash?: string | null; generated_at?: string | null }
     | undefined;
 
-  if (!row?.app_id) {
-    return null;
-  }
-
+  if (!row?.app_id) return null;
   return {
     appId: row.app_id,
     apiKeyHash: row.api_key_hash ?? null,
@@ -80,21 +79,22 @@ export function hashApiKey(apiKey: string): string {
   return createHash("sha256").update(apiKey).digest("hex");
 }
 
+function hashSecret(secret: string): Buffer {
+  return createHash("sha256").update(secret).digest();
+}
+
 const persistedSettings = readSettings();
 const initialAppId = persistedSettings?.appId ?? `wa-gateway-${randomUUID().slice(0, 8)}`;
 const persistedApiKeyHash = persistedSettings?.apiKeyHash ?? null;
 
 if (!persistedSettings) {
-  writeSettings({
-    appId: initialAppId,
-    apiKeyHash: null,
-    generatedAt: null,
-  });
+  writeSettings({ appId: initialAppId, apiKeyHash: null, generatedAt: null });
 }
 
 export const config = {
   appId: initialAppId,
-  allowWebBootstrap: !envApiKey && !persistedApiKeyHash,
+  allowWebBootstrap: !envApiKey && !persistedApiKeyHash && (nodeEnv !== "production" || Boolean(envSetupToken)),
+  setupToken: envSetupToken as string | null,
   apiKey: envApiKey || null,
   apiKeyHash: envApiKey ? null : persistedApiKeyHash,
   apiKeySource: (envApiKey ? "env" : persistedApiKeyHash ? "generated" : "unset") as ApiKeySource,
@@ -105,7 +105,6 @@ export const config = {
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
   dataDirectory,
-  // Startup compatibility snapshot only. Runtime webhook delivery reads SQLite.
   deliveryWebhookEnabled: legacyDeliveryWebhook.enabled,
   deliveryWebhookUrl: legacyDeliveryWebhook.url,
   deliveryWebhookSecret: legacyDeliveryWebhook.secret,
@@ -117,6 +116,11 @@ export const config = {
   defaultCountryCode: "62",
   logLevel: nodeEnv === "production" ? "info" : "debug",
 };
+
+export function isSetupTokenValid(candidate: string): boolean {
+  if (!config.setupToken || !candidate) return false;
+  return timingSafeEqual(hashSecret(candidate), hashSecret(config.setupToken));
+}
 
 export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult {
   const candidate = requestedApiKey?.trim();
@@ -135,12 +139,7 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     config.apiKeyHash &&
     hashApiKey(candidate) === config.apiKeyHash
   ) {
-    return {
-      success: true,
-      appId: config.appId,
-      apiKey: candidate,
-      recovered: true,
-    };
+    return { success: true, appId: config.appId, apiKey: candidate, recovered: true };
   }
 
   if (config.apiKey || config.apiKeyHash) {
@@ -154,23 +153,13 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
   const apiKey = candidate || generateApiKey();
   const apiKeyHash = hashApiKey(apiKey);
 
-  writeSettings({
-    appId: config.appId,
-    apiKeyHash,
-    generatedAt: new Date().toISOString(),
-  });
-
+  writeSettings({ appId: config.appId, apiKeyHash, generatedAt: new Date().toISOString() });
   config.apiKey = null;
   config.apiKeyHash = apiKeyHash;
   config.apiKeySource = "generated";
   config.allowWebBootstrap = false;
 
-  return {
-    success: true,
-    appId: config.appId,
-    apiKey,
-    recovered: false,
-  };
+  return { success: true, appId: config.appId, apiKey, recovered: false };
 }
 
 export function rotateGeneratedApiKey(): ApiKeyRotationResult {
@@ -193,30 +182,17 @@ export function rotateGeneratedApiKey(): ApiKeyRotationResult {
   const apiKey = generateApiKey();
   const apiKeyHash = hashApiKey(apiKey);
   const generatedAt = new Date().toISOString();
-
-  writeSettings({
-    appId: config.appId,
-    apiKeyHash,
-    generatedAt,
-  });
+  writeSettings({ appId: config.appId, apiKeyHash, generatedAt });
 
   config.apiKey = null;
   config.apiKeyHash = apiKeyHash;
   config.apiKeySource = "generated";
   config.allowWebBootstrap = false;
 
-  return {
-    success: true,
-    apiKey,
-    generatedAt,
-  };
+  return { success: true, apiKey, generatedAt };
 }
 
 export function resetPersistedSettingsForTest(): void {
   database.prepare("DELETE FROM app_settings").run();
-  writeSettings({
-    appId: config.appId,
-    apiKeyHash: null,
-    generatedAt: null,
-  });
+  writeSettings({ appId: config.appId, apiKeyHash: null, generatedAt: null });
 }

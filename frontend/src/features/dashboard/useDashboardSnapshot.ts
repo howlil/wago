@@ -37,6 +37,8 @@ export function useDashboardSnapshot() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
   const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
+  const [setupTokenRequired, setSetupTokenRequired] = useState(false);
+  const [webBootstrapEnabled, setWebBootstrapEnabled] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [status, setStatus] = useState<WhatsAppStatus>("disconnected");
   const [binding, setBinding] = useState<WhatsAppBinding>(unboundBinding);
@@ -61,6 +63,8 @@ export function useDashboardSnapshot() {
     setApiKeyConfigured(info.apiKeyConfigured);
     setApiKeySource(info.apiKeySource);
     setCredentialSetupRequired(info.credentialSetupRequired);
+    setSetupTokenRequired(Boolean(info.setupTokenRequired));
+    setWebBootstrapEnabled(info.webBootstrapEnabled ?? true);
     setIsAuthenticated(info.authenticated);
 
     return info;
@@ -211,6 +215,7 @@ export function useDashboardSnapshot() {
     setApiKeyConfigured(true);
     setApiKeySource("generated");
     setCredentialSetupRequired(false);
+    setSetupTokenRequired(false);
     setIsAuthenticated(true);
   }, []);
 
@@ -231,6 +236,8 @@ export function useDashboardSnapshot() {
     apiKeyConfigured,
     apiKeySource,
     credentialSetupRequired,
+    setupTokenRequired,
+    webBootstrapEnabled,
     isAuthenticated,
     status,
     binding,

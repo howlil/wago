@@ -14,6 +14,8 @@ export type AppInfoResponse = {
   authenticated: boolean;
   credentialSetupRequired: boolean;
   setupRequired: boolean;
+  setupTokenRequired?: boolean;
+  webBootstrapEnabled?: boolean;
 };
 
 export type BootstrapAppResponse =
@@ -36,6 +38,7 @@ export type BrowserSessionResponse =
       success: true;
       authenticated: boolean;
       expiresAt?: string;
+      revokedBrowserSessions?: number;
       message: string;
     }
   | {
@@ -49,6 +52,7 @@ export type ApiKeyRotationResponse =
       success: true;
       apiKey: string;
       generatedAt: string;
+      revokedBrowserSessions?: number;
       message: string;
     }
   | {
@@ -260,11 +264,12 @@ export function getAppInfo(): Promise<AppInfoResponse> {
   return requestJson<AppInfoResponse>("/app/info");
 }
 
-export function bootstrapApp(candidate: string): Promise<BootstrapAppResponse> {
+export function bootstrapApp(candidate: string, setupToken?: string): Promise<BootstrapAppResponse> {
   return requestJson<BootstrapAppResponse>("/app/bootstrap", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(setupToken ? { "X-Wago-Setup-Token": setupToken } : {}),
     },
     body: JSON.stringify({ apiKey: candidate }),
   });
@@ -288,6 +293,12 @@ export function rotateApiKey(): Promise<ApiKeyRotationResponse> {
 
 export function logoutBrowserSession(): Promise<BrowserSessionResponse> {
   return requestJson<BrowserSessionResponse>("/app/session/logout", {
+    method: "POST",
+  });
+}
+
+export function logoutAllBrowserSessions(): Promise<BrowserSessionResponse> {
+  return requestJson<BrowserSessionResponse>("/app/session/logout-all", {
     method: "POST",
   });
 }

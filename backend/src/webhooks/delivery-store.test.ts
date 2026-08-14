@@ -86,6 +86,51 @@ describe("webhook delivery store", () => {
     expect(restartedStore.claimDue(NOW + WEBHOOK_CLAIM_TIMEOUT_MS + 1)).toHaveLength(1);
   });
 
+  it("preserves the delivery id and signed payload identity across retry and manual redelivery", () => {
+    const store = createWebhookDeliveryStore(database);
+    const queued = store.enqueue(envelope("delivery-1"), NOW + WEBHOOK_DELIVERY_HORIZON_MS);
+    const originalPayload = queued.payloadJson;
+
+    const firstAttempt = store.claimDue(NOW)[0];
+    expect(firstAttempt).toMatchObject({ id: "delivery-1", payloadJson: originalPayload });
+
+    const retry = store.completeAttempt(
+      "delivery-1",
+      {
+        ok: false,
+        retryable: true,
+        statusCode: 503,
+        errorCode: "WEBHOOK_HTTP_SERVER_ERROR",
+      },
+      NOW + 100,
+      () => 0.5,
+    );
+    expect(retry).toMatchObject({ id: "delivery-1", payloadJson: originalPayload, status: "pending" });
+
+    store.claimDue(NOW + 5_100);
+    store.completeAttempt(
+      "delivery-1",
+      {
+        ok: false,
+        retryable: false,
+        statusCode: 401,
+        errorCode: "WEBHOOK_HTTP_CLIENT_ERROR",
+      },
+      NOW + 5_200,
+    );
+
+    const redelivery = store.redeliver("delivery-1", NOW + 10_000);
+    expect(redelivery.kind).toBe("queued");
+    if (redelivery.kind !== "queued") throw new Error("Expected queued redelivery");
+    expect(redelivery.delivery).toMatchObject({
+      id: "delivery-1",
+      payloadJson: originalPayload,
+      status: "pending",
+      attemptCount: 0,
+      redeliveryCount: 1,
+    });
+  });
+
   it("marks permanent failures and supports manual redelivery with a fresh horizon", () => {
     const store = createWebhookDeliveryStore(database);
     store.enqueue(envelope("delivery-1"), NOW + WEBHOOK_DELIVERY_HORIZON_MS);

@@ -15,7 +15,6 @@ import { webhookRouter } from "./routes/webhook.routes.js";
 import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();
-
 app.set("trust proxy", config.trustProxy ? 1 : false);
 app.use(
   helmet({
@@ -32,12 +31,10 @@ app.use(
 );
 app.use(express.json({ limit: config.bodyLimit }));
 app.use(requestLogger);
-
 app.use((req, res, next) => {
   const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
   const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
   const origin = req.header("origin");
-
   if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && !requestHasSameOrigin(req)) {
     return res.status(403).json({
       success: false,
@@ -45,18 +42,14 @@ app.use((req, res, next) => {
       message: "Cookie-authenticated requests must come from the Wago origin",
     });
   }
-
   return next();
 });
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
-});
-
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/ready", (_req, res) => {
-  res.json(getReadinessSnapshot());
+  const snapshot = getReadinessSnapshot();
+  return res.status(snapshot.status === "not_ready" ? 503 : 200).json(snapshot);
 });
-
 app.use("/app", appRouter);
 app.use("/activity", activityRouter);
 app.use("/recipients", recipientRouter);
@@ -65,12 +58,8 @@ app.use("/messages", messageRouter);
 app.use("/webhooks", webhookRouter);
 
 const frontendDirectory = config.frontendDirectory;
-
 if (frontendDirectory && existsSync(frontendDirectory)) {
   app.use(express.static(frontendDirectory));
-  app.get(/.*/, (_req, res) => {
-    res.sendFile(join(frontendDirectory, "index.html"));
-  });
+  app.get(/.*/, (_req, res) => res.sendFile(join(frontendDirectory, "index.html")));
 }
-
 app.use(errorHandler);

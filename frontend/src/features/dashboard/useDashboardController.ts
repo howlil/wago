@@ -3,6 +3,7 @@ import {
   bootstrapApp,
   createApiKeyCandidate,
   createBrowserSession,
+  logoutAllBrowserSessions,
   logoutBrowserSession,
   pairWhatsApp,
   rebindWhatsApp,
@@ -17,27 +18,26 @@ import { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 export function useDashboardController() {
   const snapshot = useDashboardSnapshot();
   const [apiKeyInput, setApiKeyInput] = useState("");
+  const [setupTokenInput, setSetupTokenInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [isRebinding, setIsRebinding] = useState(false);
   const [isPairing, setIsPairing] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isSigningOutAll, setIsSigningOutAll] = useState(false);
   const [isRotatingApiKey, setIsRotatingApiKey] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
   const [isApiKeyRotationDialogOpen, setIsApiKeyRotationDialogOpen] = useState(false);
-
   const { copiedField, copy } = useClipboard<Exclude<CopiedField, null>>({
     onError: (message) => setNotice({ type: "error", message }),
   });
-
   const messaging = useMessageComposer({
     isAuthenticated: snapshot.isAuthenticated,
     status: snapshot.status,
     onNotice: setNotice,
     onAfterMutation: () => snapshot.refresh({ showLoading: false }),
   });
-
   const pairingInProgress =
     snapshot.isAuthenticated &&
     snapshot.binding.state === "unbound" &&
@@ -50,35 +50,42 @@ export function useDashboardController() {
       setNotice({ type: "error", message: "Backend is unavailable. Start the backend, then try pairing again." });
       return;
     }
-
+    if (snapshot.credentialSetupRequired && !snapshot.webBootstrapEnabled) {
+      setNotice({
+        type: "error",
+        message: "First-run web setup is disabled. Configure SETUP_TOKEN on the Wago deployment first.",
+      });
+      return;
+    }
+    if (snapshot.setupTokenRequired && !setupTokenInput.trim()) {
+      setNotice({ type: "error", message: "Enter the deployment setup token before first pairing." });
+      return;
+    }
     setIsPairing(true);
     setNotice(null);
-
     try {
       if (!snapshot.isAuthenticated) {
         if (!snapshot.credentialSetupRequired) {
           setNotice({ type: "error", message: "Sign in with the existing API key before managing WhatsApp binding." });
           return;
         }
-
         const candidate = createApiKeyCandidate();
-
         try {
-          const result = await bootstrapApp(candidate);
-
+          const result = await bootstrapApp(
+            candidate,
+            snapshot.setupTokenRequired ? setupTokenInput.trim() : undefined,
+          );
           if (!result.success) {
             setNotice({ type: "error", message: result.message });
             return;
           }
-
+          setSetupTokenInput("");
           setApiKeyInput(result.apiKey);
           snapshot.applyBootstrap(result);
         } catch (error) {
           const apiError = error as { message?: string; error?: string };
-
           if (apiError.error === "APP_ALREADY_INITIALIZED") {
             const info = await snapshot.loadAppInfo().catch(() => null);
-
             if (!info?.authenticated) {
               setNotice({
                 type: "error",
@@ -95,14 +102,11 @@ export function useDashboardController() {
           }
         }
       }
-
       const result = await pairWhatsApp();
-
       if (!result.success) {
         setNotice({ type: "error", message: result.message });
         return;
       }
-
       snapshot.updateStatus(result.status);
       setNotice({
         type: "success",
@@ -124,32 +128,25 @@ export function useDashboardController() {
 
   async function handleSignIn() {
     const candidate = apiKeyInput.trim();
-
     if (!candidate) {
       setNotice({ type: "error", message: "Enter the API key first." });
       return;
     }
-
     setIsSigningIn(true);
     setNotice(null);
-
     try {
       const result = await createBrowserSession(candidate);
-
       if (!result.success) {
         setNotice({ type: "error", message: result.message });
         return;
       }
-
       setApiKeyInput("");
       setShowApiKey(false);
       const info = await snapshot.loadAppInfo();
-
       if (!info.authenticated) {
         setNotice({ type: "error", message: "The backend did not establish a browser session." });
         return;
       }
-
       setNotice({ type: "success", message: "Signed in. The API key was not stored in this browser." });
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
@@ -163,7 +160,6 @@ export function useDashboardController() {
   async function handleSignOut() {
     setIsSigningOut(true);
     setNotice(null);
-
     try {
       await logoutBrowserSession();
       setApiKeyInput("");
@@ -179,29 +175,46 @@ export function useDashboardController() {
     }
   }
 
+  async function handleSignOutAll() {
+    setIsSigningOutAll(true);
+    setNotice(null);
+    try {
+      await logoutAllBrowserSessions();
+      setApiKeyInput("");
+      setShowApiKey(false);
+      setIsApiKeyRotationDialogOpen(false);
+      await snapshot.refresh({ showLoading: true });
+      setNotice({
+        type: "success",
+        message: "All dashboard sessions were revoked. Machine API clients and WhatsApp auth are unchanged.",
+      });
+    } catch (error) {
+      const apiError = error as { message?: string; error?: string };
+      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to sign out all sessions" });
+    } finally {
+      setIsSigningOutAll(false);
+    }
+  }
+
   async function handleRotateApiKey() {
     if (!snapshot.isAuthenticated || snapshot.apiKeySource !== "generated") {
       setNotice({ type: "error", message: "Only generated API keys can be rotated from the dashboard." });
       return;
     }
-
     setIsRotatingApiKey(true);
     setNotice(null);
-
     try {
       const result = await rotateApiKey();
-
       if (!result.success) {
         setNotice({ type: "error", message: result.message });
         return;
       }
-
       setApiKeyInput(result.apiKey);
       setShowApiKey(true);
       setIsApiKeyRotationDialogOpen(false);
       setNotice({
         type: "success",
-        message: "API key rotated. Save it now and update every external REST client; the previous key is invalid.",
+        message: `API key rotated and ${result.revokedBrowserSessions} other dashboard session(s) revoked. Save the new key now.`,
       });
     } catch (error) {
       const apiError = error as { message?: string; error?: string };
@@ -214,15 +227,12 @@ export function useDashboardController() {
   async function handleRebind() {
     setIsRebinding(true);
     setNotice(null);
-
     try {
       const result = await rebindWhatsApp();
-
       if (!result.success) {
         setNotice({ type: "error", message: result.message });
         return;
       }
-
       snapshot.resetBinding(result.status);
       setNotice({ type: "success", message: "Previous account unbound. Scan the new QR when it appears." });
       setIsRebindDialogOpen(false);
@@ -239,13 +249,12 @@ export function useDashboardController() {
   }
 
   const credentialHint = snapshot.credentialSetupRequired
-    ? "Generated once when first pairing starts. Save it for API clients and browser recovery."
+    ? "Generated once after authorized first pairing. Save it for API clients and browser recovery."
     : snapshot.isAuthenticated && apiKeyInput
       ? "Shown once. Save this API key now; Wago does not persist it in browser storage."
       : snapshot.isAuthenticated
         ? "Dashboard access uses a separate secure browser session. API keys remain for external REST clients."
         : "Enter the existing API key once to create a browser session. It will not be stored in this browser.";
-
   const connectionDescription =
     snapshot.health === "error"
       ? "Backend is unavailable. In local development, make sure the backend is running on port 3000."
@@ -264,7 +273,6 @@ export function useDashboardController() {
               : snapshot.status === "connecting"
                 ? "Preparing a new WhatsApp pairing session."
                 : "No WhatsApp account is bound to this gateway yet.";
-
   const pairButtonLabel = isPairing
     ? "Preparing QR"
     : pairingInProgress
@@ -279,6 +287,8 @@ export function useDashboardController() {
     apiKeyConfigured: snapshot.apiKeyConfigured,
     apiKeySource: snapshot.apiKeySource,
     credentialSetupRequired: snapshot.credentialSetupRequired,
+    setupTokenRequired: snapshot.setupTokenRequired,
+    webBootstrapEnabled: snapshot.webBootstrapEnabled,
     isAuthenticated: snapshot.isAuthenticated,
     status: snapshot.status,
     binding: snapshot.binding,
@@ -288,6 +298,7 @@ export function useDashboardController() {
     isRefreshing: snapshot.isRefreshing,
     refresh: snapshot.refresh,
     apiKeyInput,
+    setupTokenInput,
     showApiKey,
     copiedField,
     notice,
@@ -295,6 +306,7 @@ export function useDashboardController() {
     isPairing,
     isSigningIn,
     isSigningOut,
+    isSigningOutAll,
     isRotatingApiKey,
     isRebindDialogOpen,
     isApiKeyRotationDialogOpen,
@@ -312,12 +324,14 @@ export function useDashboardController() {
     connectionDescription,
     pairButtonLabel,
     setApiKeyInput,
+    setSetupTokenInput,
     toggleApiKey: () => setShowApiKey((value) => !value),
     copyAppId: () => void copy(snapshot.appId, "appId"),
     copyApiKey: () => void copy(apiKeyInput, "apiKey"),
     handlePair,
     handleSignIn,
     handleSignOut,
+    handleSignOutAll,
     handleRotateApiKey,
     handleRebind,
     openRebindDialog: () => setIsRebindDialogOpen(true),

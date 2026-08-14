@@ -1,18 +1,9 @@
 import { AlertTriangle, KeyRound, Loader2, X } from "lucide-react";
 import { dangerButtonClass, secondaryButtonClass } from "../../shared/ui/classes.js";
 
-type RotateApiKeyDialogProps = {
-  isOpen: boolean;
-  isRotating: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-};
-
+type RotateApiKeyDialogProps = { isOpen: boolean; isRotating: boolean; onCancel: () => void; onConfirm: () => void };
 export function RotateApiKeyDialog({ isOpen, isRotating, onCancel, onConfirm }: RotateApiKeyDialogProps) {
-  if (!isOpen) {
-    return null;
-  }
-
+  if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10251f]/60 px-4 py-6 backdrop-blur-[2px]">
       <button
@@ -39,8 +30,8 @@ export function RotateApiKeyDialog({ isOpen, isRotating, onCancel, onConfirm }: 
                 Rotate API key?
               </h2>
               <p id="api-key-rotation-dialog-description" className="mt-1 text-sm leading-6 text-[#687970]">
-                The current machine API key becomes invalid immediately. Update every external REST client with the new
-                key after rotation. Your WhatsApp connection and browser session stay active.
+                The current machine API key becomes invalid immediately. Other dashboard sessions are revoked; this
+                browser remains signed in so you can save the new key. WhatsApp auth is unchanged.
               </p>
             </div>
           </div>
@@ -54,7 +45,6 @@ export function RotateApiKeyDialog({ isOpen, isRotating, onCancel, onConfirm }: 
             <X size={16} />
           </button>
         </div>
-
         <div className="mt-6 flex justify-end gap-2 max-[520px]:flex-col-reverse">
           <button className={secondaryButtonClass} type="button" onClick={onCancel} disabled={isRotating}>
             Cancel
@@ -65,8 +55,8 @@ export function RotateApiKeyDialog({ isOpen, isRotating, onCancel, onConfirm }: 
             onClick={onConfirm}
             disabled={isRotating}
           >
-            {isRotating ? <Loader2 className="animate-spin" size={17} /> : <KeyRound size={17} />}
-            {isRotating ? "Rotating" : "Rotate and invalidate old key"}
+            {isRotating ? <Loader2 className="animate-spin" size={17} /> : <KeyRound size={17} />}{" "}
+            {isRotating ? "Rotating" : "Rotate and revoke other sessions"}
           </button>
         </div>
       </section>

@@ -39,14 +39,14 @@ describe("API key rotation dashboard controls", () => {
     expect(screen.queryByRole("button", { name: /rotate api key/i })).toBeNull();
   });
 
-  it("requires an explicit confirmation before rotating", async () => {
+  it("requires an explicit confirmation before rotating and revoking other sessions", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     render(<RotateApiKeyDialog isOpen isRotating={false} onCancel={vi.fn()} onConfirm={onConfirm} />);
 
     expect(screen.getByRole("dialog", { name: /rotate api key/i })).toBeTruthy();
     expect(onConfirm).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /rotate and invalidate old key/i }));
+    await user.click(screen.getByRole("button", { name: /rotate and revoke other sessions/i }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });

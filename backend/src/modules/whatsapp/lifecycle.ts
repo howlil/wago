@@ -22,6 +22,10 @@ import {
   type WhatsAppStatus,
   type WhatsAppStatusSnapshot,
 } from "../../whatsapp/connection-state.js";
+import {
+  markCredentialPersistenceFailure,
+  markCredentialPersistenceSuccess,
+} from "../../whatsapp/credential-persistence-health.js";
 import { classifyDisconnect } from "../../whatsapp/disconnect-classifier.js";
 import { mapMessageRejection } from "../../whatsapp/message-rejection.js";
 import { updateMessageStatus } from "../../whatsapp/message-status-store.js";
@@ -72,6 +76,7 @@ function enqueueCredentialWrite(saveCreds: () => Promise<void>, generation: numb
     .then(async () => {
       try {
         await saveCreds();
+        markCredentialPersistenceSuccess();
         const now = Date.now();
         if (shouldAuditCredentialSuccess(generation, now)) {
           auditBaileys({
@@ -84,7 +89,11 @@ function enqueueCredentialWrite(saveCreds: () => Promise<void>, generation: numb
           });
         }
       } catch (error) {
-        logger.error({ event: "wa.credentials.persist_failed", error }, "Failed to persist WhatsApp credentials");
+        markCredentialPersistenceFailure();
+        logger.error(
+          { event: "wa.credentials.persist_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" },
+          "Failed to persist WhatsApp credentials",
+        );
         auditBaileys({
           level: "error",
           category: "security",
@@ -130,7 +139,9 @@ function scheduleReconnect(closedGeneration: number): void {
 
   reconnectTimer = setTimeout(() => {
     reconnectTimer = undefined;
-    void initializeWhatsApp();
+    void initializeWhatsApp().catch((error: unknown) => {
+      logger.warn({ event: "wa.reconnect_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" });
+    });
   }, delayMs);
   reconnectTimer.unref();
 }
@@ -406,7 +417,26 @@ export async function resumeWhatsAppSession(): Promise<void> {
     return;
   }
 
-  await initializeWhatsApp();
+  try {
+    await initializeWhatsApp();
+  } catch (error) {
+    setActiveSocket(undefined);
+    markDisconnected();
+    invalidateAccountHealth("session_invalid");
+    logger.error(
+      { event: "wa.session.resume_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" },
+      "Persisted WhatsApp session could not be resumed",
+    );
+    auditBaileys({
+      level: "error",
+      category: "connection",
+      code: "baileys.session.resume_failed",
+      title: "WhatsApp session resume failed",
+      description:
+        "Persisted Baileys authentication could not be resumed. The dashboard remains available for an explicit rebind.",
+      metadata: { errorName: error instanceof Error ? error.name : "UNKNOWN" },
+    });
+  }
 }
 
 export function getWhatsAppStatus(): WhatsAppStatusSnapshot {
@@ -502,6 +532,6 @@ export async function shutdownWhatsApp(): Promise<void> {
   try {
     activeSocket?.end(undefined);
   } catch (error) {
-    logger.warn({ event: "wa.shutdown_socket_failed", error });
+    logger.warn({ event: "wa.shutdown_socket_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" });
   }
 }
