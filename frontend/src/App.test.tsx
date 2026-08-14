@@ -193,7 +193,7 @@ describe("dashboard", () => {
 
     await waitFor(() => {
       expect(createApiKeyCandidate).toHaveBeenCalledTimes(1);
-      expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey);
+      expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey, undefined);
       expect(pairWhatsApp).toHaveBeenCalledTimes(1);
     });
 
@@ -292,7 +292,7 @@ describe("dashboard", () => {
     expect(await screen.findByRole("dialog", { name: /rotate api key/i })).toBeTruthy();
     expect(rotateApiKey).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: /rotate and invalidate old key/i }));
+    await user.click(screen.getByRole("button", { name: /rotate and revoke other sessions/i }));
     await waitFor(() => expect(rotateApiKey).toHaveBeenCalledTimes(1));
 
     expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe(rotatedApiKey);
