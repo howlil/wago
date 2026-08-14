@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -15,14 +15,12 @@ concurrency:
 
 jobs:
   check-test-build:
-    name: Apply deterministic Biome fixes
+    name: Check, Test, Build Core and Docs
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout refactor branch
+      - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Setup pnpm and Node
         uses: pnpm/setup@v2
@@ -34,22 +32,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Apply Biome fixes
-        run: pnpm check:fix
+      - name: Check formatting and lint
+        run: pnpm check
 
-      - name: Commit formatted backend sources
-        env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: |
-          git add backend/src
-          if git diff --cached --quiet; then
-            echo "No Biome changes to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: apply biome formatting"
-          git push origin "HEAD:${HEAD_REF}"
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build core apps
+        run: pnpm build:core
+
+      - name: Build documentation
+        run: pnpm --dir docs build
 
   docker-smoke:
     name: Docker Build and Persistence Smoke
