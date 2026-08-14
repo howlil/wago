@@ -4,9 +4,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const sourceDirectory = join(dirname(fileURLToPath(import.meta.url)), "..");
+const legacyMiddlewareDirectory = join(sourceDirectory, "middleware");
 const legacyErrorHandlerAlias = join(sourceDirectory, "http", "error-handler.ts");
 
 function productionTypeScriptFiles(directory: string): string[] {
+  if (!existsSync(directory)) return [];
+
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
 
@@ -44,6 +47,10 @@ describe("HTTP architecture boundary", () => {
         .filter((specifier) => resolvesToLegacyMiddleware(file, specifier))
         .map((specifier) => `${relative(sourceDirectory, file)} -> ${specifier}`),
     );
+
+    for (const file of productionTypeScriptFiles(legacyMiddlewareDirectory)) {
+      violations.push(`${relative(sourceDirectory, file)} legacy middleware file still exists`);
+    }
 
     if (existsSync(legacyErrorHandlerAlias)) {
       violations.push("http/error-handler.ts compatibility alias still exists");

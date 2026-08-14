@@ -1,7 +1,8 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApplicationError } from "../../errors/application-error.js";
+import { logger } from "../../infrastructure/logger.js";
 import { asyncHandler } from "./async-handler.js";
 import { errorHandler } from "./error-handler.js";
 
@@ -26,6 +27,10 @@ function makeApp() {
 }
 
 describe("shared HTTP error middleware", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("normalizes malformed JSON", async () => {
     const response = await request(makeApp()).post("/echo").set("Content-Type", "application/json").send("{bad");
     expect(response.status).toBe(400);
@@ -58,8 +63,10 @@ describe("shared HTTP error middleware", () => {
     });
   });
 
-  it("sanitizes unknown errors using the existing public contract", async () => {
+  it("sanitizes unknown errors in both the response and structured log context", async () => {
+    const logError = vi.spyOn(logger, "error").mockImplementation(() => logger);
     const response = await request(makeApp()).get("/unknown");
+
     expect(response.status).toBe(500);
     expect(response.body).toEqual({
       success: false,
@@ -67,5 +74,15 @@ describe("shared HTTP error middleware", () => {
       message: "Internal server error",
     });
     expect(JSON.stringify(response.body)).not.toContain("secret internal detail");
+
+    expect(logError).toHaveBeenCalledTimes(1);
+    const [context] = logError.mock.calls[0] ?? [];
+    expect(context).toMatchObject({
+      event: "http.unhandled_error",
+      method: "GET",
+      path: "/unknown",
+      errorType: "Error",
+    });
+    expect(context).not.toHaveProperty("error");
   });
 });
