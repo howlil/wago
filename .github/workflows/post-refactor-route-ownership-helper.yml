@@ -1,0 +1,84 @@
+name: Post-refactor route ownership helper
+
+on:
+  push:
+    branches:
+      - refactor/modular-monolith-structure
+    paths:
+      - .github/workflows/post-refactor-route-ownership-helper.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/modular-monolith-structure
+          fetch-depth: 0
+
+      - uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+          install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Move Access and WhatsApp routes into canonical modules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          def replace_exact(path: str, old: str, new: str, expected: int = 1):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"{path}: expected {expected} occurrences of {old!r}, found {count}")
+              p.write_text(text.replace(old, new))
+
+          subprocess.run(["git", "mv", "backend/src/routes/app.routes.ts", "backend/src/modules/access/routes.ts"], check=True)
+          subprocess.run(["git", "mv", "backend/src/routes/whatsapp.routes.ts", "backend/src/modules/whatsapp/routes.ts"], check=True)
+
+          replace_exact("backend/src/modules/access/routes.ts", 'from "../config/index.js"', 'from "../../config/index.js"')
+          replace_exact("backend/src/modules/access/routes.ts", 'from "../http/middleware/auth.js"', 'from "../../http/middleware/auth.js"')
+          replace_exact("backend/src/modules/access/routes.ts", 'from "../http/middleware/origin.js"', 'from "../../http/middleware/origin.js"')
+          replace_exact("backend/src/modules/access/routes.ts", 'from "../modules/access/api-key.js"', 'from "./api-key.js"')
+          replace_exact("backend/src/modules/access/routes.ts", 'from "../modules/access/browser-session-store.js"', 'from "./browser-session-store.js"')
+          replace_exact("backend/src/modules/access/routes.ts", 'from "../modules/activity/store.js"', 'from "../activity/store.js"')
+
+          replace_exact("backend/src/modules/whatsapp/routes.ts", 'from "../http/middleware/async-handler.js"', 'from "../../http/middleware/async-handler.js"')
+          replace_exact("backend/src/modules/whatsapp/routes.ts", 'from "../http/middleware/auth.js"', 'from "../../http/middleware/auth.js"')
+          replace_exact("backend/src/modules/whatsapp/routes.ts", 'from "../http/middleware/rate-limit.js"', 'from "../../http/middleware/rate-limit.js"')
+          replace_exact("backend/src/modules/whatsapp/routes.ts", 'from "../modules/activity/store.js"', 'from "../activity/store.js"')
+          replace_exact("backend/src/modules/whatsapp/routes.ts", 'from "../modules/whatsapp/index.js"', 'from "./index.js"')
+
+          replace_exact("backend/src/app.ts", 'from "./routes/app.routes.js"', 'from "./modules/access/routes.js"')
+          replace_exact("backend/src/app.ts", 'from "./routes/whatsapp.routes.js"', 'from "./modules/whatsapp/routes.js"')
+
+          routes = Path("backend/src/routes")
+          if routes.exists() and any(routes.iterdir()):
+              raise SystemExit(f"legacy routes directory is not empty: {[p.name for p in routes.iterdir()]}")
+          PY
+
+      - name: Format and verify
+        run: |
+          pnpm check:fix
+          pnpm check
+          pnpm test
+          pnpm --dir backend run build
+
+      - name: Commit verified migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: move access and whatsapp routes into modules"
+          git push origin HEAD:refactor/modular-monolith-structure
