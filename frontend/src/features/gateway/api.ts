@@ -77,6 +77,18 @@ export type GatewayReadinessSnapshot = {
   checks: Record<string, ReadinessCheck>;
 };
 
+function isGatewayReadinessSnapshot(value: unknown): value is GatewayReadinessSnapshot {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as { status?: unknown; checks?: unknown };
+  return (
+    (candidate.status === "ok" || candidate.status === "degraded" || candidate.status === "not_ready") &&
+    Boolean(candidate.checks) &&
+    typeof candidate.checks === "object" &&
+    !Array.isArray(candidate.checks)
+  );
+}
+
 export function createApiKeyCandidate(): string {
   const bytes = new Uint8Array(32);
   globalThis.crypto.getRandomValues(bytes);
@@ -123,6 +135,16 @@ export function getHealth(): Promise<HealthResponse> {
   return requestJson<HealthResponse>("/health");
 }
 
-export function getReadiness(): Promise<GatewayReadinessSnapshot> {
-  return requestJson<GatewayReadinessSnapshot>("/ready", undefined, { allowedStatuses: [503] });
+export async function getReadiness(): Promise<GatewayReadinessSnapshot> {
+  const value = await requestJson<unknown>("/ready", undefined, { allowedStatuses: [503] });
+
+  if (!isGatewayReadinessSnapshot(value)) {
+    throw {
+      success: false,
+      error: "INVALID_READINESS_RESPONSE",
+      message: "Readiness endpoint returned an invalid JSON payload",
+    };
+  }
+
+  return value;
 }
