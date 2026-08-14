@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
-import { allowRecipient, listActivity } from "./api.js";
+import { listActivity } from "./api.js";
 import {
   bootstrapApp,
   createApiKeyCandidate,
@@ -13,6 +13,7 @@ import {
   rotateApiKey,
 } from "./features/gateway/api.js";
 import { sendMessage } from "./features/messages/api.js";
+import { allowRecipient } from "./features/recipients/api.js";
 import { getCurrentQr, pairWhatsApp } from "./features/whatsapp/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
@@ -62,6 +63,21 @@ vi.mock("./features/gateway/api.js", () => ({
     generatedAt: "2026-08-14T00:00:00.000Z",
     message: "API key rotated",
   })),
+}));
+
+vi.mock("./features/recipients/api.js", () => ({
+  allowRecipient: vi.fn(async (phone: string) => ({
+    success: true,
+    recipient: {
+      jid: `${phone}@s.whatsapp.net`,
+      allowed: true,
+      optedOut: false,
+      createdAt: "2026-08-10T00:00:00.000Z",
+      updatedAt: "2026-08-10T00:00:00.000Z",
+    },
+  })),
+  listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
+  optOutRecipient: vi.fn(),
 }));
 
 vi.mock("./features/messages/api.js", () => ({

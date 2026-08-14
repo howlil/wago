@@ -1,6 +1,6 @@
 import { Check, Loader2, UserMinus } from "lucide-react";
-import type { RecipientRecord } from "../../api.js";
 import { dangerButtonClass, secondaryButtonClass } from "../../shared/ui/classes.js";
+import type { RecipientRecord } from "./api.js";
 import { phoneFromJid, recipientStatus } from "./utils.js";
 
 type RecipientListProps = {
