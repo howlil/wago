@@ -1,6 +1,6 @@
 import { flushActivityStore } from "../modules/activity/store.js";
 import { flushOutboundPolicyPersistence } from "../modules/messages/outbound-policy.js";
-import { flushRecipientStore } from "../recipients/store.js";
+import { flushRecipientStore } from "../modules/recipients/store.js";
 import { closeDatabase } from "./database.js";
 
 export async function flushPersistence(): Promise<void> {

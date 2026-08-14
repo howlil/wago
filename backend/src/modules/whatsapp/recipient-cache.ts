@@ -1,6 +1,6 @@
 import type { WASocket } from "@whiskeysockets/baileys";
 import { ApplicationError } from "../../errors/application-error.js";
-import { rememberRecipientResolution } from "../../recipients/store.js";
+import { rememberRecipientResolution } from "../recipients/store.js";
 
 const RECIPIENT_LOOKUP_POSITIVE_TTL_MS = 1000 * 60 * 60 * 24;
 const RECIPIENT_LOOKUP_NEGATIVE_TTL_MS = 1000 * 60 * 5;

@@ -4,7 +4,7 @@ import { app } from "./app.js";
 import { config } from "./config/index.js";
 import { getAccessSnapshot, hashApiKey, isApiKeyValid, resetAccessStateForTest } from "./modules/access/api-key.js";
 import { resetBrowserSessionsForTest } from "./modules/access/browser-session-store.js";
-import { resetRecipientStoreForTest } from "./recipients/store.js";
+import { resetRecipientStoreForTest } from "./modules/recipients/store.js";
 
 const apiKeyRequiredResponse = {
   success: false,

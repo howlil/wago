@@ -118,7 +118,7 @@ describe("whatsapp send semantics", () => {
 
   it("returns pending immediately after Baileys accepts the send request", async () => {
     const { initializeWhatsApp, sendTextMessage } = await import("./index.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("../../recipients/store.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("../recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -133,7 +133,7 @@ describe("whatsapp send semantics", () => {
 
   it("keeps message status pending until a Baileys status update arrives", async () => {
     const { getMessageStatus, initializeWhatsApp, sendTextMessage } = await import("./index.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("../../recipients/store.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("../recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");
@@ -168,7 +168,7 @@ describe("whatsapp send semantics", () => {
 
   it("caches successful recipient lookup for repeated sends", async () => {
     const { initializeWhatsApp, sendTextMessage } = await import("./index.js");
-    const { allowRecipient, resetRecipientStoreForTest } = await import("../../recipients/store.js");
+    const { allowRecipient, resetRecipientStoreForTest } = await import("../recipients/store.js");
 
     await resetRecipientStoreForTest();
     await allowRecipient("6281234567890");

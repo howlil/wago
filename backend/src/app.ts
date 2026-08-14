@@ -9,9 +9,9 @@ import { requestLogger } from "./http/middleware/request-logger.js";
 import { activityRouter } from "./modules/activity/routes.js";
 import { getReadinessSnapshot } from "./modules/gateway/readiness.js";
 import { messageRouter } from "./modules/messages/routes.js";
+import { recipientRouter } from "./modules/recipients/routes.js";
 import { webhookRouter } from "./modules/webhooks/routes.js";
 import { appRouter } from "./routes/app.routes.js";
-import { recipientRouter } from "./routes/recipient.routes.js";
 import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();

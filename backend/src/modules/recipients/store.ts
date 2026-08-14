@@ -1,5 +1,5 @@
-import { getDatabase, withTransaction } from "../infrastructure/database.js";
-import { toWhatsAppJid } from "../utils/phone.js";
+import { getDatabase, withTransaction } from "../../infrastructure/database.js";
+import { toWhatsAppJid } from "../../utils/phone.js";
 
 export type RecipientRecord = {
   jid: string;
