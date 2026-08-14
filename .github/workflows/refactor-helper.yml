@@ -76,7 +76,6 @@ jobs:
           }
 
           '''
-          # Strip YAML indentation introduced above before matching source text.
           old_transport = '\n'.join(line[10:] if line.startswith('          ') else line for line in old_transport.splitlines()) + '\n'
           if text.count(old_transport) != 1:
               raise SystemExit(f'expected one local transport block, found {text.count(old_transport)}')
@@ -88,7 +87,7 @@ jobs:
         run: |
           pnpm exec biome check --write frontend/src/api.ts frontend/src/shared/api/client.ts frontend/tests/shared-api-client.test.ts frontend/src/api.browser-session.test.ts
           pnpm check
-          pnpm --dir frontend exec vitest run tests/shared-api-client.test.ts src/api.browser-session.test.ts
+          pnpm --dir frontend exec vitest run --environment jsdom tests/shared-api-client.test.ts src/api.browser-session.test.ts
           pnpm --dir frontend build
 
       - name: Commit verified extraction
