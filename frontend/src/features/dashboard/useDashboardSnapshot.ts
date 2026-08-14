@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BackendHealthState } from "../../shared/types/status.js";
-import { type AppInfoResponse, type BootstrapAppResponse, getAppInfo, getHealth } from "../gateway/api.js";
+import {
+  type AppInfoResponse,
+  type BootstrapAppResponse,
+  type GatewayReadinessSnapshot,
+  getAppInfo,
+  getHealth,
+  getReadiness,
+} from "../gateway/api.js";
 import {
   type AccountHealthSnapshot,
   getCurrentQr,
@@ -30,6 +37,7 @@ type SuccessfulBootstrap = Extract<BootstrapAppResponse, { success: true }>;
 
 export function useDashboardSnapshot() {
   const [health, setHealth] = useState<BackendHealthState>("checking");
+  const [readiness, setReadiness] = useState<GatewayReadinessSnapshot | null>(null);
   const [appId, setAppId] = useState("wa-gateway");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
@@ -96,13 +104,21 @@ export function useDashboardSnapshot() {
           setHealth(backendHealthy ? "ok" : "error");
 
           if (!backendHealthy) {
+            setReadiness(null);
             clearWhatsAppView();
             return;
           }
         } catch {
           setHealth("error");
+          setReadiness(null);
           clearWhatsAppView();
           return;
+        }
+
+        try {
+          setReadiness(await getReadiness());
+        } catch {
+          setReadiness(null);
         }
 
         let info: Awaited<ReturnType<typeof loadAppInfo>>;
@@ -229,6 +245,7 @@ export function useDashboardSnapshot() {
 
   return {
     health,
+    readiness,
     appId,
     apiKeyConfigured,
     apiKeySource,
