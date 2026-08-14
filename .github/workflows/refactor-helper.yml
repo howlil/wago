@@ -1,0 +1,61 @@
+name: Refactor Helper
+
+on:
+  push:
+    branches:
+      - refactor/modular-monolith-structure
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-settings-api:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/modular-monolith-structure
+          fetch-depth: 0
+      - uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+      - run: pnpm install --frozen-lockfile
+      - name: Move settings consumers to feature API
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          for filename in [
+              "frontend/src/features/settings/WebhookSettingsCard.tsx",
+              "frontend/src/features/settings/WebhookSettingsCard.test.tsx",
+          ]:
+              path = Path(filename)
+              text = path.read_text()
+              actual = text.count('from "../../api.js";')
+              if actual != 1:
+                  raise SystemExit(f"{filename}: expected one root API import, found {actual}")
+              text = text.replace('from "../../api.js";', 'from "./api.js";')
+              if filename.endswith('.test.tsx'):
+                  actual_mock = text.count('vi.mock("../../api.js", () => ({')
+                  if actual_mock != 1:
+                      raise SystemExit(f"{filename}: expected one root API mock, found {actual_mock}")
+                  text = text.replace('vi.mock("../../api.js", () => ({', 'vi.mock("./api.js", () => ({')
+              path.write_text(text)
+          PY
+      - name: Verify settings migration
+        run: |
+          pnpm exec biome check --write frontend/src/features/settings frontend/tests/settings-api.test.ts
+          pnpm check
+          pnpm --dir frontend exec vitest run --environment jsdom tests/settings-api.test.ts src/features/settings/WebhookSettingsCard.test.tsx
+          pnpm --dir frontend build
+      - name: Commit verified migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/features/settings frontend/tests/settings-api.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: move settings API into feature"
+          git push origin HEAD:refactor/modular-monolith-structure
