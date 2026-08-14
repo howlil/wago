@@ -33,7 +33,27 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting and lint
+        id: biome
+        continue-on-error: true
         run: pnpm check
+
+      - name: Format failed check for diagnostics
+        if: steps.biome.outcome == 'failure'
+        run: |
+          pnpm check:fix
+          zip -r formatted-sources.zip backend/src frontend/src
+
+      - name: Upload formatted sources
+        if: steps.biome.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatted-sources
+          path: formatted-sources.zip
+          retention-days: 1
+
+      - name: Fail on formatting or lint violations
+        if: steps.biome.outcome == 'failure'
+        run: exit 1
 
       - name: Run tests
         run: pnpm test
