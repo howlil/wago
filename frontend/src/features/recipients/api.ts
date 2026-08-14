@@ -38,9 +38,7 @@ export function allowRecipient(phone: string, label?: string): Promise<Recipient
 }
 
 export function optOutRecipient(phone: string): Promise<RecipientMutationResponse> {
-  return requestJson<RecipientMutationResponse>("/recipients/opt-out", {
+  return requestJson<RecipientMutationResponse>(`/recipients/${encodeURIComponent(phone)}/opt-out`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone }),
   });
 }
