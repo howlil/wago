@@ -1,5 +1,16 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { GatewayReadinessSnapshot } from "../src/features/gateway/api.js";
+
+const degradedReadiness: GatewayReadinessSnapshot = {
+  status: "degraded",
+  checks: {
+    credentialPersistence: {
+      status: "degraded",
+      reason: "credential_persistence_failed",
+    },
+  },
+};
 
 const gatewayApi = vi.hoisted(() => ({
   getHealth: vi.fn(async () => ({ status: "ok" })),
@@ -46,6 +57,10 @@ vi.mock("../src/features/whatsapp/api.js", () => whatsappApi);
 import { useDashboardSnapshot } from "../src/features/dashboard/useDashboardSnapshot.js";
 
 describe("dashboard readiness snapshot scheduling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -56,15 +71,36 @@ describe("dashboard readiness snapshot scheduling", () => {
 
     expect(setIntervalSpy).not.toHaveBeenCalled();
     await waitFor(() => expect(gatewayApi.getReadiness).toHaveBeenCalledTimes(1));
-    expect(result.current.readiness).toEqual({
-      status: "degraded",
-      checks: {
-        credentialPersistence: {
-          status: "degraded",
-          reason: "credential_persistence_failed",
-        },
-      },
+    expect(result.current.readiness).toEqual(degradedReadiness);
+
+    unmount();
+  });
+
+  it("does not let a hanging readiness request block the main snapshot or create overlapping readiness requests", async () => {
+    let resolveReadiness!: (value: GatewayReadinessSnapshot) => void;
+    const readinessPromise = new Promise<GatewayReadinessSnapshot>((resolve) => {
+      resolveReadiness = resolve;
     });
+    gatewayApi.getReadiness.mockReturnValueOnce(readinessPromise);
+
+    const { result, unmount } = renderHook(() => useDashboardSnapshot());
+
+    await waitFor(() => expect(gatewayApi.getAppInfo).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(whatsappApi.getWhatsAppStatus).toHaveBeenCalledTimes(1));
+    expect(result.current.status).toBe("connected");
+
+    await act(async () => {
+      await result.current.refresh({ showLoading: false });
+    });
+
+    expect(gatewayApi.getReadiness).toHaveBeenCalledTimes(1);
+    expect(gatewayApi.getAppInfo).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveReadiness(degradedReadiness);
+      await readinessPromise;
+    });
+    await waitFor(() => expect(result.current.readiness).toEqual(degradedReadiness));
 
     unmount();
   });
