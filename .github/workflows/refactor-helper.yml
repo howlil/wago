@@ -1,0 +1,111 @@
+name: Refactor Helper
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-whatsapp-tests:
+    if: github.event.pull_request.head.ref == 'refactor/modular-monolith-structure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout refactor branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Move legacy WhatsApp tests to canonical module
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          moves = [
+              (
+                  Path('backend/src/whatsapp/audit-lifecycle.test.ts'),
+                  Path('backend/src/modules/whatsapp/audit-lifecycle.test.ts'),
+                  {
+                      '../whatsapp.js': './index.js',
+                      '../activity/store.js': '../../activity/store.js',
+                      '../activity/query.js': '../../activity/query.js',
+                  },
+              ),
+              (
+                  Path('backend/src/whatsapp/lifecycle.contract.test.ts'),
+                  Path('backend/src/modules/whatsapp/lifecycle.contract.test.ts'),
+                  {
+                      '../whatsapp.js': './index.js',
+                  },
+              ),
+              (
+                  Path('backend/src/whatsapp.test.ts'),
+                  Path('backend/src/modules/whatsapp/whatsapp.test.ts'),
+                  {
+                      './whatsapp.js': './index.js',
+                      './recipients/store.js': '../../recipients/store.js',
+                      './whatsapp/binding-store.js': './binding-store.js',
+                      './whatsapp/account-health.js': './account-health.js',
+                      './activity/store.js': '../../activity/store.js',
+                      './activity/query.js': '../../activity/query.js',
+                  },
+              ),
+          ]
+
+          for source, destination, replacements in moves:
+              if not source.exists():
+                  raise SystemExit(f'missing expected source test: {source}')
+              if destination.exists():
+                  raise SystemExit(f'destination already exists unexpectedly: {destination}')
+              text = source.read_text()
+              for old, new in replacements.items():
+                  count = text.count(old)
+                  if count < 1:
+                      raise SystemExit(f'{source}: expected at least one occurrence of {old!r}')
+                  text = text.replace(old, new)
+              destination.write_text(text)
+              source.unlink()
+
+          route_test = Path('backend/src/routes/message.routes.service-contract.test.ts')
+          text = route_test.read_text()
+          old = 'vi.mock("../whatsapp.js", () => whatsappMock);'
+          new = 'vi.mock("../modules/whatsapp/index.js", () => whatsappMock);'
+          if text.count(old) != 1:
+              raise SystemExit(f'{route_test}: legacy WhatsApp mock anchor changed')
+          route_test.write_text(text.replace(old, new))
+          PY
+
+      - name: Format migrated tests
+        run: pnpm check:fix
+
+      - name: Verify migrated test contracts
+        run: |
+          pnpm check
+          pnpm --dir backend exec vitest run --exclude src/architecture/whatsapp-boundary.test.ts
+          pnpm --dir backend run build
+
+      - name: Commit verified test migration
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git add -A backend/src
+          if git diff --cached --quiet; then
+            echo "WhatsApp tests already migrated."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test: move WhatsApp contracts into module"
+          git push origin "HEAD:${HEAD_REF}"
