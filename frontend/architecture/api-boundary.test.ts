@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const frontendDirectory = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceDirectory = join(frontendDirectory, "src");
-const featuresDirectory = join(sourceDirectory, "features");
+const testsDirectory = join(frontendDirectory, "tests");
 const rootApi = join(sourceDirectory, "api.ts");
 
 function sourceFiles(directory: string): string[] {
@@ -34,16 +34,17 @@ function resolvesToRootApi(file: string, specifier: string): boolean {
 describe("frontend API architecture boundary", () => {
   it("keeps endpoint contracts inside feature APIs instead of the root API module", () => {
     const violations: string[] = [];
+    const candidates = [...sourceFiles(sourceDirectory), ...sourceFiles(testsDirectory)].filter((file) => file !== rootApi);
 
-    for (const file of sourceFiles(featuresDirectory)) {
+    for (const file of candidates) {
       for (const specifier of moduleSpecifiers(readFileSync(file, "utf8"))) {
         if (resolvesToRootApi(file, specifier)) {
-          violations.push(`${relative(sourceDirectory, file).replaceAll("\\", "/")} -> ${specifier}`);
+          violations.push(`${relative(frontendDirectory, file).replaceAll("\\", "/")} -> ${specifier}`);
         }
       }
     }
 
-    if (existsSync(rootApi)) violations.push("api.ts root god API still exists");
+    if (existsSync(rootApi)) violations.push("src/api.ts root god API still exists");
 
     expect(violations).toEqual([]);
   });
