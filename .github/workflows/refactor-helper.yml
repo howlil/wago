@@ -37,7 +37,7 @@ jobs:
 
           replacements = {
               "frontend/src/features/activity/ActivityEventList.tsx": [
-                  ('import type { ActivityEvent } from "../../api.js";', 'import type { ActivityEvent } from "./api.js";', 1),
+                  ('from "../../api.js";', 'from "./api.js";', 1),
               ],
               "frontend/src/features/activity/useActivityLog.ts": [
                   ('from "../../api.js";', 'from "./api.js";', 1),
