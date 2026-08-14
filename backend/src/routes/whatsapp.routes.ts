@@ -2,7 +2,7 @@ import { Router } from "express";
 import QRCode from "qrcode";
 import { recordActivity } from "../activity/store.js";
 import { asyncHandler } from "../http/middleware/async-handler.js";
-import { requireApiKey } from "../middleware/auth.js";
+import { requireApiKey } from "../http/middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
 import { getCurrentQr, getWhatsAppStatus, pairWhatsApp, rebindWhatsApp } from "../whatsapp.js";
 

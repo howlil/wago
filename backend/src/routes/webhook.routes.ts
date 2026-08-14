@@ -1,5 +1,5 @@
 import { type Response, Router } from "express";
-import { requireApiKey } from "../middleware/auth.js";
+import { requireApiKey } from "../http/middleware/auth.js";
 import { createRateLimit } from "../middleware/rate-limit.js";
 import type { WebhookDeliveryStatus } from "../webhooks/delivery-store.js";
 import { getWebhookDelivery, listWebhookDeliveries, redeliverWebhookDelivery } from "../webhooks/delivery-webhook.js";

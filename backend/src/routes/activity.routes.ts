@@ -1,7 +1,7 @@
 import { type Response, Router } from "express";
 import { listAudit } from "../activity/query.js";
 import type { ActivityCategory, ActivityLevel, AuditSource } from "../activity/store.js";
-import { requireApiKey } from "../middleware/auth.js";
+import { requireApiKey } from "../http/middleware/auth.js";
 
 export const activityRouter = Router();
 
