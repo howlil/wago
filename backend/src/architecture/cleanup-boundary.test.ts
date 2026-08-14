@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 
 const sourceDirectory = join(dirname(fileURLToPath(import.meta.url)), "..");
 const legacyTargets = new Set(["auth/browser-session-store", "infrastructure/persistence"]);
+const legacySymbols = new Map([
+  ["modules/activity/store.ts", "flushActivityStore"],
+  ["modules/recipients/store.ts", "flushRecipientStore"],
+]);
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -36,6 +40,12 @@ describe("backend cleanup boundary", () => {
 
     for (const target of legacyTargets) {
       if (existsSync(join(sourceDirectory, `${target}.ts`))) violations.push(`${target}.ts still exists`);
+    }
+
+    for (const [file, symbol] of legacySymbols) {
+      if (readFileSync(join(sourceDirectory, file), "utf8").includes(symbol)) {
+        violations.push(`${file} still exports ${symbol}`);
+      }
     }
 
     for (const file of sourceFiles(sourceDirectory)) {
