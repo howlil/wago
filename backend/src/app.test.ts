@@ -12,6 +12,7 @@ const apiKeyRequiredResponse = {
 };
 
 const pairingCandidate = `wa_${"a".repeat(64)}`;
+const productionSetupToken = "production-setup-token-with-at-least-32-bytes";
 
 function firstCookie(response: request.Response): string {
   const header = response.headers["set-cookie"]?.[0];
@@ -24,6 +25,7 @@ function firstCookie(response: request.Response): string {
 describe("app", () => {
   beforeEach(async () => {
     config.allowWebBootstrap = true;
+    config.setupToken = null;
     config.apiKey = null;
     config.apiKeyHash = null;
     config.apiKeySource = "unset";
@@ -59,11 +61,13 @@ describe("app", () => {
   it("returns readiness status before first-run setup", async () => {
     const response = await request(app).get("/ready");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       status: "ok",
       appId: config.appId,
       apiKeyConfigured: false,
-      webhookConfigured: config.deliveryWebhookEnabled,
+      checks: {
+        apiKey: { status: "ok", reason: "setup_required" },
+      },
     });
   });
 
@@ -170,13 +174,32 @@ describe("app", () => {
     expect(config.allowWebBootstrap).toBe(false);
   });
 
-  it("auto-detects the production dashboard origin from the request host", async () => {
+  it("requires the deployment setup token for first-run production bootstrap", async () => {
     config.nodeEnv = "production";
+    config.setupToken = productionSetupToken;
+
+    const missing = await request(app)
+      .post("/app/bootstrap")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ apiKey: pairingCandidate });
+    expect(missing.status).toBe(403);
+    expect(missing.body.error).toBe("SETUP_TOKEN_REQUIRED");
+
+    const invalid = await request(app)
+      .post("/app/bootstrap")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .set("X-Wago-Setup-Token", `${productionSetupToken}-wrong`)
+      .send({ apiKey: pairingCandidate });
+    expect(invalid.status).toBe(403);
+    expect(invalid.body.error).toBe("INVALID_SETUP_TOKEN");
 
     const response = await request(app)
       .post("/app/bootstrap")
       .set("Host", "wago.example.com")
       .set("Origin", "https://wago.example.com")
+      .set("X-Wago-Setup-Token", productionSetupToken)
       .send({ apiKey: pairingCandidate });
 
     expect(response.status).toBe(201);
@@ -185,11 +208,13 @@ describe("app", () => {
 
   it("rejects first-run production bootstrap from a different origin", async () => {
     config.nodeEnv = "production";
+    config.setupToken = productionSetupToken;
 
     const response = await request(app)
       .post("/app/bootstrap")
       .set("Host", "wago.example.com")
       .set("Origin", "https://evil.example.com")
+      .set("X-Wago-Setup-Token", productionSetupToken)
       .send({ apiKey: pairingCandidate });
 
     expect(response.status).toBe(403);
@@ -255,7 +280,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
-      message: "First-run web setup is disabled for this gateway.",
+      message: "First-run web setup is disabled. Configure a SETUP_TOKEN with at least 32 bytes of entropy.",
     });
   });
 
