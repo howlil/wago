@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const sourceDirectory = join(dirname(fileURLToPath(import.meta.url)), "..");
 const legacyWhatsAppDirectory = join(sourceDirectory, "whatsapp");
 const legacyFacade = join(sourceDirectory, "whatsapp.ts");
+const legacyWhatsAppRoute = join(sourceDirectory, "routes", "whatsapp.routes.ts");
 
 function sourceTypeScriptFiles(directory: string): string[] {
   if (!existsSync(directory)) return [];
@@ -40,7 +41,7 @@ function resolvesToLegacyWhatsApp(file: string, specifier: string): boolean {
     .replaceAll("\\", "/")
     .replace(/\.js$/, "");
 
-  return target === "whatsapp" || target.startsWith("whatsapp/");
+  return target === "whatsapp" || target.startsWith("whatsapp/") || target === "routes/whatsapp.routes";
 }
 
 describe("WhatsApp architecture boundary", () => {
@@ -63,6 +64,10 @@ describe("WhatsApp architecture boundary", () => {
 
     if (existsSync(legacyFacade)) {
       violations.push("whatsapp.ts legacy facade still exists");
+    }
+
+    if (existsSync(legacyWhatsAppRoute)) {
+      violations.push("routes/whatsapp.routes.ts legacy WhatsApp route still exists");
     }
 
     expect(violations).toEqual([]);
