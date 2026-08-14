@@ -1,14 +1,14 @@
 import type { WASocket } from "@whiskeysockets/baileys";
 import { ApplicationError, isApplicationError } from "../../errors/application-error.js";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
+import { toWhatsAppJid } from "../../utils/phone.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
   markRecipientReachoutRestricted,
   recordOutboundAccepted,
   recordOutboundRejected,
-} from "../../policy/outbound-policy.js";
-import { toWhatsAppJid } from "../../utils/phone.js";
+} from "../messages/outbound-policy.js";
 import { markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
 import { getConnectionStatus, type WhatsAppStatus } from "./connection-state.js";
 import { rememberPendingMessageStatus } from "./message-status-store.js";

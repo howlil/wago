@@ -1,5 +1,5 @@
 import { flushActivityStore } from "../activity/store.js";
-import { flushOutboundPolicyPersistence } from "../policy/outbound-policy.js";
+import { flushOutboundPolicyPersistence } from "../modules/messages/outbound-policy.js";
 import { flushRecipientStore } from "../recipients/store.js";
 import { closeDatabase } from "./database.js";
 

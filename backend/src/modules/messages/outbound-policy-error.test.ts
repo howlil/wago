@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApplicationError } from "../errors/application-error.js";
+import { ApplicationError } from "../../errors/application-error.js";
 import { createOutboundPolicyError, isOutboundPolicyError, type OutboundPolicyDecision } from "./outbound-policy.js";
 
 describe("outbound policy typed errors", () => {

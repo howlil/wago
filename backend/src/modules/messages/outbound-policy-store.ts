@@ -1,4 +1,4 @@
-import { getDatabase, withTransaction } from "../infrastructure/database.js";
+import { getDatabase, withTransaction } from "../../infrastructure/database.js";
 
 export type PolicyWindow = {
   count: number;

@@ -4,8 +4,8 @@ import { isApplicationError } from "../../errors/application-error.js";
 import { asyncHandler } from "../../http/middleware/async-handler.js";
 import { requireApiKey } from "../../http/middleware/auth.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
-import { isOutboundPolicyError } from "../../policy/outbound-policy.js";
 import { messageService } from "./message.service.js";
+import { isOutboundPolicyError } from "./outbound-policy.js";
 
 export const messageRouter = Router();
 

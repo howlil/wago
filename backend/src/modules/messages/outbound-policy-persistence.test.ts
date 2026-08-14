@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { allowRecipientJid, resetRecipientStoreForTest } from "../recipients/store.js";
+import { allowRecipientJid, resetRecipientStoreForTest } from "../../recipients/store.js";
 import {
   checkOutboundPolicy,
   forgetOutboundPolicyStateForTest,

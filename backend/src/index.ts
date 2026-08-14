@@ -4,8 +4,8 @@ import { app } from "./app.js";
 import { checkpointDatabase, closeDatabase, getDatabase } from "./infrastructure/database.js";
 import { createInstanceLeaseManager } from "./infrastructure/instance-lease.js";
 import { logger } from "./infrastructure/logger.js";
+import { flushOutboundPolicyPersistence } from "./modules/messages/outbound-policy.js";
 import { resumeWhatsAppSession, shutdownWhatsApp } from "./modules/whatsapp/index.js";
-import { flushOutboundPolicyPersistence } from "./policy/outbound-policy.js";
 import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./webhooks/delivery-webhook.js";
 
 const port = 3000;

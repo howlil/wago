@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ApplicationError } from "../errors/application-error.js";
-import { allowRecipientJid, optOutRecipient, resetRecipientStoreForTest } from "../recipients/store.js";
+import { ApplicationError } from "../../errors/application-error.js";
+import { allowRecipientJid, optOutRecipient, resetRecipientStoreForTest } from "../../recipients/store.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
