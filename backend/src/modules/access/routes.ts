@@ -1,25 +1,25 @@
 import { type Response, Router } from "express";
-import { config } from "../config/index.js";
+import { config } from "../../config/index.js";
 import {
   getBrowserSessionToken,
   requestHasValidBrowserSession,
   requestIsAuthenticated,
-} from "../http/middleware/auth.js";
-import { requestHasSameOrigin } from "../http/middleware/origin.js";
+} from "../../http/middleware/auth.js";
+import { requestHasSameOrigin } from "../../http/middleware/origin.js";
+import { recordActivity } from "../activity/store.js";
 import {
   bootstrapApiKey,
   getAccessSnapshot,
   isApiKeyValid,
   isSetupTokenValid,
   rotateGeneratedApiKey,
-} from "../modules/access/api-key.js";
+} from "./api-key.js";
 import {
   createBrowserSession,
   revokeAllBrowserSessions,
   revokeBrowserSession,
   revokeOtherBrowserSessions,
-} from "../modules/access/browser-session-store.js";
-import { recordActivity } from "../modules/activity/store.js";
+} from "./browser-session-store.js";
 
 export const appRouter = Router();
 
