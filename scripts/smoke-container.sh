@@ -50,6 +50,12 @@ wait_for_exit() {
   return 1
 }
 
+stop_and_remove() {
+  local container_name="$1"
+  docker stop -t 10 "$container_name" >/dev/null
+  docker rm "$container_name" >/dev/null
+}
+
 run_container() {
   local container_name="$1"
   local image="$2"
@@ -126,14 +132,14 @@ READY_AFTER="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 MIGRATIONS_AFTER="$(read_migrations "$NAME")"
 [[ "$MIGRATIONS_AFTER" == "$EXPECTED_MIGRATIONS" ]]
 
-# Replacement, not merely restart, must preserve volume-backed identity.
-docker rm -f "$NAME" >/dev/null
+# Normal replacement is stop-old-before-start-new so shutdown can release the lease.
+stop_and_remove "$NAME"
 run_container "$REPLACEMENT_NAME" "$IMAGE"
 APP_ID_AFTER="$(read_app_id "$REPLACEMENT_NAME")"
 [[ "$APP_ID_AFTER" == "$APP_ID_BEFORE" ]]
 
 if [[ -n "$ROLLBACK_IMAGE" ]]; then
-  docker rm -f "$REPLACEMENT_NAME" >/dev/null
+  stop_and_remove "$REPLACEMENT_NAME"
   run_container "$ROLLBACK_NAME" "$ROLLBACK_IMAGE" "$ROLLBACK_CORS_ORIGIN"
 
   curl -fsS "http://127.0.0.1:${PORT}/health" | grep -q '"status":"ok"'
