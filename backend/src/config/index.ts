@@ -29,7 +29,7 @@ export type ApiKeyRotationResult =
 const database = getDatabase();
 const webhookSettingsStore = createWebhookSettingsStore(database);
 const persistedWebhookSettings = webhookSettingsStore.get();
-const legacyDeliveryWebhook = persistedWebhookSettings
+const legacyWebhookConfig = persistedWebhookSettings
   ? {
       enabled: persistedWebhookSettings.enabled,
       url: persistedWebhookSettings.url,
@@ -39,7 +39,7 @@ const legacyDeliveryWebhook = persistedWebhookSettings
   : parseDeliveryWebhookConfig(process.env);
 
 if (!persistedWebhookSettings) {
-  webhookSettingsStore.importLegacyIfEmpty(legacyDeliveryWebhook);
+  webhookSettingsStore.importLegacyIfEmpty(legacyWebhookConfig);
 }
 
 const readSettingsStatement = database.prepare(
@@ -105,10 +105,6 @@ export const config = {
   bodyLimit: "32kb",
   authDirectory: resolve(dataDirectory, "auth"),
   dataDirectory,
-  deliveryWebhookEnabled: legacyDeliveryWebhook.enabled,
-  deliveryWebhookUrl: legacyDeliveryWebhook.url,
-  deliveryWebhookSecret: legacyDeliveryWebhook.secret,
-  deliveryWebhookPreviousSecret: legacyDeliveryWebhook.previousSecret,
   frontendDirectory: nodeEnv === "production" ? "/app/public" : null,
   nodeEnv,
   requestLogging: true,

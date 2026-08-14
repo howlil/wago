@@ -4,7 +4,6 @@ import { app } from "./app.js";
 import { checkpointDatabase, closeDatabase, getDatabase } from "./infrastructure/database.js";
 import { createInstanceLeaseManager } from "./infrastructure/instance-lease.js";
 import { logger } from "./infrastructure/logger.js";
-import { flushOutboundPolicyPersistence } from "./policy/outbound-policy.js";
 import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./webhooks/delivery-webhook.js";
 import { resumeWhatsAppSession, shutdownWhatsApp } from "./whatsapp.js";
 
@@ -28,7 +27,6 @@ const lifecycle = createApplicationLifecycle({
   stopWebhookDeliveryWorker,
   resumeWhatsAppSession,
   shutdownWhatsApp,
-  flushOutboundPolicyPersistence,
   checkpointDatabase,
   closeDatabase,
 });
