@@ -1,0 +1,148 @@
+name: Refactor Helper
+
+on:
+  push:
+    branches:
+      - refactor/modular-monolith-structure
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-activity:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout refactor branch
+        uses: actions/checkout@v7
+        with:
+          ref: refactor/modular-monolith-structure
+          fetch-depth: 0
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Move activity domain into module
+        run: |
+          set -euo pipefail
+          mkdir -p backend/src/modules/activity
+          git mv backend/src/activity/audit-event.ts backend/src/modules/activity/audit-event.ts
+          git mv backend/src/activity/baileys-audit.ts backend/src/modules/activity/baileys-audit.ts
+          git mv backend/src/activity/baileys-audit.test.ts backend/src/modules/activity/baileys-audit.test.ts
+          git mv backend/src/activity/query.ts backend/src/modules/activity/query.ts
+          git mv backend/src/activity/query.test.ts backend/src/modules/activity/query.test.ts
+          git mv backend/src/activity/query-error.test.ts backend/src/modules/activity/query-error.test.ts
+          git mv backend/src/activity/store.ts backend/src/modules/activity/store.ts
+          git mv backend/src/activity/store.test.ts backend/src/modules/activity/store.test.ts
+          git mv backend/src/routes/activity.routes.ts backend/src/modules/activity/routes.ts
+          git mv backend/src/routes/activity.routes.test.ts backend/src/modules/activity/routes.test.ts
+
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "backend/src/modules/activity/store.ts": [
+                  ('../infrastructure/database.js', '../../infrastructure/database.js', 1),
+                  ('../infrastructure/logger.js', '../../infrastructure/logger.js', 1),
+              ],
+              "backend/src/modules/activity/query.ts": [
+                  ('../errors/application-error.js', '../../errors/application-error.js', 1),
+                  ('../infrastructure/database.js', '../../infrastructure/database.js', 1),
+              ],
+              "backend/src/modules/activity/baileys-audit.ts": [
+                  ('../infrastructure/logger.js', '../../infrastructure/logger.js', 1),
+              ],
+              "backend/src/modules/activity/routes.ts": [
+                  ('../activity/query.js', './query.js', 1),
+                  ('../activity/store.js', './store.js', 1),
+                  ('../http/middleware/auth.js', '../../http/middleware/auth.js', 1),
+              ],
+              "backend/src/modules/activity/routes.test.ts": [
+                  ('../activity/store.js', './store.js', 1),
+                  ('../app.js', '../../app.js', 1),
+                  ('../modules/access/api-key.js', '../access/api-key.js', 1),
+              ],
+              "backend/src/app.ts": [
+                  ('./routes/activity.routes.js', './modules/activity/routes.js', 1),
+              ],
+              "backend/src/index.ts": [
+                  ('./activity/store.js', './modules/activity/store.js', 1),
+              ],
+              "backend/src/infrastructure/persistence.ts": [
+                  ('../activity/store.js', '../modules/activity/store.js', 1),
+              ],
+              "backend/src/modules/messages/routes.ts": [
+                  ('../../activity/store.js', '../activity/store.js', 1),
+              ],
+              "backend/src/modules/messages/routes.service-contract.test.ts": [
+                  ('../../activity/store.js', '../activity/store.js', 1),
+              ],
+              "backend/src/modules/whatsapp/audit-lifecycle.test.ts": [
+                  ('../../activity/store.js', '../activity/store.js', 1),
+                  ('../../activity/query.js', '../activity/query.js', 6),
+              ],
+              "backend/src/modules/whatsapp/connection-state.ts": [
+                  ('../../activity/store.js', '../activity/store.js', 1),
+              ],
+              "backend/src/modules/whatsapp/credential-writer.ts": [
+                  ('../../activity/baileys-audit.js', '../activity/baileys-audit.js', 1),
+              ],
+              "backend/src/modules/whatsapp/message-status-store.ts": [
+                  ('../../activity/store.js', '../activity/store.js', 1),
+              ],
+              "backend/src/modules/whatsapp/message-status-store.test.ts": [
+                  ('../../activity/store.js', '../activity/store.js', 1),
+              ],
+              "backend/src/modules/whatsapp/observability.ts": [
+                  ('../../activity/baileys-audit.js', '../activity/baileys-audit.js', 1),
+              ],
+              "backend/src/modules/whatsapp/whatsapp.test.ts": [
+                  ('../../activity/store.js', '../activity/store.js', 1),
+                  ('../../activity/query.js', '../activity/query.js', 1),
+              ],
+              "backend/src/routes/app.routes.ts": [
+                  ('../activity/store.js', '../modules/activity/store.js', 1),
+              ],
+              "backend/src/routes/recipient.routes.ts": [
+                  ('../activity/store.js', '../modules/activity/store.js', 1),
+              ],
+              "backend/src/routes/whatsapp.routes.ts": [
+                  ('../activity/store.js', '../modules/activity/store.js', 1),
+              ],
+          }
+
+          for filename, changes in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new, expected in changes:
+                  actual = text.count(old)
+                  if actual != expected:
+                      raise SystemExit(f"{filename}: expected {expected} occurrence(s) of {old!r}, found {actual}")
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+
+          rmdir backend/src/activity
+
+      - name: Verify complete activity ownership
+        run: |
+          pnpm exec biome check --write backend/src/modules/activity backend/src/modules/messages backend/src/modules/whatsapp backend/src/routes backend/src/app.ts backend/src/index.ts backend/src/infrastructure/persistence.ts
+          pnpm check
+          pnpm --dir backend test
+          pnpm --dir backend build
+
+      - name: Commit verified migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A backend/src
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: consolidate activity module"
+          git push origin HEAD:refactor/modular-monolith-structure
