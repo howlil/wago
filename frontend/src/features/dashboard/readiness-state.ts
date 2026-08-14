@@ -1,4 +1,5 @@
 import type { GatewayReadinessSnapshot } from "../gateway/api.js";
+export type { GatewayReadinessSnapshot } from "../gateway/api.js";
 
 export type OperationalReadinessWarning = {
   tone: "warning" | "danger";
