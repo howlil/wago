@@ -52,9 +52,15 @@ jobs:
                   ('../infrastructure/database.js', '../../infrastructure/database.js', 1),
                   ('../infrastructure/logger.js', '../../infrastructure/logger.js', 1),
               ],
+              "backend/src/modules/activity/store.test.ts": [
+                  ('../infrastructure/database.js', '../../infrastructure/database.js', 1),
+              ],
               "backend/src/modules/activity/query.ts": [
                   ('../errors/application-error.js', '../../errors/application-error.js', 1),
                   ('../infrastructure/database.js', '../../infrastructure/database.js', 1),
+              ],
+              "backend/src/modules/activity/query-error.test.ts": [
+                  ('../errors/application-error.js', '../../errors/application-error.js', 1),
               ],
               "backend/src/modules/activity/baileys-audit.ts": [
                   ('../infrastructure/logger.js', '../../infrastructure/logger.js', 1),
