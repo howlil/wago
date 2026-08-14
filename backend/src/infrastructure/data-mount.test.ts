@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   assertPersistentDataMount,
@@ -59,14 +62,19 @@ describe("persistent data mount inspection", () => {
   });
 
   it("caches the verified production mount for readiness checks", () => {
-    const result = assertPersistentDataMount({
-      nodeEnv: "production",
-      dataDirectory: "/app/data",
-      mountInfoPath: "/proc/self/mountinfo",
-    });
+    const fixtureDirectory = mkdtempSync(join(tmpdir(), "wago-mount-"));
+    const mountInfoPath = join(fixtureDirectory, "mountinfo");
+    writeFileSync(mountInfoPath, volumeMountInfo);
 
-    if (result.persistent) {
+    try {
+      const result = assertPersistentDataMount({
+        nodeEnv: "production",
+        dataDirectory: "/app/data",
+        mountInfoPath,
+      });
       expect(getRuntimeDataMountInspection()).toEqual(result);
+    } finally {
+      rmSync(fixtureDirectory, { recursive: true, force: true });
     }
   });
 
