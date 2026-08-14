@@ -74,10 +74,6 @@ function getRecipientRow(jid: string): RecipientRow | undefined {
   return selectRecipient.get(jid) as RecipientRow | undefined;
 }
 
-export async function flushRecipientStore(): Promise<void> {
-  // SQLite commits writes synchronously on the shared connection.
-}
-
 export async function listRecipients(): Promise<RecipientRecord[]> {
   return (selectRecipients.all() as RecipientRow[]).map(mapRecipient);
 }

@@ -103,10 +103,6 @@ export async function recordActivity(input: AuditInput): Promise<AuditEvent> {
   return event;
 }
 
-export async function flushActivityStore(): Promise<void> {
-  // SQLite commits writes synchronously on the shared connection.
-}
-
 export async function listActivity(limit = 100): Promise<AuditEvent[]> {
   const safeLimit = Math.min(Math.max(Math.trunc(limit) || 100, 1), MAX_ACTIVITY_EVENTS);
   return (selectActivity.all(safeLimit) as ActivityRow[]).map(mapActivity);
