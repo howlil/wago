@@ -10,13 +10,16 @@ export async function requestJson<T>(path: string, init?: RequestInit, options: 
     credentials: "include",
   });
   const contentType = response.headers.get("content-type") ?? "";
-  const data = contentType.includes("application/json")
-    ? ((await response.json()) as T)
-    : ({
-        success: false,
-        error: "NON_JSON_RESPONSE",
-        message: await response.text(),
-      } as T);
+
+  if (!contentType.includes("application/json")) {
+    throw {
+      success: false,
+      error: "NON_JSON_RESPONSE",
+      message: await response.text(),
+    };
+  }
+
+  const data = (await response.json()) as T;
 
   if (!response.ok && !options.allowedStatuses?.includes(response.status)) {
     throw data;
