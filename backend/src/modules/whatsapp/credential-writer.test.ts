@@ -3,12 +3,10 @@ import { createCredentialWriter } from "./credential-writer.js";
 
 function deferred() {
   let resolve!: () => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<void>((resolvePromise, rejectPromise) => {
+  const promise = new Promise<void>((resolvePromise) => {
     resolve = resolvePromise;
-    reject = rejectPromise;
   });
-  return { promise, resolve, reject };
+  return { promise, resolve };
 }
 
 describe("credential writer", () => {
@@ -22,15 +20,22 @@ describe("credential writer", () => {
       logFailure: vi.fn(),
     });
 
-    writer.enqueue(async () => {
-      calls.push("first:start");
-      await first.promise;
-      calls.push("first:end");
-    }, 1);
-    writer.enqueue(async () => {
-      calls.push("second:start");
-      calls.push("second:end");
-    }, 1);
+    writer.enqueue(
+      async () => {
+        calls.push("first:start");
+        await first.promise;
+        calls.push("first:end");
+      },
+      1,
+    );
+    writer.enqueue(
+      () => {
+        calls.push("second:start");
+        calls.push("second:end");
+        return Promise.resolve();
+      },
+      1,
+    );
 
     await vi.waitFor(() => expect(calls).toEqual(["first:start"]));
     first.resolve();
@@ -49,10 +54,8 @@ describe("credential writer", () => {
       logFailure: vi.fn(),
     });
 
-    writer.enqueue(async () => {
-      throw new Error("disk write failed");
-    }, 3);
-    writer.enqueue(async () => undefined, 3);
+    writer.enqueue(() => Promise.reject(new Error("disk write failed")), 3);
+    writer.enqueue(() => Promise.resolve(), 3);
 
     await writer.flush();
 
