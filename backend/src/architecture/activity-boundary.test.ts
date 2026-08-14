@@ -33,7 +33,9 @@ function resolvesToLegacyActivity(file: string, specifier: string): boolean {
     .replaceAll("\\", "/")
     .replace(/\.js$/, "");
 
-  return target === "routes/activity.routes" || target === "routes/activity.routes.test" || target.startsWith("activity/");
+  return (
+    target === "routes/activity.routes" || target === "routes/activity.routes.test" || target.startsWith("activity/")
+  );
 }
 
 describe("Activity architecture boundary", () => {
