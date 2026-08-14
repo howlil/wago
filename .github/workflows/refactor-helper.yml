@@ -67,7 +67,7 @@ jobs:
       - name: Verify focused refactor gates
         run: |
           pnpm check
-          pnpm --dir backend test -- src/modules/whatsapp src/policy/outbound-policy.test.ts
+          pnpm --dir backend exec vitest run --exclude src/architecture/whatsapp-boundary.test.ts
           pnpm --dir backend run build
 
       - name: Commit verified import rewrite
