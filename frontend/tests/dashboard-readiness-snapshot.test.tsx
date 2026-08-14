@@ -104,4 +104,33 @@ describe("dashboard readiness snapshot scheduling", () => {
 
     unmount();
   });
+
+  it("ignores a stale readiness completion after a later health failure invalidates readiness", async () => {
+    let resolveReadiness!: (value: GatewayReadinessSnapshot) => void;
+    const readinessPromise = new Promise<GatewayReadinessSnapshot>((resolve) => {
+      resolveReadiness = resolve;
+    });
+    gatewayApi.getReadiness.mockReturnValueOnce(readinessPromise);
+    gatewayApi.getHealth.mockResolvedValueOnce({ status: "ok" }).mockResolvedValueOnce({ status: "error" });
+
+    const { result, unmount } = renderHook(() => useDashboardSnapshot());
+
+    await waitFor(() => expect(gatewayApi.getAppInfo).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.refresh({ showLoading: false });
+    });
+
+    expect(result.current.health).toBe("error");
+    expect(result.current.readiness).toBeNull();
+
+    await act(async () => {
+      resolveReadiness(degradedReadiness);
+      await readinessPromise;
+    });
+
+    expect(result.current.readiness).toBeNull();
+
+    unmount();
+  });
 });
