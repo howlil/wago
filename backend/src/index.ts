@@ -5,8 +5,8 @@ import { checkpointDatabase, closeDatabase, getDatabase } from "./infrastructure
 import { createInstanceLeaseManager } from "./infrastructure/instance-lease.js";
 import { logger } from "./infrastructure/logger.js";
 import { flushOutboundPolicyPersistence } from "./modules/messages/outbound-policy.js";
+import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./modules/webhooks/delivery-webhook.js";
 import { resumeWhatsAppSession, shutdownWhatsApp } from "./modules/whatsapp/index.js";
-import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./webhooks/delivery-webhook.js";
 
 const port = 3000;
 const host = "0.0.0.0";

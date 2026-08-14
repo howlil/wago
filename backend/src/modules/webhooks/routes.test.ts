@@ -1,8 +1,8 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { app } from "../app.js";
-import { resetAccessStateForTest } from "../modules/access/api-key.js";
-import { webhookSettingsStore as settingsStore } from "../webhooks/settings-runtime.js";
+import { app } from "../../app.js";
+import { resetAccessStateForTest } from "../access/api-key.js";
+import { webhookSettingsStore as settingsStore } from "./settings-runtime.js";
 
 const UNKNOWN_DELIVERY_ID = "11111111-1111-4111-8111-111111111111";
 

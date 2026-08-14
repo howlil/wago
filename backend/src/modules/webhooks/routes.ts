@@ -1,10 +1,10 @@
 import { type Response, Router } from "express";
-import { requireApiKey } from "../http/middleware/auth.js";
-import { createRateLimit } from "../http/middleware/rate-limit.js";
-import type { WebhookDeliveryStatus } from "../webhooks/delivery-store.js";
-import { getWebhookDelivery, listWebhookDeliveries, redeliverWebhookDelivery } from "../webhooks/delivery-webhook.js";
-import { webhookSettingsStore as settingsStore } from "../webhooks/settings-runtime.js";
-import type { WebhookSettings } from "../webhooks/settings-store.js";
+import { requireApiKey } from "../../http/middleware/auth.js";
+import { createRateLimit } from "../../http/middleware/rate-limit.js";
+import type { WebhookDeliveryStatus } from "./delivery-store.js";
+import { getWebhookDelivery, listWebhookDeliveries, redeliverWebhookDelivery } from "./delivery-webhook.js";
+import { webhookSettingsStore as settingsStore } from "./settings-runtime.js";
+import type { WebhookSettings } from "./settings-store.js";
 
 export const webhookRouter = Router();
 

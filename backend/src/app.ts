@@ -8,10 +8,10 @@ import { requestHasSameOrigin } from "./http/middleware/origin.js";
 import { requestLogger } from "./http/middleware/request-logger.js";
 import { getReadinessSnapshot } from "./modules/gateway/readiness.js";
 import { messageRouter } from "./modules/messages/routes.js";
+import { webhookRouter } from "./modules/webhooks/routes.js";
 import { activityRouter } from "./routes/activity.routes.js";
 import { appRouter } from "./routes/app.routes.js";
 import { recipientRouter } from "./routes/recipient.routes.js";
-import { webhookRouter } from "./routes/webhook.routes.js";
 import { whatsappRouter } from "./routes/whatsapp.routes.js";
 
 export const app = express();

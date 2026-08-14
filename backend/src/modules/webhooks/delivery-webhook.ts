@@ -1,5 +1,5 @@
-import { getDatabase } from "../infrastructure/database.js";
-import { logger } from "../infrastructure/logger.js";
+import { getDatabase } from "../../infrastructure/database.js";
+import { logger } from "../../infrastructure/logger.js";
 import {
   createWebhookDeliveryStore,
   type StoredWebhookDelivery,
