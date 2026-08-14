@@ -3,7 +3,7 @@ import { recordActivity } from "../activity/store.js";
 import { isApplicationError } from "../errors/application-error.js";
 import { asyncHandler } from "../http/middleware/async-handler.js";
 import { requireApiKey } from "../http/middleware/auth.js";
-import { createRateLimit } from "../middleware/rate-limit.js";
+import { createRateLimit } from "../http/middleware/rate-limit.js";
 import { messageService } from "../modules/messages/message.service.js";
 import { isOutboundPolicyError } from "../policy/outbound-policy.js";
 
