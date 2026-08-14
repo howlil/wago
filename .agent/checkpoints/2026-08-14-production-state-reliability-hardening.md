@@ -3,11 +3,13 @@
 Date: 2026-08-14
 Branch: `fix/production-state-reliability`
 PR: `#36`
+Verified head before ledger commit: `70d87c671f63d67c74346fce1c4fb77822950d8f`
 
 ## Implemented
 
 - Production mount guard rejects container-root overlay, `tmpfs`, `ramfs`, and unverifiable `/app/data` storage before SQLite opens.
-- Container smoke includes the negative ephemeral-storage case and verifies replacement-container persistence.
+- Verified production mount information is cached at startup; `/ready` does not perform request-time filesystem reads.
+- Container smoke includes the negative ephemeral-storage case and verifies graceful replacement-container persistence.
 - SQLite migration 7 adds a singleton gateway-instance lease.
 - One owner acquires and heartbeats the lease; overlapping contenders fail with `WAGO_INSTANCE_ALREADY_ACTIVE`.
 - Heartbeat persistence errors fail closed and ownership-loss triggers graceful termination.
@@ -24,14 +26,20 @@ PR: `#36`
 - Webhook at-least-once behavior is locked by regression coverage: retry/manual redelivery preserve the same delivery ID and signed payload identity.
 - Public deployment/configuration/operations docs and `SECURITY.md` document persistent storage, single-instance deployment, setup-token bootstrap, browser-session compromise response, webhook deduplication, and controlled whole-`/app/data` backup/restore.
 
-## Verification Gate
+## Pre-Merge Verification Evidence
 
-Mandatory PR checks must be green before merge:
+All mandatory checks completed successfully on `70d87c671f63d67c74346fce1c4fb77822950d8f`:
 
-- Core CI: formatting/lint, backend/frontend tests, builds, documentation build.
-- Docker smoke: amd64 image build, ephemeral-storage rejection, shared-volume contender rejection, restart/replacement persistence, rollback compatibility.
-- Native ARM64 Docker build.
-- Docs CI.
-- CodeQL.
+- CI run `31800966215` / run #528: success.
+  - formatting/lint: success;
+  - backend + frontend test suites: success;
+  - core build + documentation build: success;
+  - amd64 Docker build and production persistence smoke: success;
+  - native ARM64 Docker build: success.
+- Docs CI run `31800966199` / run #199: success.
+- CodeQL run `31800966209` / run #529: success.
+- GitHub Advanced Security review finding about request-time filesystem access on `/ready` was fixed by moving mount inspection to startup-only cached state, then resolved after CodeQL passed.
 
-Merge policy: squash merge PR `#36` after all mandatory checks are green and no unresolved blocker remains. Keep the task branch until the post-merge `main` CI/container-release verification succeeds, then delete it.
+## Final Gate
+
+This ledger update intentionally triggers one final PR verification run. Squash merge PR `#36` only if that final head remains green for CI, Docs CI, and CodeQL and no unresolved review blocker remains. After merge, verify `main` CI plus Release Container, then delete `fix/production-state-reliability`.
