@@ -32,7 +32,18 @@ type LeaseOptions = {
   heartbeatMs?: number;
   now?: () => number;
   onOwnershipLost?: () => void;
+  trackRuntimeState?: boolean;
 };
+
+let runtimeInstanceLeaseState: InstanceLeaseState = "not_acquired";
+
+export function getRuntimeInstanceLeaseState(): InstanceLeaseState {
+  return runtimeInstanceLeaseState;
+}
+
+export function resetRuntimeInstanceLeaseStateForTest(): void {
+  runtimeInstanceLeaseState = "not_acquired";
+}
 
 export function createInstanceLeaseManager(database: DatabaseSync, options: LeaseOptions = {}): InstanceLeaseManager {
   const ownerId = options.ownerId ?? randomUUID();
@@ -42,9 +53,12 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
   let timer: NodeJS.Timeout | undefined;
   let state: InstanceLeaseState = "not_acquired";
 
-  const readLease = database.prepare(
-    "SELECT owner_id, expires_at FROM gateway_instance_lease WHERE id = 1",
-  );
+  const setState = (nextState: InstanceLeaseState): void => {
+    state = nextState;
+    if (options.trackRuntimeState) runtimeInstanceLeaseState = nextState;
+  };
+
+  const readLease = database.prepare("SELECT owner_id, expires_at FROM gateway_instance_lease WHERE id = 1");
   const acquireLease = database.prepare(`
     INSERT INTO gateway_instance_lease (id, owner_id, acquired_at, heartbeat_at, expires_at)
     VALUES (1, ?, ?, ?, ?)
@@ -63,7 +77,7 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
 
   const loseOwnership = (): void => {
     if (state === "lost") return;
-    state = "lost";
+    setState("lost");
     if (timer) {
       clearInterval(timer);
       timer = undefined;
@@ -77,18 +91,12 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
       const expiresAt = timestamp + ttlMs;
       return withTransaction(database, () => {
         const existing = readLease.get() as { owner_id?: string; expires_at?: number } | undefined;
-        if (
-          existing?.owner_id &&
-          existing.owner_id !== ownerId &&
-          typeof existing.expires_at === "number" &&
-          existing.expires_at > timestamp
-        ) {
-          state = "not_acquired";
+        if (existing?.owner_id && existing.owner_id !== ownerId && typeof existing.expires_at === "number" && existing.expires_at > timestamp) {
+          setState("not_acquired");
           return { acquired: false, reason: "LEASE_HELD" };
         }
-
         acquireLease.run(ownerId, timestamp, timestamp, expiresAt);
-        state = "owned";
+        setState("owned");
         return { acquired: true };
       });
     },
@@ -110,7 +118,7 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
         clearInterval(timer);
         timer = undefined;
       }
-      state = "released";
+      setState("released");
       return Number(result.changes) === 1;
     },
 
@@ -122,9 +130,7 @@ export function createInstanceLeaseManager(database: DatabaseSync, options: Leas
 
     startHeartbeat(): void {
       if (timer || state !== "owned") return;
-      timer = setInterval(() => {
-        manager.heartbeat();
-      }, heartbeatMs);
+      timer = setInterval(() => manager.heartbeat(), heartbeatMs);
       timer.unref();
     },
 

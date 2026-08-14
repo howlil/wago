@@ -12,6 +12,7 @@ const port = 3000;
 const host = "0.0.0.0";
 
 const instanceLease = createInstanceLeaseManager(getDatabase(), {
+  trackRuntimeState: true,
   onOwnershipLost: () => {
     logger.error({ event: "app.instance_lease_lost", code: "WAGO_INSTANCE_LEASE_LOST" });
     process.kill(process.pid, "SIGTERM");
@@ -36,12 +37,7 @@ async function start(): Promise<void> {
   await lifecycle.start();
 
   const server = app.listen(port, host, () => {
-    logger.info({
-      event: "app.listen",
-      host,
-      port,
-    });
-
+    logger.info({ event: "app.listen", host, port });
     void recordActivity({
       level: "info",
       category: "system",
@@ -55,19 +51,10 @@ async function start(): Promise<void> {
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     if (shutdownStarted) return;
     shutdownStarted = true;
-
     logger.info({ event: "app.shutdown", signal });
-
     await new Promise<void>((resolve, reject) => {
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve();
-      });
+      server.close((error) => (error ? reject(error) : resolve()));
     });
-
     await lifecycle.stop(signal);
   };
 
