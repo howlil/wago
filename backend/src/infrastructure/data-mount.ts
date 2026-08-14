@@ -18,6 +18,7 @@ export class PersistentDataRequiredError extends Error {
 }
 
 const ephemeralFileSystems = new Set(["overlay", "tmpfs", "ramfs"]);
+let runtimeDataMountInspection: DataMountInspection | null = null;
 
 function decodeMountInfoPath(value: string): string {
   return value.replace(/\\([0-7]{3})/g, (_match, octal: string) => String.fromCharCode(Number.parseInt(octal, 8)));
@@ -65,6 +66,14 @@ export function inspectDataMount(mountInfo: string, dataDirectory: string): Data
   };
 }
 
+export function getRuntimeDataMountInspection(): DataMountInspection | null {
+  return runtimeDataMountInspection ? { ...runtimeDataMountInspection } : null;
+}
+
+export function resetRuntimeDataMountInspectionForTest(): void {
+  runtimeDataMountInspection = null;
+}
+
 export function assertPersistentDataMount(
   options: { nodeEnv?: string; dataDirectory?: string; mountInfoPath?: string } = {},
 ): DataMountInspection {
@@ -74,6 +83,8 @@ export function assertPersistentDataMount(
   if (nodeEnv !== "production") {
     return { persistent: false, mountPoint: "", fsType: null };
   }
+
+  runtimeDataMountInspection = null;
 
   let mountInfo: string;
   try {
@@ -91,5 +102,6 @@ export function assertPersistentDataMount(
     );
   }
 
+  runtimeDataMountInspection = inspection;
   return inspection;
 }
