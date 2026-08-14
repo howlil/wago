@@ -11,12 +11,12 @@ const whatsappMock = vi.hoisted(() => ({
   getMessageStatus: vi.fn(),
 }));
 
-vi.mock("../modules/messages/message.service.js", () => serviceMock);
-vi.mock("../modules/whatsapp/index.js", () => whatsappMock);
-vi.mock("../activity/store.js", () => ({ recordActivity: vi.fn() }));
+vi.mock("./message.service.js", () => serviceMock);
+vi.mock("../whatsapp/index.js", () => whatsappMock);
+vi.mock("../../activity/store.js", () => ({ recordActivity: vi.fn() }));
 
-import { resetAccessStateForTest } from "../modules/access/api-key.js";
-import { messageRouter } from "./message.routes.js";
+import { resetAccessStateForTest } from "../access/api-key.js";
+import { messageRouter } from "./routes.js";
 
 function makeApp() {
   const app = express();
