@@ -6,7 +6,7 @@ import {
   requestHasValidBrowserSession,
   requestIsAuthenticated,
 } from "../http/middleware/auth.js";
-import { requestHasSameOrigin } from "../middleware/origin.js";
+import { requestHasSameOrigin } from "../http/middleware/origin.js";
 import {
   bootstrapApiKey,
   getAccessSnapshot,
