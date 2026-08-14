@@ -27,9 +27,15 @@ export function createApplicationLifecycle(deps: ApplicationLifecycleDeps): {
         const lease = deps.acquireInstanceLease();
         if (!lease.acquired) throw new WagoInstanceAlreadyActiveError();
 
-        deps.startInstanceLeaseHeartbeat();
-        deps.startWebhookDeliveryWorker();
-        await deps.resumeWhatsAppSession();
+        try {
+          deps.startInstanceLeaseHeartbeat();
+          deps.startWebhookDeliveryWorker();
+          await deps.resumeWhatsAppSession();
+        } catch (error) {
+          deps.stopInstanceLeaseHeartbeat();
+          deps.releaseInstanceLease();
+          throw error;
+        }
       })();
       return startPromise;
     },
