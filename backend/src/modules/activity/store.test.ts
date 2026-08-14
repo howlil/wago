@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getDatabase } from "../infrastructure/database.js";
+import { getDatabase } from "../../infrastructure/database.js";
 import { listActivity, recordActivity, resetActivityLogForTest } from "./store.js";
 
 const database = getDatabase();

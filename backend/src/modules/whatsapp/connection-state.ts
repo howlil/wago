@@ -1,4 +1,4 @@
-import { recordActivity } from "../../activity/store.js";
+import { recordActivity } from "../activity/store.js";
 import { type AccountHealthSnapshot, getAccountHealthSnapshot } from "./account-health.js";
 import { getWhatsAppBinding, type WhatsAppBinding } from "./binding-store.js";
 

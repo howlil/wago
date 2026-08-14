@@ -1,5 +1,4 @@
 import { type Response, Router } from "express";
-import { recordActivity } from "../activity/store.js";
 import { config } from "../config/index.js";
 import {
   getBrowserSessionToken,
@@ -20,6 +19,7 @@ import {
   revokeBrowserSession,
   revokeOtherBrowserSessions,
 } from "../modules/access/browser-session-store.js";
+import { recordActivity } from "../modules/activity/store.js";
 
 export const appRouter = Router();
 

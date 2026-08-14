@@ -1,4 +1,4 @@
-import { maskIdentifier } from "../infrastructure/logger.js";
+import { maskIdentifier } from "../../infrastructure/logger.js";
 import type { AuditInput, AuditMetadata } from "./audit-event.js";
 import { recordActivity } from "./store.js";
 

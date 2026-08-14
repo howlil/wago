@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApplicationError } from "../errors/application-error.js";
+import { ApplicationError } from "../../errors/application-error.js";
 import { listAudit } from "./query.js";
 
 describe("audit query typed errors", () => {

@@ -1,4 +1,4 @@
-import type { BaileysAuditInput } from "../../activity/baileys-audit.js";
+import type { BaileysAuditInput } from "../activity/baileys-audit.js";
 
 const CREDENTIAL_AUDIT_INTERVAL_MS = 1000 * 60;
 

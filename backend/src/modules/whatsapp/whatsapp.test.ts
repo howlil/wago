@@ -108,7 +108,7 @@ describe("whatsapp send semantics", () => {
       },
     });
 
-    const { resetActivityLogForTest } = await import("../../activity/store.js");
+    const { resetActivityLogForTest } = await import("../activity/store.js");
     await resetActivityLogForTest();
   });
 
@@ -367,7 +367,7 @@ describe("whatsapp send semantics", () => {
 
   it("records a completion checkpoint after rebind starts a fresh socket lifecycle", async () => {
     const { initializeWhatsApp, rebindWhatsApp } = await import("./index.js");
-    const { listAudit } = await import("../../activity/query.js");
+    const { listAudit } = await import("../activity/query.js");
 
     await initializeWhatsApp();
     await rebindWhatsApp();

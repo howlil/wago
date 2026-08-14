@@ -1,4 +1,4 @@
-import { recordActivity } from "../../activity/store.js";
+import { recordActivity } from "../activity/store.js";
 import { enqueueMessageDeliveryWebhook } from "../webhooks/delivery-webhook.js";
 
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";

@@ -1,9 +1,9 @@
-import { recordActivity } from "./activity/store.js";
 import { createApplicationLifecycle } from "./app/lifecycle.js";
 import { app } from "./app.js";
 import { checkpointDatabase, closeDatabase, getDatabase } from "./infrastructure/database.js";
 import { createInstanceLeaseManager } from "./infrastructure/instance-lease.js";
 import { logger } from "./infrastructure/logger.js";
+import { recordActivity } from "./modules/activity/store.js";
 import { flushOutboundPolicyPersistence } from "./modules/messages/outbound-policy.js";
 import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./modules/webhooks/delivery-webhook.js";
 import { resumeWhatsAppSession, shutdownWhatsApp } from "./modules/whatsapp/index.js";

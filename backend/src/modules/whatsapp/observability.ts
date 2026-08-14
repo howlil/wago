@@ -1,6 +1,6 @@
 import type { WASocket } from "@whiskeysockets/baileys";
-import { type BaileysAuditInput, recordBaileysAudit } from "../../activity/baileys-audit.js";
 import { logger } from "../../infrastructure/logger.js";
+import { type BaileysAuditInput, recordBaileysAudit } from "../activity/baileys-audit.js";
 import type { AccountHealthFetcher } from "./account-health.js";
 
 export function auditBaileys(input: BaileysAuditInput): void {

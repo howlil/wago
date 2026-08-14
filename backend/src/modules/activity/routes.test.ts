@@ -1,8 +1,8 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { recordActivity, resetActivityLogForTest } from "../activity/store.js";
-import { app } from "../app.js";
-import { resetAccessStateForTest } from "../modules/access/api-key.js";
+import { app } from "../../app.js";
+import { resetAccessStateForTest } from "../access/api-key.js";
+import { recordActivity, resetActivityLogForTest } from "./store.js";
 
 describe("activity routes", () => {
   beforeEach(async () => {

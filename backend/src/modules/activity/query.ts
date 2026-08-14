@@ -1,5 +1,5 @@
-import { ApplicationError, isApplicationError } from "../errors/application-error.js";
-import { getDatabase } from "../infrastructure/database.js";
+import { ApplicationError, isApplicationError } from "../../errors/application-error.js";
+import { getDatabase } from "../../infrastructure/database.js";
 import type { ActivityCategory, ActivityLevel, AuditEvent, AuditMetadata, AuditSource } from "./audit-event.js";
 
 export type AuditQuery = {

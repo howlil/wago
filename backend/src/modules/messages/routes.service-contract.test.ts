@@ -13,7 +13,7 @@ const whatsappMock = vi.hoisted(() => ({
 
 vi.mock("./message.service.js", () => serviceMock);
 vi.mock("../whatsapp/index.js", () => whatsappMock);
-vi.mock("../../activity/store.js", () => ({ recordActivity: vi.fn() }));
+vi.mock("../activity/store.js", () => ({ recordActivity: vi.fn() }));
 
 import { resetAccessStateForTest } from "../access/api-key.js";
 import { messageRouter } from "./routes.js";

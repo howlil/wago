@@ -9,7 +9,7 @@ vi.mock("../webhooks/delivery-webhook.js", () => ({
   enqueueMessageDeliveryWebhook: mocks.enqueueMessageDeliveryWebhook,
 }));
 
-vi.mock("../../activity/store.js", () => ({
+vi.mock("../activity/store.js", () => ({
   recordActivity: mocks.recordActivity,
 }));
 

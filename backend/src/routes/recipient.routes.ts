@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { recordActivity } from "../activity/store.js";
 import { asyncHandler } from "../http/middleware/async-handler.js";
 import { requireApiKey } from "../http/middleware/auth.js";
+import { recordActivity } from "../modules/activity/store.js";
 import { allowRecipient, listRecipients, optOutRecipient } from "../recipients/store.js";
 
 export const recipientRouter = Router();

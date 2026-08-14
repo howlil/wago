@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { getDatabase, withTransaction } from "../infrastructure/database.js";
-import { redactLogFields } from "../infrastructure/logger.js";
+import { getDatabase, withTransaction } from "../../infrastructure/database.js";
+import { redactLogFields } from "../../infrastructure/logger.js";
 import type {
   ActivityCategory,
   ActivityLevel,

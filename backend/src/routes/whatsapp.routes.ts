@@ -1,9 +1,9 @@
 import { Router } from "express";
 import QRCode from "qrcode";
-import { recordActivity } from "../activity/store.js";
 import { asyncHandler } from "../http/middleware/async-handler.js";
 import { requireApiKey } from "../http/middleware/auth.js";
 import { createRateLimit } from "../http/middleware/rate-limit.js";
+import { recordActivity } from "../modules/activity/store.js";
 import { getCurrentQr, getWhatsAppStatus, pairWhatsApp, rebindWhatsApp } from "../modules/whatsapp/index.js";
 
 export const whatsappRouter = Router();
