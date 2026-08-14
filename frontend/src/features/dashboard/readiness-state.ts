@@ -1,36 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-
-export type ReadinessLevel = "ok" | "degraded" | "not_ready";
-export type ReadinessCheck = {
-  status: ReadinessLevel;
-  reason?: string;
-};
-
-export type GatewayReadinessSnapshot = {
-  status: ReadinessLevel;
-  checks: Record<string, ReadinessCheck>;
-};
+import type { GatewayReadinessSnapshot } from "../gateway/api.js";
 
 export type OperationalReadinessWarning = {
   tone: "warning" | "danger";
   message: string;
 };
-
-export async function fetchGatewayReadiness(): Promise<GatewayReadinessSnapshot> {
-  const response = await fetch(`${API_BASE_URL}/ready`, { credentials: "include" });
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (!contentType.includes("application/json")) {
-    throw new Error("Readiness endpoint returned a non-JSON response");
-  }
-
-  const snapshot = (await response.json()) as GatewayReadinessSnapshot;
-  if (!response.ok && response.status !== 503) {
-    throw new Error("Readiness endpoint failed");
-  }
-
-  return snapshot;
-}
 
 export function getOperationalReadinessWarning(
   snapshot: GatewayReadinessSnapshot | null,
