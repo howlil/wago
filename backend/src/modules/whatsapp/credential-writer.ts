@@ -22,10 +22,7 @@ export function createCredentialWriter({
   let lastSuccessAuditAt = 0;
 
   function shouldAuditSuccess(generation: number, timestamp: number): boolean {
-    if (
-      generation !== lastSuccessAuditGeneration ||
-      timestamp - lastSuccessAuditAt >= CREDENTIAL_AUDIT_INTERVAL_MS
-    ) {
+    if (generation !== lastSuccessAuditGeneration || timestamp - lastSuccessAuditAt >= CREDENTIAL_AUDIT_INTERVAL_MS) {
       lastSuccessAuditGeneration = generation;
       lastSuccessAuditAt = timestamp;
       return true;
