@@ -1,5 +1,5 @@
 import { config } from "../../config/index.js";
-import { assertPersistentDataMount } from "../../infrastructure/data-mount.js";
+import { getRuntimeDataMountInspection } from "../../infrastructure/data-mount.js";
 import { getDatabase } from "../../infrastructure/database.js";
 import { getRuntimeInstanceLeaseState, type InstanceLeaseState } from "../../infrastructure/instance-lease.js";
 import { createWebhookSettingsStore } from "../../webhooks/settings-store.js";
@@ -46,12 +46,9 @@ function worstStatus(checks: ReadinessCheck[]): ReadinessLevel {
 
 function storageCheck(): ReadinessCheck {
   if (config.nodeEnv !== "production") return { status: "ok", reason: "development_storage_policy" };
-  try {
-    assertPersistentDataMount({ nodeEnv: config.nodeEnv, dataDirectory: config.dataDirectory });
-    return { status: "ok" };
-  } catch {
-    return { status: "not_ready", reason: "persistent_storage_unavailable" };
-  }
+  return getRuntimeDataMountInspection()?.persistent
+    ? { status: "ok" }
+    : { status: "not_ready", reason: "persistent_storage_unavailable" };
 }
 
 function databaseCheck(): ReadinessCheck {
