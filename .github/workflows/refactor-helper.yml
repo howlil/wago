@@ -1,0 +1,103 @@
+name: Refactor Helper
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-credential-writer:
+    if: github.event.pull_request.head.ref == 'refactor/modular-monolith-structure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout refactor branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Integrate credential writer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/src/modules/whatsapp/lifecycle.ts')
+          text = path.read_text()
+
+          anchor = 'import { markCredentialPersistenceFailure, markCredentialPersistenceSuccess } from "./credential-persistence-health.js";\n'
+          if text.count(anchor) != 1:
+              raise SystemExit('credential persistence import anchor changed')
+          text = text.replace(anchor, 'import { createCredentialWriter } from "./credential-writer.js";\n' + anchor)
+
+          for old, expected in [
+              ('const CREDENTIAL_AUDIT_INTERVAL_MS = 1000 * 60;\n', 1),
+              ('let credentialWriteQueue: Promise<void> = Promise.resolve();\n', 1),
+              ('let lastCredentialAuditGeneration = 0;\n', 1),
+              ('let lastCredentialAuditAt = 0;\n', 1),
+          ]:
+              if text.count(old) != expected:
+                  raise SystemExit(f'expected {expected} occurrence(s) of {old!r}, found {text.count(old)}')
+              text = text.replace(old, '')
+
+          start = text.index('function shouldAuditCredentialSuccess')
+          end = text.index('function clearReconnectTimer')
+          replacement = '''const credentialWriter = createCredentialWriter({
+            onSuccess: markCredentialPersistenceSuccess,
+            onFailure: markCredentialPersistenceFailure,
+            audit: auditBaileys,
+            logFailure: (error) => {
+              logger.error(
+                { event: "wa.credentials.persist_failed", errorName: error instanceof Error ? error.name : "UNKNOWN" },
+                "Failed to persist WhatsApp credentials",
+              );
+            },
+          });
+
+          '''
+          text = text[:start] + replacement + text[end:]
+
+          if text.count('enqueueCredentialWrite(saveCreds, generation);') != 1:
+              raise SystemExit('credential enqueue call count changed')
+          text = text.replace('enqueueCredentialWrite(saveCreds, generation);', 'credentialWriter.enqueue(saveCreds, generation);')
+
+          if text.count('await flushCredentialWrites();') != 2:
+              raise SystemExit(f'expected two credential flushes, found {text.count("await flushCredentialWrites();")}')
+          text = text.replace('await flushCredentialWrites();', 'await credentialWriter.flush();')
+
+          path.write_text(text)
+          PY
+
+      - name: Format rewritten file
+        run: pnpm check:fix
+
+      - name: Verify credential writer integration
+        run: |
+          pnpm check
+          pnpm --dir backend exec vitest run src/modules/whatsapp/credential-writer.test.ts src/modules/whatsapp/lifecycle.test.ts src/whatsapp/lifecycle.contract.test.ts
+          pnpm --dir backend run build
+
+      - name: Commit verified integration
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git add backend/src/modules/whatsapp/lifecycle.ts
+          if git diff --cached --quiet; then
+            echo "Credential writer already integrated."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "refactor: delegate credential persistence queue"
+          git push origin "HEAD:${HEAD_REF}"
