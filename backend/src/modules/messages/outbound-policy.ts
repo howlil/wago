@@ -3,11 +3,6 @@ import { withTransaction } from "../../infrastructure/database.js";
 import { logger } from "../../infrastructure/logger.js";
 import { getRecipientByJid, getRecipientByJidSync, rememberSuccessfulOutboundSync } from "../recipients/store.js";
 import {
-  type AccountHealthFetcher,
-  checkAccountHealth,
-  resetAccountHealthForTest,
-} from "../whatsapp/account-health.js";
-import {
   flushOutboundPolicyStore,
   forgetOutboundPolicyMemoryForTest,
   getAccountWindow,
@@ -44,12 +39,14 @@ export type OutboundPolicyDecision =
       retryAt?: Date;
     };
 
+export type OutboundAccountHealthCheck = (options: { isNewRecipient: boolean }) => Promise<OutboundPolicyDecision>;
+
 export type OutboundPolicyInput = {
   to: string;
   jid: string;
   text: string;
   idempotencyKey?: string;
-  accountHealthFetcher?: AccountHealthFetcher;
+  accountHealthCheck?: OutboundAccountHealthCheck;
 };
 
 export type OutboundPolicyOutcome = OutboundPolicyInput & {
@@ -207,10 +204,12 @@ export async function checkOutboundPolicy(input: OutboundPolicyInput): Promise<O
   const cooldownDecision = checkRecipientReachoutRestriction(input.jid, now);
   if (cooldownDecision) return cooldownDecision;
 
-  const healthDecision = await checkAccountHealth(input.accountHealthFetcher, {
-    isNewRecipient: recipientContext.isNewRecipient,
-  });
-  if (!healthDecision.allowed) return healthDecision;
+  if (input.accountHealthCheck) {
+    const healthDecision = await input.accountHealthCheck({
+      isNewRecipient: recipientContext.isNewRecipient,
+    });
+    if (!healthDecision.allowed) return healthDecision;
+  }
 
   const accountLimitDecision = checkAccountRateLimit(now);
   if (accountLimitDecision) return accountLimitDecision;
@@ -289,12 +288,10 @@ export async function flushOutboundPolicyPersistence(): Promise<void> {
 
 export async function forgetOutboundPolicyStateForTest(): Promise<void> {
   await forgetOutboundPolicyMemoryForTest();
-  resetAccountHealthForTest();
 }
 
 export async function resetOutboundPolicyState(): Promise<void> {
   const persisted = resetOutboundPolicyStoreForTest();
-  resetAccountHealthForTest();
   await persisted;
 }
 

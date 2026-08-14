@@ -151,20 +151,19 @@ describe("outbound policy", () => {
     });
   });
 
-  // --- WhatsApp account health ---
+  // --- Account health policy ---
 
-  describe("WhatsApp account health", () => {
-    it("blocks active reachout timelock from Baileys", async () => {
+  describe("account health policy", () => {
+    it("propagates an active reachout restriction from the injected health check", async () => {
       const retryAt = new Date(Date.now() + 60_000);
       const decision = await checkOutboundPolicy(
         makeInput({
-          accountHealthFetcher: {
-            fetchAccountReachoutTimelock: async () => ({
-              isActive: true,
-              timeEnforcementEnds: retryAt,
-            }),
-            fetchNewChatMessageCap: async () => undefined,
-          },
+          accountHealthCheck: async () => ({
+            allowed: false,
+            reason: "WA_REACHOUT_RESTRICTED",
+            message: "WhatsApp reports this account is restricted from starting new outbound reach-outs",
+            retryAt,
+          }),
         }),
       );
 
@@ -175,15 +174,14 @@ describe("outbound policy", () => {
       }
     });
 
-    it("blocks capped new-chat state from Baileys", async () => {
+    it("propagates a capped new-chat decision from the injected health check", async () => {
       const decision = await checkOutboundPolicy(
         makeInput({
-          accountHealthFetcher: {
-            fetchAccountReachoutTimelock: async () => undefined,
-            fetchNewChatMessageCap: async () => ({
-              capping_status: "CAPPED",
-            }),
-          },
+          accountHealthCheck: async () => ({
+            allowed: false,
+            reason: "WA_NEW_CHAT_CAPPED",
+            message: "WhatsApp reports this account has reached its new-chat cap",
+          }),
         }),
       );
 

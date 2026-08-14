@@ -9,7 +9,7 @@ import {
   recordOutboundAccepted,
   recordOutboundRejected,
 } from "../messages/outbound-policy.js";
-import { markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
+import { checkAccountHealth, markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
 import { getConnectionStatus, type WhatsAppStatus } from "./connection-state.js";
 import { rememberPendingMessageStatus } from "./message-status-store.js";
 import { createAccountHealthFetcher } from "./observability.js";
@@ -68,12 +68,14 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
       }
 
       const generation = getSocketGeneration();
+      const accountHealthFetcher = createAccountHealthFetcher(activeSocket, generation);
       const policyInput = {
         to,
         jid,
         text,
         idempotencyKey: options.idempotencyKey,
-        accountHealthFetcher: createAccountHealthFetcher(activeSocket, generation),
+        accountHealthCheck: ({ isNewRecipient }: { isNewRecipient: boolean }) =>
+          checkAccountHealth(accountHealthFetcher, { isNewRecipient }),
       };
       const policyDecision = await checkOutboundPolicy(policyInput);
 
@@ -132,7 +134,7 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
 
         if (isApplicationError(normalizedError) && normalizedError.code === "REACHOUT_RESTRICTED") {
           markReachoutRestricted();
-          await refreshAccountHealth(createAccountHealthFetcher(activeSocket, generation), { force: true });
+          await refreshAccountHealth(accountHealthFetcher, { force: true });
           await markRecipientReachoutRestricted(jid, Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS);
         }
 
