@@ -1,44 +1,49 @@
 import { requestJson, requestText } from "../../shared/api/client.js";
 
-export type WhatsAppStatus = "disconnected" | "connecting" | "qr" | "connected";
+export type WhatsAppStatus = "connecting" | "qr" | "connected" | "disconnected";
 
-export type WhatsAppBinding = {
-  state: "unbound" | "bound";
-  jid: string | null;
-  phone: string | null;
-  boundAt: string | null;
-};
+export type WhatsAppBinding =
+  | {
+      state: "unbound";
+      jid: null;
+      phone: null;
+      boundAt: null;
+    }
+  | {
+      state: "bound";
+      jid: string;
+      phone: string;
+      boundAt: string;
+    };
 
-export type AccountHealthAvailability = "available" | "limited" | "unavailable";
-
-export type AccountHealthUnavailableReason = "not_connected" | "session_invalid";
+export type AccountHealthAvailability = "unavailable" | "checking" | "available";
+export type AccountHealthUnavailableReason = "not_connected" | "session_invalid" | "fetch_failed";
 
 export type AccountHealthSnapshot = {
   availability: AccountHealthAvailability;
+  unavailableReason?: AccountHealthUnavailableReason;
   reachoutTimeLock?: {
     isActive: boolean;
     retryAt?: string;
     enforcementType?: string;
   };
-  newChatLimit?: {
-    period: string;
-    maxChats: number | null;
-    chatsRemaining: number | null;
-    status?: string;
-    startsAt?: string;
+  newChatCap?: {
+    total_quota?: number;
+    used_quota?: number;
+    cycle_start_timestamp?: string;
+    cycle_end_timestamp?: string;
+    server_sent_timestamp?: string;
+    capping_status?: string;
   };
-  unavailableReason?: AccountHealthUnavailableReason;
-  checkedAt?: string;
-  lastSuccessAt?: string;
-  staleAfter?: string;
+  lastFetchedAt?: string;
+  lastFetchErrorAt?: string;
 };
 
 export type StatusResponse = {
-  success: boolean;
+  success: true;
   status: WhatsAppStatus;
-  message?: string;
   binding: WhatsAppBinding;
-  accountHealth?: AccountHealthSnapshot;
+  accountHealth: AccountHealthSnapshot;
 };
 
 export type QrResponse = {
@@ -48,11 +53,17 @@ export type QrResponse = {
   message?: string;
 };
 
-export type PairingResponse = {
-  success: boolean;
-  message: string;
-  status: WhatsAppStatus;
-};
+export type PairingResponse =
+  | {
+      success: true;
+      message: string;
+      status: WhatsAppStatus;
+    }
+  | {
+      success: false;
+      error: string;
+      message: string;
+    };
 
 export type RebindResponse = PairingResponse;
 
