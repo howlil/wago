@@ -9,8 +9,8 @@ import {
   markReachoutRestricted,
   refreshAccountHealth,
   updateReachoutTimeLock,
-} from "../../whatsapp/account-health.js";
-import { bindWhatsAppAccount, clearWhatsAppBinding, getWhatsAppBinding } from "../../whatsapp/binding-store.js";
+} from "./account-health.js";
+import { bindWhatsAppAccount, clearWhatsAppBinding, getWhatsAppBinding } from "./binding-store.js";
 import {
   getConnectionStatus,
   getCurrentQrState,
@@ -21,18 +21,14 @@ import {
   markQr,
   type WhatsAppStatus,
   type WhatsAppStatusSnapshot,
-} from "../../whatsapp/connection-state.js";
-import {
-  markCredentialPersistenceFailure,
-  markCredentialPersistenceSuccess,
-} from "../../whatsapp/credential-persistence-health.js";
-import { classifyDisconnect } from "../../whatsapp/disconnect-classifier.js";
-import { mapMessageRejection } from "../../whatsapp/message-rejection.js";
-import { updateMessageStatus } from "../../whatsapp/message-status-store.js";
-import { getRecentMessage } from "../../whatsapp/recent-message-store.js";
-import { getReconnectDelayMs, nextReconnectAttempt, resetReconnectAttempts } from "../../whatsapp/reconnect-state.js";
-import { getLiveBaileysVersion } from "../../whatsapp/wa-version.js";
+} from "./connection-state.js";
+import { markCredentialPersistenceFailure, markCredentialPersistenceSuccess } from "./credential-persistence-health.js";
+import { classifyDisconnect } from "./disconnect-classifier.js";
+import { mapMessageRejection } from "./message-rejection.js";
+import { updateMessageStatus } from "./message-status-store.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
+import { getRecentMessage } from "./recent-message-store.js";
+import { getReconnectDelayMs, nextReconnectAttempt, resetReconnectAttempts } from "./reconnect-state.js";
 import {
   getActiveSocket,
   getSocketGeneration,
@@ -47,6 +43,7 @@ import {
   setReconnecting,
   setShuttingDown,
 } from "./runtime.js";
+import { getLiveBaileysVersion } from "./wa-version.js";
 
 export type { WhatsAppStatus, WhatsAppStatusSnapshot };
 

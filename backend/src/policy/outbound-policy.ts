@@ -1,12 +1,12 @@
 import { ApplicationError, isApplicationError } from "../errors/application-error.js";
 import { withTransaction } from "../infrastructure/database.js";
 import { logger } from "../infrastructure/logger.js";
-import { getRecipientByJid, getRecipientByJidSync, rememberSuccessfulOutboundSync } from "../recipients/store.js";
 import {
   type AccountHealthFetcher,
   checkAccountHealth,
   resetAccountHealthForTest,
-} from "../whatsapp/account-health.js";
+} from "../modules/whatsapp/account-health.js";
+import { getRecipientByJid, getRecipientByJidSync, rememberSuccessfulOutboundSync } from "../recipients/store.js";
 import {
   flushOutboundPolicyStore,
   forgetOutboundPolicyMemoryForTest,
