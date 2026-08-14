@@ -1,33 +1,23 @@
 import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import makeWASocket, { useMultiFileAuthState, WAMessageStatus, type WAVersion } from "@whiskeysockets/baileys";
+import makeWASocket, { useMultiFileAuthState, type WAVersion } from "@whiskeysockets/baileys";
 import { config } from "../../config/index.js";
-import { baileysLogger, logger, maskIdentifier } from "../../infrastructure/logger.js";
-import {
-  invalidateAccountHealth,
-  markReachoutRestricted,
-  refreshAccountHealth,
-  updateReachoutTimeLock,
-} from "./account-health.js";
-import { bindWhatsAppAccount, clearWhatsAppBinding, getWhatsAppBinding } from "./binding-store.js";
+import { baileysLogger, logger } from "../../infrastructure/logger.js";
+import { invalidateAccountHealth } from "./account-health.js";
+import { clearWhatsAppBinding, getWhatsAppBinding } from "./binding-store.js";
 import {
   getConnectionStatus,
   getCurrentQrState,
   getWhatsAppStatusSnapshot,
-  markConnected,
   markConnecting,
   markDisconnected,
-  markQr,
   type WhatsAppStatus,
   type WhatsAppStatusSnapshot,
 } from "./connection-state.js";
 import { markCredentialPersistenceFailure, markCredentialPersistenceSuccess } from "./credential-persistence-health.js";
 import { createCredentialWriter } from "./credential-writer.js";
-import { classifyDisconnect } from "./disconnect-classifier.js";
-import { mapMessageRejection } from "./message-rejection.js";
-import { updateMessageStatus } from "./message-status-store.js";
-import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
+import { auditBaileys } from "./observability.js";
 import { getRecentMessage } from "./recent-message-store.js";
 import { getReconnectDelayMs, nextReconnectAttempt, resetReconnectAttempts } from "./reconnect-state.js";
 import {

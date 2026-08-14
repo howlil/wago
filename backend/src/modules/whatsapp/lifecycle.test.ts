@@ -133,7 +133,7 @@ describe("WhatsApp lifecycle", () => {
     baileysMock.useMultiFileAuthState.mockResolvedValue({ state: {}, saveCreds: baileysMock.saveCreds });
 
     const { initializeWhatsApp } = await import("./lifecycle.js");
-    const { getCredentialPersistenceHealth } = await import("../../whatsapp/credential-persistence-health.js");
+    const { getCredentialPersistenceHealth } = await import("./credential-persistence-health.js");
     await initializeWhatsApp();
 
     baileysMock.ev.emit("creds.update");
