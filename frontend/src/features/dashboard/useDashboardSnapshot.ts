@@ -53,6 +53,7 @@ export function useDashboardSnapshot() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isRefreshInFlight = useRef(false);
+  const isReadinessRefreshInFlight = useRef(false);
   const pollTimer = useRef<number | null>(null);
   const statusRef = useRef<WhatsAppStatus>("disconnected");
 
@@ -82,6 +83,21 @@ export function useDashboardSnapshot() {
     setHasQr(false);
     setQrImage(null);
   }, [updateStatus]);
+
+  const refreshReadiness = useCallback(async () => {
+    if (isReadinessRefreshInFlight.current) {
+      return;
+    }
+
+    isReadinessRefreshInFlight.current = true;
+    try {
+      setReadiness(await getReadiness());
+    } catch {
+      setReadiness(null);
+    } finally {
+      isReadinessRefreshInFlight.current = false;
+    }
+  }, []);
 
   const refresh = useCallback(
     async (options: { showLoading?: boolean } = {}) => {
@@ -115,11 +131,7 @@ export function useDashboardSnapshot() {
           return;
         }
 
-        try {
-          setReadiness(await getReadiness());
-        } catch {
-          setReadiness(null);
-        }
+        void refreshReadiness();
 
         let info: Awaited<ReturnType<typeof loadAppInfo>>;
 
@@ -154,7 +166,7 @@ export function useDashboardSnapshot() {
         }
       }
     },
-    [clearWhatsAppView, loadAppInfo, updateStatus],
+    [clearWhatsAppView, loadAppInfo, refreshReadiness, updateStatus],
   );
 
   useEffect(() => {
