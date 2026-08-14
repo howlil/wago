@@ -9,11 +9,11 @@ import {
   recordOutboundRejected,
 } from "../../policy/outbound-policy.js";
 import { toWhatsAppJid } from "../../utils/phone.js";
-import { markReachoutRestricted, refreshAccountHealth } from "../../whatsapp/account-health.js";
-import { getConnectionStatus, type WhatsAppStatus } from "../../whatsapp/connection-state.js";
-import { rememberPendingMessageStatus } from "../../whatsapp/message-status-store.js";
-import { rememberRecentTextMessage } from "../../whatsapp/recent-message-store.js";
-import { resolveRecipientJid } from "../../whatsapp/recipient-cache.js";
+import { markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
+import { getConnectionStatus, type WhatsAppStatus } from "./connection-state.js";
+import { rememberPendingMessageStatus } from "./message-status-store.js";
+import { rememberRecentTextMessage } from "./recent-message-store.js";
+import { resolveRecipientJid } from "./recipient-cache.js";
 import { createAccountHealthFetcher } from "./observability.js";
 import { getActiveSocket, getSocketGeneration } from "./runtime.js";
 

@@ -3,12 +3,12 @@ import { getRuntimeDataMountInspection } from "../../infrastructure/data-mount.j
 import { getDatabase } from "../../infrastructure/database.js";
 import { getRuntimeInstanceLeaseState, type InstanceLeaseState } from "../../infrastructure/instance-lease.js";
 import { webhookSettingsStore } from "../../webhooks/settings-runtime.js";
-import { getWhatsAppStatusSnapshot, type WhatsAppStatusSnapshot } from "../../whatsapp/connection-state.js";
+import { getAccessSnapshot } from "../access/api-key.js";
+import { getWhatsAppStatusSnapshot, type WhatsAppStatusSnapshot } from "../whatsapp/connection-state.js";
 import {
   type CredentialPersistenceHealth,
   getCredentialPersistenceHealth,
-} from "../../whatsapp/credential-persistence-health.js";
-import { getAccessSnapshot } from "../access/api-key.js";
+} from "../whatsapp/credential-persistence-health.js";
 
 export type ReadinessLevel = "ok" | "degraded" | "not_ready";
 export type ReadinessCheck = { status: ReadinessLevel; reason?: string };
