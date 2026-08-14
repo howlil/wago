@@ -54,6 +54,7 @@ describe("dashboard readiness snapshot scheduling", () => {
     const setIntervalSpy = vi.spyOn(window, "setInterval");
     const { result, unmount } = renderHook(() => useDashboardSnapshot());
 
+    expect(setIntervalSpy).not.toHaveBeenCalled();
     await waitFor(() => expect(gatewayApi.getReadiness).toHaveBeenCalledTimes(1));
     expect(result.current.readiness).toEqual({
       status: "degraded",
@@ -64,7 +65,6 @@ describe("dashboard readiness snapshot scheduling", () => {
         },
       },
     });
-    expect(setIntervalSpy).not.toHaveBeenCalled();
 
     unmount();
   });
