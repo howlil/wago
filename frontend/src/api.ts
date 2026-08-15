@@ -14,7 +14,7 @@ export type AppInfoResponse = {
   authenticated: boolean;
   credentialSetupRequired: boolean;
   setupRequired: boolean;
-  setupCodeRequired: boolean;
+  setupCodeRequired?: boolean;
   setupTokenRequired?: boolean;
   webBootstrapEnabled?: boolean;
 };

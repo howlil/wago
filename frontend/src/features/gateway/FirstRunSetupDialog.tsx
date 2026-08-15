@@ -48,8 +48,8 @@ export function FirstRunSetupDialog({
                 Authorize first pairing
               </h2>
               <p id="first-run-setup-dialog-description" className="mt-1 text-sm leading-6 text-[#687970]">
-                Enter the one-time setup code printed in the Wago deployment or container logs. It is required only
-                for the first gateway initialization and is invalidated after success.
+                Enter the one-time setup code printed in the Wago deployment or container logs. It is required only for
+                the first gateway initialization and is invalidated after success.
               </p>
             </div>
           </div>
@@ -75,7 +75,6 @@ export function FirstRunSetupDialog({
             value={setupCode}
             onChange={(event) => onSetupCodeChange(event.target.value)}
             autoComplete="off"
-            autoFocus
             disabled={isSubmitting}
             placeholder="setup_…"
           />
