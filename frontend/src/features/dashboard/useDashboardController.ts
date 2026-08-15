@@ -18,7 +18,8 @@ import { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 export function useDashboardController() {
   const snapshot = useDashboardSnapshot();
   const [apiKeyInput, setApiKeyInput] = useState("");
-  const [setupTokenInput, setSetupTokenInput] = useState("");
+  const [setupCodeInput, setSetupCodeInput] = useState("");
+  const [setupCodeError, setSetupCodeError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [isRebinding, setIsRebinding] = useState(false);
@@ -29,6 +30,7 @@ export function useDashboardController() {
   const [isRotatingApiKey, setIsRotatingApiKey] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
   const [isApiKeyRotationDialogOpen, setIsApiKeyRotationDialogOpen] = useState(false);
+  const [isSetupCodeDialogOpen, setIsSetupCodeDialogOpen] = useState(false);
   const { copiedField, copy } = useClipboard<Exclude<CopiedField, null>>({
     onError: (message) => setNotice({ type: "error", message }),
   });
@@ -45,41 +47,31 @@ export function useDashboardController() {
   const canStartPairing =
     snapshot.credentialSetupRequired || (snapshot.isAuthenticated && snapshot.binding.state === "unbound");
 
-  async function handlePair() {
-    if (snapshot.health !== "ok") {
-      setNotice({ type: "error", message: "Backend is unavailable. Start the backend, then try pairing again." });
-      return;
-    }
-    if (snapshot.credentialSetupRequired && !snapshot.webBootstrapEnabled) {
-      setNotice({
-        type: "error",
-        message: "First-run web setup is disabled. Configure SETUP_TOKEN on the Wago deployment first.",
-      });
-      return;
-    }
-    if (snapshot.setupTokenRequired && !setupTokenInput.trim()) {
-      setNotice({ type: "error", message: "Enter the deployment setup token before first pairing." });
-      return;
-    }
+  async function startPairing(setupCode?: string) {
     setIsPairing(true);
     setNotice(null);
+    setSetupCodeError(null);
+    let generatedCredential = false;
+
     try {
       if (!snapshot.isAuthenticated) {
         if (!snapshot.credentialSetupRequired) {
           setNotice({ type: "error", message: "Sign in with the existing API key before managing WhatsApp binding." });
           return;
         }
+
         const candidate = createApiKeyCandidate();
         try {
-          const result = await bootstrapApp(
-            candidate,
-            snapshot.setupTokenRequired ? setupTokenInput.trim() : undefined,
-          );
+          const result = await bootstrapApp(candidate, setupCode);
           if (!result.success) {
             setNotice({ type: "error", message: result.message });
             return;
           }
-          setSetupTokenInput("");
+
+          generatedCredential = true;
+          setSetupCodeInput("");
+          setSetupCodeError(null);
+          setIsSetupCodeDialogOpen(false);
           setApiKeyInput(result.apiKey);
           snapshot.applyBootstrap(result);
         } catch (error) {
@@ -87,12 +79,17 @@ export function useDashboardController() {
           if (apiError.error === "APP_ALREADY_INITIALIZED") {
             const info = await snapshot.loadAppInfo().catch(() => null);
             if (!info?.authenticated) {
+              setIsSetupCodeDialogOpen(false);
               setNotice({
                 type: "error",
                 message: "Gateway credentials already exist. Sign in with the existing API key to continue.",
               });
               return;
             }
+          } else if (apiError.error === "INVALID_SETUP_CODE" || apiError.error === "SETUP_CODE_REQUIRED") {
+            setSetupCodeError(apiError.message ?? "The setup code is invalid.");
+            setIsSetupCodeDialogOpen(true);
+            return;
           } else {
             setNotice({
               type: "error",
@@ -102,6 +99,7 @@ export function useDashboardController() {
           }
         }
       }
+
       const result = await pairWhatsApp();
       if (!result.success) {
         setNotice({ type: "error", message: result.message });
@@ -110,12 +108,11 @@ export function useDashboardController() {
       snapshot.updateStatus(result.status);
       setNotice({
         type: "success",
-        message:
-          apiKeyInput || snapshot.credentialSetupRequired
-            ? "Pairing started. Save the API key shown in Gateway credentials; Wago will not store it in this browser."
-            : result.status === "qr"
-              ? "QR is ready. Scan it from WhatsApp Linked devices."
-              : result.message,
+        message: generatedCredential
+          ? "Pairing started. Save the API key shown in Gateway credentials; Wago will not store it in this browser."
+          : result.status === "qr"
+            ? "QR is ready. Scan it from WhatsApp Linked devices."
+            : result.message,
       });
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
@@ -124,6 +121,48 @@ export function useDashboardController() {
     } finally {
       setIsPairing(false);
     }
+  }
+
+  async function handlePair() {
+    if (snapshot.health !== "ok") {
+      setNotice({ type: "error", message: "Backend is unavailable. Start the backend, then try pairing again." });
+      return;
+    }
+
+    if (snapshot.credentialSetupRequired) {
+      if (!snapshot.webBootstrapEnabled) {
+        setNotice({
+          type: "error",
+          message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
+        });
+        return;
+      }
+
+      if (snapshot.setupCodeRequired) {
+        setSetupCodeError(null);
+        setIsSetupCodeDialogOpen(true);
+        return;
+      }
+    }
+
+    await startPairing();
+  }
+
+  async function handleConfirmSetupCode() {
+    const setupCode = setupCodeInput.trim();
+    if (!setupCode) {
+      setSetupCodeError("Enter the one-time setup code from the Wago deployment logs.");
+      return;
+    }
+
+    await startPairing(setupCode);
+  }
+
+  function closeSetupCodeDialog() {
+    if (isPairing) return;
+    setIsSetupCodeDialogOpen(false);
+    setSetupCodeInput("");
+    setSetupCodeError(null);
   }
 
   async function handleSignIn() {
@@ -249,7 +288,7 @@ export function useDashboardController() {
   }
 
   const credentialHint = snapshot.credentialSetupRequired
-    ? "Generated once after authorized first pairing. Save it for API clients and browser recovery."
+    ? "Generated once after first pairing. Save it for API clients and browser recovery."
     : snapshot.isAuthenticated && apiKeyInput
       ? "Shown once. Save this API key now; Wago does not persist it in browser storage."
       : snapshot.isAuthenticated
@@ -287,7 +326,7 @@ export function useDashboardController() {
     apiKeyConfigured: snapshot.apiKeyConfigured,
     apiKeySource: snapshot.apiKeySource,
     credentialSetupRequired: snapshot.credentialSetupRequired,
-    setupTokenRequired: snapshot.setupTokenRequired,
+    setupCodeRequired: snapshot.setupCodeRequired,
     webBootstrapEnabled: snapshot.webBootstrapEnabled,
     isAuthenticated: snapshot.isAuthenticated,
     status: snapshot.status,
@@ -298,7 +337,8 @@ export function useDashboardController() {
     isRefreshing: snapshot.isRefreshing,
     refresh: snapshot.refresh,
     apiKeyInput,
-    setupTokenInput,
+    setupCodeInput,
+    setupCodeError,
     showApiKey,
     copiedField,
     notice,
@@ -310,6 +350,7 @@ export function useDashboardController() {
     isRotatingApiKey,
     isRebindDialogOpen,
     isApiKeyRotationDialogOpen,
+    isSetupCodeDialogOpen,
     phone: messaging.phone,
     message: messaging.message,
     recipientApprovalPhone: messaging.recipientApprovalPhone,
@@ -324,11 +365,16 @@ export function useDashboardController() {
     connectionDescription,
     pairButtonLabel,
     setApiKeyInput,
-    setSetupTokenInput,
+    setSetupCodeInput: (value: string) => {
+      setSetupCodeInput(value);
+      if (setupCodeError) setSetupCodeError(null);
+    },
     toggleApiKey: () => setShowApiKey((value) => !value),
     copyAppId: () => void copy(snapshot.appId, "appId"),
     copyApiKey: () => void copy(apiKeyInput, "apiKey"),
     handlePair,
+    handleConfirmSetupCode,
+    closeSetupCodeDialog,
     handleSignIn,
     handleSignOut,
     handleSignOutAll,
