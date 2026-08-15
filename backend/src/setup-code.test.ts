@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
@@ -6,6 +7,7 @@ import { config, resetPersistedSettingsForTest } from "./config/index.js";
 
 const setupCode = "generated-first-run-setup-code-with-enough-entropy";
 const pairingCandidate = `wa_${"a".repeat(64)}`;
+const setupCodeHash = createHash("sha256").update(setupCode).digest("hex");
 
 describe("one-time first-run setup code", () => {
   beforeEach(() => {
@@ -13,7 +15,9 @@ describe("one-time first-run setup code", () => {
     resetBrowserSessionsForTest();
     config.nodeEnv = "production";
     config.allowWebBootstrap = true;
-    config.setupToken = setupCode;
+    config.setupToken = null;
+    config.setupCodeHash = setupCodeHash;
+    config.setupCodeGeneratedAt = new Date().toISOString();
     config.apiKey = null;
     config.apiKeyHash = null;
     config.apiKeySource = "unset";
@@ -31,7 +35,7 @@ describe("one-time first-run setup code", () => {
     });
   });
 
-  it("accepts the first-run setup code through X-Wago-Setup-Code", async () => {
+  it("accepts the generated setup code through X-Wago-Setup-Code and invalidates it", async () => {
     const response = await request(app)
       .post("/app/bootstrap")
       .set("Host", "wago.example.com")
@@ -41,5 +45,7 @@ describe("one-time first-run setup code", () => {
 
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ success: true, apiKey: pairingCandidate });
+    expect(config.setupCodeHash).toBeNull();
+    expect(config.setupCodeGeneratedAt).toBeNull();
   });
 });
