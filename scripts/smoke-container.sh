@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE="${IMAGE:-wago-hardening-smoke}"
 ROLLBACK_IMAGE="${ROLLBACK_IMAGE:-}"
 ROLLBACK_CORS_ORIGIN="${ROLLBACK_CORS_ORIGIN:-https://wago.example.com}"
-EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4,5,6,7]}"
+EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4,5,6,7,8]}"
 NAME="wago-hardening-smoke-$RANDOM"
 REPLACEMENT_NAME="${NAME}-replacement"
 CONTENDER_NAME="${NAME}-contender"

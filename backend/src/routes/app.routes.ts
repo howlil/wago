@@ -6,7 +6,7 @@ import {
   revokeBrowserSession,
   revokeOtherBrowserSessions,
 } from "../auth/browser-session-store.js";
-import { bootstrapApiKey, config, isSetupTokenValid, rotateGeneratedApiKey } from "../config/index.js";
+import { bootstrapApiKey, config, isSetupCodeValid, rotateGeneratedApiKey } from "../config/index.js";
 import {
   getBrowserSessionToken,
   isApiKeyValid,
@@ -41,8 +41,9 @@ function clearBrowserSessionCookie(res: Response): void {
 appRouter.get("/info", (req, res) => {
   const credentialSetupRequired = !config.apiKey && !config.apiKeyHash;
   const productionBootstrap = config.nodeEnv === "production";
-  const setupTokenRequired = credentialSetupRequired && productionBootstrap && Boolean(config.setupToken);
-  const webBootstrapEnabled = config.allowWebBootstrap && (!productionBootstrap || Boolean(config.setupToken));
+  const setupCodeRequired =
+    credentialSetupRequired && productionBootstrap && Boolean(config.setupCodeHash || config.setupToken);
+  const webBootstrapEnabled = config.allowWebBootstrap && (!productionBootstrap || setupCodeRequired);
 
   if (req.header("cookie")?.includes(`${config.legacyAuthCookieName}=`)) clearLegacyApiKeyCookie(res);
 
@@ -55,7 +56,9 @@ appRouter.get("/info", (req, res) => {
     authenticated: requestIsAuthenticated(req),
     credentialSetupRequired,
     setupRequired: credentialSetupRequired,
-    setupTokenRequired,
+    setupCodeRequired,
+    // Temporary response alias for older dashboards during rolling upgrades.
+    setupTokenRequired: setupCodeRequired,
     webBootstrapEnabled,
   });
 });
@@ -73,7 +76,7 @@ appRouter.post("/bootstrap", (req, res) => {
     return res.status(403).json({
       success: false,
       error: "WEB_BOOTSTRAP_DISABLED",
-      message: "First-run web setup is disabled. Configure a SETUP_TOKEN with at least 32 bytes of entropy.",
+      message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
     });
   }
 
@@ -86,23 +89,24 @@ appRouter.post("/bootstrap", (req, res) => {
   }
 
   if (config.nodeEnv === "production" && !hasCredential) {
-    if (!config.setupToken) {
+    if (!config.setupCodeHash && !config.setupToken) {
       return res.status(403).json({
         success: false,
         error: "WEB_BOOTSTRAP_DISABLED",
-        message: "First-run web setup is disabled. Configure a SETUP_TOKEN with at least 32 bytes of entropy.",
+        message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
       });
     }
-    const setupToken = req.header("x-wago-setup-token");
-    if (!setupToken) {
+
+    const setupCode = req.header("x-wago-setup-code") ?? req.header("x-wago-setup-token");
+    if (!setupCode) {
       return res.status(403).json({
         success: false,
-        error: "SETUP_TOKEN_REQUIRED",
-        message: "Provide the deployment setup token to initialize this gateway.",
+        error: "SETUP_CODE_REQUIRED",
+        message: "Enter the one-time setup code from the Wago deployment logs.",
       });
     }
-    if (!isSetupTokenValid(setupToken)) {
-      return res.status(403).json({ success: false, error: "INVALID_SETUP_TOKEN", message: "Invalid setup token." });
+    if (!isSetupCodeValid(setupCode)) {
+      return res.status(403).json({ success: false, error: "INVALID_SETUP_CODE", message: "Invalid setup code." });
     }
   }
 

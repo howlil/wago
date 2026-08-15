@@ -19,6 +19,7 @@ describe("database migrations", () => {
       { version: 5 },
       { version: 6 },
       { version: 7 },
+      { version: 8 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -34,6 +35,18 @@ describe("database migrations", () => {
         "next_attempt_at",
         "expires_at",
         "redelivery_count",
+      ]),
+    );
+
+    const appSettingsColumns = database.prepare("PRAGMA table_info(app_settings)").all() as Array<{ name: string }>;
+    expect(appSettingsColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "app_id",
+        "api_key_hash",
+        "generated_at",
+        "setup_code_hash",
+        "setup_code_generated_at",
       ]),
     );
 
