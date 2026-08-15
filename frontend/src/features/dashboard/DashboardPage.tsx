@@ -2,6 +2,7 @@ import type { WhatsAppStatus } from "../../api.js";
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
+import { FirstRunSetupDialog } from "../gateway/FirstRunSetupDialog.js";
 import { GatewayCredentialsCard } from "../gateway/GatewayCredentialsCard.js";
 import { RotateApiKeyDialog } from "../gateway/RotateApiKeyDialog.js";
 import { MessageStatusCard } from "../messages/MessageStatusCard.js";
@@ -96,9 +97,6 @@ export function DashboardPage() {
             apiKeyConfigured={dashboard.apiKeyConfigured}
             apiKeySource={dashboard.apiKeySource}
             apiKeyInput={dashboard.apiKeyInput}
-            setupTokenInput={dashboard.setupTokenInput}
-            setupTokenRequired={dashboard.setupTokenRequired}
-            webBootstrapEnabled={dashboard.webBootstrapEnabled}
             credentialSetupRequired={dashboard.credentialSetupRequired}
             isAuthenticated={dashboard.isAuthenticated}
             showApiKey={dashboard.showApiKey}
@@ -109,7 +107,6 @@ export function DashboardPage() {
             isSigningOutAll={dashboard.isSigningOutAll}
             isRotatingApiKey={dashboard.isRotatingApiKey}
             onApiKeyChange={dashboard.setApiKeyInput}
-            onSetupTokenChange={dashboard.setSetupTokenInput}
             onToggleApiKey={dashboard.toggleApiKey}
             onCopyAppId={dashboard.copyAppId}
             onCopyApiKey={dashboard.copyApiKey}
@@ -130,6 +127,15 @@ export function DashboardPage() {
           )}
         </div>
       </div>
+      <FirstRunSetupDialog
+        isOpen={dashboard.isSetupCodeDialogOpen}
+        setupCode={dashboard.setupCodeInput}
+        isSubmitting={dashboard.isPairing}
+        errorMessage={dashboard.setupCodeError}
+        onSetupCodeChange={dashboard.setSetupCodeInput}
+        onCancel={dashboard.closeSetupCodeDialog}
+        onConfirm={() => void dashboard.handleConfirmSetupCode()}
+      />
       <RotateApiKeyDialog
         isOpen={dashboard.isApiKeyRotationDialogOpen}
         isRotating={dashboard.isRotatingApiKey}
