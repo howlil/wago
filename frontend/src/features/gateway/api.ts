@@ -15,6 +15,7 @@ export type AppInfoResponse = {
   authenticated: boolean;
   credentialSetupRequired: boolean;
   setupRequired: boolean;
+  setupCodeRequired?: boolean;
   setupTokenRequired?: boolean;
   webBootstrapEnabled?: boolean;
 };
@@ -100,12 +101,12 @@ export function getAppInfo(): Promise<AppInfoResponse> {
   return requestJson<AppInfoResponse>("/app/info");
 }
 
-export function bootstrapApp(candidate: string, setupToken?: string): Promise<BootstrapAppResponse> {
+export function bootstrapApp(candidate: string, setupCode?: string): Promise<BootstrapAppResponse> {
   return requestJson<BootstrapAppResponse>("/app/bootstrap", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(setupToken ? { "X-Wago-Setup-Token": setupToken } : {}),
+      ...(setupCode ? { "X-Wago-Setup-Code": setupCode } : {}),
     },
     body: JSON.stringify({ apiKey: candidate }),
   });
