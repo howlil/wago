@@ -11,8 +11,6 @@ type WhatsAppBindingActionsOptions = {
   setNotice: Dispatch<SetStateAction<Notice>>;
   apiKeyInput: string;
   setApiKeyInput: Dispatch<SetStateAction<string>>;
-  setupTokenInput: string;
-  setSetupTokenInput: Dispatch<SetStateAction<string>>;
 };
 
 export function useWhatsAppBindingActions({
@@ -20,12 +18,13 @@ export function useWhatsAppBindingActions({
   setNotice,
   apiKeyInput,
   setApiKeyInput,
-  setupTokenInput,
-  setSetupTokenInput,
 }: WhatsAppBindingActionsOptions) {
   const [isRebinding, setIsRebinding] = useState(false);
   const [isPairing, setIsPairing] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
+  const [isFirstRunSetupDialogOpen, setIsFirstRunSetupDialogOpen] = useState(false);
+  const [setupCodeInput, setSetupCodeInput] = useState("");
+  const [setupCodeError, setSetupCodeError] = useState<string | null>(null);
 
   const pairingInProgress =
     snapshot.isAuthenticated &&
@@ -34,43 +33,30 @@ export function useWhatsAppBindingActions({
   const canStartPairing =
     snapshot.credentialSetupRequired || (snapshot.isAuthenticated && snapshot.binding.state === "unbound");
 
-  async function handlePair() {
-    if (snapshot.health !== "ok") {
-      setNotice({ type: "error", message: "Backend is unavailable. Start the backend, then try pairing again." });
-      return;
-    }
-    if (snapshot.credentialSetupRequired && !snapshot.webBootstrapEnabled) {
-      setNotice({
-        type: "error",
-        message: "First-run web setup is disabled. Configure SETUP_TOKEN on the Wago deployment first.",
-      });
-      return;
-    }
-    if (snapshot.setupTokenRequired && !setupTokenInput.trim()) {
-      setNotice({ type: "error", message: "Enter the deployment setup token before first pairing." });
-      return;
-    }
+  async function startPairing(setupCode?: string): Promise<boolean> {
     setIsPairing(true);
     setNotice(null);
     try {
       if (!snapshot.isAuthenticated) {
         if (!snapshot.credentialSetupRequired) {
           setNotice({ type: "error", message: "Sign in with the existing API key before managing WhatsApp binding." });
-          return;
+          return false;
         }
+
         const candidate = createApiKeyCandidate();
         try {
-          const result = await bootstrapApp(
-            candidate,
-            snapshot.setupTokenRequired ? setupTokenInput.trim() : undefined,
-          );
+          const result = await bootstrapApp(candidate, setupCode);
           if (!result.success) {
-            setNotice({ type: "error", message: result.message });
-            return;
+            if (setupCode) setSetupCodeError(result.message);
+            else setNotice({ type: "error", message: result.message });
+            return false;
           }
-          setSetupTokenInput("");
+
           setApiKeyInput(result.apiKey);
           snapshot.applyBootstrap(result);
+          setSetupCodeInput("");
+          setSetupCodeError(null);
+          setIsFirstRunSetupDialogOpen(false);
         } catch (error) {
           const apiError = error as { message?: string; error?: string };
           if (apiError.error === "APP_ALREADY_INITIALIZED") {
@@ -80,21 +66,24 @@ export function useWhatsAppBindingActions({
                 type: "error",
                 message: "Gateway credentials already exist. Sign in with the existing API key to continue.",
               });
-              return;
+              return false;
             }
+            setSetupCodeInput("");
+            setSetupCodeError(null);
+            setIsFirstRunSetupDialogOpen(false);
           } else {
-            setNotice({
-              type: "error",
-              message: apiError.message ?? "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.",
-            });
-            return;
+            const message = apiError.message ?? "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.";
+            if (setupCode) setSetupCodeError(message);
+            else setNotice({ type: "error", message });
+            return false;
           }
         }
       }
+
       const result = await pairWhatsApp();
       if (!result.success) {
         setNotice({ type: "error", message: result.message });
-        return;
+        return false;
       }
       snapshot.updateStatus(result.status);
       setNotice({
@@ -107,12 +96,47 @@ export function useWhatsAppBindingActions({
               : result.message,
       });
       await snapshot.refresh({ showLoading: true });
+      return true;
     } catch (error) {
       const apiError = error as { message?: string; error?: string };
       setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to start pairing" });
+      return false;
     } finally {
       setIsPairing(false);
     }
+  }
+
+  async function handlePair() {
+    if (snapshot.health !== "ok") {
+      setNotice({ type: "error", message: "Backend is unavailable. Start the backend, then try pairing again." });
+      return;
+    }
+    if (snapshot.credentialSetupRequired && !snapshot.webBootstrapEnabled) {
+      setNotice({
+        type: "error",
+        message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
+      });
+      return;
+    }
+    if (snapshot.credentialSetupRequired && snapshot.setupCodeRequired) {
+      setSetupCodeInput("");
+      setSetupCodeError(null);
+      setIsFirstRunSetupDialogOpen(true);
+      return;
+    }
+
+    await startPairing();
+  }
+
+  async function handleConfirmFirstRunSetup() {
+    const setupCode = setupCodeInput.trim();
+    if (!setupCode) {
+      setSetupCodeError("Enter the one-time setup code from the Wago deployment logs.");
+      return;
+    }
+
+    setSetupCodeError(null);
+    await startPairing(setupCode);
   }
 
   async function handleRebind() {
@@ -169,13 +193,23 @@ export function useWhatsAppBindingActions({
     isRebinding,
     isPairing,
     isRebindDialogOpen,
+    isFirstRunSetupDialogOpen,
+    setupCodeInput,
+    setupCodeError,
     pairingInProgress,
     canStartPairing,
     connectionDescription,
     pairButtonLabel,
+    setSetupCodeInput,
     handlePair,
+    handleConfirmFirstRunSetup,
     handleRebind,
     openRebindDialog: () => setIsRebindDialogOpen(true),
     closeRebindDialog: () => setIsRebindDialogOpen(false),
+    closeFirstRunSetupDialog: () => {
+      setSetupCodeInput("");
+      setSetupCodeError(null);
+      setIsFirstRunSetupDialogOpen(false);
+    },
   };
 }
