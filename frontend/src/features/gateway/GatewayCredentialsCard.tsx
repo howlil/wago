@@ -15,9 +15,6 @@ type GatewayCredentialsCardProps = {
   apiKeyConfigured: boolean;
   apiKeySource: AppInfoResponse["apiKeySource"];
   apiKeyInput: string;
-  setupTokenInput?: string;
-  setupTokenRequired?: boolean;
-  webBootstrapEnabled?: boolean;
   credentialSetupRequired: boolean;
   isAuthenticated: boolean;
   showApiKey: boolean;
@@ -28,7 +25,6 @@ type GatewayCredentialsCardProps = {
   isSigningOutAll?: boolean;
   isRotatingApiKey: boolean;
   onApiKeyChange: (value: string) => void;
-  onSetupTokenChange?: (value: string) => void;
   onToggleApiKey: () => void;
   onCopyAppId: () => void;
   onCopyApiKey: () => void;
@@ -43,9 +39,6 @@ export function GatewayCredentialsCard({
   apiKeyConfigured,
   apiKeySource,
   apiKeyInput,
-  setupTokenInput = "",
-  setupTokenRequired = false,
-  webBootstrapEnabled = true,
   credentialSetupRequired,
   isAuthenticated,
   showApiKey,
@@ -56,7 +49,6 @@ export function GatewayCredentialsCard({
   isSigningOutAll = false,
   isRotatingApiKey,
   onApiKeyChange,
-  onSetupTokenChange,
   onToggleApiKey,
   onCopyAppId,
   onCopyApiKey,
@@ -100,33 +92,6 @@ export function GatewayCredentialsCard({
             </button>
           </div>
         </div>
-
-        {credentialSetupRequired && onSetupTokenChange ? (
-          <div>
-            <label className={fieldLabelClass} htmlFor="gateway-setup-token">
-              Deployment setup token
-            </label>
-            <input
-              id="gateway-setup-token"
-              className={`${inputClass} font-mono text-xs`}
-              value={setupTokenInput}
-              onChange={(event) => onSetupTokenChange(event.target.value)}
-              placeholder={
-                webBootstrapEnabled
-                  ? setupTokenRequired
-                    ? "Enter SETUP_TOKEN"
-                    : "Not required in development"
-                  : "Configure SETUP_TOKEN on deployment"
-              }
-              type="password"
-              autoComplete="off"
-              disabled={!webBootstrapEnabled}
-            />
-            <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">
-              Used only to authorize the first production bootstrap. It is never stored in browser storage.
-            </span>
-          </div>
-        ) : null}
 
         <div>
           <label className={fieldLabelClass} htmlFor="gateway-api-key">
