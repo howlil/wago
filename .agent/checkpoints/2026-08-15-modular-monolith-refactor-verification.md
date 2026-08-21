@@ -16,7 +16,7 @@ Tasks 1–8 from `.agent/plans/2026-08-14-modular-monolith-refactor.md` are impl
 - Messages/outbound policy, webhooks, activity, and recipients have canonical module ownership and architecture guards.
 - Frontend endpoint contracts live in feature APIs; the root god API was removed.
 - Dashboard uses one snapshot polling lifecycle rather than a separate readiness interval.
-- Dead compatibility files and obsolete no-op persistence flush functions were targeted for removal after architecture coverage proved them dead.
+- Dead compatibility files and obsolete no-op persistence flush functions are removed after architecture coverage proved them dead.
 - Generated `docs/.astro/` metadata is ignored and no longer tracked.
 
 ### Post-refactor audit cleanup
@@ -52,23 +52,47 @@ Tasks 1–8 from `.agent/plans/2026-08-14-modular-monolith-refactor.md` are impl
   - `backend/src/api-key-rotation.test.ts` -> `backend/src/modules/access/api-key-rotation.test.ts`
   - `backend/src/app.browser-session.test.ts` -> `backend/src/modules/access/browser-session.test.ts`
 - `backend/src/architecture/cleanup-boundary.test.ts` rejects reintroduction of those misplaced root tests.
+- Obsolete SQLite persistence flush facades and fake policy-memory reload helpers are removed from the modular Messages lifecycle/tests.
 - Temporary cleanup workflows are removed after use; only normal project workflows remain tracked.
 
 ## Main reconciliation — 2026-08-22
 
-Current `main` advanced by three commits after the original refactor baseline. The refactor branch is being reconciled semantically rather than by reviving pre-refactor ownership paths.
+`main` advanced by three commits after the original refactor baseline. The branch now contains current `main` as an ancestor (`behind_by=0`) and reconciles those changes semantically rather than reviving pre-refactor ownership paths.
 
-Integration rules:
+Completed reconciliation:
 
-- keep `config` pure and move setup-code lifecycle into `modules/access`;
-- keep Access routes under `modules/access/routes.ts`;
-- keep frontend HTTP contracts in feature APIs rather than restoring `frontend/src/api.ts`;
-- remove obsolete SQLite flush plumbing in the modular Messages/Activity/Recipients paths;
-- preserve migration history and append migration 8 only;
-- adopt the current root `AGENTS.md` fast-verified-delivery policy;
-- require fresh exact-head CI/Docs/CodeQL/container verification after reconciliation.
+- retained pure `config` ownership and moved setup-code lifecycle into `modules/access`;
+- extended Access-owned `app_settings` persistence for migration-8 setup-code fields;
+- generated a high-entropy one-time first-run setup code in production, persisted only its SHA-256 hash, and logged plaintext once at startup;
+- retained `SETUP_TOKEN` / `X-Wago-Setup-Token` only as compatibility fallbacks while the primary contract uses `X-Wago-Setup-Code`;
+- invalidated setup-code state after successful gateway initialization;
+- kept Access routes under `modules/access/routes.ts`;
+- kept frontend HTTP contracts in feature APIs instead of restoring `frontend/src/api.ts`;
+- moved first-run authorization into a focused pairing dialog owned by the WhatsApp binding flow instead of permanent credential-card state;
+- removed obsolete SQLite flush plumbing in modular Messages lifecycle/store paths;
+- preserved migrations 1–7 and appended migration 8 from current main;
+- adopted the current root `AGENTS.md` fast-verified-delivery policy.
 
-The first reconciliation merge commit intentionally includes focused setup-code regressions before the semantic production port. Any failing RED head is execution evidence only and is not merge-ready.
+### Reconciliation RED -> GREEN evidence
+
+RED merge head `706bc2aa67699ee60a3deae963725aa0ae8e28e6` intentionally carried focused setup-code regressions before the semantic production port. CI and CodeQL failed on that incomplete integration while Docs CI passed.
+
+Runtime reconciliation head `f28cda8a23c2c577cdd8e0c0fcbdd61e3859beb9` then passed fresh verification:
+
+- CI run #752: success
+  - formatting/lint: success
+  - backend tests including architecture guards and setup-code contracts: success
+  - frontend tests: success
+  - backend/frontend core builds: success
+  - documentation build: success
+  - native ARM64 Docker build: success
+  - container persistence and rollback smoke: success
+- Docs CI run #263: success
+- CodeQL run #753: success
+- `main` comparison: behind by 0
+- unresolved PR review threads: none
+
+This checkpoint update is documentation-only. Its resulting branch head must receive the same fresh CI/Docs/CodeQL verification before final merge consideration.
 
 ## Package-manager decision
 
