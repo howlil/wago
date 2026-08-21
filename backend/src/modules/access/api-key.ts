@@ -130,9 +130,7 @@ export function consumeGeneratedSetupCodeForLog(): string | null {
 export function getAccessSnapshot(): AccessSnapshot {
   const apiKeyConfigured = Boolean(state.apiKey || state.apiKeyHash);
   const setupCodeRequired =
-    !apiKeyConfigured &&
-    config.nodeEnv === "production" &&
-    Boolean(state.setupCodeHash || config.setupToken);
+    !apiKeyConfigured && config.nodeEnv === "production" && Boolean(state.setupCodeHash || config.setupToken);
 
   return {
     appId: state.appId,
