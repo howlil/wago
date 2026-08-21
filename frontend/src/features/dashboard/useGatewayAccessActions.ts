@@ -14,7 +14,6 @@ type GatewayAccessActionsOptions = {
 
 export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessActionsOptions) {
   const [apiKeyInput, setApiKeyInput] = useState("");
-  const [setupTokenInput, setSetupTokenInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -133,7 +132,6 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
 
   return {
     apiKeyInput,
-    setupTokenInput,
     showApiKey,
     copiedField,
     isSigningIn,
@@ -143,7 +141,6 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     isApiKeyRotationDialogOpen,
     credentialHint,
     setApiKeyInput,
-    setSetupTokenInput,
     toggleApiKey: () => setShowApiKey((value) => !value),
     copyAppId: () => void copy(snapshot.appId, "appId"),
     copyApiKey: () => void copy(apiKeyInput, "apiKey"),
