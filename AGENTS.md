@@ -22,6 +22,81 @@ Use this order when tradeoffs conflict:
 
 Do not optimize for hypothetical scale or introduce infrastructure to imitate a larger platform.
 
+## Delivery Operating Model
+
+Optimize for **fast verified delivery**, not raw coding activity. The goal is to minimize the time from a well-bounded requirement to a reviewed, tested, mergeable change while keeping correctness and production safety intact.
+
+Default feedback loop:
+
+```text
+goal
+  -> acceptance criteria
+  -> RED
+  -> GREEN
+  -> REFACTOR
+  -> focused verification
+  -> PR / CI
+  -> review and fix on the same branch
+  -> merge
+  -> observe
+```
+
+Rules:
+
+- Use **TDD for behavior changes**. Features and bug fixes follow RED -> GREEN -> REFACTOR unless the change has no meaningful executable behavior, such as prose-only documentation or mechanical formatting.
+- For a reproducible bug, write the failing regression before the fix. The test must fail for the intended reason.
+- Implement the **smallest coherent vertical slice** that produces useful behavior. Prefer end-to-end slices over large horizontal layer-by-layer batches.
+- Keep work in small batches that are easy to review, verify, revert, and reason about.
+- Prefer the shortest safe feedback loop: run focused tests during development; run broader repository gates when the change reaches a mergeable state or the risk warrants it.
+- Limit WIP. One agent should normally drive one coherent task end-to-end before starting unrelated work.
+- Stay on the same task branch and PR through RED/GREEN cycles, review fixes, CI failures, and small follow-ups. Feedback is not a new task identity.
+- Do not over-plan trivial, low-risk changes. Plan only enough to expose acceptance criteria, dependencies, risks, and verification. Use deeper design work for migrations, concurrency, security boundaries, durable-state changes, public contracts, or architecture changes.
+- Apply YAGNI aggressively. Do not add abstractions, infrastructure, generalization, or extensibility for hypothetical future requirements.
+- Do not trade away correctness, security, data integrity, or rollback safety merely to improve speed metrics.
+
+## Delivery Metrics
+
+Use metrics to improve the engineering system, not to score individual developers or agents.
+
+Prefer these signals:
+
+- **Cycle time**: task start to merge-ready/merged.
+- **PR lead time**: PR opened to merge.
+- **CI feedback time**: push to actionable CI result.
+- **Change failure rate**: merged/deployed changes that cause rollback, hotfix, or production incident.
+- **Escaped defect rate**: behavior defects discovered after merge/release.
+- **Rework rate**: substantial same-task work caused by unclear requirements, weak design, insufficient tests, or review churn.
+- **Flaky-test rate**: failures that do not represent a real behavior regression.
+- **WIP age**: how long an active task remains unfinished.
+- **Deployment frequency**, when Wago has a reliable deployment/release signal.
+
+Interpretation rules:
+
+- Optimize trends, not vanity numbers.
+- Commit count, branch count, lines changed, and PR count are **not productivity KPIs**.
+- A fast cycle with high rework or escaped defects is not healthy delivery.
+- A slower high-risk change can be correct if the extra time buys necessary verification or rollback safety.
+- When a metric worsens, inspect the bottleneck first: unclear scope, oversized batch, slow CI, flaky tests, review latency, architecture coupling, or manual release friction.
+
+## Agent Execution Rules
+
+A coding agent should own a bounded task through implementation and verification rather than stopping after code generation.
+
+For each task:
+
+1. Resolve the intended behavior and acceptance criteria from existing requirements, code, tests, issues, or the user request.
+2. Check whether an active branch or PR already represents the task before creating Git state.
+3. Identify the smallest safe test seam and create RED evidence for behavior changes.
+4. Implement only enough to reach GREEN.
+5. Refactor while tests stay green; remove unnecessary duplication or accidental complexity, but do not broaden scope.
+6. Run focused verification immediately after the change.
+7. Run broader gates required by scope before merge.
+8. Keep review fixes and CI corrections on the same branch and PR.
+9. Record concise evidence when an internal plan/checkpoint exists: what changed, what was verified, and any remaining risk/blocker.
+10. Finish the operational lifecycle: merge only after required gates pass, then clean temporary branch/worktree state when tooling permits.
+
+Do not bypass human review or explicit approval gates when a change materially affects production-critical security boundaries, irreversible durable state, credentials, destructive operations, or similarly high-impact behavior.
+
 ## Architecture Boundaries
 
 Keep module ownership explicit.
@@ -89,18 +164,32 @@ Asynchronous Express handlers should use the shared async-handler boundary rathe
 
 ## Testing and Change Discipline
 
+TDD is the default engineering loop for executable behavior:
+
+```text
+RED -> GREEN -> REFACTOR
+```
+
 For behavior changes:
 
 1. Characterize the existing contract when needed.
-2. Add the intended failing regression first.
-3. Confirm the RED failure is caused by the missing behavior, not formatting or tooling.
-4. Implement the smallest coherent change.
-5. Run focused tests.
-6. Run repository check, full backend/frontend tests/builds, Docker build, and CodeQL before merge when the scope warrants it.
+2. Add the intended failing test or regression first.
+3. Confirm the RED failure is caused by the missing/incorrect behavior, not formatting, tooling, fixtures, or an unrelated failure.
+4. Implement the smallest coherent change that makes the intended test pass.
+5. Run focused tests immediately.
+6. Refactor only while preserving GREEN.
+7. Run repository checks and broader backend/frontend/build/container/security gates when the scope warrants them before merge.
 
-Do not weaken or delete a valid regression merely to make CI green.
+Additional rules:
 
-Use real SQLite behavior in persistence tests where practical. For Baileys, test Wago adapters, classifiers, and lifecycle/state transitions rather than depending on external WhatsApp connectivity in unit tests.
+- Do not weaken, delete, skip, or rewrite a valid test merely to make CI green.
+- Prefer deterministic tests with clear failure reasons over broad brittle tests.
+- Bugs should leave a regression test behind whenever the failure can be reproduced deterministically.
+- Test observable behavior and durable invariants rather than private implementation details unless the implementation boundary itself is the contract.
+- Use real SQLite behavior in persistence tests where practical.
+- For Baileys, test Wago adapters, classifiers, and lifecycle/state transitions rather than depending on external WhatsApp connectivity in unit tests.
+- Keep the inner loop fast. Run the smallest relevant test set first, then widen verification as confidence grows.
+- Treat flaky tests and slow CI as delivery-system defects that deserve repair, not as normal friction.
 
 ## Git Workflow Discipline
 
@@ -142,6 +231,7 @@ main
 - One normal task uses one PR. Review corrections, failed CI, added tests, and implementation revisions stay on the same branch and PR.
 - Use a draft PR only when early CI or review is materially useful; do not create draft PRs automatically.
 - Keep the task coherent: include tests and documentation required by the task, but do not mix unrelated opportunistic cleanup into the same branch.
+- Keep PRs small enough to review and revert confidently. Split oversized work by user-visible behavior or invariant boundaries, not by arbitrary technical layers.
 - If `main` advances, update the existing task branch when needed instead of replacing it with a new branch.
 - Avoid force-pushing shared branches unless rewriting is necessary and safe. Never rewrite another contributor's active history casually.
 - Default normal merge method is **squash merge**, so `main` receives one clean logical commit for the completed task even when the working branch contained useful checkpoints.
@@ -186,10 +276,13 @@ The UI must render backend uncertainty truthfully. Disconnected, unavailable, ch
 
 ## Documentation and Planning
 
+- `AGENTS.md` is the repository-wide execution policy for coding agents and contributors.
 - `docs/` is public product documentation.
-- `.agent/specs/` contains approved internal designs.
-- `.agent/plans/` contains detailed implementation plans and execution evidence.
+- `.agent/specs/` contains approved internal designs for work that genuinely benefits from a design artifact.
+- `.agent/plans/` contains detailed implementation plans and execution evidence when task complexity warrants them.
 - Root `plan.md` is the concise engineering roadmap.
+
+Do not create planning/documentation artifacts as ceremony. A trivial, low-risk change does not need a heavyweight spec or plan when acceptance criteria and verification are already clear.
 
 Do not put internal agent workflow notes under public `docs/`.
 
