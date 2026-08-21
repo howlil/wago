@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { allowRecipientJid, resetRecipientStoreForTest } from "../recipients/store.js";
 import {
   checkOutboundPolicy,
-  forgetOutboundPolicyStateForTest,
   markRecipientReachoutRestricted,
   type OutboundPolicyInput,
   recordOutboundAccepted,
@@ -30,12 +29,10 @@ describe("outbound policy persistence", () => {
     await resetRecipientStoreForTest();
   });
 
-  it("keeps idempotency protection after in-memory state is reloaded", async () => {
+  it("keeps idempotency protection in SQLite-backed policy state", async () => {
     const input = makeInput({ idempotencyKey: "durable-order-123" });
     expect(await checkOutboundPolicy(input)).toEqual({ allowed: true });
     await recordOutboundAccepted(input, "msg-1");
-
-    await forgetOutboundPolicyStateForTest();
 
     expect(await checkOutboundPolicy(input)).toEqual({
       allowed: false,
@@ -44,33 +41,22 @@ describe("outbound policy persistence", () => {
     });
   });
 
-  it("keeps successful recipients classified as known after reload", async () => {
+  it("keeps successful recipients classified as known from durable recipient state", async () => {
     const input = makeInput();
     expect(await checkOutboundPolicy(input)).toEqual({ allowed: true });
     await recordOutboundAccepted(input, "msg-known");
 
-    await forgetOutboundPolicyStateForTest();
-
-    const decision = await checkOutboundPolicy({
-      ...input,
-      accountHealthFetcher: {
-        fetchAccountReachoutTimelock: async () => undefined,
-        fetchNewChatMessageCap: async () => ({ capping_status: "CAPPED" }),
-      },
-    });
-
+    const decision = await checkOutboundPolicy(input);
     expect(decision).toEqual({ allowed: true });
   });
 
-  it("keeps per-recipient rate windows after reload", async () => {
+  it("keeps per-recipient rate windows in SQLite-backed policy state", async () => {
     const input = makeInput();
 
     for (let index = 0; index < 5; index++) {
       expect((await checkOutboundPolicy(input)).allowed).toBe(true);
       await recordOutboundAccepted(input, `msg-${index}`);
     }
-
-    await forgetOutboundPolicyStateForTest();
 
     const decision = await checkOutboundPolicy(input);
     expect(decision.allowed).toBe(false);
@@ -79,11 +65,9 @@ describe("outbound policy persistence", () => {
     }
   });
 
-  it("keeps recipient reach-out cooldowns after reload", async () => {
+  it("keeps recipient reach-out cooldowns in SQLite-backed policy state", async () => {
     const retryAt = Date.now() + 60_000;
     await markRecipientReachoutRestricted(makeInput().jid, retryAt);
-
-    await forgetOutboundPolicyStateForTest();
 
     const decision = await checkOutboundPolicy(makeInput());
     expect(decision.allowed).toBe(false);
