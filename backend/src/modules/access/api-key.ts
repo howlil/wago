@@ -12,6 +12,9 @@ type MutableAccessState = {
   apiKey: string | null;
   apiKeyHash: string | null;
   apiKeySource: ApiKeySource;
+  generatedAt: string | null;
+  setupCodeHash: string | null;
+  setupCodeGeneratedAt: string | null;
 };
 
 export type AccessSnapshot = {
@@ -19,6 +22,7 @@ export type AccessSnapshot = {
   apiKeySource: ApiKeySource;
   apiKeyConfigured: boolean;
   credentialSetupRequired: boolean;
+  setupCodeRequired: boolean;
   webBootstrapEnabled: boolean;
 };
 
@@ -35,7 +39,13 @@ const persistedSettings = settingsStore.get();
 const initialAppId = persistedSettings?.appId ?? `wa-gateway-${randomUUID().slice(0, 8)}`;
 
 if (!persistedSettings) {
-  settingsStore.save({ appId: initialAppId, apiKeyHash: null, generatedAt: null });
+  settingsStore.save({
+    appId: initialAppId,
+    apiKeyHash: null,
+    generatedAt: null,
+    setupCodeHash: null,
+    setupCodeGeneratedAt: null,
+  });
 }
 
 let state: MutableAccessState = {
@@ -43,10 +53,19 @@ let state: MutableAccessState = {
   apiKey: config.deploymentApiKey,
   apiKeyHash: config.deploymentApiKey ? null : (persistedSettings?.apiKeyHash ?? null),
   apiKeySource: config.deploymentApiKey ? "env" : persistedSettings?.apiKeyHash ? "generated" : "unset",
+  generatedAt: persistedSettings?.generatedAt ?? null,
+  setupCodeHash: persistedSettings?.setupCodeHash ?? null,
+  setupCodeGeneratedAt: persistedSettings?.setupCodeGeneratedAt ?? null,
 };
+
+let generatedSetupCodeForLog: string | null = null;
 
 function generateApiKey(): string {
   return `wa_${randomBytes(32).toString("base64url")}`;
+}
+
+function generateSetupCode(): string {
+  return `setup_${randomBytes(16).toString("base64url")}`;
 }
 
 export function hashApiKey(apiKey: string): string {
@@ -57,6 +76,10 @@ function hashSecret(secret: string): Buffer {
   return createHash("sha256").update(secret).digest();
 }
 
+function hashSetupCode(setupCode: string): string {
+  return createHash("sha256").update(setupCode).digest("hex");
+}
+
 function constantTimeEquals(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
@@ -64,14 +87,60 @@ function constantTimeEquals(left: string, right: string): boolean {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function saveState(nextState: MutableAccessState): void {
+  settingsStore.save({
+    appId: nextState.appId,
+    apiKeyHash: nextState.apiKeySource === "generated" ? nextState.apiKeyHash : null,
+    generatedAt: nextState.generatedAt,
+    setupCodeHash: nextState.setupCodeHash,
+    setupCodeGeneratedAt: nextState.setupCodeGeneratedAt,
+  });
+  state = nextState;
+}
+
+function persistSetupCode(setupCode: string): void {
+  saveState({
+    ...state,
+    setupCodeHash: hashSetupCode(setupCode),
+    setupCodeGeneratedAt: new Date().toISOString(),
+  });
+}
+
+function prepareFirstRunSetupCode(): void {
+  if (config.nodeEnv !== "production" || state.apiKey || state.apiKeyHash) return;
+
+  if (config.setupToken) {
+    persistSetupCode(config.setupToken);
+    return;
+  }
+
+  const setupCode = generateSetupCode();
+  persistSetupCode(setupCode);
+  generatedSetupCodeForLog = setupCode;
+}
+
+prepareFirstRunSetupCode();
+
+export function consumeGeneratedSetupCodeForLog(): string | null {
+  const setupCode = generatedSetupCodeForLog;
+  generatedSetupCodeForLog = null;
+  return setupCode;
+}
+
 export function getAccessSnapshot(): AccessSnapshot {
   const apiKeyConfigured = Boolean(state.apiKey || state.apiKeyHash);
+  const setupCodeRequired =
+    !apiKeyConfigured &&
+    config.nodeEnv === "production" &&
+    Boolean(state.setupCodeHash || config.setupToken);
+
   return {
     appId: state.appId,
     apiKeySource: state.apiKeySource,
     apiKeyConfigured,
     credentialSetupRequired: !apiKeyConfigured,
-    webBootstrapEnabled: !apiKeyConfigured && (config.nodeEnv !== "production" || Boolean(config.setupToken)),
+    setupCodeRequired,
+    webBootstrapEnabled: !apiKeyConfigured && (config.nodeEnv !== "production" || setupCodeRequired),
   };
 }
 
@@ -85,6 +154,16 @@ export function isApiKeyValid(candidate: string): boolean {
   return false;
 }
 
+export function isSetupCodeValid(candidate: string): boolean {
+  if (!candidate) return false;
+
+  const expectedHash = state.setupCodeHash ?? (config.setupToken ? hashSetupCode(config.setupToken) : null);
+  if (!expectedHash) return false;
+
+  return timingSafeEqual(Buffer.from(hashSetupCode(candidate), "hex"), Buffer.from(expectedHash, "hex"));
+}
+
+/** @deprecated Use isSetupCodeValid. Retained during the SETUP_TOKEN compatibility window. */
 export function isSetupTokenValid(candidate: string): boolean {
   if (!config.setupToken || !candidate) return false;
   return timingSafeEqual(hashSecret(candidate), hashSecret(config.setupToken));
@@ -120,8 +199,18 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
 
   const apiKey = candidate || generateApiKey();
   const apiKeyHash = hashApiKey(apiKey);
-  settingsStore.save({ appId: state.appId, apiKeyHash, generatedAt: new Date().toISOString() });
-  state = { ...state, apiKey: null, apiKeyHash, apiKeySource: "generated" };
+  const generatedAt = new Date().toISOString();
+
+  saveState({
+    ...state,
+    apiKey: null,
+    apiKeyHash,
+    apiKeySource: "generated",
+    generatedAt,
+    setupCodeHash: null,
+    setupCodeGeneratedAt: null,
+  });
+  generatedSetupCodeForLog = null;
 
   return { success: true, appId: state.appId, apiKey, recovered: false };
 }
@@ -146,24 +235,41 @@ export function rotateGeneratedApiKey(): ApiKeyRotationResult {
   const apiKey = generateApiKey();
   const apiKeyHash = hashApiKey(apiKey);
   const generatedAt = new Date().toISOString();
-  settingsStore.save({ appId: state.appId, apiKeyHash, generatedAt });
-  state = { ...state, apiKey: null, apiKeyHash, apiKeySource: "generated" };
+
+  saveState({
+    ...state,
+    apiKey: null,
+    apiKeyHash,
+    apiKeySource: "generated",
+    generatedAt,
+    setupCodeHash: null,
+    setupCodeGeneratedAt: null,
+  });
 
   return { success: true, apiKey, generatedAt };
 }
 
 export function resetAccessStateForTest(
-  overrides: Partial<Pick<MutableAccessState, "apiKey" | "apiKeyHash" | "apiKeySource">> = {},
+  overrides: Partial<
+    Pick<
+      MutableAccessState,
+      "apiKey" | "apiKeyHash" | "apiKeySource" | "generatedAt" | "setupCodeHash" | "setupCodeGeneratedAt"
+    >
+  > = {},
 ): void {
   const apiKey = overrides.apiKey ?? null;
   const apiKeyHash = apiKey ? null : (overrides.apiKeyHash ?? null);
   const apiKeySource = overrides.apiKeySource ?? (apiKey ? "env" : apiKeyHash ? "generated" : "unset");
 
   settingsStore.clear();
-  settingsStore.save({
+  saveState({
     appId: state.appId,
-    apiKeyHash: apiKeySource === "generated" ? apiKeyHash : null,
-    generatedAt: null,
+    apiKey,
+    apiKeyHash,
+    apiKeySource,
+    generatedAt: overrides.generatedAt ?? null,
+    setupCodeHash: overrides.setupCodeHash ?? null,
+    setupCodeGeneratedAt: overrides.setupCodeGeneratedAt ?? null,
   });
-  state = { appId: state.appId, apiKey, apiKeyHash, apiKeySource };
+  generatedSetupCodeForLog = null;
 }
