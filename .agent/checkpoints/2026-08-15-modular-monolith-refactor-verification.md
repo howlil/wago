@@ -16,7 +16,7 @@ Tasks 1–8 from `.agent/plans/2026-08-14-modular-monolith-refactor.md` are impl
 - Messages/outbound policy, webhooks, activity, and recipients have canonical module ownership and architecture guards.
 - Frontend endpoint contracts live in feature APIs; the root god API was removed.
 - Dashboard uses one snapshot polling lifecycle rather than a separate readiness interval.
-- Dead compatibility files and obsolete no-op persistence flush functions were removed after architecture coverage proved them dead.
+- Dead compatibility files and obsolete no-op persistence flush functions were targeted for removal after architecture coverage proved them dead.
 - Generated `docs/.astro/` metadata is ignored and no longer tracked.
 
 ### Post-refactor audit cleanup
@@ -51,9 +51,24 @@ Tasks 1–8 from `.agent/plans/2026-08-14-modular-monolith-refactor.md` are impl
 - Access-specific integration coverage is colocated with the Access module:
   - `backend/src/api-key-rotation.test.ts` -> `backend/src/modules/access/api-key-rotation.test.ts`
   - `backend/src/app.browser-session.test.ts` -> `backend/src/modules/access/browser-session.test.ts`
-- `backend/src/architecture/cleanup-boundary.test.ts` now rejects reintroduction of those misplaced root tests.
-- No runtime behavior or public HTTP contract changed in this cleanup.
+- `backend/src/architecture/cleanup-boundary.test.ts` rejects reintroduction of those misplaced root tests.
 - Temporary cleanup workflows are removed after use; only normal project workflows remain tracked.
+
+## Main reconciliation — 2026-08-22
+
+Current `main` advanced by three commits after the original refactor baseline. The refactor branch is being reconciled semantically rather than by reviving pre-refactor ownership paths.
+
+Integration rules:
+
+- keep `config` pure and move setup-code lifecycle into `modules/access`;
+- keep Access routes under `modules/access/routes.ts`;
+- keep frontend HTTP contracts in feature APIs rather than restoring `frontend/src/api.ts`;
+- remove obsolete SQLite flush plumbing in the modular Messages/Activity/Recipients paths;
+- preserve migration history and append migration 8 only;
+- adopt the current root `AGENTS.md` fast-verified-delivery policy;
+- require fresh exact-head CI/Docs/CodeQL/container verification after reconciliation.
+
+The first reconciliation merge commit intentionally includes focused setup-code regressions before the semantic production port. Any failing RED head is execution evidence only and is not merge-ready.
 
 ## Package-manager decision
 
