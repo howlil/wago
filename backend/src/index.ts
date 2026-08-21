@@ -3,8 +3,8 @@ import { app } from "./app.js";
 import { checkpointDatabase, closeDatabase, getDatabase } from "./infrastructure/database.js";
 import { createInstanceLeaseManager } from "./infrastructure/instance-lease.js";
 import { logger } from "./infrastructure/logger.js";
+import { consumeGeneratedSetupCodeForLog } from "./modules/access/api-key.js";
 import { recordActivity } from "./modules/activity/store.js";
-import { flushOutboundPolicyPersistence } from "./modules/messages/outbound-policy.js";
 import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./modules/webhooks/delivery-webhook.js";
 import { resumeWhatsAppSession, shutdownWhatsApp } from "./modules/whatsapp/index.js";
 
@@ -28,7 +28,6 @@ const lifecycle = createApplicationLifecycle({
   stopWebhookDeliveryWorker,
   resumeWhatsAppSession,
   shutdownWhatsApp,
-  flushOutboundPolicyPersistence,
   checkpointDatabase,
   closeDatabase,
 });
@@ -38,6 +37,15 @@ async function start(): Promise<void> {
 
   const server = app.listen(port, host, () => {
     logger.info({ event: "app.listen", host, port });
+
+    const setupCode = consumeGeneratedSetupCodeForLog();
+    if (setupCode) {
+      logger.warn(
+        { event: "app.first_run_setup_code", setupCode },
+        "Wago first-run setup code. Enter it after clicking Pair WhatsApp. It expires after gateway initialization or the next restart.",
+      );
+    }
+
     void recordActivity({
       level: "info",
       category: "system",
