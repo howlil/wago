@@ -189,6 +189,15 @@ export const migrations: Migration[] = [
       );
     `,
   },
+  {
+    version: 8,
+    sql: `
+      ALTER TABLE app_settings
+        ADD COLUMN setup_code_hash TEXT;
+      ALTER TABLE app_settings
+        ADD COLUMN setup_code_generated_at TEXT;
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {

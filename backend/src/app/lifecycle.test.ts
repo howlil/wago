@@ -30,7 +30,6 @@ describe("application lifecycle", () => {
       stopWebhookDeliveryWorker: async () => undefined,
       resumeWhatsAppSession,
       shutdownWhatsApp: async () => undefined,
-      flushOutboundPolicyPersistence: async () => undefined,
       checkpointDatabase: () => undefined,
       closeDatabase: () => undefined,
     });
@@ -52,7 +51,6 @@ describe("application lifecycle", () => {
       stopWebhookDeliveryWorker: async () => undefined,
       resumeWhatsAppSession,
       shutdownWhatsApp: async () => undefined,
-      flushOutboundPolicyPersistence: async () => undefined,
       checkpointDatabase: () => undefined,
       closeDatabase: () => undefined,
     });
@@ -72,7 +70,6 @@ describe("application lifecycle", () => {
       stopWebhookDeliveryWorker: async () => undefined,
       resumeWhatsAppSession: async () => undefined,
       shutdownWhatsApp: async () => undefined,
-      flushOutboundPolicyPersistence: async () => undefined,
       checkpointDatabase: () => undefined,
       closeDatabase: () => undefined,
     });
@@ -100,9 +97,6 @@ describe("application lifecycle", () => {
       shutdownWhatsApp: async () => {
         events.push("whatsapp.shutdown");
       },
-      flushOutboundPolicyPersistence: async () => {
-        events.push("policy.flush");
-      },
       checkpointDatabase: () => {
         events.push("database.checkpoint");
       },
@@ -116,7 +110,6 @@ describe("application lifecycle", () => {
     expect(events).toEqual([
       "webhook.stop",
       "whatsapp.shutdown",
-      "policy.flush",
       "lease.heartbeat.stop",
       "lease.release",
       "database.checkpoint",

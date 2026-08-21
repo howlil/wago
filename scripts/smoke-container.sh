@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE="${IMAGE:-wago-hardening-smoke}"
 ROLLBACK_IMAGE="${ROLLBACK_IMAGE:-}"
 ROLLBACK_CORS_ORIGIN="${ROLLBACK_CORS_ORIGIN:-https://wago.example.com}"
-EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4,5,6,7]}"
+EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4,5,6,7,8]}"
 NAME="wago-hardening-smoke-$RANDOM"
 REPLACEMENT_NAME="${NAME}-replacement"
 CONTENDER_NAME="${NAME}-contender"
@@ -97,6 +97,25 @@ read_app_id() {
   '
 }
 
+read_setup_code_hash() {
+  local container_name="$1"
+  docker exec "$container_name" node --input-type=module -e '
+    import { DatabaseSync } from "node:sqlite";
+    const db = new DatabaseSync("/app/data/wago.db");
+    const row = db.prepare("SELECT setup_code_hash FROM app_settings WHERE id = 1").get();
+    process.stdout.write(String(row?.setup_code_hash ?? ""));
+    db.close();
+  '
+}
+
+assert_setup_code_log() {
+  local container_name="$1"
+  local logs
+  logs="$(docker logs "$container_name" 2>&1)"
+  grep -q '"event":"app.first_run_setup_code"' <<< "$logs"
+  grep -Eq '"setupCode":"setup_[A-Za-z0-9_-]+"' <<< "$logs"
+}
+
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   docker build -t "$IMAGE" .
 fi
@@ -120,6 +139,9 @@ MIGRATIONS_BEFORE="$(read_migrations "$NAME")"
 [[ "$MIGRATIONS_BEFORE" == "$EXPECTED_MIGRATIONS" ]]
 APP_ID_BEFORE="$(read_app_id "$NAME")"
 [[ -n "$APP_ID_BEFORE" ]]
+SETUP_HASH_BEFORE="$(read_setup_code_hash "$NAME")"
+[[ "$SETUP_HASH_BEFORE" =~ ^[0-9a-f]{64}$ ]]
+assert_setup_code_log "$NAME"
 
 # A second process sharing the same volume must not become active.
 docker run -d --name "$CONTENDER_NAME" -v "$VOLUME:/app/data" "$IMAGE" >/dev/null
@@ -134,12 +156,20 @@ READY_AFTER="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 [[ "$READY_BEFORE" == "$READY_AFTER" ]]
 MIGRATIONS_AFTER="$(read_migrations "$NAME")"
 [[ "$MIGRATIONS_AFTER" == "$EXPECTED_MIGRATIONS" ]]
+SETUP_HASH_AFTER="$(read_setup_code_hash "$NAME")"
+[[ "$SETUP_HASH_AFTER" =~ ^[0-9a-f]{64}$ ]]
+[[ "$SETUP_HASH_AFTER" != "$SETUP_HASH_BEFORE" ]]
+assert_setup_code_log "$NAME"
 
 # Normal replacement is stop-old-before-start-new so shutdown can release the lease.
 stop_and_remove "$NAME"
 run_container "$REPLACEMENT_NAME" "$IMAGE"
 APP_ID_AFTER="$(read_app_id "$REPLACEMENT_NAME")"
 [[ "$APP_ID_AFTER" == "$APP_ID_BEFORE" ]]
+SETUP_HASH_REPLACEMENT="$(read_setup_code_hash "$REPLACEMENT_NAME")"
+[[ "$SETUP_HASH_REPLACEMENT" =~ ^[0-9a-f]{64}$ ]]
+[[ "$SETUP_HASH_REPLACEMENT" != "$SETUP_HASH_AFTER" ]]
+assert_setup_code_log "$REPLACEMENT_NAME"
 
 if [[ -n "$ROLLBACK_IMAGE" ]]; then
   stop_and_remove "$REPLACEMENT_NAME"
@@ -152,4 +182,4 @@ if [[ -n "$ROLLBACK_IMAGE" ]]; then
   curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
 fi
 
-echo "Container storage, single-instance, replacement persistence, and rollback checks passed."
+echo "Container storage, setup-code rotation/logging, single-instance, replacement persistence, and rollback checks passed."
