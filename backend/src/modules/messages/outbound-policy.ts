@@ -3,8 +3,6 @@ import { withTransaction } from "../../infrastructure/database.js";
 import { logger } from "../../infrastructure/logger.js";
 import { getRecipientByJid, getRecipientByJidSync, rememberSuccessfulOutboundSync } from "../recipients/store.js";
 import {
-  flushOutboundPolicyStore,
-  forgetOutboundPolicyMemoryForTest,
   getAccountWindow,
   getNewChatWindow,
   getOutboundPauseState,
@@ -282,17 +280,8 @@ export function isOutboundPaused(): boolean {
   return getOutboundPauseState().paused;
 }
 
-export async function flushOutboundPolicyPersistence(): Promise<void> {
-  await flushOutboundPolicyStore();
-}
-
-export async function forgetOutboundPolicyStateForTest(): Promise<void> {
-  await forgetOutboundPolicyMemoryForTest();
-}
-
 export async function resetOutboundPolicyState(): Promise<void> {
-  const persisted = resetOutboundPolicyStoreForTest();
-  await persisted;
+  await resetOutboundPolicyStoreForTest();
 }
 
 const outboundPolicyErrorCodes = new Set<OutboundPolicyBlockReason>([
