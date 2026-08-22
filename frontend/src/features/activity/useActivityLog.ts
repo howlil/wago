@@ -6,7 +6,7 @@ import {
   type ActivityQuery,
   type AuditSource,
   listActivity,
-} from "../../api.js";
+} from "./api.js";
 
 export type SourceFilter = "all" | AuditSource;
 export type CategoryFilter = "all" | ActivityCategory;

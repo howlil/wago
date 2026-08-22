@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { allowRecipient, listRecipients, optOutRecipient, type RecipientRecord } from "../../api.js";
 import { cardBodyClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import { allowRecipient, listRecipients, optOutRecipient, type RecipientRecord } from "./api.js";
 import { RecipientForm } from "./RecipientForm.js";
 import { RecipientList } from "./RecipientList.js";
 import { phoneFromJid } from "./utils.js";

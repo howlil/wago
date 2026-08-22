@@ -1,10 +1,10 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { listActivity } from "../../api.js";
 import { AuditPage } from "./AuditPage.js";
+import { listActivity } from "./api.js";
 
-vi.mock("../../api.js", () => ({
+vi.mock("./api.js", () => ({
   listActivity: vi.fn(),
 }));
 

@@ -2,36 +2,29 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
+import { listActivity } from "./features/activity/api.js";
 import {
-  allowRecipient,
   bootstrapApp,
   createApiKeyCandidate,
   createBrowserSession,
   getAppInfo,
-  getCurrentQr,
   getHealth,
-  listActivity,
   logoutBrowserSession,
-  pairWhatsApp,
   rotateApiKey,
-  sendMessage,
-} from "./api.js";
+} from "./features/gateway/api.js";
+import { sendMessage } from "./features/messages/api.js";
+import { allowRecipient } from "./features/recipients/api.js";
+import { getCurrentQr, pairWhatsApp } from "./features/whatsapp/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
 const rotatedApiKey = `wa_${"d".repeat(43)}`;
 
-vi.mock("./api.js", () => ({
-  allowRecipient: vi.fn(async (phone: string) => ({
-    success: true,
-    recipient: {
-      jid: `${phone}@s.whatsapp.net`,
-      allowed: true,
-      optedOut: false,
-      createdAt: "2026-08-10T00:00:00.000Z",
-      updatedAt: "2026-08-10T00:00:00.000Z",
-    },
-  })),
+vi.mock("./features/activity/api.js", () => ({
+  listActivity: vi.fn(async () => ({ success: true, events: [] })),
+}));
+
+vi.mock("./features/gateway/api.js", () => ({
   getAppInfo: vi.fn(async () => ({
     success: true,
     appId: "wa-gateway-test",
@@ -57,8 +50,41 @@ vi.mock("./api.js", () => ({
     expiresAt: "2026-09-12T00:00:00.000Z",
     message: "Browser session created",
   })),
-  getCurrentQr: vi.fn(async () => ({ success: true, qr: null, status: "connected" })),
   getHealth: vi.fn(async () => ({ status: "ok" })),
+  logoutBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "Browser session ended",
+  })),
+  logoutAllBrowserSessions: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "All browser sessions ended",
+  })),
+  rotateApiKey: vi.fn(async () => ({
+    success: true,
+    apiKey: rotatedApiKey,
+    generatedAt: "2026-08-14T00:00:00.000Z",
+    message: "API key rotated",
+  })),
+}));
+
+vi.mock("./features/recipients/api.js", () => ({
+  allowRecipient: vi.fn(async (phone: string) => ({
+    success: true,
+    recipient: {
+      jid: `${phone}@s.whatsapp.net`,
+      allowed: true,
+      optedOut: false,
+      createdAt: "2026-08-10T00:00:00.000Z",
+      updatedAt: "2026-08-10T00:00:00.000Z",
+    },
+  })),
+  listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
+  optOutRecipient: vi.fn(),
+}));
+
+vi.mock("./features/messages/api.js", () => ({
   getMessageStatus: vi.fn(async () => ({
     success: true,
     id: "message-1",
@@ -66,6 +92,11 @@ vi.mock("./api.js", () => ({
     status: "pending",
     updatedAt: "2026-08-10T00:00:00.000Z",
   })),
+  sendMessage: vi.fn(),
+}));
+
+vi.mock("./features/whatsapp/api.js", () => ({
+  getCurrentQr: vi.fn(async () => ({ success: true, qr: null, status: "connected" })),
   getQrImageSvg: vi.fn(async () => "<svg />"),
   getWhatsAppStatus: vi.fn(async () => ({
     success: true,
@@ -78,23 +109,8 @@ vi.mock("./api.js", () => ({
     },
     accountHealth: { availability: "available" },
   })),
-  listActivity: vi.fn(async () => ({ success: true, events: [] })),
-  listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
-  logoutBrowserSession: vi.fn(async () => ({
-    success: true,
-    authenticated: false,
-    message: "Browser session ended",
-  })),
-  optOutRecipient: vi.fn(),
   pairWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
   rebindWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
-  rotateApiKey: vi.fn(async () => ({
-    success: true,
-    apiKey: rotatedApiKey,
-    generatedAt: "2026-08-14T00:00:00.000Z",
-    message: "API key rotated",
-  })),
-  sendMessage: vi.fn(),
 }));
 
 beforeEach(() => {

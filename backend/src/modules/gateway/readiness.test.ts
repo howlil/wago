@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { config } from "../../config/index.js";
-import { getDatabase } from "../../infrastructure/database.js";
-import { createWebhookSettingsStore } from "../../webhooks/settings-store.js";
-import { resetCredentialPersistenceHealthForTest } from "../../whatsapp/credential-persistence-health.js";
+import { resetAccessStateForTest } from "../access/api-key.js";
+import { webhookSettingsStore } from "../webhooks/settings-runtime.js";
+import { resetCredentialPersistenceHealthForTest } from "../whatsapp/credential-persistence-health.js";
 import { getReadinessSnapshot } from "./readiness.js";
 
-const webhookSettingsStore = createWebhookSettingsStore(getDatabase());
 const unbound = {
   status: "disconnected" as const,
   binding: { state: "unbound" as const, jid: null, phone: null, boundAt: null },
@@ -24,9 +23,7 @@ const boundDisconnected = {
 
 describe("gateway readiness", () => {
   beforeEach(() => {
-    config.apiKey = null;
-    config.apiKeyHash = null;
-    config.apiKeySource = "unset";
+    resetAccessStateForTest();
     config.nodeEnv = "test";
     webhookSettingsStore.clear();
     resetCredentialPersistenceHealthForTest();

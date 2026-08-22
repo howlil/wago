@@ -1,37 +1,12 @@
 import { AlertTriangle, CircleX } from "lucide-react";
-import { useEffect, useState } from "react";
-import {
-  fetchGatewayReadiness,
-  type GatewayReadinessSnapshot,
-  getOperationalReadinessWarning,
-} from "./readiness-state.js";
+import type { GatewayReadinessSnapshot } from "../gateway/api.js";
+import { getOperationalReadinessWarning } from "./readiness-state.js";
 
-const READINESS_REFRESH_MS = 15_000;
+type OperationalReadinessBannerProps = {
+  readiness: GatewayReadinessSnapshot | null;
+};
 
-export function OperationalReadinessBanner() {
-  const [readiness, setReadiness] = useState<GatewayReadinessSnapshot | null>(null);
-
-  useEffect(() => {
-    let disposed = false;
-
-    async function refresh() {
-      try {
-        const snapshot = await fetchGatewayReadiness();
-        if (!disposed) setReadiness(snapshot);
-      } catch {
-        if (!disposed) setReadiness(null);
-      }
-    }
-
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), READINESS_REFRESH_MS);
-
-    return () => {
-      disposed = true;
-      window.clearInterval(timer);
-    };
-  }, []);
-
+export function OperationalReadinessBanner({ readiness }: OperationalReadinessBannerProps) {
   const warning = getOperationalReadinessWarning(readiness);
   if (!warning) return null;
 

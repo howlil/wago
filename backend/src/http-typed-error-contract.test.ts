@@ -11,17 +11,15 @@ const whatsappMock = vi.hoisted(() => ({
   sendTextMessage: vi.fn(),
 }));
 
-vi.mock("./whatsapp.js", () => whatsappMock);
+vi.mock("./modules/whatsapp/index.js", () => whatsappMock);
 
 import { app } from "./app.js";
 import { config } from "./config/index.js";
+import { resetAccessStateForTest } from "./modules/access/api-key.js";
 
 describe("typed HTTP application error contract", () => {
   beforeEach(() => {
-    config.apiKey = "typed-error-key";
-    config.apiKeyHash = null;
-    config.apiKeySource = "env";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKey: "typed-error-key", apiKeySource: "env" });
     config.nodeEnv = "test";
     config.requestLogging = false;
 

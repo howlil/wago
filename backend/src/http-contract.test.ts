@@ -10,11 +10,12 @@ const whatsappMock = vi.hoisted(() => ({
   sendTextMessage: vi.fn(),
 }));
 
-vi.mock("./whatsapp.js", () => whatsappMock);
+vi.mock("./modules/whatsapp/index.js", () => whatsappMock);
 
 import { app } from "./app.js";
 import { config } from "./config/index.js";
 import { ApplicationError, type ApplicationErrorCode } from "./errors/application-error.js";
+import { resetAccessStateForTest } from "./modules/access/api-key.js";
 
 function applicationError(code: ApplicationErrorCode, message: string): ApplicationError {
   return new ApplicationError(code, message);
@@ -26,10 +27,7 @@ function authenticated(requestBuilder: request.Test): request.Test {
 
 describe("HTTP message contracts", () => {
   beforeEach(() => {
-    config.apiKey = "contract-key";
-    config.apiKeyHash = null;
-    config.apiKeySource = "env";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKey: "contract-key", apiKeySource: "env" });
     config.nodeEnv = "test";
     config.requestLogging = false;
 
@@ -58,11 +56,7 @@ describe("HTTP message contracts", () => {
       .send({ to: "6281234567890", text: "Hello" });
 
     expect(response.status).toBe(401);
-    expect(response.body).toEqual({
-      success: false,
-      error: "UNAUTHORIZED",
-      message: "Invalid API key",
-    });
+    expect(response.body).toEqual({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
     expect(whatsappMock.sendTextMessage).not.toHaveBeenCalled();
   });
 
@@ -73,11 +67,7 @@ describe("HTTP message contracts", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(response.body).toEqual({
-      success: false,
-      error: "INVALID_REQUEST",
-      message: "to and text are required",
-    });
+    expect(response.body).toEqual({ success: false, error: "INVALID_REQUEST", message: "to and text are required" });
     expect(whatsappMock.sendTextMessage).not.toHaveBeenCalled();
   });
 
@@ -102,11 +92,7 @@ describe("HTTP message contracts", () => {
       });
 
       expect(response.status).toBe(status);
-      expect(response.body).toEqual({
-        success: false,
-        error: errorCode,
-        message: `blocked: ${errorCode}`,
-      });
+      expect(response.body).toEqual({ success: false, error: errorCode, message: `blocked: ${errorCode}` });
     },
   );
 
@@ -147,7 +133,6 @@ describe("HTTP message contracts", () => {
 
   it("returns the stable not-found contract for expired or unknown message status", async () => {
     whatsappMock.getMessageStatus.mockReturnValueOnce(undefined);
-
     const response = await authenticated(request(app).get("/messages/expired-message/status"));
 
     expect(response.status).toBe(404);

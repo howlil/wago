@@ -1,4 +1,4 @@
-import type { RecipientRecord } from "../../api.js";
+import type { RecipientRecord } from "./api.js";
 
 export function phoneFromJid(jid: string): string {
   return jid.split("@")[0]?.split(":")[0] ?? jid;

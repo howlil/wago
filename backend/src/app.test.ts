@@ -1,9 +1,10 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
-import { resetBrowserSessionsForTest } from "./auth/browser-session-store.js";
-import { config, hashApiKey } from "./config/index.js";
-import { resetRecipientStoreForTest } from "./recipients/store.js";
+import { config } from "./config/index.js";
+import { getAccessSnapshot, hashApiKey, isApiKeyValid, resetAccessStateForTest } from "./modules/access/api-key.js";
+import { resetBrowserSessionsForTest } from "./modules/access/browser-session-store.js";
+import { resetRecipientStoreForTest } from "./modules/recipients/store.js";
 
 const apiKeyRequiredResponse = {
   success: false,
@@ -16,21 +17,14 @@ const productionSetupCode = "production-setup-code-with-at-least-32-bytes";
 
 function firstCookie(response: request.Response): string {
   const header = response.headers["set-cookie"]?.[0];
-  if (!header) {
-    throw new Error("expected Set-Cookie header");
-  }
+  if (!header) throw new Error("expected Set-Cookie header");
   return header.split(";", 1)[0];
 }
 
 describe("app", () => {
   beforeEach(async () => {
-    config.allowWebBootstrap = true;
+    resetAccessStateForTest();
     config.setupToken = null;
-    config.setupCodeHash = null;
-    config.setupCodeGeneratedAt = null;
-    config.apiKey = null;
-    config.apiKeyHash = null;
-    config.apiKeySource = "unset";
     config.nodeEnv = "test";
     config.requestLogging = false;
     resetBrowserSessionsForTest();
@@ -65,17 +59,14 @@ describe("app", () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       status: "ok",
-      appId: config.appId,
+      appId: getAccessSnapshot().appId,
       apiKeyConfigured: false,
-      checks: {
-        apiKey: { status: "ok", reason: "setup_required" },
-      },
+      checks: { apiKey: { status: "ok", reason: "setup_required" } },
     });
   });
 
   it("treats generated API key hashes as ready", async () => {
-    config.apiKeyHash = hashApiKey("ready-key");
-    config.apiKeySource = "generated";
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("ready-key"), apiKeySource: "generated" });
     const response = await request(app).get("/ready");
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ status: "ok", apiKeyConfigured: true });
@@ -105,10 +96,7 @@ describe("app", () => {
     const response = await request(app)
       .post("/messages/send")
       .set("Content-Type", "application/json")
-      .send({
-        to: "081234567890",
-        text: "x".repeat(40_000),
-      });
+      .send({ to: "081234567890", text: "x".repeat(40_000) });
     expect(response.status).toBe(413);
     expect(response.body).toEqual({ success: false, error: "PAYLOAD_TOO_LARGE", message: "Request body is too large" });
   });
@@ -132,8 +120,7 @@ describe("app", () => {
   });
 
   it("allows, lists, and opts out recipients through protected routes", async () => {
-    config.apiKey = "test-key";
-    config.apiKeySource = "env";
+    resetAccessStateForTest({ apiKey: "test-key", apiKeySource: "env" });
 
     const allowResponse = await request(app).post("/recipients/allow").set("Authorization", "Bearer test-key").send({
       phone: "081234567890",
@@ -166,14 +153,14 @@ describe("app", () => {
     const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
-    expect(response.body.appId).toBe(config.appId);
+    expect(response.body.appId).toBe(getAccessSnapshot().appId);
     expect(response.body.apiKey).toBe(pairingCandidate);
     expect(response.headers["set-cookie"]?.[0]).toContain(config.authCookieName);
     expect(response.headers["set-cookie"]?.[0]).not.toContain(pairingCandidate);
-    expect(config.apiKey).toBeNull();
-    expect(config.apiKeyHash).toBe(hashApiKey(pairingCandidate));
-    expect(config.apiKeySource).toBe("generated");
-    expect(config.allowWebBootstrap).toBe(false);
+    expect(getAccessSnapshot().apiKeySource).toBe("generated");
+    expect(getAccessSnapshot().apiKeyConfigured).toBe(true);
+    expect(getAccessSnapshot().webBootstrapEnabled).toBe(false);
+    expect(isApiKeyValid(pairingCandidate)).toBe(true);
   });
 
   it("requires the one-time setup code for first-run production bootstrap", async () => {
@@ -188,35 +175,20 @@ describe("app", () => {
     expect(missing.status).toBe(403);
     expect(missing.body.error).toBe("SETUP_CODE_REQUIRED");
 
-    const invalid = await request(app)
+    const invalidLegacyHeader = await request(app)
       .post("/app/bootstrap")
       .set("Host", "wago.example.com")
       .set("Origin", "https://wago.example.com")
-      .set("X-Wago-Setup-Code", `${productionSetupCode}-wrong`)
+      .set("X-Wago-Setup-Token", `${productionSetupCode}-wrong`)
       .send({ apiKey: pairingCandidate });
-    expect(invalid.status).toBe(403);
-    expect(invalid.body.error).toBe("INVALID_SETUP_CODE");
+    expect(invalidLegacyHeader.status).toBe(403);
+    expect(invalidLegacyHeader.body.error).toBe("INVALID_SETUP_CODE");
 
     const response = await request(app)
       .post("/app/bootstrap")
       .set("Host", "wago.example.com")
       .set("Origin", "https://wago.example.com")
       .set("X-Wago-Setup-Code", productionSetupCode)
-      .send({ apiKey: pairingCandidate });
-
-    expect(response.status).toBe(201);
-    expect(response.body.apiKey).toBe(pairingCandidate);
-  });
-
-  it("accepts the legacy setup-token header as a compatibility fallback", async () => {
-    config.nodeEnv = "production";
-    config.setupToken = productionSetupCode;
-
-    const response = await request(app)
-      .post("/app/bootstrap")
-      .set("Host", "wago.example.com")
-      .set("Origin", "https://wago.example.com")
-      .set("X-Wago-Setup-Token", productionSetupCode)
       .send({ apiKey: pairingCandidate });
 
     expect(response.status).toBe(201);
@@ -243,16 +215,13 @@ describe("app", () => {
   });
 
   it("authenticates generated API keys by persisted hash", async () => {
-    config.apiKeyHash = hashApiKey("generated-key");
-    config.apiKeySource = "generated";
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
     const response = await request(app).get("/recipients").set("Authorization", "Bearer generated-key");
     expect(response.status).toBe(200);
   });
 
   it("rejects cookie-authenticated state changes from a different request origin", async () => {
-    config.apiKeyHash = hashApiKey("generated-key");
-    config.apiKeySource = "generated";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
 
     const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
     const cookie = firstCookie(login);
@@ -273,9 +242,7 @@ describe("app", () => {
   });
 
   it("accepts cookie-authenticated state changes from the detected Wago origin", async () => {
-    config.apiKeyHash = hashApiKey("generated-key");
-    config.apiKeySource = "generated";
-    config.allowWebBootstrap = false;
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
 
     const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
     const cookie = firstCookie(login);
@@ -290,8 +257,10 @@ describe("app", () => {
     expect(response.status).toBe(201);
   });
 
-  it("rejects web bootstrap when explicitly disabled", async () => {
-    config.allowWebBootstrap = false;
+  it("rejects web bootstrap when setup authorization is unavailable", async () => {
+    config.nodeEnv = "production";
+    config.setupToken = null;
+
     const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
@@ -302,8 +271,7 @@ describe("app", () => {
   });
 
   it("rejects bootstrap after an API key exists", async () => {
-    config.apiKey = "existing-key";
-    config.apiKeySource = "env";
+    resetAccessStateForTest({ apiKey: "existing-key", apiKeySource: "env" });
     const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(409);
     expect(response.body).toEqual({

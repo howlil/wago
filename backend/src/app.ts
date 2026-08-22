@@ -4,17 +4,25 @@ import express from "express";
 import helmet from "helmet";
 import { config } from "./config/index.js";
 import { errorHandler } from "./http/middleware/error-handler.js";
-import { requestHasSameOrigin } from "./middleware/origin.js";
-import { requestLogger } from "./middleware/request-logger.js";
+import { requestHasSameOrigin } from "./http/middleware/origin.js";
+import { requestLogger } from "./http/middleware/request-logger.js";
+import { appRouter } from "./modules/access/routes.js";
+import { activityRouter } from "./modules/activity/routes.js";
 import { getReadinessSnapshot } from "./modules/gateway/readiness.js";
-import { activityRouter } from "./routes/activity.routes.js";
-import { appRouter } from "./routes/app.routes.js";
-import { messageRouter } from "./routes/message.routes.js";
-import { recipientRouter } from "./routes/recipient.routes.js";
-import { webhookRouter } from "./routes/webhook.routes.js";
-import { whatsappRouter } from "./routes/whatsapp.routes.js";
+import { createMessageService } from "./modules/messages/message.service.js";
+import { createMessageRouter } from "./modules/messages/routes.js";
+import { recipientRouter } from "./modules/recipients/routes.js";
+import { webhookRouter } from "./modules/webhooks/routes.js";
+import { getMessageStatus, sendTextMessage } from "./modules/whatsapp/index.js";
+import { whatsappRouter } from "./modules/whatsapp/routes.js";
 
 export const app = express();
+const messageService = createMessageService({
+  sendText: sendTextMessage,
+  getStatus: getMessageStatus,
+});
+const messageRouter = createMessageRouter(messageService);
+
 app.set("trust proxy", config.trustProxy ? 1 : false);
 app.use(
   helmet({

@@ -7,6 +7,9 @@ coverage/
 backend/data/
 backend/data-test/
 
+# Generated framework metadata
+docs/.astro/
+
 # Logs and local OS/editor files
 *.log
 .DS_Store

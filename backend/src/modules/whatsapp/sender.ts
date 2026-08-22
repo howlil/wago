@@ -1,20 +1,20 @@
 import type { WASocket } from "@whiskeysockets/baileys";
 import { ApplicationError, isApplicationError } from "../../errors/application-error.js";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
+import { toWhatsAppJid } from "../../utils/phone.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
   markRecipientReachoutRestricted,
   recordOutboundAccepted,
   recordOutboundRejected,
-} from "../../policy/outbound-policy.js";
-import { toWhatsAppJid } from "../../utils/phone.js";
-import { markReachoutRestricted, refreshAccountHealth } from "../../whatsapp/account-health.js";
-import { getConnectionStatus, type WhatsAppStatus } from "../../whatsapp/connection-state.js";
-import { rememberPendingMessageStatus } from "../../whatsapp/message-status-store.js";
-import { rememberRecentTextMessage } from "../../whatsapp/recent-message-store.js";
-import { resolveRecipientJid } from "../../whatsapp/recipient-cache.js";
+} from "../messages/outbound-policy.js";
+import { checkAccountHealth, markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
+import { getConnectionStatus, type WhatsAppStatus } from "./connection-state.js";
+import { rememberPendingMessageStatus } from "./message-status-store.js";
 import { createAccountHealthFetcher } from "./observability.js";
+import { rememberRecentTextMessage } from "./recent-message-store.js";
+import { resolveRecipientJid } from "./recipient-cache.js";
 import { getActiveSocket, getSocketGeneration } from "./runtime.js";
 
 export type SendTextMessageOptions = {
@@ -68,12 +68,14 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
       }
 
       const generation = getSocketGeneration();
+      const accountHealthFetcher = createAccountHealthFetcher(activeSocket, generation);
       const policyInput = {
         to,
         jid,
         text,
         idempotencyKey: options.idempotencyKey,
-        accountHealthFetcher: createAccountHealthFetcher(activeSocket, generation),
+        accountHealthCheck: ({ isNewRecipient }: { isNewRecipient: boolean }) =>
+          checkAccountHealth(accountHealthFetcher, { isNewRecipient }),
       };
       const policyDecision = await checkOutboundPolicy(policyInput);
 
@@ -132,7 +134,7 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
 
         if (isApplicationError(normalizedError) && normalizedError.code === "REACHOUT_RESTRICTED") {
           markReachoutRestricted();
-          await refreshAccountHealth(createAccountHealthFetcher(activeSocket, generation), { force: true });
+          await refreshAccountHealth(accountHealthFetcher, { force: true });
           await markRecipientReachoutRestricted(jid, Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS);
         }
 

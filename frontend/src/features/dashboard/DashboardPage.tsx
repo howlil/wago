@@ -1,4 +1,3 @@
-import type { WhatsAppStatus } from "../../api.js";
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
@@ -9,6 +8,7 @@ import { MessageStatusCard } from "../messages/MessageStatusCard.js";
 import { SendMessageCard } from "../messages/SendMessageCard.js";
 import { RecipientAccessCard } from "../recipients/RecipientAccessCard.js";
 import { AccountHealthCard } from "../whatsapp/AccountHealthCard.js";
+import type { WhatsAppStatus } from "../whatsapp/api.js";
 import { RebindSessionDialog } from "../whatsapp/RebindSessionDialog.js";
 import { WhatsAppBindingCard } from "../whatsapp/WhatsAppBindingCard.js";
 import { OperationalReadinessBanner } from "./OperationalReadinessBanner.js";
@@ -51,7 +51,7 @@ export function DashboardPage() {
       refreshLabel="Refresh status"
     >
       <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
-      <OperationalReadinessBanner />
+      <OperationalReadinessBanner readiness={dashboard.readiness} />
       <NoticeBanner notice={dashboard.notice} />
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid min-w-0 content-start gap-4">
@@ -128,13 +128,13 @@ export function DashboardPage() {
         </div>
       </div>
       <FirstRunSetupDialog
-        isOpen={dashboard.isSetupCodeDialogOpen}
+        isOpen={dashboard.isFirstRunSetupDialogOpen}
         setupCode={dashboard.setupCodeInput}
         isSubmitting={dashboard.isPairing}
         errorMessage={dashboard.setupCodeError}
         onSetupCodeChange={dashboard.setSetupCodeInput}
-        onCancel={dashboard.closeSetupCodeDialog}
-        onConfirm={() => void dashboard.handleConfirmSetupCode()}
+        onCancel={dashboard.closeFirstRunSetupDialog}
+        onConfirm={() => void dashboard.handleConfirmFirstRunSetup()}
       />
       <RotateApiKeyDialog
         isOpen={dashboard.isApiKeyRotationDialogOpen}

@@ -1,11 +1,5 @@
 import { Check, Copy, RefreshCcw } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  completeWebhookSecretRotation,
-  getWebhookSettings,
-  rotateWebhookSecret,
-  updateWebhookSettings,
-} from "../../api.js";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import {
   cardBodyClass,
@@ -16,6 +10,12 @@ import {
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
+import {
+  completeWebhookSecretRotation,
+  getWebhookSettings,
+  rotateWebhookSecret,
+  updateWebhookSettings,
+} from "./api.js";
 
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {

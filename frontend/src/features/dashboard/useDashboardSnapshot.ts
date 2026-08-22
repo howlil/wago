@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { BackendHealthState } from "../../shared/types/status.js";
 import {
-  type AccountHealthSnapshot,
   type AppInfoResponse,
   type BootstrapAppResponse,
+  type GatewayReadinessSnapshot,
   getAppInfo,
-  getCurrentQr,
   getHealth,
+  getReadiness,
+} from "../gateway/api.js";
+import {
+  type AccountHealthSnapshot,
+  getCurrentQr,
   getQrImageSvg,
   getWhatsAppStatus,
   type WhatsAppBinding,
   type WhatsAppStatus,
-} from "../../api.js";
-import type { BackendHealthState } from "../../shared/types/status.js";
+} from "../whatsapp/api.js";
 
 const unboundBinding: WhatsAppBinding = {
   state: "unbound",
@@ -33,6 +37,7 @@ type SuccessfulBootstrap = Extract<BootstrapAppResponse, { success: true }>;
 
 export function useDashboardSnapshot() {
   const [health, setHealth] = useState<BackendHealthState>("checking");
+  const [readiness, setReadiness] = useState<GatewayReadinessSnapshot | null>(null);
   const [appId, setAppId] = useState("wa-gateway");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
@@ -48,6 +53,8 @@ export function useDashboardSnapshot() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isRefreshInFlight = useRef(false);
+  const isReadinessRefreshInFlight = useRef(false);
+  const readinessGeneration = useRef(0);
   const pollTimer = useRef<number | null>(null);
   const statusRef = useRef<WhatsAppStatus>("disconnected");
 
@@ -63,7 +70,7 @@ export function useDashboardSnapshot() {
     setApiKeyConfigured(info.apiKeyConfigured);
     setApiKeySource(info.apiKeySource);
     setCredentialSetupRequired(info.credentialSetupRequired);
-    setSetupCodeRequired(Boolean(info.setupCodeRequired));
+    setSetupCodeRequired(Boolean(info.setupCodeRequired ?? info.setupTokenRequired));
     setWebBootstrapEnabled(info.webBootstrapEnabled ?? true);
     setIsAuthenticated(info.authenticated);
 
@@ -77,6 +84,32 @@ export function useDashboardSnapshot() {
     setHasQr(false);
     setQrImage(null);
   }, [updateStatus]);
+
+  const invalidateReadiness = useCallback(() => {
+    readinessGeneration.current += 1;
+    setReadiness(null);
+  }, []);
+
+  const refreshReadiness = useCallback(async () => {
+    if (isReadinessRefreshInFlight.current) {
+      return;
+    }
+
+    const generation = readinessGeneration.current;
+    isReadinessRefreshInFlight.current = true;
+    try {
+      const nextReadiness = await getReadiness();
+      if (generation === readinessGeneration.current) {
+        setReadiness(nextReadiness);
+      }
+    } catch {
+      if (generation === readinessGeneration.current) {
+        setReadiness(null);
+      }
+    } finally {
+      isReadinessRefreshInFlight.current = false;
+    }
+  }, []);
 
   const refresh = useCallback(
     async (options: { showLoading?: boolean } = {}) => {
@@ -99,14 +132,18 @@ export function useDashboardSnapshot() {
           setHealth(backendHealthy ? "ok" : "error");
 
           if (!backendHealthy) {
+            invalidateReadiness();
             clearWhatsAppView();
             return;
           }
         } catch {
           setHealth("error");
+          invalidateReadiness();
           clearWhatsAppView();
           return;
         }
+
+        void refreshReadiness();
 
         let info: Awaited<ReturnType<typeof loadAppInfo>>;
 
@@ -141,7 +178,7 @@ export function useDashboardSnapshot() {
         }
       }
     },
-    [clearWhatsAppView, loadAppInfo, updateStatus],
+    [clearWhatsAppView, invalidateReadiness, loadAppInfo, refreshReadiness, updateStatus],
   );
 
   useEffect(() => {
@@ -232,6 +269,7 @@ export function useDashboardSnapshot() {
 
   return {
     health,
+    readiness,
     appId,
     apiKeyConfigured,
     apiKeySource,

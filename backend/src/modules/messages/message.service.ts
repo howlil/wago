@@ -1,36 +1,48 @@
-import {
-  getMessageStatus,
-  type SendTextMessageOptions,
-  type SendTextMessageResult,
-  type StoredMessageStatus,
-  sendTextMessage,
-} from "../../whatsapp.js";
-
 export type SendMessageCommand = {
   to: string;
   text: string;
   idempotencyKey?: string;
 };
 
-type MessageServiceDependencies = {
-  sendText: (to: string, text: string, options?: SendTextMessageOptions) => Promise<SendTextMessageResult>;
-  getStatus: (messageId: string) => StoredMessageStatus | null | undefined;
+export type MessageSendOptions = {
+  idempotencyKey?: string;
 };
 
-export function createMessageService(deps: MessageServiceDependencies) {
+export type MessageSendResult = {
+  messageId: string | null;
+  status: "pending";
+};
+
+export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
+
+export type MessageStatus = {
+  id: string;
+  to: string;
+  status: MessageDeliveryStatus;
+  error?: string;
+  message?: string;
+  updatedAt: string;
+};
+
+export type MessageService = {
+  send: (command: SendMessageCommand) => Promise<MessageSendResult>;
+  findStatus: (messageId: string) => MessageStatus | null | undefined;
+};
+
+type MessageServiceDependencies = {
+  sendText: (to: string, text: string, options?: MessageSendOptions) => Promise<MessageSendResult>;
+  getStatus: (messageId: string) => MessageStatus | null | undefined;
+};
+
+export function createMessageService(deps: MessageServiceDependencies): MessageService {
   return {
-    send(command: SendMessageCommand): Promise<SendTextMessageResult> {
+    send(command: SendMessageCommand): Promise<MessageSendResult> {
       return deps.sendText(command.to, command.text, {
         idempotencyKey: command.idempotencyKey,
       });
     },
-    findStatus(messageId: string): StoredMessageStatus | null | undefined {
+    findStatus(messageId: string): MessageStatus | null | undefined {
       return deps.getStatus(messageId);
     },
   };
 }
-
-export const messageService = createMessageService({
-  sendText: sendTextMessage,
-  getStatus: getMessageStatus,
-});
