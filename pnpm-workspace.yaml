@@ -3,6 +3,8 @@ packages:
   - frontend
   - docs
 
+sharedWorkspaceLockfile: false
+
 allowBuilds:
   "@whiskeysockets/baileys": true
   esbuild: true
