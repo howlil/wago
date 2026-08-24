@@ -1,6 +1,6 @@
-import { AuditPage } from "./features/activity/AuditPage.js";
-import { DashboardPage } from "./features/dashboard/DashboardPage.js";
-import { SettingsPage } from "./features/settings/SettingsPage.js";
+import { AuditPage } from "./pages/audit/AuditPage.js";
+import { DashboardPage } from "./pages/dashboard/DashboardPage.js";
+import { SettingsPage } from "./pages/settings/SettingsPage.js";
 
 function currentPath(): string {
   return typeof window === "undefined" ? "/" : window.location.pathname;

@@ -31,6 +31,7 @@ export function createApplicationLifecycle(deps: ApplicationLifecycleDeps): {
           deps.startWebhookDeliveryWorker();
           await deps.resumeWhatsAppSession();
         } catch (error) {
+          await deps.stopWebhookDeliveryWorker();
           deps.stopInstanceLeaseHeartbeat();
           deps.releaseInstanceLease();
           throw error;

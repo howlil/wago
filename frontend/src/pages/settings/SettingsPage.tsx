@@ -1,5 +1,5 @@
+import { WebhookSettingsCard } from "../../features/settings/WebhookSettingsCard.js";
 import { AppShell } from "../../shared/components/AppShell.js";
-import { WebhookSettingsCard } from "./WebhookSettingsCard.js";
 
 export function SettingsPage() {
   return (

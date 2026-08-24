@@ -10,6 +10,8 @@ export const webhookRouter = Router();
 
 const WEBHOOK_STATUSES = new Set<WebhookDeliveryStatus>(["pending", "delivering", "delivered", "failed", "expired"]);
 const WEBHOOK_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MIN_WEBHOOK_DELIVERY_LIMIT = 1;
+const MAX_WEBHOOK_DELIVERY_LIMIT = 100;
 const redeliveryRateLimit = createRateLimit({ limit: 20, windowMs: 60_000 });
 
 function queryString(value: unknown): string | undefined {
@@ -105,6 +107,14 @@ webhookRouter.get("/deliveries", requireApiKey, (req, res) => {
 
   const requestedLimit = Number(queryString(req.query.limit) ?? 50);
   const limit = Number.isFinite(requestedLimit) ? requestedLimit : 50;
+  if (limit < MIN_WEBHOOK_DELIVERY_LIMIT || limit > MAX_WEBHOOK_DELIVERY_LIMIT) {
+    return res.status(400).json({
+      success: false,
+      error: "INVALID_WEBHOOK_DELIVERY_LIMIT",
+      message: "Webhook delivery limit must be between 1 and 100",
+    });
+  }
+
   const deliveries = listWebhookDeliveries({
     ...(rawStatus ? { status: rawStatus as WebhookDeliveryStatus } : {}),
     limit,

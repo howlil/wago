@@ -1,11 +1,5 @@
 import { requestJson } from "../../shared/api/client.js";
 
-const LEGACY_API_KEY_SESSION_STORAGE_KEY = "wago.apiKey";
-
-if (typeof window !== "undefined") {
-  window.sessionStorage.removeItem(LEGACY_API_KEY_SESSION_STORAGE_KEY);
-}
-
 export type AppInfoResponse = {
   success: true;
   appId: string;
