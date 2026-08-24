@@ -1,5 +1,5 @@
+import { ActivityLogPanel } from "../../features/activity/ActivityLogPanel.js";
 import { AppShell } from "../../shared/components/AppShell.js";
-import { ActivityLogPanel } from "./ActivityLogPanel.js";
 
 export function AuditPage() {
   return (

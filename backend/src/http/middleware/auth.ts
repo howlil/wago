@@ -3,6 +3,14 @@ import { config } from "../../config/index.js";
 import { isApiKeyConfigured, isApiKeyValid } from "../../modules/access/api-key.js";
 import { isBrowserSessionValid } from "../../modules/access/browser-session-store.js";
 
+function decodeCookieValue(value: string): string | undefined {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+}
+
 function parseCookieHeader(header: string | undefined): Record<string, string> {
   if (!header) return {};
 
@@ -11,7 +19,10 @@ function parseCookieHeader(header: string | undefined): Record<string, string> {
       .split(";")
       .map((part) => part.trim().split("="))
       .filter(([key, value]) => Boolean(key) && value !== undefined)
-      .map(([key, value]) => [key, decodeURIComponent(value)]),
+      .flatMap(([key, value]) => {
+        const decoded = decodeCookieValue(value);
+        return decoded === undefined ? [] : [[key, decoded]];
+      }),
   );
 }
 

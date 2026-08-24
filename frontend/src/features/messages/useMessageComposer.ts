@@ -1,6 +1,5 @@
 import { type FormEvent, useMemo, useState } from "react";
 import type { Notice } from "../../shared/ui/feedback.js";
-import { allowRecipient } from "../recipients/api.js";
 import type { WhatsAppStatus } from "../whatsapp/api.js";
 import { sendMessage } from "./api.js";
 import type { LastMessage } from "./types.js";
@@ -10,9 +9,16 @@ type UseMessageComposerOptions = {
   status: WhatsAppStatus;
   onNotice: (notice: Notice) => void;
   onAfterMutation: () => Promise<void>;
+  onAllowRecipient: (phone: string) => Promise<unknown>;
 };
 
-export function useMessageComposer({ isAuthenticated, status, onNotice, onAfterMutation }: UseMessageComposerOptions) {
+export function useMessageComposer({
+  isAuthenticated,
+  status,
+  onNotice,
+  onAfterMutation,
+  onAllowRecipient,
+}: UseMessageComposerOptions) {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [recipientApprovalPhone, setRecipientApprovalPhone] = useState<string | null>(null);
@@ -40,7 +46,7 @@ export function useMessageComposer({ isAuthenticated, status, onNotice, onAfterM
 
     try {
       if (allowFirst) {
-        await allowRecipient(target);
+        await onAllowRecipient(target);
         setRecipientApprovalPhone(null);
         setRecipientRefreshKey((value) => value + 1);
       }

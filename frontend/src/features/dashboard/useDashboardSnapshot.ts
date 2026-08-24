@@ -1,30 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BackendHealthState } from "../../shared/types/status.js";
-import {
-  type AppInfoResponse,
-  type BootstrapAppResponse,
-  type GatewayReadinessSnapshot,
-  getAppInfo,
-  getHealth,
-  getReadiness,
-} from "../gateway/api.js";
-import {
-  type AccountHealthSnapshot,
-  getCurrentQr,
-  getQrImageSvg,
-  getWhatsAppStatus,
-  type WhatsAppBinding,
-  type WhatsAppStatus,
-} from "../whatsapp/api.js";
+import { useGatewaySnapshotState } from "./useGatewaySnapshotState.js";
+import { useWhatsAppSnapshotState } from "./useWhatsAppSnapshotState.js";
 
-const unboundBinding: WhatsAppBinding = {
-  state: "unbound",
-  jid: null,
-  phone: null,
-  boundAt: null,
-};
+type DashboardStatus = ReturnType<typeof useWhatsAppSnapshotState>["status"];
 
-const visibleRefreshIntervalsMs: Record<WhatsAppStatus, number> = {
+const visibleRefreshIntervalsMs: Record<DashboardStatus, number> = {
   connecting: 5000,
   qr: 5000,
   connected: 30000,
@@ -33,83 +13,15 @@ const visibleRefreshIntervalsMs: Record<WhatsAppStatus, number> = {
 
 const hiddenRefreshIntervalMs = 60000;
 
-type SuccessfulBootstrap = Extract<BootstrapAppResponse, { success: true }>;
-
 export function useDashboardSnapshot() {
-  const [health, setHealth] = useState<BackendHealthState>("checking");
-  const [readiness, setReadiness] = useState<GatewayReadinessSnapshot | null>(null);
-  const [appId, setAppId] = useState("wa-gateway");
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
-  const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
-  const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
-  const [setupCodeRequired, setSetupCodeRequired] = useState(false);
-  const [webBootstrapEnabled, setWebBootstrapEnabled] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [status, setStatus] = useState<WhatsAppStatus>("disconnected");
-  const [binding, setBinding] = useState<WhatsAppBinding>(unboundBinding);
-  const [accountHealth, setAccountHealth] = useState<AccountHealthSnapshot | undefined>();
-  const [hasQr, setHasQr] = useState(false);
-  const [qrImage, setQrImage] = useState<string | null>(null);
+  const gateway = useGatewaySnapshotState();
+  const whatsapp = useWhatsAppSnapshotState();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isRefreshInFlight = useRef(false);
-  const isReadinessRefreshInFlight = useRef(false);
-  const readinessGeneration = useRef(0);
   const pollTimer = useRef<number | null>(null);
-  const statusRef = useRef<WhatsAppStatus>("disconnected");
-
-  const updateStatus = useCallback((nextStatus: WhatsAppStatus) => {
-    statusRef.current = nextStatus;
-    setStatus(nextStatus);
-  }, []);
-
-  const loadAppInfo = useCallback(async () => {
-    const info = await getAppInfo();
-
-    setAppId(info.appId);
-    setApiKeyConfigured(info.apiKeyConfigured);
-    setApiKeySource(info.apiKeySource);
-    setCredentialSetupRequired(info.credentialSetupRequired);
-    setSetupCodeRequired(Boolean(info.setupCodeRequired ?? info.setupTokenRequired));
-    setWebBootstrapEnabled(info.webBootstrapEnabled ?? true);
-    setIsAuthenticated(info.authenticated);
-
-    return info;
-  }, []);
-
-  const clearWhatsAppView = useCallback(() => {
-    updateStatus("disconnected");
-    setBinding(unboundBinding);
-    setAccountHealth(undefined);
-    setHasQr(false);
-    setQrImage(null);
-  }, [updateStatus]);
-
-  const invalidateReadiness = useCallback(() => {
-    readinessGeneration.current += 1;
-    setReadiness(null);
-  }, []);
-
-  const refreshReadiness = useCallback(async () => {
-    if (isReadinessRefreshInFlight.current) {
-      return;
-    }
-
-    const generation = readinessGeneration.current;
-    isReadinessRefreshInFlight.current = true;
-    try {
-      const nextReadiness = await getReadiness();
-      if (generation === readinessGeneration.current) {
-        setReadiness(nextReadiness);
-      }
-    } catch {
-      if (generation === readinessGeneration.current) {
-        setReadiness(null);
-      }
-    } finally {
-      isReadinessRefreshInFlight.current = false;
-    }
-  }, []);
+  const { refreshHealth, markHealthError, refreshReadiness, loadAppInfo } = gateway;
+  const { clearWhatsAppView, refreshWhatsAppView, getCurrentStatus } = whatsapp;
 
   const refresh = useCallback(
     async (options: { showLoading?: boolean } = {}) => {
@@ -126,19 +38,9 @@ export function useDashboardSnapshot() {
       }
 
       try {
-        try {
-          const healthResult = await getHealth();
-          const backendHealthy = healthResult.status === "ok";
-          setHealth(backendHealthy ? "ok" : "error");
+        const backendHealthy = await refreshHealth();
 
-          if (!backendHealthy) {
-            invalidateReadiness();
-            clearWhatsAppView();
-            return;
-          }
-        } catch {
-          setHealth("error");
-          invalidateReadiness();
+        if (!backendHealthy) {
           clearWhatsAppView();
           return;
         }
@@ -150,7 +52,7 @@ export function useDashboardSnapshot() {
         try {
           info = await loadAppInfo();
         } catch {
-          setHealth("error");
+          markHealthError();
           clearWhatsAppView();
           return;
         }
@@ -161,12 +63,7 @@ export function useDashboardSnapshot() {
         }
 
         try {
-          const [statusResult, qrResult] = await Promise.all([getWhatsAppStatus(), getCurrentQr()]);
-          updateStatus(statusResult.status);
-          setBinding(statusResult.binding);
-          setAccountHealth(statusResult.accountHealth);
-          setHasQr(Boolean(qrResult.qr));
-          setQrImage(qrResult.qr ? await getQrImageSvg() : null);
+          await refreshWhatsAppView();
         } catch {
           clearWhatsAppView();
         }
@@ -178,7 +75,7 @@ export function useDashboardSnapshot() {
         }
       }
     },
-    [clearWhatsAppView, invalidateReadiness, loadAppInfo, refreshReadiness, updateStatus],
+    [clearWhatsAppView, loadAppInfo, markHealthError, refreshHealth, refreshReadiness, refreshWhatsAppView],
   );
 
   useEffect(() => {
@@ -194,7 +91,7 @@ export function useDashboardSnapshot() {
     function getNextRefreshDelay() {
       return document.visibilityState === "hidden"
         ? hiddenRefreshIntervalMs
-        : visibleRefreshIntervalsMs[statusRef.current];
+        : visibleRefreshIntervalsMs[getCurrentStatus()];
     }
 
     function scheduleNextRefresh(delay = getNextRefreshDelay()) {
@@ -245,48 +142,28 @@ export function useDashboardSnapshot() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearPollTimer();
     };
-  }, [refresh]);
-
-  const applyBootstrap = useCallback((result: SuccessfulBootstrap) => {
-    setAppId(result.appId);
-    setApiKeyConfigured(true);
-    setApiKeySource("generated");
-    setCredentialSetupRequired(false);
-    setSetupCodeRequired(false);
-    setIsAuthenticated(true);
-  }, []);
-
-  const resetBinding = useCallback(
-    (nextStatus: WhatsAppStatus) => {
-      setBinding(unboundBinding);
-      setAccountHealth(undefined);
-      setHasQr(false);
-      setQrImage(null);
-      updateStatus(nextStatus);
-    },
-    [updateStatus],
-  );
+  }, [getCurrentStatus, refresh]);
 
   return {
-    health,
-    readiness,
-    appId,
-    apiKeyConfigured,
-    apiKeySource,
-    credentialSetupRequired,
-    setupCodeRequired,
-    webBootstrapEnabled,
-    isAuthenticated,
-    status,
-    binding,
-    accountHealth,
-    hasQr,
-    qrImage,
+    health: gateway.health,
+    readiness: gateway.readiness,
+    appId: gateway.appId,
+    apiKeyConfigured: gateway.apiKeyConfigured,
+    apiKeySource: gateway.apiKeySource,
+    credentialSetupRequired: gateway.credentialSetupRequired,
+    setupCodeRequired: gateway.setupCodeRequired,
+    webBootstrapEnabled: gateway.webBootstrapEnabled,
+    isAuthenticated: gateway.isAuthenticated,
+    status: whatsapp.status,
+    binding: whatsapp.binding,
+    accountHealth: whatsapp.accountHealth,
+    hasQr: whatsapp.hasQr,
+    qrImage: whatsapp.qrImage,
     isRefreshing,
     refresh,
-    loadAppInfo,
-    updateStatus,
-    applyBootstrap,
-    resetBinding,
+    loadAppInfo: gateway.loadAppInfo,
+    updateStatus: whatsapp.updateStatus,
+    applyBootstrap: gateway.applyBootstrap,
+    resetBinding: whatsapp.resetBinding,
   };
 }

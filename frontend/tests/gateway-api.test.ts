@@ -27,6 +27,11 @@ describe("gateway API", () => {
 
     const { createBrowserSession } = await import("../src/features/gateway/api.js");
 
+    expect(window.sessionStorage.getItem("wago.apiKey")).toBe("legacy-secret");
+
+    const { clearLegacyApiKeySessionStorage } = await import("../src/features/gateway/legacy-session.js");
+    clearLegacyApiKeySessionStorage();
+
     expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
 
     await createBrowserSession("wa_test-secret");

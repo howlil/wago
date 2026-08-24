@@ -79,6 +79,40 @@ describe("application lifecycle", () => {
     expect(lease.releaseInstanceLease).toHaveBeenCalledTimes(1);
   });
 
+  it("stops the webhook worker when WhatsApp resume fails during startup", async () => {
+    const events: string[] = [];
+    const lifecycle = createApplicationLifecycle({
+      acquireInstanceLease: () => ({ acquired: true }),
+      startInstanceLeaseHeartbeat: () => events.push("heartbeat.start"),
+      stopInstanceLeaseHeartbeat: () => events.push("heartbeat.stop"),
+      releaseInstanceLease: () => {
+        events.push("lease.release");
+        return true;
+      },
+      startWebhookDeliveryWorker: () => events.push("webhook.start"),
+      stopWebhookDeliveryWorker: async () => {
+        events.push("webhook.stop");
+      },
+      resumeWhatsAppSession: async () => {
+        events.push("whatsapp.resume");
+        throw new Error("resume failed");
+      },
+      shutdownWhatsApp: async () => undefined,
+      checkpointDatabase: () => undefined,
+      closeDatabase: () => undefined,
+    });
+
+    await expect(lifecycle.start()).rejects.toThrow("resume failed");
+    expect(events).toEqual([
+      "heartbeat.start",
+      "webhook.start",
+      "whatsapp.resume",
+      "webhook.stop",
+      "heartbeat.stop",
+      "lease.release",
+    ]);
+  });
+
   it("stops in deterministic order and cleanup runs only once", async () => {
     const events: string[] = [];
     const lifecycle = createApplicationLifecycle({

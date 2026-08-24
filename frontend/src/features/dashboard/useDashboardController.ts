@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Notice } from "../../shared/ui/feedback.js";
 import { useMessageComposer } from "../messages/useMessageComposer.js";
+import { allowRecipient } from "../recipients/api.js";
 import { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 import { useGatewayAccessActions } from "./useGatewayAccessActions.js";
 import { useWhatsAppBindingActions } from "./useWhatsAppBindingActions.js";
@@ -20,6 +21,7 @@ export function useDashboardController() {
     status: snapshot.status,
     onNotice: setNotice,
     onAfterMutation: () => snapshot.refresh({ showLoading: false }),
+    onAllowRecipient: allowRecipient,
   });
 
   return {
@@ -91,3 +93,5 @@ export function useDashboardController() {
     handleRecipientAllowed: messaging.handleRecipientAllowed,
   };
 }
+
+export type DashboardController = ReturnType<typeof useDashboardController>;

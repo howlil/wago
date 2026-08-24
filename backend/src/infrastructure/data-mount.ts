@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { posix } from "node:path";
 import { dataDirectory as configuredDataDirectory } from "../config/runtime-paths.js";
 
 export type DataMountInspection = {
@@ -24,13 +24,17 @@ function decodeMountInfoPath(value: string): string {
   return value.replace(/\\([0-7]{3})/g, (_match, octal: string) => String.fromCharCode(Number.parseInt(octal, 8)));
 }
 
+function normalizeMountInfoPath(value: string): string {
+  return posix.resolve("/", value);
+}
+
 function containsPath(mountPoint: string, target: string): boolean {
   if (mountPoint === "/") return target.startsWith("/");
   return target === mountPoint || target.startsWith(`${mountPoint}/`);
 }
 
 export function inspectDataMount(mountInfo: string, dataDirectory: string): DataMountInspection {
-  const target = resolve(dataDirectory);
+  const target = normalizeMountInfoPath(dataDirectory);
   let selected: { mountPoint: string; fsType: string } | undefined;
 
   for (const line of mountInfo.split("\n")) {
@@ -46,7 +50,7 @@ export function inspectDataMount(mountInfo: string, dataDirectory: string): Data
       .split(/\s+/);
     if (left.length < 5 || right.length < 1) continue;
 
-    const mountPoint = resolve(decodeMountInfoPath(left[4] ?? "/"));
+    const mountPoint = normalizeMountInfoPath(decodeMountInfoPath(left[4] ?? "/"));
     const fsType = right[0] ?? "";
     if (!containsPath(mountPoint, target)) continue;
 

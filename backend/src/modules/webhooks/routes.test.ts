@@ -37,6 +37,34 @@ describe("webhook delivery routes", () => {
     });
   });
 
+  it("rejects non-positive delivery list limits", async () => {
+    const response = await request(app)
+      .get("/webhooks/deliveries")
+      .query({ limit: "0" })
+      .set("Authorization", "Bearer webhook-test-key");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_WEBHOOK_DELIVERY_LIMIT",
+      message: "Webhook delivery limit must be between 1 and 100",
+    });
+  });
+
+  it("rejects excessive delivery list limits", async () => {
+    const response = await request(app)
+      .get("/webhooks/deliveries")
+      .query({ limit: "1000" })
+      .set("Authorization", "Bearer webhook-test-key");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_WEBHOOK_DELIVERY_LIMIT",
+      message: "Webhook delivery limit must be between 1 and 100",
+    });
+  });
+
   it("validates delivery IDs before querying durable state", async () => {
     const response = await request(app)
       .get("/webhooks/deliveries/not-a-delivery-id")
