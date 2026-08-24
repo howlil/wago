@@ -11,7 +11,7 @@
     "test": "vitest run --environment jsdom --pool=threads"
   },
   "dependencies": {
-    "lucide-react": "^1.30.0",
+    "lucide-react": "^1.32.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
