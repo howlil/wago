@@ -13,9 +13,7 @@ type AppSettingsRow = {
 };
 
 export function createAppSettingsStore(database: DatabaseSync) {
-  const readStatement = database.prepare(
-    "SELECT app_id, api_key_hash, generated_at FROM app_settings WHERE id = 1",
-  );
+  const readStatement = database.prepare("SELECT app_id, api_key_hash, generated_at FROM app_settings WHERE id = 1");
   const writeStatement = database.prepare(`
     INSERT INTO app_settings (id, app_id, api_key_hash, generated_at)
     VALUES (1, ?, ?, ?)
