@@ -13,7 +13,7 @@ export type MessageSendResult = {
   status: "pending";
 };
 
-export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
+export type MessageDeliveryStatus = "pending" | "accepted" | "delivered" | "read" | "rejected";
 
 export type MessageStatus = {
   id: string;
