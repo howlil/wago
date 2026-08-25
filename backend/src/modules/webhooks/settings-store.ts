@@ -2,8 +2,6 @@ import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { ApplicationError } from "../../errors/application-error.js";
 
-const MIN_SECRET_LENGTH = 32;
-
 type WebhookSettingsRow = {
   enabled: number;
   url: string | null;
