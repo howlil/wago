@@ -74,7 +74,9 @@ export function useDashboardSnapshot() {
     }
 
     function getNextRefreshDelay() {
-      return document.visibilityState === "hidden" ? hiddenRefreshIntervalMs : visibleRefreshIntervalsMs[getCurrentStatus()];
+      return document.visibilityState === "hidden"
+        ? hiddenRefreshIntervalMs
+        : visibleRefreshIntervalsMs[getCurrentStatus()];
     }
 
     function scheduleNextRefresh(delay = getNextRefreshDelay()) {
