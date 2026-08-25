@@ -14,9 +14,9 @@ import {
 } from "./features/gateway/api.js";
 import { sendMessage } from "./features/messages/api.js";
 import { allowRecipient } from "./features/recipients/api.js";
-import { ApiError } from "./shared/api/client.js";
 import { getCurrentQr, getWhatsAppStatus, pairWhatsApp } from "./features/whatsapp/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
+import { ApiError } from "./shared/api/client.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
 const rotatedApiKey = `wa_${"d".repeat(43)}`;
