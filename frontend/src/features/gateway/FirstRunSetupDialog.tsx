@@ -29,7 +29,7 @@ export function FirstRunSetupDialog({
         className="absolute inset-0 cursor-default"
         onClick={onCancel}
         disabled={isSubmitting}
-        aria-label="Close first-run setup dialog"
+        aria-label="Close legacy setup dialog"
       />
       <section
         className="relative w-full max-w-[480px] rounded-xl border border-[#dce5e1] bg-white p-5 shadow-[0_24px_80px_rgb(16_37_31_/_24%)]"
@@ -45,11 +45,11 @@ export function FirstRunSetupDialog({
             </span>
             <div>
               <h2 id="first-run-setup-dialog-title" className="text-lg font-semibold text-[#17231f]">
-                Authorize first pairing
+                Legacy setup authorization
               </h2>
               <p id="first-run-setup-dialog-description" className="mt-1 text-sm leading-6 text-[#687970]">
-                Enter the one-time setup code printed in the Wago deployment or container logs. It is required only for
-                the first gateway initialization and is invalidated after success.
+                This deployment still uses the legacy SETUP_TOKEN bootstrap path. New deployments should configure
+                WAGO_ADMIN_PASSWORD and sign in before pairing instead.
               </p>
             </div>
           </div>
@@ -58,7 +58,7 @@ export function FirstRunSetupDialog({
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            aria-label="Close first-run setup dialog"
+            aria-label="Close legacy setup dialog"
           >
             <X size={16} />
           </button>
@@ -66,7 +66,7 @@ export function FirstRunSetupDialog({
 
         <div className="mt-5">
           <label className="mb-1.5 block text-xs font-medium text-[#34473e]" htmlFor="first-run-setup-code">
-            Setup code
+            SETUP_TOKEN
           </label>
           <input
             id="first-run-setup-code"
@@ -76,7 +76,7 @@ export function FirstRunSetupDialog({
             onChange={(event) => onSetupCodeChange(event.target.value)}
             autoComplete="off"
             disabled={isSubmitting}
-            placeholder="setup_…"
+            placeholder="Legacy deployment secret"
           />
           {errorMessage ? (
             <p className="mt-2 text-xs leading-5 text-[#9c2932]" role="alert">
