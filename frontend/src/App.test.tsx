@@ -14,7 +14,8 @@ import {
 } from "./features/gateway/api.js";
 import { sendMessage } from "./features/messages/api.js";
 import { allowRecipient } from "./features/recipients/api.js";
-import { getCurrentQr, pairWhatsApp } from "./features/whatsapp/api.js";
+import { ApiError } from "./shared/api/client.js";
+import { getCurrentQr, getWhatsAppStatus, pairWhatsApp } from "./features/whatsapp/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
@@ -200,6 +201,13 @@ describe("dashboard", () => {
   });
 
   it("signs in with the admin password before generating the machine API key and pairing", async () => {
+    const firstRunAuthenticatedInfo = appInfo({
+      apiKeyConfigured: false,
+      apiKeySource: "unset",
+      authenticated: true,
+      credentialSetupRequired: true,
+      setupRequired: true,
+    });
     vi.mocked(getAppInfo)
       .mockResolvedValueOnce(
         appInfo({
@@ -210,16 +218,13 @@ describe("dashboard", () => {
           setupRequired: true,
         }),
       )
-      .mockResolvedValueOnce(
-        appInfo({
-          apiKeyConfigured: false,
-          apiKeySource: "unset",
-          authenticated: true,
-          credentialSetupRequired: true,
-          setupRequired: true,
-        }),
-      )
-      .mockResolvedValue(appInfo());
+      .mockResolvedValue(firstRunAuthenticatedInfo);
+    vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({
+      success: true,
+      status: "disconnected",
+      binding: { state: "unbound" },
+      accountHealth: { availability: "unavailable" },
+    });
 
     const user = userEvent.setup();
     render(<App />);
@@ -258,8 +263,8 @@ describe("dashboard", () => {
 
     await waitFor(() => {
       expect(createBrowserSession).toHaveBeenCalledWith(adminPassword, "password");
+      expect((input as HTMLInputElement).value).toBe("");
     });
-    expect((input as HTMLInputElement).value).toBe("");
   });
 
   it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {
@@ -307,10 +312,18 @@ describe("dashboard", () => {
 
   it("lets the operator allow and resend a recipient blocked by policy", async () => {
     vi.mocked(sendMessage)
-      .mockRejectedValueOnce({
-        error: "RECIPIENT_NOT_ALLOWED",
-        message: "Recipient is not allowed for outbound messages",
-      })
+      .mockRejectedValueOnce(
+        new ApiError(
+          403,
+          "RECIPIENT_NOT_ALLOWED",
+          "Recipient is not allowed for outbound messages",
+          {
+            success: false,
+            error: "RECIPIENT_NOT_ALLOWED",
+            message: "Recipient is not allowed for outbound messages",
+          },
+        ),
+      )
       .mockResolvedValueOnce({ success: true, messageId: "message-1", status: "pending" });
     const user = userEvent.setup();
     render(<App />);
