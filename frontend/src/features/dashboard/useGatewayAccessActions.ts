@@ -18,6 +18,8 @@ function apiErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessActionsOptions) {
+  const [signInCredential, setSignInCredential] = useState("");
+  const [showSignInCredential, setShowSignInCredential] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -30,23 +32,41 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
   });
 
   async function handleSignIn() {
-    const candidate = apiKeyInput.trim();
-    if (!candidate) {
-      setNotice({ type: "error", message: "Enter the API key first." });
+    if (snapshot.dashboardAuthMode === "unconfigured") {
+      setNotice({
+        type: "error",
+        message: "Configure WAGO_ADMIN_PASSWORD in the deployment, then restart Wago before signing in.",
+      });
       return;
     }
+
+    const candidate = signInCredential;
+    if (!candidate) {
+      setNotice({
+        type: "error",
+        message: snapshot.dashboardAuthMode === "password" ? "Enter the admin password first." : "Enter the API key first.",
+      });
+      return;
+    }
+
     setIsSigningIn(true);
     setNotice(null);
     try {
-      await createBrowserSession(candidate);
-      setApiKeyInput("");
-      setShowApiKey(false);
+      await createBrowserSession(candidate, snapshot.dashboardAuthMode);
+      setSignInCredential("");
+      setShowSignInCredential(false);
       const info = await snapshot.loadAppInfo();
       if (!info.authenticated) {
         setNotice({ type: "error", message: "The backend did not establish a browser session." });
         return;
       }
-      setNotice({ type: "success", message: "Signed in. The API key was not stored in this browser." });
+      setNotice({
+        type: "success",
+        message:
+          snapshot.dashboardAuthMode === "password"
+            ? "Signed in. The admin password was not stored in this browser."
+            : "Signed in through the legacy API-key recovery path. Configure WAGO_ADMIN_PASSWORD to separate dashboard and API credentials.",
+      });
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
       setNotice({ type: "error", message: apiErrorMessage(error, "Failed to sign in") });
@@ -60,6 +80,8 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     setNotice(null);
     try {
       await logoutBrowserSession();
+      setSignInCredential("");
+      setShowSignInCredential(false);
       setApiKeyInput("");
       setShowApiKey(false);
       setIsApiKeyRotationDialogOpen(false);
@@ -77,6 +99,8 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     setNotice(null);
     try {
       await logoutAllBrowserSessions();
+      setSignInCredential("");
+      setShowSignInCredential(false);
       setApiKeyInput("");
       setShowApiKey(false);
       setIsApiKeyRotationDialogOpen(false);
@@ -116,14 +140,21 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
   }
 
   const credentialHint = snapshot.credentialSetupRequired
-    ? "Generated once after authorized first pairing. Save it for API clients and browser recovery."
+    ? "Generated once after first pairing. Save it for external REST clients and automation."
     : snapshot.isAuthenticated && apiKeyInput
-      ? "Shown once. Save this API key now; Wago does not persist it in browser storage."
-      : snapshot.isAuthenticated
-        ? "Dashboard access uses a separate secure browser session. API keys remain for external REST clients."
-        : "Enter the existing API key once to create a browser session. It will not be stored in this browser.";
+      ? "Shown once. Save this machine API key now; Wago does not persist it in browser storage."
+      : "Machine API key for external REST clients. Dashboard sign-in uses its own browser session.";
+
+  const signInHint =
+    snapshot.dashboardAuthMode === "password"
+      ? "Use WAGO_ADMIN_PASSWORD. Wago exchanges it for an HttpOnly browser session and does not store it in the browser."
+      : snapshot.dashboardAuthMode === "legacy_api_key"
+        ? "Compatibility mode: use the existing API key once. Configure WAGO_ADMIN_PASSWORD to remove this legacy coupling."
+        : "Set WAGO_ADMIN_PASSWORD in the deployment environment and restart Wago to enable dashboard sign-in.";
 
   return {
+    signInCredential,
+    showSignInCredential,
     apiKeyInput,
     showApiKey,
     copiedField,
@@ -133,7 +164,10 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     isRotatingApiKey,
     isApiKeyRotationDialogOpen,
     credentialHint,
+    signInHint,
+    setSignInCredential,
     setApiKeyInput,
+    toggleSignInCredential: () => setShowSignInCredential((value) => !value),
     toggleApiKey: () => setShowApiKey((value) => !value),
     copyAppId: () => void copy(snapshot.appId, "appId"),
     copyApiKey: () => void copy(apiKeyInput, "apiKey"),
