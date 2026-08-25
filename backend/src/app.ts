@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import express from "express";
 import helmet from "helmet";
+import { createHttpComposition } from "./app/composition.js";
 import { config } from "./config/index.js";
 import { errorHandler } from "./http/middleware/error-handler.js";
 import { requireSameOriginForCookieMutation } from "./http/middleware/origin.js";
@@ -9,19 +10,12 @@ import { requestLogger } from "./http/middleware/request-logger.js";
 import { appRouter } from "./modules/access/routes.js";
 import { activityRouter } from "./modules/activity/routes.js";
 import { getReadinessSnapshot } from "./modules/gateway/readiness.js";
-import { createMessageService } from "./modules/messages/message.service.js";
-import { createMessageRouter } from "./modules/messages/routes.js";
 import { recipientRouter } from "./modules/recipients/routes.js";
 import { webhookRouter } from "./modules/webhooks/routes.js";
-import { getMessageStatus, sendTextMessage } from "./modules/whatsapp/index.js";
 import { whatsappRouter } from "./modules/whatsapp/routes.js";
 
 export const app = express();
-const messageService = createMessageService({
-  sendText: sendTextMessage,
-  getStatus: getMessageStatus,
-});
-const messageRouter = createMessageRouter(messageService);
+const { messageRouter } = createHttpComposition();
 
 app.set("trust proxy", config.trustProxy ? 1 : false);
 app.use(
