@@ -150,6 +150,8 @@ export function useDashboardSnapshot() {
     appId: gateway.appId,
     apiKeyConfigured: gateway.apiKeyConfigured,
     apiKeySource: gateway.apiKeySource,
+    adminPasswordConfigured: gateway.adminPasswordConfigured,
+    dashboardAuthMode: gateway.dashboardAuthMode,
     credentialSetupRequired: gateway.credentialSetupRequired,
     setupCodeRequired: gateway.setupCodeRequired,
     webBootstrapEnabled: gateway.webBootstrapEnabled,
