@@ -88,20 +88,27 @@ export function registerSocketEvents({
         continue;
       }
 
-      if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
+      if (entry.update.status >= WAMessageStatus.READ) {
+        updateMessageStatus(messageId, { status: "read" });
+      } else if (entry.update.status >= WAMessageStatus.DELIVERY_ACK) {
+        updateMessageStatus(messageId, { status: "delivered" });
+      } else if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
         updateMessageStatus(messageId, { status: "accepted" });
-        auditBaileys({
-          level: "info",
-          category: "messaging",
-          code: "baileys.message.ack",
-          title: "WhatsApp acknowledged a message",
-          description: "Baileys reported a server acknowledgement for an outbound message.",
-          metadata: {
-            socketGeneration: generation,
-            status: entry.update.status,
-          },
-        });
+      } else {
+        continue;
       }
+
+      auditBaileys({
+        level: "info",
+        category: "messaging",
+        code: "baileys.message.ack",
+        title: "WhatsApp updated a message receipt",
+        description: "Baileys reported an outbound message acknowledgement or receipt.",
+        metadata: {
+          socketGeneration: generation,
+          status: entry.update.status,
+        },
+      });
     }
   });
 
