@@ -30,8 +30,8 @@ const gatewayApi = vi.hoisted(() => ({
     apiKeyConfigured: true,
     apiKeySource: "generated" as const,
     authenticated: true,
+    adminPasswordConfigured: true,
     credentialSetupRequired: false,
-    setupRequired: false,
   })),
 }));
 
@@ -57,80 +57,46 @@ vi.mock("../src/features/whatsapp/api.js", () => whatsappApi);
 import { useDashboardSnapshot } from "../src/features/dashboard/useDashboardSnapshot.js";
 
 describe("dashboard readiness snapshot scheduling", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it("refreshes readiness through the existing snapshot scheduler without adding an interval", async () => {
     const setIntervalSpy = vi.spyOn(window, "setInterval");
     const { result, unmount } = renderHook(() => useDashboardSnapshot());
-
     expect(setIntervalSpy).not.toHaveBeenCalled();
     await waitFor(() => expect(gatewayApi.getReadiness).toHaveBeenCalledTimes(1));
     expect(result.current.readiness).toEqual(degradedReadiness);
-
     unmount();
   });
 
   it("does not let a hanging readiness request block the main snapshot or create overlapping readiness requests", async () => {
     let resolveReadiness!: (value: GatewayReadinessSnapshot) => void;
-    const readinessPromise = new Promise<GatewayReadinessSnapshot>((resolve) => {
-      resolveReadiness = resolve;
-    });
+    const readinessPromise = new Promise<GatewayReadinessSnapshot>((resolve) => { resolveReadiness = resolve; });
     gatewayApi.getReadiness.mockReturnValueOnce(readinessPromise);
-
     const { result, unmount } = renderHook(() => useDashboardSnapshot());
-
     await waitFor(() => expect(gatewayApi.getAppInfo).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(whatsappApi.getWhatsAppStatus).toHaveBeenCalledTimes(1));
     expect(result.current.status).toBe("connected");
-
-    await act(async () => {
-      await result.current.refresh({ showLoading: false });
-    });
-
+    await act(async () => { await result.current.refresh({ showLoading: false }); });
     expect(gatewayApi.getReadiness).toHaveBeenCalledTimes(1);
     expect(gatewayApi.getAppInfo).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      resolveReadiness(degradedReadiness);
-      await readinessPromise;
-    });
+    await act(async () => { resolveReadiness(degradedReadiness); await readinessPromise; });
     await waitFor(() => expect(result.current.readiness).toEqual(degradedReadiness));
-
     unmount();
   });
 
   it("ignores a stale readiness completion after a later health failure invalidates readiness", async () => {
     let resolveReadiness!: (value: GatewayReadinessSnapshot) => void;
-    const readinessPromise = new Promise<GatewayReadinessSnapshot>((resolve) => {
-      resolveReadiness = resolve;
-    });
+    const readinessPromise = new Promise<GatewayReadinessSnapshot>((resolve) => { resolveReadiness = resolve; });
     gatewayApi.getReadiness.mockReturnValueOnce(readinessPromise);
     gatewayApi.getHealth.mockResolvedValueOnce({ status: "ok" }).mockResolvedValueOnce({ status: "error" });
-
     const { result, unmount } = renderHook(() => useDashboardSnapshot());
-
     await waitFor(() => expect(gatewayApi.getAppInfo).toHaveBeenCalledTimes(1));
-
-    await act(async () => {
-      await result.current.refresh({ showLoading: false });
-    });
-
+    await act(async () => { await result.current.refresh({ showLoading: false }); });
     expect(result.current.health).toBe("error");
     expect(result.current.readiness).toBeNull();
-
-    await act(async () => {
-      resolveReadiness(degradedReadiness);
-      await readinessPromise;
-    });
-
+    await act(async () => { resolveReadiness(degradedReadiness); await readinessPromise; });
     expect(result.current.readiness).toBeNull();
-
     unmount();
   });
 });
