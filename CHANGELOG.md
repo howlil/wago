@@ -14,6 +14,14 @@ All notable Wago changes are documented here. Wago uses SemVer and is still pre-
 
 These compatibility removals require the next stable release to be at least a **minor** version while Wago is pre-1.0.
 
+### Messaging reliability
+
+- Outbound sends validate and resolve recipients through WhatsApp before sending, returning stable typed errors for unregistered recipients and transient lookup failures.
+- Recent outbound message status now progresses through `pending` -> `accepted` -> `delivered` -> `read`, with `rejected` as a terminal pre-delivery failure state.
+- Delivery transitions are monotonic and idempotent so duplicate or out-of-order Baileys receipt events cannot downgrade a message state.
+- Signed delivery webhooks now emit `message.delivered` and `message.read` in addition to server-accepted and rejected events.
+- The dashboard continues polling accepted/delivered messages long enough to surface delivery and read receipts.
+
 ### Engineering workflow
 
 - Replaced the historical plan/spec/checkpoint workflow with a lean default: acceptance criteria -> RED -> GREEN -> REFACTOR -> focused verification -> PR/CI -> merge -> observe.
