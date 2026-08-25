@@ -12,8 +12,10 @@ type ErrorEnvelope = {
 };
 
 export class ApiError extends Error {
+  readonly success = false as const;
   readonly status: number;
   readonly code: string;
+  readonly error: string;
   readonly retryAt?: string;
   readonly body: unknown;
 
@@ -22,8 +24,11 @@ export class ApiError extends Error {
     this.name = "ApiError";
     this.status = status;
     this.code = code;
-    this.retryAt = retryAt;
+    this.error = code;
     this.body = body;
+    if (retryAt !== undefined) {
+      this.retryAt = retryAt;
+    }
   }
 }
 
