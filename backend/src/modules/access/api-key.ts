@@ -58,14 +58,8 @@ let state: MutableAccessState = {
   setupCodeGeneratedAt: persistedSettings?.setupCodeGeneratedAt ?? null,
 };
 
-let generatedSetupCodeForLog: string | null = null;
-
 function generateApiKey(): string {
   return `wa_${randomBytes(32).toString("base64url")}`;
-}
-
-function generateSetupCode(): string {
-  return `setup_${randomBytes(16).toString("base64url")}`;
 }
 
 export function hashApiKey(apiKey: string): string {
@@ -106,7 +100,7 @@ function persistSetupCode(setupCode: string): void {
   });
 }
 
-function prepareFirstRunSetupCode(): void {
+function prepareLegacySetupToken(): void {
   if (config.nodeEnv !== "production" || state.apiKey || state.apiKeyHash) return;
 
   if (config.setupToken) {
@@ -114,23 +108,16 @@ function prepareFirstRunSetupCode(): void {
     return;
   }
 
-  const setupCode = generateSetupCode();
-  persistSetupCode(setupCode);
-  generatedSetupCodeForLog = setupCode;
+  if (state.setupCodeHash || state.setupCodeGeneratedAt) {
+    saveState({ ...state, setupCodeHash: null, setupCodeGeneratedAt: null });
+  }
 }
 
-prepareFirstRunSetupCode();
-
-export function consumeGeneratedSetupCodeForLog(): string | null {
-  const setupCode = generatedSetupCodeForLog;
-  generatedSetupCodeForLog = null;
-  return setupCode;
-}
+prepareLegacySetupToken();
 
 export function getAccessSnapshot(): AccessSnapshot {
   const apiKeyConfigured = Boolean(state.apiKey || state.apiKeyHash);
-  const setupCodeRequired =
-    !apiKeyConfigured && config.nodeEnv === "production" && Boolean(state.setupCodeHash || config.setupToken);
+  const setupCodeRequired = !apiKeyConfigured && config.nodeEnv === "production" && Boolean(config.setupToken);
 
   return {
     appId: state.appId,
@@ -138,7 +125,9 @@ export function getAccessSnapshot(): AccessSnapshot {
     apiKeyConfigured,
     credentialSetupRequired: !apiKeyConfigured,
     setupCodeRequired,
-    webBootstrapEnabled: !apiKeyConfigured && (config.nodeEnv !== "production" || setupCodeRequired),
+    webBootstrapEnabled:
+      !apiKeyConfigured &&
+      (config.nodeEnv !== "production" || Boolean(config.adminPassword) || setupCodeRequired),
   };
 }
 
@@ -191,7 +180,7 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     return {
       success: false,
       error: "APP_ALREADY_INITIALIZED",
-      message: "This app is already initialized. Use the existing API key to sign in or authenticate API requests.",
+      message: "This app already has a machine API key. Sign in to the dashboard with the configured admin credential.",
     };
   }
 
@@ -208,7 +197,6 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     setupCodeHash: null,
     setupCodeGeneratedAt: null,
   });
-  generatedSetupCodeForLog = null;
 
   return { success: true, appId: state.appId, apiKey, recovered: false };
 }
@@ -269,5 +257,4 @@ export function resetAccessStateForTest(
     setupCodeHash: overrides.setupCodeHash ?? null,
     setupCodeGeneratedAt: overrides.setupCodeGeneratedAt ?? null,
   });
-  generatedSetupCodeForLog = null;
 }
