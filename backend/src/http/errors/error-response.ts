@@ -17,6 +17,7 @@ const statusByCode = {
   MESSAGE_REJECTED: 502,
   INVALID_PHONE: 400,
   INVALID_AUDIT_CURSOR: 400,
+  INVALID_WEBHOOK_SETTINGS: 400,
 } satisfies Record<ApplicationErrorCode, number>;
 
 export type HttpErrorResponse = {
