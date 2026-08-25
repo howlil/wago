@@ -6,16 +6,21 @@ const firstRunProps = {
   appId: "wa-gateway-test",
   apiKeyConfigured: false,
   apiKeySource: "unset" as const,
+  dashboardAuthMode: "password" as const,
+  signInCredential: "",
   apiKeyInput: "",
   credentialSetupRequired: true,
   isAuthenticated: false,
+  showSignInCredential: false,
   showApiKey: false,
   copiedField: null,
-  credentialHint: "Generated on first pairing.",
+  credentialHint: "Generated after first pairing.",
+  signInHint: "Use WAGO_ADMIN_PASSWORD.",
   isSigningIn: false,
   isSigningOut: false,
   isRotatingApiKey: false,
-  onApiKeyChange: vi.fn(),
+  onSignInCredentialChange: vi.fn(),
+  onToggleSignInCredential: vi.fn(),
   onToggleApiKey: vi.fn(),
   onCopyAppId: vi.fn(),
   onCopyApiKey: vi.fn(),
@@ -25,10 +30,11 @@ const firstRunProps = {
 };
 
 describe("first-run gateway credentials", () => {
-  it("keeps deployment setup authorization out of the permanent credentials card", () => {
+  it("shows admin-password access separately from the generated machine API key", () => {
     render(<GatewayCredentialsCard {...firstRunProps} />);
 
+    expect(screen.getByLabelText(/admin password/i)).toBeTruthy();
     expect(screen.queryByLabelText(/deployment setup token/i)).toBeNull();
-    expect(screen.getByLabelText(/api key/i).getAttribute("placeholder")).toBe("Generated on first pairing");
+    expect(screen.getByLabelText(/machine api key/i).getAttribute("placeholder")).toBe("Generated after first pairing");
   });
 });
