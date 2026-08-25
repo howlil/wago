@@ -2,13 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, requestJson } from "./client.js";
 
 function jsonResponse(status: number, body: unknown): Response {
-  return {
-    ok: status >= 200 && status < 300,
+  return new Response(JSON.stringify(body), {
     status,
-    headers: { get: () => "application/json" },
-    json: async () => body,
-    text: async () => JSON.stringify(body),
-  } as Response;
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 afterEach(() => {
@@ -52,12 +49,12 @@ describe("API client", () => {
   it("rejects non-JSON responses with a typed error", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 502,
-        headers: { get: () => "text/plain" },
-        text: async () => "bad gateway",
-      } as Response),
+      vi.fn().mockResolvedValue(
+        new Response("bad gateway", {
+          status: 502,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      ),
     );
 
     await expect(requestJson("/messages/send")).rejects.toMatchObject({
