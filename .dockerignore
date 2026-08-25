@@ -2,6 +2,7 @@
 .github
 docs/*
 !docs/package.json
+!docs/pnpm-lock.yaml
 .env
 .env.*
 node_modules
