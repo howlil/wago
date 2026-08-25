@@ -14,17 +14,22 @@ type GatewayCredentialsCardProps = {
   appId: string;
   apiKeyConfigured: boolean;
   apiKeySource: AppInfoResponse["apiKeySource"];
+  dashboardAuthMode: AppInfoResponse["dashboardAuthMode"];
+  signInCredential: string;
   apiKeyInput: string;
   credentialSetupRequired: boolean;
   isAuthenticated: boolean;
+  showSignInCredential: boolean;
   showApiKey: boolean;
   copiedField: CopiedField;
   credentialHint: string;
+  signInHint: string;
   isSigningIn: boolean;
   isSigningOut: boolean;
   isSigningOutAll?: boolean;
   isRotatingApiKey: boolean;
-  onApiKeyChange: (value: string) => void;
+  onSignInCredentialChange: (value: string) => void;
+  onToggleSignInCredential: () => void;
   onToggleApiKey: () => void;
   onCopyAppId: () => void;
   onCopyApiKey: () => void;
@@ -38,17 +43,22 @@ export function GatewayCredentialsCard({
   appId,
   apiKeyConfigured,
   apiKeySource,
+  dashboardAuthMode,
+  signInCredential,
   apiKeyInput,
   credentialSetupRequired,
   isAuthenticated,
+  showSignInCredential,
   showApiKey,
   copiedField,
   credentialHint,
+  signInHint,
   isSigningIn,
   isSigningOut,
   isSigningOutAll = false,
   isRotatingApiKey,
-  onApiKeyChange,
+  onSignInCredentialChange,
+  onToggleSignInCredential,
   onToggleApiKey,
   onCopyAppId,
   onCopyApiKey,
@@ -57,13 +67,15 @@ export function GatewayCredentialsCard({
   onSignOutAll,
   onRotateApiKey,
 }: GatewayCredentialsCardProps) {
+  const signInLabel = dashboardAuthMode === "legacy_api_key" ? "Legacy API key" : "Admin password";
+
   return (
     <section className={cardBodyClass}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className={sectionTitleClass}>Gateway credentials</h2>
+          <h2 className={sectionTitleClass}>Gateway access</h2>
           <p className={sectionDescriptionClass}>
-            API key for machine clients; browser access uses a separate session.
+            Dashboard access and machine API credentials are intentionally separate.
           </p>
         </div>
         {apiKeyConfigured ? (
@@ -73,7 +85,55 @@ export function GatewayCredentialsCard({
         ) : null}
       </div>
 
-      <div className="mt-4 grid gap-3">
+      <div className="mt-4 grid gap-4">
+        {!isAuthenticated ? (
+          <div>
+            <label className={fieldLabelClass} htmlFor="gateway-sign-in-credential">
+              {signInLabel}
+            </label>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="relative min-w-0">
+                <input
+                  id="gateway-sign-in-credential"
+                  className={`${inputClass} pr-9 text-xs`}
+                  value={signInCredential}
+                  onChange={(event) => onSignInCredentialChange(event.target.value)}
+                  placeholder={
+                    dashboardAuthMode === "legacy_api_key"
+                      ? "Existing API key"
+                      : dashboardAuthMode === "password"
+                        ? "WAGO_ADMIN_PASSWORD"
+                        : "Configure WAGO_ADMIN_PASSWORD"
+                  }
+                  type={showSignInCredential ? "text" : "password"}
+                  disabled={dashboardAuthMode === "unconfigured"}
+                  autoComplete={dashboardAuthMode === "password" ? "current-password" : "off"}
+                  aria-label={signInLabel}
+                />
+                {signInCredential ? (
+                  <button
+                    className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-[#758079]"
+                    type="button"
+                    onClick={onToggleSignInCredential}
+                    aria-label={showSignInCredential ? `Hide ${signInLabel}` : `Show ${signInLabel}`}
+                  >
+                    {showSignInCredential ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                ) : null}
+              </div>
+              <button
+                className={`${secondaryButtonClass} w-full sm:w-auto`}
+                type="button"
+                onClick={onSignIn}
+                disabled={isSigningIn || dashboardAuthMode === "unconfigured"}
+              >
+                {isSigningIn ? "Signing in" : "Sign in"}
+              </button>
+            </div>
+            <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{signInHint}</span>
+          </div>
+        ) : null}
+
         <div>
           <label className={fieldLabelClass} htmlFor="gateway-app-id">
             App ID
@@ -95,7 +155,7 @@ export function GatewayCredentialsCard({
 
         <div>
           <label className={fieldLabelClass} htmlFor="gateway-api-key">
-            API key
+            Machine API key
           </label>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="relative min-w-0">
@@ -103,18 +163,11 @@ export function GatewayCredentialsCard({
                 id="gateway-api-key"
                 className={`${inputClass} pr-9 font-mono text-xs`}
                 value={apiKeyInput}
-                onChange={(event) => onApiKeyChange(event.target.value)}
-                placeholder={
-                  credentialSetupRequired
-                    ? "Generated on first pairing"
-                    : isAuthenticated
-                      ? "Not stored in browser"
-                      : "Enter existing API key"
-                }
+                placeholder={credentialSetupRequired ? "Generated after first pairing" : "Not stored in browser"}
                 type={showApiKey ? "text" : "password"}
-                readOnly={credentialSetupRequired || isAuthenticated}
+                readOnly
                 autoComplete="off"
-                aria-label="API Key"
+                aria-label="Machine API key"
               />
               {apiKeyInput ? (
                 <button
@@ -127,26 +180,15 @@ export function GatewayCredentialsCard({
                 </button>
               ) : null}
             </div>
-            {!isAuthenticated && apiKeyConfigured ? (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onSignIn}
-                disabled={isSigningIn}
-              >
-                {isSigningIn ? "Signing in" : "Sign in"}
-              </button>
-            ) : (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onCopyApiKey}
-                disabled={!apiKeyInput}
-              >
-                {copiedField === "apiKey" ? <Check size={14} /> : <Copy size={14} />}
-                {copiedField === "apiKey" ? "Copied" : "Copy"}
-              </button>
-            )}
+            <button
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              type="button"
+              onClick={onCopyApiKey}
+              disabled={!apiKeyInput}
+            >
+              {copiedField === "apiKey" ? <Check size={14} /> : <Copy size={14} />}
+              {copiedField === "apiKey" ? "Copied" : "Copy"}
+            </button>
           </div>
           <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
         </div>
