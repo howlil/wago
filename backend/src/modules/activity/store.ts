@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDatabase, withTransaction } from "../../infrastructure/database.js";
-import { redactLogFields } from "../../infrastructure/logger.js";
+import { logger, redactLogFields } from "../../infrastructure/logger.js";
 import type {
   ActivityCategory,
   ActivityLevel,
@@ -85,20 +85,31 @@ export async function recordActivity(input: AuditInput): Promise<AuditEvent> {
     metadata: input.metadata ? redactLogFields(input.metadata) : undefined,
   };
 
-  withTransaction(() => {
-    insertActivity.run(
-      event.id,
-      event.timestamp,
-      event.level,
-      event.category,
-      event.source,
-      event.code,
-      event.title,
-      event.description,
-      event.metadata ? JSON.stringify(event.metadata) : null,
+  try {
+    withTransaction(() => {
+      insertActivity.run(
+        event.id,
+        event.timestamp,
+        event.level,
+        event.category,
+        event.source,
+        event.code,
+        event.title,
+        event.description,
+        event.metadata ? JSON.stringify(event.metadata) : null,
+      );
+      pruneActivity.run(MAX_ACTIVITY_EVENTS);
+    });
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        activityCode: event.code,
+        activityCategory: event.category,
+      },
+      "activity.persist_failed",
     );
-    pruneActivity.run(MAX_ACTIVITY_EVENTS);
-  });
+  }
 
   return event;
 }
