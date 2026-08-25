@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { ApplicationError } from "../../errors/application-error.js";
 
 const MIN_SECRET_LENGTH = 32;
 
@@ -33,6 +34,10 @@ export type SaveWebhookSettingsResult = {
   generatedSecret?: string;
 };
 
+function invalidSettings(message: string): never {
+  throw new ApplicationError("INVALID_WEBHOOK_SETTINGS", message);
+}
+
 function generateSecret(): string {
   return randomBytes(32).toString("base64url");
 }
@@ -47,15 +52,15 @@ function normalizeUrl(value: string | null | undefined): string | null {
   try {
     parsed = new URL(trimmed);
   } catch {
-    throw new Error("Webhook URL must be a valid URL");
+    return invalidSettings("Webhook URL must be a valid URL");
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("Webhook URL must use http or https");
+    return invalidSettings("Webhook URL must use http or https");
   }
 
   if (parsed.username || parsed.password) {
-    throw new Error("Webhook URL must not contain embedded credentials");
+    return invalidSettings("Webhook URL must not contain embedded credentials");
   }
 
   return parsed.toString();
@@ -63,7 +68,7 @@ function normalizeUrl(value: string | null | undefined): string | null {
 
 function validateSecret(secret: string | null, name = "Webhook secret"): void {
   if (secret && secret.length < MIN_SECRET_LENGTH) {
-    throw new Error(`${name} must contain at least ${MIN_SECRET_LENGTH} characters`);
+    invalidSettings(`${name} must contain at least ${MIN_SECRET_LENGTH} characters`);
   }
 }
 
@@ -125,7 +130,7 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
 
     const url = normalizeUrl(legacy.url);
     if (!url || !legacy.secret) {
-      throw new Error("Webhook URL and secret are required when webhook delivery is enabled");
+      invalidSettings("Webhook URL and secret are required when webhook delivery is enabled");
     }
     validateSecret(legacy.secret);
     validateSecret(legacy.previousSecret, "Previous webhook secret");
@@ -145,7 +150,7 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
     const current = get();
     const url = input.url === undefined ? (current?.url ?? null) : normalizeUrl(input.url);
     if (input.enabled && !url) {
-      throw new Error("Webhook URL is required when webhook delivery is enabled");
+      invalidSettings("Webhook URL is required when webhook delivery is enabled");
     }
 
     const now = new Date().toISOString();
@@ -165,7 +170,7 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
   function rotateSecret(): SaveWebhookSettingsResult {
     const current = get();
     if (!current?.secret) {
-      throw new Error("Webhook signing secret is not configured");
+      invalidSettings("Webhook signing secret is not configured");
     }
 
     const generatedSecret = generateSecret();
@@ -181,7 +186,7 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
   function completeRotation(): WebhookSettings {
     const current = get();
     if (!current) {
-      throw new Error("Webhook settings are not configured");
+      invalidSettings("Webhook settings are not configured");
     }
 
     return write({
