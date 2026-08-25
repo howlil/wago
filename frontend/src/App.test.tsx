@@ -222,7 +222,7 @@ describe("dashboard", () => {
     vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({
       success: true,
       status: "disconnected",
-      binding: { state: "unbound" },
+      binding: { state: "unbound", jid: null, phone: null, boundAt: null },
       accountHealth: { availability: "unavailable" },
     });
 
@@ -313,16 +313,11 @@ describe("dashboard", () => {
   it("lets the operator allow and resend a recipient blocked by policy", async () => {
     vi.mocked(sendMessage)
       .mockRejectedValueOnce(
-        new ApiError(
-          403,
-          "RECIPIENT_NOT_ALLOWED",
-          "Recipient is not allowed for outbound messages",
-          {
-            success: false,
-            error: "RECIPIENT_NOT_ALLOWED",
-            message: "Recipient is not allowed for outbound messages",
-          },
-        ),
+        new ApiError(403, "RECIPIENT_NOT_ALLOWED", "Recipient is not allowed for outbound messages", {
+          success: false,
+          error: "RECIPIENT_NOT_ALLOWED",
+          message: "Recipient is not allowed for outbound messages",
+        }),
       )
       .mockResolvedValueOnce({ success: true, messageId: "message-1", status: "pending" });
     const user = userEvent.setup();
