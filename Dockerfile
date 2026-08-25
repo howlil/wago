@@ -5,9 +5,9 @@ RUN npm install --global "pnpm@${PNPM_VERSION}" && pnpm --version
 FROM pnpm-base AS build-deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY backend/package.json ./backend/package.json
-COPY frontend/package.json ./frontend/package.json
-COPY docs/package.json ./docs/package.json
+COPY backend/package.json backend/pnpm-lock.yaml ./backend/
+COPY frontend/package.json frontend/pnpm-lock.yaml ./frontend/
+COPY docs/package.json docs/pnpm-lock.yaml ./docs/
 RUN pnpm install --frozen-lockfile
 
 FROM build-deps AS build
@@ -21,9 +21,9 @@ ENV NODE_ENV=production
 LABEL io.mypaas.persistent-volumes="/app/data"
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY backend/package.json ./backend/package.json
-COPY frontend/package.json ./frontend/package.json
-COPY docs/package.json ./docs/package.json
+COPY backend/package.json backend/pnpm-lock.yaml ./backend/
+COPY frontend/package.json frontend/pnpm-lock.yaml ./frontend/
+COPY docs/package.json docs/pnpm-lock.yaml ./docs/
 RUN pnpm install --frozen-lockfile --prod --filter @wago/backend
 
 COPY --from=build /app/backend/dist ./backend/dist
