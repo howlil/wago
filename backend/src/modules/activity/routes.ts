@@ -1,5 +1,5 @@
 import { type Response, Router } from "express";
-import { requireApiKey } from "../../http/middleware/auth.js";
+import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { listAudit } from "./query.js";
 import type { ActivityCategory, ActivityLevel, AuditSource } from "./store.js";
 
@@ -21,7 +21,7 @@ function queryString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-activityRouter.get("/", requireApiKey, async (req, res, next) => {
+activityRouter.get("/", requireAuthenticatedRequest, async (req, res, next) => {
   const rawSource = req.query.source;
   const rawCategory = req.query.category;
   const rawLevel = req.query.level;
