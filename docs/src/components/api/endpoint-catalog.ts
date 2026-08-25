@@ -403,7 +403,10 @@ export const apiEndpoints: ApiEndpoint[] = [
         required: true,
         placeholder: "<delivery-id>",
         label: { en: "Delivery ID", id: "Delivery ID" },
-        description: { en: "Signed Webhook-Id for the callback.", id: "Webhook-Id yang ditandatangani untuk callback." },
+        description: {
+          en: "Signed Webhook-Id for the callback.",
+          id: "Webhook-Id yang ditandatangani untuk callback.",
+        },
       },
     ],
     liveMode: "safe",
@@ -426,7 +429,10 @@ export const apiEndpoints: ApiEndpoint[] = [
         required: true,
         placeholder: "<delivery-id>",
         label: { en: "Delivery ID", id: "Delivery ID" },
-        description: { en: "Durable webhook delivery to retry.", id: "Delivery webhook durable yang akan dicoba ulang." },
+        description: {
+          en: "Durable webhook delivery to retry.",
+          id: "Delivery webhook durable yang akan dicoba ulang.",
+        },
       },
     ],
     liveMode: "confirm",

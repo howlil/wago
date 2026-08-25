@@ -68,7 +68,11 @@ function collectBody(endpoint: ApiEndpoint, values: ExplorerValues, useExamples:
   return body;
 }
 
-function collectHeaderFields(endpoint: ApiEndpoint, values: ExplorerValues, useExamples: boolean): Record<string, string> {
+function collectHeaderFields(
+  endpoint: ApiEndpoint,
+  values: ExplorerValues,
+  useExamples: boolean,
+): Record<string, string> {
   const headers: Record<string, string> = {};
 
   for (const field of endpoint.fields.filter((item) => item.location === "header")) {
@@ -188,7 +192,9 @@ function pythonSnippet(
     ...(Object.keys(pythonHeaders).length > 0
       ? [`headers=${JSON.stringify(pythonHeaders).replaceAll(":", ": ").replaceAll(",", ", ")}`]
       : []),
-    ...(Object.keys(body).length > 0 ? [`json=${JSON.stringify(body).replaceAll(":", ": ").replaceAll(",", ", ")}`] : []),
+    ...(Object.keys(body).length > 0
+      ? [`json=${JSON.stringify(body).replaceAll(":", ": ").replaceAll(",", ", ")}`]
+      : []),
     "timeout=30",
   ];
 

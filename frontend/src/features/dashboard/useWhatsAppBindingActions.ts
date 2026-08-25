@@ -70,7 +70,10 @@ export function useWhatsAppBindingActions({
             setSetupCodeError(null);
             setIsFirstRunSetupDialogOpen(false);
           } else {
-            const message = apiErrorMessage(error, "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.");
+            const message = apiErrorMessage(
+              error,
+              "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.",
+            );
             if (setupCode) setSetupCodeError(message);
             else setNotice({ type: "error", message });
             return false;

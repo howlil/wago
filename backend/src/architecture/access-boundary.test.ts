@@ -12,7 +12,9 @@ function resolvesToLegacyAccessRoute(file: string, specifier: string): boolean {
     return false;
   }
 
-  return relativePath(sourceDirectory, resolve(dirname(file), specifier)).replace(/\.js$/, ".ts") === "routes/app.routes.ts";
+  return (
+    relativePath(sourceDirectory, resolve(dirname(file), specifier)).replace(/\.js$/, ".ts") === "routes/app.routes.ts"
+  );
 }
 
 describe("Access architecture boundary", () => {
