@@ -6,6 +6,7 @@ import {
   requestIsAuthenticated,
 } from "../../http/middleware/auth.js";
 import { requestHasSameOrigin } from "../../http/middleware/origin.js";
+import { createRateLimit } from "../../http/middleware/rate-limit.js";
 import { recordActivity } from "../activity/store.js";
 import { isAdminPasswordValid } from "./admin-password.js";
 import {
@@ -23,6 +24,8 @@ import {
 } from "./browser-session-store.js";
 
 export const appRouter = Router();
+
+const browserSignInRateLimit = createRateLimit({ limit: 10, windowMs: 5 * 60 * 1000 });
 
 const browserCookieOptions = {
   httpOnly: true,
@@ -144,7 +147,7 @@ appRouter.post("/bootstrap", (req, res) => {
   });
 });
 
-appRouter.post("/session", (req, res) => {
+appRouter.post("/session", browserSignInRateLimit, (req, res) => {
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
     return res.status(403).json({
       success: false,
