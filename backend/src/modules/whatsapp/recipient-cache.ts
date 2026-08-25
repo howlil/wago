@@ -7,8 +7,8 @@ const RECIPIENT_LOOKUP_NEGATIVE_TTL_MS = 1000 * 60 * 5;
 
 const recipientLookupCache = new Map<string, { exists: boolean; resolvedJid?: string; expiresAt: number }>();
 
-function phoneNotOnWhatsAppError(): ApplicationError {
-  return new ApplicationError("PHONE_NOT_ON_WHATSAPP", "Phone number is not registered on WhatsApp");
+function recipientNotOnWhatsAppError(): ApplicationError {
+  return new ApplicationError("RECIPIENT_NOT_ON_WHATSAPP", "Recipient is not registered on WhatsApp");
 }
 
 export async function resolveRecipientJid(activeSocket: WASocket, jid: string): Promise<string> {
@@ -19,17 +19,24 @@ export async function resolveRecipientJid(activeSocket: WASocket, jid: string): 
       return cached.resolvedJid;
     }
 
-    throw phoneNotOnWhatsAppError();
+    throw recipientNotOnWhatsAppError();
   }
 
-  const [contact] = (await activeSocket.onWhatsApp(jid)) ?? [];
+  let contact: Awaited<ReturnType<WASocket["onWhatsApp"]>>[number] | undefined;
+  try {
+    [contact] = (await activeSocket.onWhatsApp(jid)) ?? [];
+  } catch (error) {
+    throw new ApplicationError("RECIPIENT_LOOKUP_FAILED", "Failed to resolve recipient with WhatsApp", {
+      cause: error,
+    });
+  }
 
   if (!contact?.exists) {
     recipientLookupCache.set(jid, {
       exists: false,
       expiresAt: Date.now() + RECIPIENT_LOOKUP_NEGATIVE_TTL_MS,
     });
-    throw phoneNotOnWhatsAppError();
+    throw recipientNotOnWhatsAppError();
   }
 
   recipientLookupCache.set(jid, {
