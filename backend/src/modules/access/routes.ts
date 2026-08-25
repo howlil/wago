@@ -236,7 +236,8 @@ appRouter.post("/session/logout-all", (req, res) => {
     category: "security",
     code: "gateway.browser_sessions.revoked_all",
     title: "All browser sessions ended",
-    description: "Every dashboard browser session was revoked. Machine API credentials and WhatsApp auth were not changed.",
+    description:
+      "Every dashboard browser session was revoked. Machine API credentials and WhatsApp auth were not changed.",
     metadata: { revokedBrowserSessions: revokedSessions },
   });
   return res.json({
