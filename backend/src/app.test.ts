@@ -242,6 +242,7 @@ describe("app", () => {
   });
 
   it("accepts cookie-authenticated state changes from the detected Wago origin", async () => {
+    resetAccessStateForTest({ apiKey: "test-key", apiKeySource: "env" });
     config.adminPassword = productionAdminPassword;
     const login = await request(app).post("/app/session").send({ password: productionAdminPassword });
     const cookie = firstCookie(login);
