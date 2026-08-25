@@ -1,4 +1,6 @@
-import { requestJson } from "../../shared/api/client.js";
+import { ApiError, requestJson } from "../../shared/api/client.js";
+
+export type DashboardAuthMode = "password" | "legacy_api_key" | "unconfigured";
 
 export type AppInfoResponse = {
   success: true;
@@ -7,6 +9,8 @@ export type AppInfoResponse = {
   apiKeyConfigured: boolean;
   apiKeySource: "env" | "generated" | "unset";
   authenticated: boolean;
+  adminPasswordConfigured: boolean;
+  dashboardAuthMode: DashboardAuthMode;
   credentialSetupRequired: boolean;
   setupRequired: boolean;
   setupCodeRequired?: boolean;
@@ -14,48 +18,30 @@ export type AppInfoResponse = {
   webBootstrapEnabled?: boolean;
 };
 
-export type BootstrapAppResponse =
-  | {
-      success: true;
-      appId: string;
-      apiKey: string;
-      recovered: boolean;
-      sessionExpiresAt: string;
-      message: string;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type BootstrapAppResponse = {
+  success: true;
+  appId: string;
+  apiKey: string;
+  recovered: boolean;
+  sessionExpiresAt?: string;
+  message: string;
+};
 
-export type BrowserSessionResponse =
-  | {
-      success: true;
-      authenticated: boolean;
-      expiresAt?: string;
-      revokedBrowserSessions?: number;
-      message: string;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type BrowserSessionResponse = {
+  success: true;
+  authenticated: boolean;
+  expiresAt?: string;
+  revokedBrowserSessions?: number;
+  message: string;
+};
 
-export type ApiKeyRotationResponse =
-  | {
-      success: true;
-      apiKey: string;
-      generatedAt: string;
-      revokedBrowserSessions?: number;
-      message: string;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type ApiKeyRotationResponse = {
+  success: true;
+  apiKey: string;
+  generatedAt: string;
+  revokedBrowserSessions?: number;
+  message: string;
+};
 
 export type HealthResponse = {
   status: string;
@@ -106,11 +92,12 @@ export function bootstrapApp(candidate: string, setupCode?: string): Promise<Boo
   });
 }
 
-export function createBrowserSession(apiKey: string): Promise<BrowserSessionResponse> {
+export function createBrowserSession(credential: string, mode: DashboardAuthMode): Promise<BrowserSessionResponse> {
+  const body = mode === "legacy_api_key" ? { apiKey: credential } : { password: credential };
   return requestJson<BrowserSessionResponse>("/app/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ apiKey }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -134,11 +121,7 @@ export async function getReadiness(): Promise<GatewayReadinessSnapshot> {
   const value = await requestJson<unknown>("/ready", undefined, { allowedStatuses: [503] });
 
   if (!isGatewayReadinessSnapshot(value)) {
-    throw {
-      success: false,
-      error: "INVALID_READINESS_RESPONSE",
-      message: "Readiness endpoint returned an invalid JSON payload",
-    };
+    throw new ApiError(0, "INVALID_READINESS_RESPONSE", "Readiness endpoint returned an invalid JSON payload", value);
   }
 
   return value;

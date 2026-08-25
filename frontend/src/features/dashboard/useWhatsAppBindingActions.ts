@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useState } from "react";
+import { ApiError } from "../../shared/api/client.js";
 import type { Notice } from "../../shared/ui/feedback.js";
 import { bootstrapApp, createApiKeyCandidate } from "../gateway/api.js";
 import { pairWhatsApp, rebindWhatsApp } from "../whatsapp/api.js";
@@ -9,16 +10,14 @@ type DashboardSnapshot = ReturnType<typeof useDashboardSnapshot>;
 type WhatsAppBindingActionsOptions = {
   snapshot: DashboardSnapshot;
   setNotice: Dispatch<SetStateAction<Notice>>;
-  apiKeyInput: string;
   setApiKeyInput: Dispatch<SetStateAction<string>>;
 };
 
-export function useWhatsAppBindingActions({
-  snapshot,
-  setNotice,
-  apiKeyInput,
-  setApiKeyInput,
-}: WhatsAppBindingActionsOptions) {
+function apiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError || error instanceof Error ? error.message : fallback;
+}
+
+export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput }: WhatsAppBindingActionsOptions) {
   const [isRebinding, setIsRebinding] = useState(false);
   const [isPairing, setIsPairing] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
@@ -31,40 +30,43 @@ export function useWhatsAppBindingActions({
     snapshot.binding.state === "unbound" &&
     (snapshot.status === "connecting" || snapshot.status === "qr");
   const canStartPairing =
-    snapshot.credentialSetupRequired || (snapshot.isAuthenticated && snapshot.binding.state === "unbound");
+    (snapshot.isAuthenticated && (snapshot.credentialSetupRequired || snapshot.binding.state === "unbound")) ||
+    (snapshot.credentialSetupRequired && snapshot.setupCodeRequired);
 
-  async function startPairing(setupCode?: string): Promise<boolean> {
+  async function startPairing(legacySetupCode?: string): Promise<boolean> {
     setIsPairing(true);
     setNotice(null);
-    try {
-      if (!snapshot.isAuthenticated) {
-        if (!snapshot.credentialSetupRequired) {
-          setNotice({ type: "error", message: "Sign in with the existing API key before managing WhatsApp binding." });
-          return false;
-        }
+    let generatedApiKey = false;
 
+    try {
+      if (!snapshot.isAuthenticated && !legacySetupCode) {
+        setNotice({
+          type: "error",
+          message:
+            snapshot.dashboardAuthMode === "unconfigured"
+              ? "Configure WAGO_ADMIN_PASSWORD, restart Wago, then sign in before pairing WhatsApp."
+              : "Sign in to the dashboard before managing WhatsApp binding.",
+        });
+        return false;
+      }
+
+      if (snapshot.credentialSetupRequired) {
         const candidate = createApiKeyCandidate();
         try {
-          const result = await bootstrapApp(candidate, setupCode);
-          if (!result.success) {
-            if (setupCode) setSetupCodeError(result.message);
-            else setNotice({ type: "error", message: result.message });
-            return false;
-          }
-
+          const result = await bootstrapApp(candidate, legacySetupCode);
           setApiKeyInput(result.apiKey);
           snapshot.applyBootstrap(result);
+          generatedApiKey = true;
           setSetupCodeInput("");
           setSetupCodeError(null);
           setIsFirstRunSetupDialogOpen(false);
         } catch (error) {
-          const apiError = error as { message?: string; error?: string };
-          if (apiError.error === "APP_ALREADY_INITIALIZED") {
+          if (error instanceof ApiError && error.code === "APP_ALREADY_INITIALIZED") {
             const info = await snapshot.loadAppInfo().catch(() => null);
             if (!info?.authenticated) {
               setNotice({
                 type: "error",
-                message: "Gateway credentials already exist. Sign in with the existing API key to continue.",
+                message: "Gateway API credentials already exist. Sign in to the dashboard to continue.",
               });
               return false;
             }
@@ -72,8 +74,11 @@ export function useWhatsAppBindingActions({
             setSetupCodeError(null);
             setIsFirstRunSetupDialogOpen(false);
           } else {
-            const message = apiError.message ?? "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.";
-            if (setupCode) setSetupCodeError(message);
+            const message = apiErrorMessage(
+              error,
+              "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.",
+            );
+            if (legacySetupCode) setSetupCodeError(message);
             else setNotice({ type: "error", message });
             return false;
           }
@@ -81,25 +86,19 @@ export function useWhatsAppBindingActions({
       }
 
       const result = await pairWhatsApp();
-      if (!result.success) {
-        setNotice({ type: "error", message: result.message });
-        return false;
-      }
       snapshot.updateStatus(result.status);
       setNotice({
         type: "success",
-        message:
-          apiKeyInput || snapshot.credentialSetupRequired
-            ? "Pairing started. Save the API key shown in Gateway credentials; Wago will not store it in this browser."
-            : result.status === "qr"
-              ? "QR is ready. Scan it from WhatsApp Linked devices."
-              : result.message,
+        message: generatedApiKey
+          ? "Pairing started. Save the machine API key shown in Gateway credentials for external API clients."
+          : result.status === "qr"
+            ? "QR is ready. Scan it from WhatsApp Linked devices."
+            : result.message,
       });
       await snapshot.refresh({ showLoading: true });
       return true;
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
-      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to start pairing" });
+      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to start pairing") });
       return false;
     } finally {
       setIsPairing(false);
@@ -111,17 +110,22 @@ export function useWhatsAppBindingActions({
       setNotice({ type: "error", message: "Backend is unavailable. Start the backend, then try pairing again." });
       return;
     }
-    if (snapshot.credentialSetupRequired && !snapshot.webBootstrapEnabled) {
+
+    if (!snapshot.isAuthenticated) {
+      if (snapshot.credentialSetupRequired && snapshot.setupCodeRequired) {
+        setSetupCodeInput("");
+        setSetupCodeError(null);
+        setIsFirstRunSetupDialogOpen(true);
+        return;
+      }
+
       setNotice({
         type: "error",
-        message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
+        message:
+          snapshot.dashboardAuthMode === "unconfigured"
+            ? "Configure WAGO_ADMIN_PASSWORD in the deployment, restart Wago, then sign in before pairing."
+            : "Sign in to the dashboard before pairing WhatsApp.",
       });
-      return;
-    }
-    if (snapshot.credentialSetupRequired && snapshot.setupCodeRequired) {
-      setSetupCodeInput("");
-      setSetupCodeError(null);
-      setIsFirstRunSetupDialogOpen(true);
       return;
     }
 
@@ -131,7 +135,7 @@ export function useWhatsAppBindingActions({
   async function handleConfirmFirstRunSetup() {
     const setupCode = setupCodeInput.trim();
     if (!setupCode) {
-      setSetupCodeError("Enter the one-time setup code from the Wago deployment logs.");
+      setSetupCodeError("Enter the legacy SETUP_TOKEN configured in the deployment environment.");
       return;
     }
 
@@ -144,19 +148,14 @@ export function useWhatsAppBindingActions({
     setNotice(null);
     try {
       const result = await rebindWhatsApp();
-      if (!result.success) {
-        setNotice({ type: "error", message: result.message });
-        return;
-      }
       snapshot.resetBinding(result.status);
       setNotice({ type: "success", message: "Previous account unbound. Scan the new QR when it appears." });
       setIsRebindDialogOpen(false);
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
       setNotice({
         type: "error",
-        message: apiError.message ?? apiError.error ?? "Failed to start a new WhatsApp pairing session",
+        message: apiErrorMessage(error, "Failed to start a new WhatsApp pairing session"),
       });
     } finally {
       setIsRebinding(false);
@@ -168,8 +167,14 @@ export function useWhatsAppBindingActions({
       ? "Backend is unavailable. In local development, make sure the backend is running on port 3000."
       : snapshot.health === "checking"
         ? "Checking backend before pairing."
-        : !snapshot.credentialSetupRequired && !snapshot.isAuthenticated
-          ? "Sign in with the existing API key to manage this gateway."
+        : !snapshot.isAuthenticated
+          ? snapshot.setupCodeRequired
+            ? "Legacy SETUP_TOKEN bootstrap is available, but new deployments should use WAGO_ADMIN_PASSWORD."
+            : snapshot.dashboardAuthMode === "unconfigured"
+              ? "Configure WAGO_ADMIN_PASSWORD in the deployment, restart Wago, then sign in."
+              : snapshot.dashboardAuthMode === "password"
+                ? "Sign in with the admin password to manage this gateway."
+                : "Sign in through the legacy API-key recovery path, then configure WAGO_ADMIN_PASSWORD."
           : snapshot.binding.state === "bound"
             ? snapshot.status === "connected"
               ? `Bound to ${snapshot.binding.phone} and connected.`

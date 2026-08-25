@@ -6,7 +6,9 @@ import {
   requestIsAuthenticated,
 } from "../../http/middleware/auth.js";
 import { requestHasSameOrigin } from "../../http/middleware/origin.js";
+import { createRateLimit } from "../../http/middleware/rate-limit.js";
 import { recordActivity } from "../activity/store.js";
+import { isAdminPasswordValid } from "./admin-password.js";
 import {
   bootstrapApiKey,
   getAccessSnapshot,
@@ -22,6 +24,8 @@ import {
 } from "./browser-session-store.js";
 
 export const appRouter = Router();
+
+const browserSignInRateLimit = createRateLimit({ limit: 10, windowMs: 5 * 60 * 1000 });
 
 const browserCookieOptions = {
   httpOnly: true,
@@ -46,6 +50,11 @@ function clearBrowserSessionCookie(res: Response): void {
 
 appRouter.get("/info", (req, res) => {
   const access = getAccessSnapshot();
+  const dashboardAuthMode = config.adminPassword
+    ? "password"
+    : access.apiKeyConfigured
+      ? "legacy_api_key"
+      : "unconfigured";
 
   if (req.header("cookie")?.includes(`${config.legacyAuthCookieName}=`)) clearLegacyApiKeyCookie(res);
 
@@ -56,6 +65,8 @@ appRouter.get("/info", (req, res) => {
     apiKeyConfigured: access.apiKeyConfigured,
     apiKeySource: access.apiKeySource,
     authenticated: requestIsAuthenticated(req),
+    adminPasswordConfigured: Boolean(config.adminPassword),
+    dashboardAuthMode,
     credentialSetupRequired: access.credentialSetupRequired,
     setupRequired: access.credentialSetupRequired,
     setupCodeRequired: access.setupCodeRequired,
@@ -73,13 +84,6 @@ appRouter.post("/bootstrap", (req, res) => {
   }
 
   const access = getAccessSnapshot();
-  if (!access.webBootstrapEnabled && !access.apiKeyConfigured) {
-    return res.status(403).json({
-      success: false,
-      error: "WEB_BOOTSTRAP_DISABLED",
-      message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
-    });
-  }
 
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
     return res.status(403).json({
@@ -89,41 +93,46 @@ appRouter.post("/bootstrap", (req, res) => {
     });
   }
 
-  if (config.nodeEnv === "production" && !access.apiKeyConfigured) {
-    if (!access.setupCodeRequired) {
+  if (config.nodeEnv === "production" && !access.apiKeyConfigured && !requestHasValidBrowserSession(req)) {
+    if (access.setupCodeRequired) {
+      const setupCode = req.header("x-wago-setup-code") ?? req.header("x-wago-setup-token");
+      if (!setupCode) {
+        return res.status(403).json({
+          success: false,
+          error: "SETUP_CODE_REQUIRED",
+          message: "Legacy first-run setup requires the configured SETUP_TOKEN.",
+        });
+      }
+      if (!isSetupCodeValid(setupCode)) {
+        return res.status(403).json({ success: false, error: "INVALID_SETUP_CODE", message: "Invalid setup code." });
+      }
+    } else {
       return res.status(403).json({
         success: false,
-        error: "WEB_BOOTSTRAP_DISABLED",
-        message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
+        error: "ADMIN_PASSWORD_REQUIRED",
+        message: "Configure WAGO_ADMIN_PASSWORD and sign in to the dashboard before first pairing.",
       });
-    }
-
-    const setupCode = req.header("x-wago-setup-code") ?? req.header("x-wago-setup-token");
-    if (!setupCode) {
-      return res.status(403).json({
-        success: false,
-        error: "SETUP_CODE_REQUIRED",
-        message: "Enter the one-time setup code from the Wago deployment logs.",
-      });
-    }
-    if (!isSetupCodeValid(setupCode)) {
-      return res.status(403).json({ success: false, error: "INVALID_SETUP_CODE", message: "Invalid setup code." });
     }
   }
 
   const result = bootstrapApiKey(requestedApiKey);
   if (!result.success) return res.status(result.error === "INVALID_API_KEY" ? 400 : 409).json(result);
 
-  const session = createBrowserSession();
-  setBrowserSessionCookie(res, session.token);
+  let sessionExpiresAt: string | undefined;
+  if (!requestHasValidBrowserSession(req)) {
+    const session = createBrowserSession();
+    setBrowserSessionCookie(res, session.token);
+    sessionExpiresAt = new Date(session.expiresAt).toISOString();
+  }
+
   void recordActivity({
     level: "success",
     category: "security",
     code: result.recovered ? "gateway.credentials.recovered" : "gateway.initialized",
-    title: result.recovered ? "Gateway access restored" : "Gateway initialized",
+    title: result.recovered ? "Gateway API access restored" : "Gateway API initialized",
     description: result.recovered
-      ? "Gateway access was restored and a new browser session was created."
-      : "Gateway credentials were created and the dashboard received a separate browser session.",
+      ? "The existing machine API key was verified without changing dashboard authentication."
+      : "A machine API key was created separately from dashboard authentication.",
   });
 
   return res.status(result.recovered ? 200 : 201).json({
@@ -131,14 +140,14 @@ appRouter.post("/bootstrap", (req, res) => {
     appId: result.appId,
     apiKey: result.apiKey,
     recovered: result.recovered,
-    sessionExpiresAt: new Date(session.expiresAt).toISOString(),
+    sessionExpiresAt,
     message: result.recovered
-      ? "Gateway credentials verified. A new browser session was created."
-      : "Gateway credentials generated. Save the API key, then continue with WhatsApp pairing.",
+      ? "Machine API credentials verified."
+      : "Machine API key generated. Save it for external API clients, then continue with WhatsApp pairing.",
   });
 });
 
-appRouter.post("/session", (req, res) => {
+appRouter.post("/session", browserSignInRateLimit, (req, res) => {
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
     return res.status(403).json({
       success: false,
@@ -146,21 +155,46 @@ appRouter.post("/session", (req, res) => {
       message: "Browser sign-in must come from the Wago dashboard origin.",
     });
   }
-  const apiKey = (req.body as { apiKey?: unknown } | undefined)?.apiKey;
-  if (typeof apiKey !== "string" || !apiKey.trim()) {
-    return res
-      .status(400)
-      .json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a non-empty string." });
-  }
-  if (!getAccessSnapshot().apiKeyConfigured) {
-    return res.status(409).json({
-      success: false,
-      error: "GATEWAY_NOT_INITIALIZED",
-      message: "Initialize the gateway before creating a browser session.",
-    });
-  }
-  if (!isApiKeyValid(apiKey.trim())) {
-    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
+
+  const body = req.body as { password?: unknown; apiKey?: unknown } | undefined;
+  const access = getAccessSnapshot();
+  let authenticationMethod: "admin_password" | "legacy_api_key";
+
+  if (config.adminPassword) {
+    const password = body?.password;
+    if (typeof password !== "string" || !password) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ADMIN_PASSWORD",
+        message: "password must be a non-empty string.",
+      });
+    }
+    if (!isAdminPasswordValid(password)) {
+      return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid admin password" });
+    }
+    authenticationMethod = "admin_password";
+  } else {
+    if (!access.apiKeyConfigured) {
+      return res.status(503).json({
+        success: false,
+        error: "ADMIN_PASSWORD_REQUIRED",
+        message: "Configure WAGO_ADMIN_PASSWORD in the deployment before signing in to a fresh gateway.",
+      });
+    }
+
+    const apiKey = body?.apiKey;
+    if (typeof apiKey !== "string" || !apiKey.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_API_KEY",
+        message:
+          "This upgraded gateway has no admin password yet; provide the existing API key once for legacy sign-in.",
+      });
+    }
+    if (!isApiKeyValid(apiKey.trim())) {
+      return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
+    }
+    authenticationMethod = "legacy_api_key";
   }
 
   const session = createBrowserSession();
@@ -170,7 +204,10 @@ appRouter.post("/session", (req, res) => {
     category: "security",
     code: "gateway.browser_session.created",
     title: "Browser session created",
-    description: "The dashboard authenticated with the API key and received a separate browser session.",
+    description:
+      authenticationMethod === "admin_password"
+        ? "The dashboard authenticated with the admin password and received a browser session."
+        : "The dashboard used the legacy API-key recovery path and received a browser session.",
   });
   return res.json({
     success: true,

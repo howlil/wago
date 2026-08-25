@@ -13,7 +13,6 @@ export function useDashboardController() {
   const bindingActions = useWhatsAppBindingActions({
     snapshot,
     setNotice,
-    apiKeyInput: access.apiKeyInput,
     setApiKeyInput: access.setApiKeyInput,
   });
   const messaging = useMessageComposer({
@@ -30,6 +29,8 @@ export function useDashboardController() {
     appId: snapshot.appId,
     apiKeyConfigured: snapshot.apiKeyConfigured,
     apiKeySource: snapshot.apiKeySource,
+    adminPasswordConfigured: snapshot.adminPasswordConfigured,
+    dashboardAuthMode: snapshot.dashboardAuthMode,
     credentialSetupRequired: snapshot.credentialSetupRequired,
     setupCodeRequired: snapshot.setupCodeRequired,
     webBootstrapEnabled: snapshot.webBootstrapEnabled,
@@ -42,6 +43,8 @@ export function useDashboardController() {
     isRefreshing: snapshot.isRefreshing,
     refresh: snapshot.refresh,
     notice,
+    signInCredential: access.signInCredential,
+    showSignInCredential: access.showSignInCredential,
     apiKeyInput: access.apiKeyInput,
     showApiKey: access.showApiKey,
     copiedField: access.copiedField,
@@ -51,7 +54,10 @@ export function useDashboardController() {
     isRotatingApiKey: access.isRotatingApiKey,
     isApiKeyRotationDialogOpen: access.isApiKeyRotationDialogOpen,
     credentialHint: access.credentialHint,
+    signInHint: access.signInHint,
+    setSignInCredential: access.setSignInCredential,
     setApiKeyInput: access.setApiKeyInput,
+    toggleSignInCredential: access.toggleSignInCredential,
     toggleApiKey: access.toggleApiKey,
     copyAppId: access.copyAppId,
     copyApiKey: access.copyApiKey,

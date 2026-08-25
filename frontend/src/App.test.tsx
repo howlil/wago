@@ -14,33 +14,41 @@ import {
 } from "./features/gateway/api.js";
 import { sendMessage } from "./features/messages/api.js";
 import { allowRecipient } from "./features/recipients/api.js";
-import { getCurrentQr, pairWhatsApp } from "./features/whatsapp/api.js";
+import { getCurrentQr, getWhatsAppStatus, pairWhatsApp } from "./features/whatsapp/api.js";
 import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
+import { ApiError } from "./shared/api/client.js";
 
 const generatedApiKey = `wa_${"a".repeat(64)}`;
 const rotatedApiKey = `wa_${"d".repeat(43)}`;
+const adminPassword = "correct-horse-battery-staple";
+
+function appInfo(overrides: Partial<Awaited<ReturnType<typeof getAppInfo>>> = {}) {
+  return {
+    success: true as const,
+    appId: "wa-gateway-test",
+    apiKeyRequired: true,
+    apiKeyConfigured: true,
+    apiKeySource: "generated" as const,
+    authenticated: true,
+    adminPasswordConfigured: true,
+    dashboardAuthMode: "password" as const,
+    credentialSetupRequired: false,
+    setupRequired: false,
+    ...overrides,
+  };
+}
 
 vi.mock("./features/activity/api.js", () => ({
   listActivity: vi.fn(async () => ({ success: true, events: [] })),
 }));
 
 vi.mock("./features/gateway/api.js", () => ({
-  getAppInfo: vi.fn(async () => ({
-    success: true,
-    appId: "wa-gateway-test",
-    apiKeyRequired: true,
-    apiKeyConfigured: true,
-    apiKeySource: "generated",
-    authenticated: true,
-    credentialSetupRequired: false,
-    setupRequired: false,
-  })),
+  getAppInfo: vi.fn(async () => appInfo()),
   bootstrapApp: vi.fn(async (candidate: string) => ({
     success: true,
     appId: "wa-gateway-test",
     apiKey: candidate,
     recovered: false,
-    sessionExpiresAt: "2026-09-12T00:00:00.000Z",
     message: "App initialized",
   })),
   createApiKeyCandidate: vi.fn(() => generatedApiKey),
@@ -192,106 +200,86 @@ describe("dashboard", () => {
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("generates credentials in memory first and then starts WhatsApp pairing", async () => {
-    vi.mocked(getAppInfo).mockResolvedValueOnce({
-      success: true,
-      appId: "wa-gateway-test",
-      apiKeyRequired: true,
+  it("signs in with the admin password before generating the machine API key and pairing", async () => {
+    const firstRunAuthenticatedInfo = appInfo({
       apiKeyConfigured: false,
       apiKeySource: "unset",
-      authenticated: false,
+      authenticated: true,
       credentialSetupRequired: true,
       setupRequired: true,
     });
+    vi.mocked(getAppInfo)
+      .mockResolvedValueOnce(
+        appInfo({
+          apiKeyConfigured: false,
+          apiKeySource: "unset",
+          authenticated: false,
+          credentialSetupRequired: true,
+          setupRequired: true,
+        }),
+      )
+      .mockResolvedValue(firstRunAuthenticatedInfo);
+    vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({
+      success: true,
+      status: "disconnected",
+      binding: { state: "unbound", jid: null, phone: null, boundAt: null },
+      accountHealth: { availability: "unavailable" },
+    });
+
     const user = userEvent.setup();
     render(<App />);
-    await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
 
+    const passwordInput = await screen.findByLabelText("Admin password", { selector: "input" });
+    await user.type(passwordInput, adminPassword);
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => {
+      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword, "password");
+    });
+
+    await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
     await waitFor(() => {
       expect(createApiKeyCandidate).toHaveBeenCalledTimes(1);
       expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey, undefined);
       expect(pairWhatsApp).toHaveBeenCalledTimes(1);
     });
 
-    expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe(generatedApiKey);
-    expect(screen.getAllByRole("button", { name: /^copy$/i }).length).toBeGreaterThanOrEqual(2);
+    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
+      generatedApiKey,
+    );
   });
 
-  it("signs a returning browser in by exchanging the API key for a browser session", async () => {
+  it("signs a returning browser in with the admin password", async () => {
     vi.mocked(getAppInfo)
-      .mockResolvedValueOnce({
-        success: true,
-        appId: "wa-gateway-test",
-        apiKeyRequired: true,
-        apiKeyConfigured: true,
-        apiKeySource: "generated",
-        authenticated: false,
-        credentialSetupRequired: false,
-        setupRequired: false,
-      })
-      .mockResolvedValue({
-        success: true,
-        appId: "wa-gateway-test",
-        apiKeyRequired: true,
-        apiKeyConfigured: true,
-        apiKeySource: "generated",
-        authenticated: true,
-        credentialSetupRequired: false,
-        setupRequired: false,
-      });
+      .mockResolvedValueOnce(appInfo({ authenticated: false }))
+      .mockResolvedValue(appInfo({ authenticated: true }));
 
     const user = userEvent.setup();
     render(<App />);
 
-    const input = await screen.findByLabelText("API Key", { selector: "input" });
-    await user.type(input, "wa_existing_secret");
+    const input = await screen.findByLabelText("Admin password", { selector: "input" });
+    await user.type(input, adminPassword);
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
-      expect(createBrowserSession).toHaveBeenCalledWith("wa_existing_secret");
+      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword, "password");
+      expect(screen.queryByLabelText("Admin password", { selector: "input" })).toBeNull();
     });
-    expect((input as HTMLInputElement).value).toBe("");
+    expect(await screen.findByRole("button", { name: /^sign out$/i })).toBeTruthy();
   });
 
   it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {
-    vi.mocked(getAppInfo).mockResolvedValueOnce({
-      success: true,
-      appId: "wa-gateway-test",
-      apiKeyRequired: true,
-      apiKeyConfigured: true,
-      apiKeySource: "generated",
-      authenticated: false,
-      credentialSetupRequired: false,
-      setupRequired: false,
-    });
+    vi.mocked(getAppInfo).mockResolvedValueOnce(appInfo({ authenticated: false }));
     render(<App />);
-    expect(await screen.findByText(/sign in with the existing api key/i)).toBeTruthy();
+    expect(await screen.findByText(/sign in with the admin password/i)).toBeTruthy();
     expect(getCurrentQr).not.toHaveBeenCalled();
   });
 
   it("keeps the pair action visible after signing out of the browser session", async () => {
     const user = userEvent.setup();
     vi.mocked(getAppInfo)
-      .mockResolvedValueOnce({
-        success: true,
-        appId: "wa-gateway-test",
-        apiKeyRequired: true,
-        apiKeyConfigured: true,
-        apiKeySource: "generated",
-        authenticated: true,
-        credentialSetupRequired: false,
-        setupRequired: false,
-      })
-      .mockResolvedValueOnce({
-        success: true,
-        appId: "wa-gateway-test",
-        apiKeyRequired: true,
-        apiKeyConfigured: true,
-        apiKeySource: "generated",
-        authenticated: false,
-        credentialSetupRequired: false,
-        setupRequired: false,
-      });
+      .mockResolvedValueOnce(appInfo({ authenticated: true }))
+      .mockResolvedValueOnce(appInfo({ authenticated: false }));
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
@@ -311,7 +299,9 @@ describe("dashboard", () => {
     await user.click(screen.getByRole("button", { name: /rotate and revoke other sessions/i }));
     await waitFor(() => expect(rotateApiKey).toHaveBeenCalledTimes(1));
 
-    expect((screen.getByLabelText("API Key", { selector: "input" }) as HTMLInputElement).value).toBe(rotatedApiKey);
+    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
+      rotatedApiKey,
+    );
     expect(screen.queryByRole("dialog", { name: /rotate api key/i })).toBeNull();
   });
 
@@ -323,10 +313,13 @@ describe("dashboard", () => {
 
   it("lets the operator allow and resend a recipient blocked by policy", async () => {
     vi.mocked(sendMessage)
-      .mockRejectedValueOnce({
-        error: "RECIPIENT_NOT_ALLOWED",
-        message: "Recipient is not allowed for outbound messages",
-      })
+      .mockRejectedValueOnce(
+        new ApiError(403, "RECIPIENT_NOT_ALLOWED", "Recipient is not allowed for outbound messages", {
+          success: false,
+          error: "RECIPIENT_NOT_ALLOWED",
+          message: "Recipient is not allowed for outbound messages",
+        }),
+      )
       .mockResolvedValueOnce({ success: true, messageId: "message-1", status: "pending" });
     const user = userEvent.setup();
     render(<App />);

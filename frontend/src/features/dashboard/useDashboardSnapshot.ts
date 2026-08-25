@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useGatewaySnapshotState } from "./useGatewaySnapshotState.js";
-import { useWhatsAppSnapshotState } from "./useWhatsAppSnapshotState.js";
+import { useGatewaySnapshotState } from "../gateway/useGatewaySnapshotState.js";
+import { useWhatsAppSnapshotState } from "../whatsapp/useWhatsAppSnapshotState.js";
 
 type DashboardStatus = ReturnType<typeof useWhatsAppSnapshotState>["status"];
 
@@ -150,6 +150,8 @@ export function useDashboardSnapshot() {
     appId: gateway.appId,
     apiKeyConfigured: gateway.apiKeyConfigured,
     apiKeySource: gateway.apiKeySource,
+    adminPasswordConfigured: gateway.adminPasswordConfigured,
+    dashboardAuthMode: gateway.dashboardAuthMode,
     credentialSetupRequired: gateway.credentialSetupRequired,
     setupCodeRequired: gateway.setupCodeRequired,
     webBootstrapEnabled: gateway.webBootstrapEnabled,

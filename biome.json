@@ -1,12 +1,14 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
   "files": {
     "includes": [
       "backend/src/**/*.ts",
       "frontend/src/**/*.ts",
       "frontend/src/**/*.tsx",
+      "docs/src/components/api/**/*.ts",
       "backend/package.json",
       "frontend/package.json",
+      "docs/package.json",
       "package.json"
     ],
     "ignoreUnknown": true

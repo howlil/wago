@@ -14,7 +14,8 @@ export type ApplicationErrorCode =
   | "PHONE_NOT_ON_WHATSAPP"
   | "MESSAGE_REJECTED"
   | "INVALID_PHONE"
-  | "INVALID_AUDIT_CURSOR";
+  | "INVALID_AUDIT_CURSOR"
+  | "INVALID_WEBHOOK_SETTINGS";
 
 export type ApplicationErrorOptions = {
   retryAt?: Date;

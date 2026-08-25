@@ -14,6 +14,7 @@ const apiKeyRequiredResponse = {
 
 const pairingCandidate = `wa_${"a".repeat(64)}`;
 const productionSetupCode = "production-setup-code-with-at-least-32-bytes";
+const productionAdminPassword = "correct-horse-battery-staple";
 
 function firstCookie(response: request.Response): string {
   const header = response.headers["set-cookie"]?.[0];
@@ -25,6 +26,7 @@ describe("app", () => {
   beforeEach(async () => {
     resetAccessStateForTest();
     config.setupToken = null;
+    config.adminPassword = null;
     config.nodeEnv = "test";
     config.requestLogging = false;
     resetBrowserSessionsForTest();
@@ -149,7 +151,7 @@ describe("app", () => {
     });
   });
 
-  it("bootstraps the pairing-generated API key and a separate browser session", async () => {
+  it("bootstraps the pairing-generated API key and a separate browser session in development", async () => {
     const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
@@ -163,7 +165,45 @@ describe("app", () => {
     expect(isApiKeyValid(pairingCandidate)).toBe(true);
   });
 
-  it("requires the one-time setup code for first-run production bootstrap", async () => {
+  it("uses the admin password to establish a production dashboard session before API bootstrap", async () => {
+    config.nodeEnv = "production";
+    config.adminPassword = productionAdminPassword;
+
+    const info = await request(app).get("/app/info");
+    expect(info.body).toMatchObject({
+      adminPasswordConfigured: true,
+      dashboardAuthMode: "password",
+      apiKeyConfigured: false,
+    });
+
+    const rejected = await request(app)
+      .post("/app/session")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ password: "wrong-password" });
+    expect(rejected.status).toBe(401);
+    expect(rejected.body.error).toBe("UNAUTHORIZED");
+
+    const login = await request(app)
+      .post("/app/session")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ password: productionAdminPassword });
+    expect(login.status).toBe(200);
+    const cookie = firstCookie(login);
+
+    const bootstrap = await request(app)
+      .post("/app/bootstrap")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .set("Cookie", cookie)
+      .send({ apiKey: pairingCandidate });
+    expect(bootstrap.status).toBe(201);
+    expect(bootstrap.body.apiKey).toBe(pairingCandidate);
+    expect(bootstrap.headers["set-cookie"]).toBeUndefined();
+  });
+
+  it("retains SETUP_TOKEN only as a legacy production bootstrap path", async () => {
     config.nodeEnv = "production";
     config.setupToken = productionSetupCode;
 
@@ -197,13 +237,12 @@ describe("app", () => {
 
   it("rejects first-run production bootstrap from a different origin", async () => {
     config.nodeEnv = "production";
-    config.setupToken = productionSetupCode;
+    config.adminPassword = productionAdminPassword;
 
     const response = await request(app)
       .post("/app/bootstrap")
       .set("Host", "wago.example.com")
       .set("Origin", "https://evil.example.com")
-      .set("X-Wago-Setup-Code", productionSetupCode)
       .send({ apiKey: pairingCandidate });
 
     expect(response.status).toBe(403);
@@ -218,6 +257,17 @@ describe("app", () => {
     resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
     const response = await request(app).get("/recipients").set("Authorization", "Bearer generated-key");
     expect(response.status).toBe(200);
+  });
+
+  it("keeps API-key dashboard sign-in as a legacy fallback when no admin password is configured", async () => {
+    resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
+
+    const info = await request(app).get("/app/info");
+    expect(info.body.dashboardAuthMode).toBe("legacy_api_key");
+
+    const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
+    expect(login.status).toBe(200);
+    expect(login.headers["set-cookie"]?.[0]).toContain(config.authCookieName);
   });
 
   it("rejects cookie-authenticated state changes from a different request origin", async () => {
@@ -257,16 +307,29 @@ describe("app", () => {
     expect(response.status).toBe(201);
   });
 
-  it("rejects web bootstrap when setup authorization is unavailable", async () => {
+  it("requires WAGO_ADMIN_PASSWORD for a fresh production dashboard", async () => {
     config.nodeEnv = "production";
     config.setupToken = null;
+    config.adminPassword = null;
 
-    const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
+    const login = await request(app)
+      .post("/app/session")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ password: productionAdminPassword });
+    expect(login.status).toBe(503);
+    expect(login.body.error).toBe("ADMIN_PASSWORD_REQUIRED");
+
+    const response = await request(app)
+      .post("/app/bootstrap")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ apiKey: pairingCandidate });
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       success: false,
-      error: "WEB_BOOTSTRAP_DISABLED",
-      message: "First-run setup is unavailable. Restart Wago and check deployment logs for a fresh setup code.",
+      error: "ADMIN_PASSWORD_REQUIRED",
+      message: "Configure WAGO_ADMIN_PASSWORD and sign in to the dashboard before first pairing.",
     });
   });
 
@@ -277,7 +340,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "APP_ALREADY_INITIALIZED",
-      message: "This app is already initialized. Use the existing API key to sign in or authenticate API requests.",
+      message: "This app already has a machine API key. Sign in to the dashboard with the configured admin credential.",
     });
   });
 });

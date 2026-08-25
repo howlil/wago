@@ -54,10 +54,13 @@ describe("shared HTTP client", () => {
     );
 
     const { requestJson } = await import("../src/shared/api/client.js");
-    await expect(requestJson("/ready", undefined, { allowedStatuses: [503] })).rejects.toEqual({
+    await expect(requestJson("/ready", undefined, { allowedStatuses: [503] })).rejects.toMatchObject({
       success: false,
+      status: 503,
+      code: "NON_JSON_RESPONSE",
       error: "NON_JSON_RESPONSE",
       message: "Service Unavailable",
+      body: "Service Unavailable",
     });
   });
 
@@ -65,10 +68,13 @@ describe("shared HTTP client", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("Bad Gateway", { status: 502 })));
 
     const { requestJson } = await import("../src/shared/api/client.js");
-    await expect(requestJson("/health")).rejects.toEqual({
+    await expect(requestJson("/health")).rejects.toMatchObject({
       success: false,
+      status: 502,
+      code: "NON_JSON_RESPONSE",
       error: "NON_JSON_RESPONSE",
       message: "Bad Gateway",
+      body: "Bad Gateway",
     });
   });
 });

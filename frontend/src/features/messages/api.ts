@@ -1,32 +1,20 @@
 import { requestJson } from "../../shared/api/client.js";
 
-export type SendMessageResponse =
-  | {
-      success: true;
-      messageId: string | null;
-      status: "pending";
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type SendMessageResponse = {
+  success: true;
+  messageId: string | null;
+  status: "pending";
+};
 
-export type MessageStatusResponse =
-  | {
-      success: true;
-      id: string;
-      to: string;
-      status: "pending" | "accepted" | "rejected";
-      error?: string;
-      message?: string;
-      updatedAt: string;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type MessageStatusResponse = {
+  success: true;
+  id: string;
+  to: string;
+  status: "pending" | "accepted" | "rejected";
+  error?: string;
+  message?: string;
+  updatedAt: string;
+};
 
 export function createMessageIdempotencyKey(): string {
   return globalThis.crypto.randomUUID();

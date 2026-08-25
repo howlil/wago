@@ -1,6 +1,7 @@
-import { type Response, Router } from "express";
-import { requireApiKey } from "../../http/middleware/auth.js";
+import { Router } from "express";
+import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
+import { optionalHttpString, requiredHttpString } from "../../http/validation.js";
 import type { WebhookDeliveryStatus } from "./delivery-store.js";
 import { getWebhookDelivery, listWebhookDeliveries, redeliverWebhookDelivery } from "./delivery-webhook.js";
 import { webhookSettingsStore as settingsStore } from "./settings-runtime.js";
@@ -13,14 +14,6 @@ const WEBHOOK_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9
 const MIN_WEBHOOK_DELIVERY_LIMIT = 1;
 const MAX_WEBHOOK_DELIVERY_LIMIT = 100;
 const redeliveryRateLimit = createRateLimit({ limit: 20, windowMs: 60_000 });
-
-function queryString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-function deliveryIdFromParam(value: string | string[] | undefined): string {
-  return typeof value === "string" ? value : "";
-}
 
 function hasValidDeliveryId(value: string): boolean {
   return WEBHOOK_ID_PATTERN.test(value);
@@ -36,19 +29,11 @@ function serializeSettings(settings: WebhookSettings | null) {
   };
 }
 
-function settingsError(res: Response, error: unknown) {
-  return res.status(400).json({
-    success: false,
-    error: "INVALID_WEBHOOK_SETTINGS",
-    message: error instanceof Error ? error.message : "Webhook settings are invalid",
-  });
-}
-
-webhookRouter.get("/settings", requireApiKey, (_req, res) => {
+webhookRouter.get("/settings", requireAuthenticatedRequest, (_req, res) => {
   return res.json({ success: true, ...serializeSettings(settingsStore.get()) });
 });
 
-webhookRouter.put("/settings", requireApiKey, (req, res) => {
+webhookRouter.put("/settings", requireAuthenticatedRequest, (req, res, next) => {
   const body = req.body as { enabled?: unknown; url?: unknown };
   if (
     typeof body.enabled !== "boolean" ||
@@ -69,11 +54,11 @@ webhookRouter.put("/settings", requireApiKey, (req, res) => {
       ...(result.generatedSecret ? { generatedSecret: result.generatedSecret } : {}),
     });
   } catch (error) {
-    return settingsError(res, error);
+    return next(error);
   }
 });
 
-webhookRouter.post("/settings/rotate-secret", requireApiKey, (_req, res) => {
+webhookRouter.post("/settings/rotate-secret", requireAuthenticatedRequest, (_req, res, next) => {
   try {
     const result = settingsStore.rotateSecret();
     return res.json({
@@ -82,21 +67,21 @@ webhookRouter.post("/settings/rotate-secret", requireApiKey, (_req, res) => {
       generatedSecret: result.generatedSecret,
     });
   } catch (error) {
-    return settingsError(res, error);
+    return next(error);
   }
 });
 
-webhookRouter.post("/settings/complete-rotation", requireApiKey, (_req, res) => {
+webhookRouter.post("/settings/complete-rotation", requireAuthenticatedRequest, (_req, res, next) => {
   try {
     const settings = settingsStore.completeRotation();
     return res.json({ success: true, ...serializeSettings(settings) });
   } catch (error) {
-    return settingsError(res, error);
+    return next(error);
   }
 });
 
-webhookRouter.get("/deliveries", requireApiKey, (req, res) => {
-  const rawStatus = queryString(req.query.status);
+webhookRouter.get("/deliveries", requireAuthenticatedRequest, (req, res) => {
+  const rawStatus = optionalHttpString(req.query.status);
   if (rawStatus && !WEBHOOK_STATUSES.has(rawStatus as WebhookDeliveryStatus)) {
     return res.status(400).json({
       success: false,
@@ -105,7 +90,7 @@ webhookRouter.get("/deliveries", requireApiKey, (req, res) => {
     });
   }
 
-  const requestedLimit = Number(queryString(req.query.limit) ?? 50);
+  const requestedLimit = Number(optionalHttpString(req.query.limit) ?? 50);
   const limit = Number.isFinite(requestedLimit) ? requestedLimit : 50;
   if (limit < MIN_WEBHOOK_DELIVERY_LIMIT || limit > MAX_WEBHOOK_DELIVERY_LIMIT) {
     return res.status(400).json({
@@ -123,8 +108,8 @@ webhookRouter.get("/deliveries", requireApiKey, (req, res) => {
   return res.json({ success: true, deliveries });
 });
 
-webhookRouter.get("/deliveries/:id", requireApiKey, (req, res) => {
-  const deliveryId = deliveryIdFromParam(req.params.id);
+webhookRouter.get("/deliveries/:id", requireAuthenticatedRequest, (req, res) => {
+  const deliveryId = requiredHttpString(req.params.id);
   if (!hasValidDeliveryId(deliveryId)) {
     return res.status(400).json({
       success: false,
@@ -145,8 +130,8 @@ webhookRouter.get("/deliveries/:id", requireApiKey, (req, res) => {
   return res.json({ success: true, delivery });
 });
 
-webhookRouter.post("/deliveries/:id/redeliver", requireApiKey, redeliveryRateLimit, (req, res) => {
-  const deliveryId = deliveryIdFromParam(req.params.id);
+webhookRouter.post("/deliveries/:id/redeliver", requireAuthenticatedRequest, redeliveryRateLimit, (req, res) => {
+  const deliveryId = requiredHttpString(req.params.id);
   if (!hasValidDeliveryId(deliveryId)) {
     return res.status(400).json({
       success: false,

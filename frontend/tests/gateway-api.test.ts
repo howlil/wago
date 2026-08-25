@@ -22,7 +22,7 @@ describe("gateway API", () => {
     vi.restoreAllMocks();
   });
 
-  it("exchanges an API key for an HttpOnly browser session without persisting it in browser storage", async () => {
+  it("exchanges an admin password for an HttpOnly browser session without persisting it in browser storage", async () => {
     window.sessionStorage.setItem("wago.apiKey", "legacy-secret");
 
     const { createBrowserSession } = await import("../src/features/gateway/api.js");
@@ -34,12 +34,12 @@ describe("gateway API", () => {
 
     expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
 
-    await createBrowserSession("wa_test-secret");
+    await createBrowserSession("admin-test-secret", "password");
 
     expect(fetch).toHaveBeenCalledWith("/app/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: "wa_test-secret" }),
+      body: JSON.stringify({ password: "admin-test-secret" }),
       credentials: "include",
     });
     expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
@@ -59,10 +59,13 @@ describe("gateway API", () => {
 
     const { getReadiness } = await import("../src/features/gateway/api.js");
 
-    await expect(getReadiness()).rejects.toEqual({
+    await expect(getReadiness()).rejects.toMatchObject({
       success: false,
+      status: 0,
+      code: "INVALID_READINESS_RESPONSE",
       error: "INVALID_READINESS_RESPONSE",
       message: "Readiness endpoint returned an invalid JSON payload",
+      body: { error: "upstream_unavailable" },
     });
   });
 });

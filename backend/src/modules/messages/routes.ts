@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { isApplicationError } from "../../errors/application-error.js";
 import { asyncHandler } from "../../http/middleware/async-handler.js";
-import { requireApiKey } from "../../http/middleware/auth.js";
+import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
 import { recordActivity } from "../activity/store.js";
 import type { MessageService } from "./message.service.js";
@@ -12,7 +12,7 @@ export function createMessageRouter(messageService: MessageService) {
 
   messageRouter.post(
     "/send",
-    requireApiKey,
+    requireAuthenticatedRequest,
     createRateLimit({ limit: 30, windowMs: 60_000 }),
     asyncHandler(async (req, res, next) => {
       const {
@@ -87,34 +87,26 @@ export function createMessageRouter(messageService: MessageService) {
               metadata: { targetPhone: to },
             });
           }
+        } else {
+          void recordActivity({
+            level: "error",
+            category: "messaging",
+            code: "message.send_failed",
+            title: "Message send failed",
+            description: "The gateway encountered an unexpected error while sending the message.",
+            metadata: { targetPhone: to },
+          });
         }
 
-        if (isApplicationError(error)) {
-          return next(error);
-        }
-
-        void recordActivity({
-          level: "error",
-          category: "messaging",
-          code: "message.send_failed",
-          title: "Message send failed",
-          description: "The gateway encountered an unexpected error while sending the message.",
-          metadata: { targetPhone: to },
-        });
-
-        return res.status(500).json({
-          success: false,
-          error: "SEND_MESSAGE_FAILED",
-          message: "Failed to send WhatsApp message",
-        });
+        return next(error);
       }
     }),
   );
 
-  messageRouter.get("/:id/status", requireApiKey, (req, res) => {
+  messageRouter.get("/:id/status", requireAuthenticatedRequest, (req, res) => {
     const messageId = req.params.id;
 
-    if (typeof messageId !== "string") {
+    if (typeof messageId !== "string" || !messageId.trim()) {
       return res.status(400).json({
         success: false,
         error: "INVALID_MESSAGE_ID",

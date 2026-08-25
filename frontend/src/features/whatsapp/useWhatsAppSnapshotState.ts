@@ -6,7 +6,7 @@ import {
   getWhatsAppStatus,
   type WhatsAppBinding,
   type WhatsAppStatus,
-} from "../whatsapp/api.js";
+} from "./api.js";
 
 const unboundBinding: WhatsAppBinding = {
   state: "unbound",

@@ -1,12 +1,31 @@
 import { resolve } from "node:path";
 import { dataDirectory, nodeEnv } from "./runtime-paths.js";
 
-const rawSetupToken = process.env.SETUP_TOKEN?.trim();
-const setupToken = rawSetupToken && Buffer.byteLength(rawSetupToken, "utf8") >= 32 ? rawSetupToken : null;
+function envFlag(name: string, fallback = false): boolean {
+  const value = process.env[name]?.trim().toLowerCase();
+  if (!value) {
+    return fallback;
+  }
+
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
+function optionalSecret(name: string, minimumBytes: number): string | null {
+  const value = process.env[name]?.trim();
+  if (!value) return null;
+  if (Buffer.byteLength(value, "utf8") < minimumBytes) {
+    throw new Error(`${name} must be at least ${minimumBytes} bytes long`);
+  }
+  return value;
+}
+
+const setupToken = optionalSecret("SETUP_TOKEN", 32);
+const adminPassword = optionalSecret("WAGO_ADMIN_PASSWORD", 12);
 
 export type RuntimeConfig = {
   deploymentApiKey: string | null;
   setupToken: string | null;
+  adminPassword: string | null;
   authCookieName: string;
   legacyAuthCookieName: string;
   authCookieSecure: boolean;
@@ -25,6 +44,7 @@ export type RuntimeConfig = {
 export const config: RuntimeConfig = {
   deploymentApiKey: process.env.API_KEY?.trim() || null,
   setupToken,
+  adminPassword,
   authCookieName: "wago_session",
   legacyAuthCookieName: "wa_gateway_api_key",
   authCookieSecure: nodeEnv === "production",
@@ -35,7 +55,7 @@ export const config: RuntimeConfig = {
   frontendDirectory: nodeEnv === "production" ? "/app/public" : null,
   nodeEnv,
   requestLogging: true,
-  trustProxy: false,
-  defaultCountryCode: "62",
+  trustProxy: envFlag("TRUST_PROXY"),
+  defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE?.trim() || "62",
   logLevel: nodeEnv === "production" ? "info" : "debug",
 };

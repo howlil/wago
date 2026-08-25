@@ -7,7 +7,7 @@ import {
   getAppInfo,
   getHealth,
   getReadiness,
-} from "../gateway/api.js";
+} from "./api.js";
 
 type SuccessfulBootstrap = Extract<BootstrapAppResponse, { success: true }>;
 
@@ -17,6 +17,8 @@ export function useGatewaySnapshotState() {
   const [appId, setAppId] = useState("wa-gateway");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
+  const [adminPasswordConfigured, setAdminPasswordConfigured] = useState(false);
+  const [dashboardAuthMode, setDashboardAuthMode] = useState<AppInfoResponse["dashboardAuthMode"]>("unconfigured");
   const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
   const [setupCodeRequired, setSetupCodeRequired] = useState(false);
   const [webBootstrapEnabled, setWebBootstrapEnabled] = useState(true);
@@ -31,6 +33,8 @@ export function useGatewaySnapshotState() {
     setAppId(info.appId);
     setApiKeyConfigured(info.apiKeyConfigured);
     setApiKeySource(info.apiKeySource);
+    setAdminPasswordConfigured(info.adminPasswordConfigured);
+    setDashboardAuthMode(info.dashboardAuthMode);
     setCredentialSetupRequired(info.credentialSetupRequired);
     setSetupCodeRequired(Boolean(info.setupCodeRequired ?? info.setupTokenRequired));
     setWebBootstrapEnabled(info.webBootstrapEnabled ?? true);
@@ -102,6 +106,8 @@ export function useGatewaySnapshotState() {
     appId,
     apiKeyConfigured,
     apiKeySource,
+    adminPasswordConfigured,
+    dashboardAuthMode,
     credentialSetupRequired,
     setupCodeRequired,
     webBootstrapEnabled,

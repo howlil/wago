@@ -40,7 +40,7 @@ describe("bootstrap API key", () => {
     expect(bootstrapApiKey(`wa_${"c".repeat(64)}`)).toEqual({
       success: false,
       error: "APP_ALREADY_INITIALIZED",
-      message: "This app is already initialized. Use the existing API key to sign in or authenticate API requests.",
+      message: "This app already has a machine API key. Sign in to the dashboard with the configured admin credential.",
     });
   });
 });
