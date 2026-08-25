@@ -28,8 +28,36 @@ env:
   IMAGE_NAME: ghcr.io/howlil/wago-simple
 
 jobs:
+  verify:
+    name: Verify Release Source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting and lint
+        run: pnpm check
+
+      - name: Run core tests
+        run: pnpm test:core
+
+      - name: Build core apps
+        run: pnpm build:core
+
   build:
     name: Build ${{ matrix.platform }}
+    needs: verify
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +90,7 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           labels: |
-            org.opencontainers.image.title=Wago Simple
+            org.opencontainers.image.title=Wago
             org.opencontainers.image.description=Single-account self-hosted WhatsApp gateway core
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -135,7 +163,7 @@ jobs:
             type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
           labels: |
-            org.opencontainers.image.title=Wago Simple
+            org.opencontainers.image.title=Wago
             org.opencontainers.image.description=Single-account self-hosted WhatsApp gateway core
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
