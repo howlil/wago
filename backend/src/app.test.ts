@@ -79,10 +79,17 @@ describe("app", () => {
   });
 
   it("returns a JSON API error for malformed JSON bodies", async () => {
-    const response = await request(app).post("/messages/send").set("Content-Type", "application/json").send("{bad json");
+    const response = await request(app)
+      .post("/messages/send")
+      .set("Content-Type", "application/json")
+      .send("{bad json");
     expect(response.status).toBe(400);
     expect(response.headers["content-type"]).toContain("application/json");
-    expect(response.body).toEqual({ success: false, error: "INVALID_JSON", message: "Request body must be valid JSON" });
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_JSON",
+      message: "Request body must be valid JSON",
+    });
   });
 
   it("returns a JSON API error for oversized JSON bodies", async () => {
@@ -119,13 +126,24 @@ describe("app", () => {
       label: "Customer A",
     });
     expect(allowResponse.status).toBe(201);
-    expect(allowResponse.body.recipient).toMatchObject({ jid: "6281234567890@s.whatsapp.net", label: "Customer A", allowed: true, optedOut: false });
+    expect(allowResponse.body.recipient).toMatchObject({
+      jid: "6281234567890@s.whatsapp.net",
+      label: "Customer A",
+      allowed: true,
+      optedOut: false,
+    });
     const listResponse = await request(app).get("/recipients").set("Authorization", "Bearer test-key");
     expect(listResponse.status).toBe(200);
     expect(listResponse.body.recipients).toHaveLength(1);
-    const optOutResponse = await request(app).post("/recipients/6281234567890/opt-out").set("Authorization", "Bearer test-key");
+    const optOutResponse = await request(app)
+      .post("/recipients/6281234567890/opt-out")
+      .set("Authorization", "Bearer test-key");
     expect(optOutResponse.status).toBe(200);
-    expect(optOutResponse.body.recipient).toMatchObject({ jid: "6281234567890@s.whatsapp.net", allowed: true, optedOut: true });
+    expect(optOutResponse.body.recipient).toMatchObject({
+      jid: "6281234567890@s.whatsapp.net",
+      allowed: true,
+      optedOut: true,
+    });
   });
 
   it("bootstraps the pairing-generated API key and a separate browser session in development", async () => {
@@ -184,7 +202,11 @@ describe("app", () => {
       .set("Origin", "https://evil.example.com")
       .send({ apiKey: pairingCandidate });
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ success: false, error: "INVALID_SETUP_ORIGIN", message: "First-run setup must come from the Wago dashboard origin." });
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_SETUP_ORIGIN",
+      message: "First-run setup must come from the Wago dashboard origin.",
+    });
   });
 
   it("authenticates generated API keys by persisted hash", async () => {
@@ -212,7 +234,11 @@ describe("app", () => {
       .set("Cookie", cookie)
       .send({ phone: "6281234567890" });
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ success: false, error: "INVALID_ORIGIN", message: "Cookie-authenticated requests must come from the Wago origin" });
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_ORIGIN",
+      message: "Cookie-authenticated requests must come from the Wago origin",
+    });
   });
 
   it("accepts cookie-authenticated state changes from the detected Wago origin", async () => {
@@ -245,13 +271,22 @@ describe("app", () => {
       .set("Origin", "https://wago.example.com")
       .send({ apiKey: pairingCandidate });
     expect(response.status).toBe(503);
-    expect(response.body).toEqual({ success: false, error: "ADMIN_PASSWORD_REQUIRED", message: "Configure WAGO_ADMIN_PASSWORD before first pairing." });
+    expect(response.body).toEqual({
+      success: false,
+      error: "ADMIN_PASSWORD_REQUIRED",
+      message: "Configure WAGO_ADMIN_PASSWORD before first pairing.",
+    });
   });
 
   it("rejects bootstrap after an API key exists", async () => {
     resetAccessStateForTest({ apiKey: "existing-key", apiKeySource: "env" });
     const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(409);
-    expect(response.body).toEqual({ success: false, error: "APP_ALREADY_INITIALIZED", message: "This app already has a machine API key. Sign in to the dashboard with the configured admin credential." });
+    expect(response.body).toEqual({
+      success: false,
+      error: "APP_ALREADY_INITIALIZED",
+      message:
+        "This app already has a machine API key. Sign in to the dashboard with the configured admin credential.",
+    });
   });
 });
