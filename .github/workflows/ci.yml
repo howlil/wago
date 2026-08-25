@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   check-test-build:
-    name: Check, Test, Build Core and Docs
+    name: Check, Test, Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -38,11 +38,8 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Build core apps
-        run: pnpm build:core
-
-      - name: Build documentation
-        run: pnpm --dir docs build
+      - name: Build repository
+        run: pnpm build
 
   docker-smoke:
     name: Docker Build and Persistence Smoke
@@ -85,8 +82,7 @@ jobs:
           IMAGE: wago-simple:ci
           ROLLBACK_IMAGE: wago-simple:rollback-base
           SKIP_BUILD: "1"
-          EXPECTED_MIGRATIONS: "[1,2,3,4,5,6,7,8]"
-        run: bash scripts/smoke-container.sh
+        run: EXPECTED_MIGRATIONS="$(node scripts/expected-migrations.mjs)" bash scripts/smoke-container.sh
 
   arm64-docker-build:
     name: Native ARM64 Docker Build
