@@ -5,9 +5,8 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     environment:
-      WAGO_ADMIN_PASSWORD: ${WAGO_ADMIN_PASSWORD:-}
+      WAGO_ADMIN_PASSWORD: ${WAGO_ADMIN_PASSWORD:?set WAGO_ADMIN_PASSWORD}
       API_KEY: ${API_KEY:-}
-      SETUP_TOKEN: ${SETUP_TOKEN:-}
     volumes:
       - wago_data:/app/data
     read_only: true

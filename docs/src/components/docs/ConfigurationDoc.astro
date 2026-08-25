@@ -3,78 +3,44 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 import PageHeader from './PageHeader.astro';
 import Callout from './Callout.astro';
 import CodeBlock from './CodeBlock.astro';
-
 interface Props { lang: 'en' | 'id' }
 const { lang } = Astro.props;
 const id = lang === 'id';
-
-const internalDefaults = [
-  ['HTTP', '0.0.0.0:3000', id ? 'Alamat aplikasi di dalam container.' : 'Application address inside the container.'],
-  ['Host publish', '127.0.0.1:3000', id ? 'Compose publish hanya ke loopback host.' : 'Compose publishes only to host loopback.'],
-  ['Data', '/app/data', id ? 'Root persistent volume; production menolak storage ephemeral.' : 'Persistent volume root; production rejects ephemeral storage.'],
-  ['Database', '/app/data/wago.db', id ? 'SQLite durable state dan webhook outbox.' : 'SQLite durable state and webhook outbox.'],
-  ['WhatsApp auth', '/app/data/auth', id ? 'Baileys multi-file auth state.' : 'Baileys multi-file auth state.'],
-  ['Active instance', '1', id ? 'Satu owner untuk satu persistent volume/account.' : 'One owner for one persistent volume/account.'],
-  ['Browser session', '30 days', id ? 'Opaque HttpOnly cookie; hash saja di SQLite.' : 'Opaque HttpOnly cookie; hash only in SQLite.'],
-  ['Request body', '32kb', id ? 'Batas JSON body.' : 'JSON body limit.'],
-  ['Webhook timeout', '5s', id ? 'Timeout tiap HTTP callback attempt.' : 'Timeout for each callback HTTP attempt.'],
-  ['Webhook retry horizon', '24h', id ? 'At-least-once durable retry.' : 'At-least-once durable retry.'],
-];
 ---
 
 <DocsLayout title={id ? 'Konfigurasi' : 'Configuration'}>
   <PageHeader
     eyebrow="Runtime configuration"
     title={id ? 'Human auth dan machine auth dipisahkan' : 'Separate human and machine authentication'}
-    description={id ? 'Dashboard production memakai WAGO_ADMIN_PASSWORD untuk membuat HttpOnly browser session. API key tetap credential machine untuk integrasi server-to-server dan dibuat setelah operator terautentikasi.' : 'The production dashboard uses WAGO_ADMIN_PASSWORD to create an HttpOnly browser session. API keys remain machine credentials for server-to-server integrations and are created after the operator is authenticated.'}
+    description={id ? 'Dashboard memakai WAGO_ADMIN_PASSWORD dan HttpOnly session. API key hanya credential machine untuk server-to-server integration.' : 'The dashboard uses WAGO_ADMIN_PASSWORD and an HttpOnly session. API keys are machine credentials only for server-to-server integrations.'}
   />
 
-  <Callout title={id ? 'API key bukan password dashboard' : 'The API key is not the dashboard password'} tone="warning">
-    {id ? 'Operator manusia sign in dengan WAGO_ADMIN_PASSWORD. External service memakai Authorization: Bearer <API_KEY>. Pemisahan ini membuat rotasi machine credential tidak menjadi mekanisme login utama dashboard.' : 'Human operators sign in with WAGO_ADMIN_PASSWORD. External services use Authorization: Bearer <API_KEY>. This separation prevents machine-key rotation from doubling as the dashboard login model.'}
+  <Callout title={id ? 'Satu model auth' : 'One authentication model'} tone="warning">
+    {id ? 'Machine API key tidak dapat dipakai untuk login dashboard. Production first-run selalu dimulai dari admin password.' : 'A machine API key cannot be used to sign in to the dashboard. Production first-run always starts from the admin password.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-4">Environment variables</h2>
-  <div class="overflow-x-auto mb-4">
+  <div class="overflow-x-auto mb-8">
     <table class="w-full text-sm text-left">
       <thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Variable</th><th class="py-2.5 pr-4">{id ? 'Wajib' : 'Required'}</th><th class="py-2.5">{id ? 'Keterangan' : 'Description'}</th></tr></thead>
       <tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>WAGO_ADMIN_PASSWORD</code></td><td class="py-3 pr-4">{id ? 'Production baru' : 'New production'}</td><td class="py-3">{id ? 'Password operator untuk dashboard. Minimum 12 byte. Wago tidak menyimpannya ke SQLite atau browser storage; password hanya ditukar dengan HttpOnly browser session.' : 'Operator password for the dashboard. Minimum 12 bytes. Wago does not persist it to SQLite or browser storage; it is exchanged for an HttpOnly browser session.'}</td></tr>
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>API_KEY</code></td><td class="py-3 pr-4">{id ? 'Opsional' : 'Optional'}</td><td class="py-3">{id ? 'Machine Bearer secret yang dikelola deployment. Bila tidak ada, Wago membuat generated API key setelah dashboard terautentikasi dan pairing pertama dimulai.' : 'Deployment-managed machine Bearer secret. When absent, Wago generates a machine API key after the dashboard is authenticated and first pairing begins.'}</td></tr>
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>SETUP_TOKEN</code></td><td class="py-3 pr-4">Legacy</td><td class="py-3">{id ? 'Compatibility override sementara untuk deployment lama. Wago tidak lagi membuat setup code acak atau mencetak secret first-run ke startup log.' : 'Temporary compatibility override for older deployments. Wago no longer creates a random setup code or prints a first-run secret to startup logs.'}</td></tr>
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>WEBHOOK_URL</code></td><td class="py-3 pr-4">Legacy</td><td class="py-3">{id ? 'One-time compatibility import bila SQLite belum memiliki webhook settings.' : 'One-time compatibility import when SQLite has no webhook settings.'}</td></tr>
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>WEBHOOK_SECRET</code></td><td class="py-3 pr-4">Legacy</td><td class="py-3">{id ? 'Pasangan legacy WEBHOOK_URL. Flow baru membuat secret dari Settings.' : 'Legacy WEBHOOK_URL pair. New flows create the secret from Settings.'}</td></tr>
-        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>WEBHOOK_SECRET_PREVIOUS</code></td><td class="py-3 pr-4">Legacy</td><td class="py-3">{id ? 'Previous secret untuk import/migration lama.' : 'Previous secret for legacy import/migration.'}</td></tr>
+        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>WAGO_ADMIN_PASSWORD</code></td><td class="py-3 pr-4">Production</td><td class="py-3">{id ? 'Password operator dashboard. Minimum 12 byte; tidak dipersistenkan oleh Wago.' : 'Dashboard operator password. Minimum 12 bytes; Wago does not persist it.'}</td></tr>
+        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>API_KEY</code></td><td class="py-3 pr-4">{id ? 'Opsional' : 'Optional'}</td><td class="py-3">{id ? 'Machine Bearer secret yang dikelola deployment. Jika tidak ada, Wago membuat generated key saat pairing pertama.' : 'Deployment-managed machine Bearer secret. If absent, Wago generates one during first pairing.'}</td></tr>
+        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>TRUST_PROXY</code></td><td class="py-3 pr-4">{id ? 'Opsional' : 'Optional'}</td><td class="py-3">{id ? 'Aktifkan hanya bila reverse proxy tepercaya harus menentukan request metadata.' : 'Enable only when a trusted reverse proxy must define request metadata.'}</td></tr>
+        <tr><td class="py-3 pr-4 text-[#fafafa]"><code>DEFAULT_COUNTRY_CODE</code></td><td class="py-3 pr-4">{id ? 'Opsional' : 'Optional'}</td><td class="py-3">{id ? 'Default 62 untuk normalisasi nomor lokal.' : 'Defaults to 62 for local-number normalization.'}</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Mode A — dashboard admin password</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Default flow' : 'Default flow'}</h2>
   <CodeBlock label="shell" code={`export WAGO_ADMIN_PASSWORD="$(openssl rand -base64 32)"\ndocker compose up -d`} />
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Buka dashboard lalu sign in dengan password tersebut. Backend memverifikasi password, mengembalikan opaque HttpOnly session cookie, dan tidak menyimpan raw password ke SQLite atau browser storage.' : 'Open the dashboard and sign in with that password. The backend verifies it, returns an opaque HttpOnly session cookie, and does not persist the raw password to SQLite or browser storage.'}</p>
-  <p class="text-sm text-[#71717a] mb-9">{id ? 'Pada Pair WhatsApp pertama, browser session yang sudah autentik mengizinkan Wago membuat machine API key. Raw key ditampilkan sekali untuk disimpan di application/secret manager; server menyimpan hanya SHA-256 hash untuk generated key.' : 'On the first Pair WhatsApp action, the authenticated browser session allows Wago to create the machine API key. The raw key is shown once for storage in your application/secret manager; the server stores only the SHA-256 hash for a generated key.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Sign in ke dashboard, klik Pair WhatsApp, lalu simpan generated machine API key yang ditampilkan sekali. Backend menyimpan hanya hash key tersebut.' : 'Sign in to the dashboard, click Pair WhatsApp, then save the generated machine API key shown once. The backend stores only its hash.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Mode B — pre-provisioned machine API key</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Pre-provisioned machine key' : 'Pre-provisioned machine key'}</h2>
   <CodeBlock label="shell" code={`export WAGO_ADMIN_PASSWORD="$(openssl rand -base64 32)"\nexport API_KEY="$(openssl rand -hex 32)"\ndocker compose up -d`} />
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Gunakan mode ini bila secret manager/deployment platform mengelola machine credential. API key environment tidak dipersistenkan ke SQLite dan tidak dapat dirotasi dari dashboard. WAGO_ADMIN_PASSWORD tetap mengelola human dashboard access.' : 'Use this mode when a secret manager or deployment platform owns the machine credential. Environment API keys are not persisted into SQLite and cannot be rotated from the dashboard. WAGO_ADMIN_PASSWORD still owns human dashboard access.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Environment API key dirotasi melalui secret manager deployment, bukan dashboard. Admin password tetap credential manusia.' : 'An environment API key is rotated through the deployment secret manager, not the dashboard. The admin password remains the human credential.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Browser sessions & API-key rotation</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Dashboard menukar admin password dengan opaque HttpOnly browser session. Rotasi generated machine API key mencabut semua browser session lain tetapi mempertahankan browser yang melakukan rotasi agar operator dapat menyimpan key baru. WhatsApp auth tidak berubah.' : 'The dashboard exchanges the admin password for an opaque HttpOnly browser session. Rotating a generated machine API key revokes every other browser session while preserving the browser performing the rotation so the operator can save the new key. WhatsApp auth is unchanged.'}</p>
-  <p class="text-sm text-[#71717a] mb-8">{id ? 'Existing initialized deployment tanpa WAGO_ADMIN_PASSWORD masih memiliki legacy API-key sign-in sebagai migration path. Setelah WAGO_ADMIN_PASSWORD dikonfigurasi, normal dashboard login tidak lagi menerima API key.' : 'Existing initialized deployments without WAGO_ADMIN_PASSWORD retain legacy API-key sign-in as a migration path. Once WAGO_ADMIN_PASSWORD is configured, normal dashboard login no longer accepts the API key.'}</p>
-
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Delivery webhook</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Konfigurasi utama dilakukan dari Settings → Webhook integration. Wago menyimpan callback URL dan raw signing secret di private SQLite state karena nilai secret asli diperlukan untuk HMAC.' : 'Primary configuration is managed from Settings → Webhook integration. Wago stores the callback URL and raw signing secret in private SQLite state because the original secret is required for HMAC.'}</p>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Callback membawa Webhook-Id, Webhook-Timestamp, Webhook-Signature, X-Wago-Event, dan X-Wago-Delivery. Consumer harus verifikasi HMAC pada raw body, batasi umur timestamp, lalu deduplicate dengan Webhook-Id.' : 'Callbacks include Webhook-Id, Webhook-Timestamp, Webhook-Signature, X-Wago-Event, and X-Wago-Delivery. Consumers must verify HMAC against the raw body, enforce timestamp age, then deduplicate by Webhook-Id.'}</p>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Delivery bersifat at-least-once. Timeout/network/408/429/5xx diretry durably sampai 24 jam. Retry dan manual redelivery mempertahankan delivery ID yang sama.' : 'Delivery is at least once. Timeout/network/408/429/5xx failures are retried durably for up to 24 hours. Retries and manual redelivery preserve the same delivery ID.'}</p>
-  <Callout title={id ? 'server accepted bukan delivered/read' : 'server accepted is not delivered/read'} tone="warning">{id ? 'message.server_accepted berarti setidaknya server acknowledgement dari WhatsApp. Ini bukan bukti device recipient delivered atau read.' : 'message.server_accepted means at least a WhatsApp server acknowledgement. It is not proof of recipient-device delivery or read status.'}</Callout>
-
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Origin dan browser security' : 'Origin and browser security'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Wago tidak memiliki operator CORS allowlist. Production dashboard sign-in dan bootstrap machine API key memerlukan HTTPS same-origin. State-changing request dengan cookie auth menolak mismatched Origin.' : 'Wago does not expose an operator CORS allowlist. Production dashboard sign-in and machine API-key bootstrap require HTTPS same-origin. State-changing cookie-authenticated requests reject a mismatched Origin.'}</p>
-  <Callout title={id ? 'External integration tetap server-to-server' : 'External integrations remain server-to-server'}>{id ? 'Jangan tanam WAGO_ADMIN_PASSWORD, Bearer API key, atau webhook signing secret pada public browser bundle.' : 'Do not embed WAGO_ADMIN_PASSWORD, Bearer API keys, or webhook signing secrets in a public browser bundle.'}</Callout>
-
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-4">{id ? 'Default internal' : 'Internal defaults'}</h2>
-  <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead><tr class="border-b border-[#262626] text-[#71717a]"><th class="py-2.5 pr-4">Setting</th><th class="py-2.5 pr-4">Default</th><th class="py-2.5">{id ? 'Keterangan' : 'Description'}</th></tr></thead><tbody class="divide-y divide-[#1a1a1a] text-[#a1a1aa]">{internalDefaults.map(row => <tr><td class="py-3 pr-4 text-[#fafafa]">{row[0]}</td><td class="py-3 pr-4 text-[#71717a]"><code>{row[1]}</code></td><td class="py-3">{row[2]}</td></tr>)}</tbody></table></div>
-
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Outbound limits</h2>
-  <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-4"><li>{id ? 'Account: 30 accepted send / 60 detik.' : 'Account: 30 accepted sends / 60 seconds.'}</li><li>{id ? 'Recipient: 5 accepted send / 60 detik.' : 'Recipient: 5 accepted sends / 60 seconds.'}</li><li>{id ? 'New chat: 10 recipient baru / jam.' : 'New chat: 10 new recipients / hour.'}</li><li>{id ? 'Manual webhook redelivery: 20 request / menit per source IP.' : 'Manual webhook redelivery: 20 requests/minute per source IP.'}</li></ul>
-  <Callout title={id ? 'Guardrail lokal' : 'Local guardrails'} tone="warning">{id ? 'Angka tersebut adalah default defensif Wago, bukan threshold resmi WhatsApp atau jaminan anti-ban.' : 'These values are Wago defensive defaults, not official WhatsApp thresholds or an anti-ban guarantee.'}</Callout>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Webhook</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Webhook callback URL dan signing-secret lifecycle dikonfigurasi dari Settings dan dipersistenkan di SQLite. Delivery bersifat at-least-once.' : 'Webhook callback URL and signing-secret lifecycle are configured from Settings and persisted in SQLite. Delivery is at least once.'}</p>
+  <Callout title={id ? 'External integration tetap server-to-server' : 'External integrations remain server-to-server'}>{id ? 'Jangan tanam admin password, Bearer API key, atau webhook secret pada public browser bundle.' : 'Do not embed the admin password, Bearer API key, or webhook secret in a public browser bundle.'}</Callout>
 </DocsLayout>

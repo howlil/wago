@@ -23,20 +23,14 @@ trap cleanup EXIT
 
 wait_for_health() {
   local container_name="$1"
-
   for _ in $(seq 1 30); do
-    if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null; then
-      return 0
-    fi
-
+    if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null; then return 0; fi
     if [[ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null || echo false)" == "false" ]]; then
       docker logs "$container_name" >&2 || true
       return 1
     fi
-
     sleep 1
   done
-
   docker logs "$container_name" >&2 || true
   return 1
 }
@@ -44,9 +38,7 @@ wait_for_health() {
 wait_for_exit() {
   local container_name="$1"
   for _ in $(seq 1 20); do
-    if [[ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null || echo false)" == "false" ]]; then
-      return 0
-    fi
+    if [[ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null || echo false)" == "false" ]]; then return 0; fi
     sleep 1
   done
   docker logs "$container_name" >&2 || true
@@ -54,9 +46,8 @@ wait_for_exit() {
 }
 
 stop_and_remove() {
-  local container_name="$1"
-  docker stop -t 10 "$container_name" >/dev/null
-  docker rm "$container_name" >/dev/null
+  docker stop -t 10 "$1" >/dev/null
+  docker rm "$1" >/dev/null
 }
 
 run_container() {
@@ -64,10 +55,7 @@ run_container() {
   local image="$2"
   local cors_origin="${3:-}"
   local env_args=(-e "WAGO_ADMIN_PASSWORD=$ADMIN_PASSWORD")
-
-  if [[ -n "$cors_origin" ]]; then
-    env_args+=(-e "CORS_ORIGIN=$cors_origin")
-  fi
+  if [[ -n "$cors_origin" ]]; then env_args+=(-e "CORS_ORIGIN=$cors_origin"); fi
 
   docker run -d \
     --name "$container_name" \
@@ -79,8 +67,7 @@ run_container() {
 }
 
 read_migrations() {
-  local container_name="$1"
-  docker exec "$container_name" node --input-type=module -e '
+  docker exec "$1" node --input-type=module -e '
     import { DatabaseSync } from "node:sqlite";
     const db = new DatabaseSync("/app/data/wago.db");
     const rows = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
@@ -90,8 +77,7 @@ read_migrations() {
 }
 
 read_app_id() {
-  local container_name="$1"
-  docker exec "$container_name" node --input-type=module -e '
+  docker exec "$1" node --input-type=module -e '
     import { DatabaseSync } from "node:sqlite";
     const db = new DatabaseSync("/app/data/wago.db");
     const row = db.prepare("SELECT app_id FROM app_settings WHERE id = 1").get();
@@ -101,8 +87,7 @@ read_app_id() {
 }
 
 read_api_key_hash() {
-  local container_name="$1"
-  docker exec "$container_name" node --input-type=module -e '
+  docker exec "$1" node --input-type=module -e '
     import { DatabaseSync } from "node:sqlite";
     const db = new DatabaseSync("/app/data/wago.db");
     const row = db.prepare("SELECT api_key_hash FROM app_settings WHERE id = 1").get();
@@ -111,30 +96,8 @@ read_api_key_hash() {
   '
 }
 
-read_setup_code_hash() {
-  local container_name="$1"
-  docker exec "$container_name" node --input-type=module -e '
-    import { DatabaseSync } from "node:sqlite";
-    const db = new DatabaseSync("/app/data/wago.db");
-    const row = db.prepare("SELECT setup_code_hash FROM app_settings WHERE id = 1").get();
-    process.stdout.write(String(row?.setup_code_hash ?? ""));
-    db.close();
-  '
-}
-
-assert_no_setup_secret_log() {
-  local container_name="$1"
-  local logs
-  logs="$(docker logs "$container_name" 2>&1)"
-  ! grep -q 'app.first_run_setup_code' <<< "$logs"
-  ! grep -Eq '"setupCode":"setup_[A-Za-z0-9_-]+"' <<< "$logs"
-}
-
 sign_in_and_bootstrap() {
-  local login_headers
-  local session_cookie
-  local bootstrap_response
-
+  local login_headers session_cookie bootstrap_response
   login_headers="$(curl -fsS -D - -o /tmp/wago-login-body \
     -X POST "http://127.0.0.1:${PORT}/app/session" \
     -H 'Host: wago.example.com' \
@@ -156,83 +119,52 @@ sign_in_and_bootstrap() {
   grep -q "\"apiKey\":\"$API_KEY_CANDIDATE\"" <<< "$bootstrap_response"
 }
 
-if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
-  docker build -t "$IMAGE" .
-fi
+if [[ "${SKIP_BUILD:-0}" != "1" ]]; then docker build -t "$IMAGE" .; fi
 
-# Production image-mode deploys without durable /app/data must fail closed.
+# Production must reject disposable /app/data.
 docker run -d --name "$EPHEMERAL_NAME" -e "WAGO_ADMIN_PASSWORD=$ADMIN_PASSWORD" "$IMAGE" >/dev/null
 wait_for_exit "$EPHEMERAL_NAME"
-EPHEMERAL_LOGS="$(docker logs "$EPHEMERAL_NAME" 2>&1)"
-grep -q 'PERSISTENT_DATA_REQUIRED' <<< "$EPHEMERAL_LOGS"
+grep -q 'PERSISTENT_DATA_REQUIRED' <<< "$(docker logs "$EPHEMERAL_NAME" 2>&1)"
 
 docker volume create "$VOLUME" >/dev/null
 run_container "$NAME" "$IMAGE"
 
-HEALTH_BEFORE="$(curl -fsS "http://127.0.0.1:${PORT}/health")"
-grep -q '"status":"ok"' <<< "$HEALTH_BEFORE"
-READY_BEFORE="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-grep -q '"apiKeyConfigured":false' <<< "$READY_BEFORE"
-curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
-
+grep -q '"status":"ok"' <<< "$(curl -fsS "http://127.0.0.1:${PORT}/health")"
+grep -q '"apiKeyConfigured":false' <<< "$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 MIGRATIONS_BEFORE="$(read_migrations "$NAME")"
 [[ "$MIGRATIONS_BEFORE" == "$EXPECTED_MIGRATIONS" ]]
 APP_ID_BEFORE="$(read_app_id "$NAME")"
 [[ -n "$APP_ID_BEFORE" ]]
-[[ -z "$(read_setup_code_hash "$NAME")" ]]
-assert_no_setup_secret_log "$NAME"
 
 sign_in_and_bootstrap
-READY_INITIALIZED="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-grep -q '"apiKeyConfigured":true' <<< "$READY_INITIALIZED"
+grep -q '"apiKeyConfigured":true' <<< "$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 API_KEY_HASH_BEFORE="$(read_api_key_hash "$NAME")"
 [[ "$API_KEY_HASH_BEFORE" =~ ^[0-9a-f]{64}$ ]]
-[[ -z "$(read_setup_code_hash "$NAME")" ]]
-assert_no_setup_secret_log "$NAME"
 
-# A second process sharing the same volume must not become active.
-docker run -d \
-  --name "$CONTENDER_NAME" \
-  -e "WAGO_ADMIN_PASSWORD=$ADMIN_PASSWORD" \
-  -v "$VOLUME:/app/data" \
-  "$IMAGE" >/dev/null
+# A second process sharing the same volume must fail closed.
+docker run -d --name "$CONTENDER_NAME" -e "WAGO_ADMIN_PASSWORD=$ADMIN_PASSWORD" -v "$VOLUME:/app/data" "$IMAGE" >/dev/null
 wait_for_exit "$CONTENDER_NAME"
-CONTENDER_LOGS="$(docker logs "$CONTENDER_NAME" 2>&1)"
-grep -q 'WAGO_INSTANCE_ALREADY_ACTIVE' <<< "$CONTENDER_LOGS"
+grep -q 'WAGO_INSTANCE_ALREADY_ACTIVE' <<< "$(docker logs "$CONTENDER_NAME" 2>&1)"
 
 docker restart "$NAME" >/dev/null
 wait_for_health "$NAME"
+grep -q '"apiKeyConfigured":true' <<< "$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
+[[ "$(read_migrations "$NAME")" == "$EXPECTED_MIGRATIONS" ]]
+[[ "$(read_api_key_hash "$NAME")" == "$API_KEY_HASH_BEFORE" ]]
 
-READY_AFTER="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-grep -q '"apiKeyConfigured":true' <<< "$READY_AFTER"
-MIGRATIONS_AFTER="$(read_migrations "$NAME")"
-[[ "$MIGRATIONS_AFTER" == "$EXPECTED_MIGRATIONS" ]]
-API_KEY_HASH_AFTER="$(read_api_key_hash "$NAME")"
-[[ "$API_KEY_HASH_AFTER" == "$API_KEY_HASH_BEFORE" ]]
-[[ -z "$(read_setup_code_hash "$NAME")" ]]
-assert_no_setup_secret_log "$NAME"
-
-# Normal replacement is stop-old-before-start-new so shutdown can release the lease.
+# Normal replacement is stop-old-before-start-new.
 stop_and_remove "$NAME"
 run_container "$REPLACEMENT_NAME" "$IMAGE"
-APP_ID_AFTER="$(read_app_id "$REPLACEMENT_NAME")"
-[[ "$APP_ID_AFTER" == "$APP_ID_BEFORE" ]]
-API_KEY_HASH_REPLACEMENT="$(read_api_key_hash "$REPLACEMENT_NAME")"
-[[ "$API_KEY_HASH_REPLACEMENT" == "$API_KEY_HASH_BEFORE" ]]
-[[ -z "$(read_setup_code_hash "$REPLACEMENT_NAME")" ]]
-assert_no_setup_secret_log "$REPLACEMENT_NAME"
+[[ "$(read_app_id "$REPLACEMENT_NAME")" == "$APP_ID_BEFORE" ]]
+[[ "$(read_api_key_hash "$REPLACEMENT_NAME")" == "$API_KEY_HASH_BEFORE" ]]
 
 if [[ -n "$ROLLBACK_IMAGE" ]]; then
   stop_and_remove "$REPLACEMENT_NAME"
   run_container "$ROLLBACK_NAME" "$ROLLBACK_IMAGE" "$ROLLBACK_CORS_ORIGIN"
-
-  ROLLBACK_HEALTH="$(curl -fsS "http://127.0.0.1:${PORT}/health")"
-  grep -q '"status":"ok"' <<< "$ROLLBACK_HEALTH"
-  ROLLBACK_READY="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
-  grep -q '"apiKeyConfigured":true' <<< "$ROLLBACK_READY"
-  curl -fsS "http://127.0.0.1:${PORT}/" >/dev/null
+  grep -q '"status":"ok"' <<< "$(curl -fsS "http://127.0.0.1:${PORT}/health")"
+  grep -q '"apiKeyConfigured":true' <<< "$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
   [[ "$(read_app_id "$ROLLBACK_NAME")" == "$APP_ID_BEFORE" ]]
   [[ "$(read_api_key_hash "$ROLLBACK_NAME")" == "$API_KEY_HASH_BEFORE" ]]
 fi
 
-echo "Container storage, password-first bootstrap, machine-key persistence, single-instance, replacement, and rollback checks passed."
+echo "Container storage, admin-session bootstrap, machine-key persistence, single-instance, replacement, and rollback checks passed."

@@ -1,97 +1,48 @@
 # Security Policy
 
-## Supported Scope
+Security fixes target the latest `main` and latest stable container release.
 
-Security fixes target the latest `main` branch and the latest published container image.
+## Secrets and durable state
 
-Wago stores durable application state and WhatsApp authentication material under the configured data directory, normally `/app/data` in Docker. Treat the entire directory and its backups like private credentials.
+Treat the entire `/app/data` directory and its backups as credential-bearing private state:
 
-Sensitive runtime files include:
+- `/app/data/wago.db`, WAL, and SHM — gateway state, generated API-key hashes, browser-session hashes, recipient/outbound state, webhook settings/queue, lease state, and audit events
+- `/app/data/auth/` — long-lived Baileys/WhatsApp credentials
 
-- `/app/data/wago.db` — gateway settings, generated API-key hash, browser-session hashes, webhook callback URL and signing secret, binding metadata, recipient consent state, outbound safety history, webhook delivery state, instance-lease state, and operator audit events
-- `/app/data/wago.db-wal` and `/app/data/wago.db-shm` while SQLite WAL mode is active
-- `/app/data/auth/` — long-lived Baileys/WhatsApp session credentials
-- legacy JSON recovery files retained after an upgrade from the previous persistence format
+Never publish `WAGO_ADMIN_PASSWORD`, API keys, bearer headers, browser cookies, webhook signing secrets, QR payloads, Baileys credentials, `/app/data` backups, full phone/JIDs, message text, or unredacted production logs.
 
-`WAGO_ADMIN_PASSWORD` is a deployment secret used only to establish dashboard browser sessions. It is not persisted into SQLite or browser storage. `API_KEY` and generated `wa_...` keys are machine credentials for server-to-server API clients and are intentionally separate from the normal dashboard sign-in path.
+`WAGO_ADMIN_PASSWORD` is a deployment secret used only to establish browser sessions. It is not persisted by Wago. Machine API keys are separate server-to-server credentials; generated raw keys are persisted only as SHA-256 hashes.
 
-## Reporting a Vulnerability
-
-Report vulnerabilities through GitHub private security advisories when available. Do not open a public issue for credential exposure, auth bypass, request forgery, persistence corruption that weakens safety decisions, or message-sending abuse paths.
-
-Do not include these values in public issues, discussions, screenshots, logs, pull requests, or CI artifacts:
-
-- `wago.db`, WAL/SHM files, or `/app/data` backups
-- `backend/data/auth`, `creds.json`, or any Baileys auth file
-- QR payloads or QR screenshots from a live session
-- `WAGO_ADMIN_PASSWORD`, API keys, legacy `SETUP_TOKEN` values, webhook signing secrets, browser-session cookies, or bearer tokens
-- full phone numbers, full JIDs, or message text
-- raw production logs containing WhatsApp metadata or secrets
-
-If logs are needed, redact secrets and mask identifiers first.
-
-## Audit Data Boundary
-
-The `/audit` workspace and `GET /activity` endpoint expose structured operational evidence, not raw WhatsApp protocol capture. Baileys audit metadata is sanitized before persistence: only safe primitive values are retained, phone/JID-shaped identifiers are masked, and secret/protocol fields such as QR data, credential/key material, tokens, cookies, authorization values, password fields, message/text fields, and nested raw payloads are dropped.
-
-Audit rows still belong to the private gateway state. They can reveal timing, lifecycle state, restriction status, and operational behavior, so protect `wago.db` and authenticated audit access even though the low-level adapter removes message content and session secrets.
-
-## Operational Guidance
-
-- Keep Wago behind HTTPS when exposed outside localhost.
-- Set a strong `WAGO_ADMIN_PASSWORD` for production dashboard access. Wago requires at least 12 bytes; use a password manager and prefer substantially more entropy than the minimum.
-- Keep the machine API key separate from the admin password. External applications use `Authorization: Bearer <API_KEY>` while dashboard users authenticate with the admin password and receive an HttpOnly browser session.
-- Run exactly one active Wago process for a persistent `/app/data` volume and WhatsApp account. Wago uses a short SQLite lease to reject overlapping owners, but deployment topology should still use a single replica and avoid blue/green or rolling overlap against the same state directory.
-- Production refuses to start when `/app/data` resolves only to the container writable layer or an ephemeral filesystem such as `tmpfs`. Mount durable storage before exposing the service.
-- Prefer one HTTPS origin for the bundled dashboard and API. Production dashboard sign-in and first API-key bootstrap require an HTTPS `Origin` whose host matches the request `Host`; state-changing cookie-authenticated requests also reject mismatched origins.
-- A fresh production gateway must establish a browser session before generating its machine API key. The normal path is `WAGO_ADMIN_PASSWORD` -> `POST /app/session` -> HttpOnly session -> `POST /app/bootstrap` -> generated machine API key.
-- `SETUP_TOKEN` remains only as a compatibility override for older deployment automation. It is no longer generated by Wago or printed to startup logs. New deployments should use `WAGO_ADMIN_PASSWORD` instead.
-- Existing initialized deployments without `WAGO_ADMIN_PASSWORD` retain a legacy API-key-to-browser-session recovery path so upgrades do not immediately lock operators out. Configure `WAGO_ADMIN_PASSWORD` to remove that credential coupling.
-- `API_KEY` can still be pre-provisioned by a deployment secret manager. Environment-managed API keys are machine credentials and are rotated in that secret manager rather than from the dashboard.
-- Wago does not expose a configurable CORS allowlist. Keep external application integration server-to-server unless you intentionally provide browser cross-origin behavior at your routing/proxy layer.
-- Manage webhook callback URL and signing-secret lifecycle from the authenticated Wago Settings workspace. Legacy webhook environment variables are only a compatibility import path when SQLite has no webhook settings yet.
-- Keep `/app/data` on a persistent volume with restricted host access. The webhook signing secret is intentionally recoverable by Wago from this private state because the original secret is required to create HMAC signatures; unlike API keys and browser-session tokens it cannot be stored hash-only.
-- Treat webhook delivery as **at least once**. Receiver code must be idempotent and deduplicate by `Webhook-Id` (the same value is also sent as `X-Wago-Delivery`).
-- Stop the service before filesystem-style backups. This lets shutdown flush Baileys credential writes and checkpoint SQLite WAL state before the snapshot is taken.
-- Back up the entire `/app/data` state set, not only `wago.db`. A consistent restore requires the database plus Baileys auth state from the same snapshot.
-- Keep backup archives encrypted or otherwise access-restricted, verify file ownership/permissions after restore, and perform restore rehearsals on an isolated single-instance deployment before relying on a backup procedure.
-- Never use `docker compose down -v` during a normal upgrade unless the persistent gateway state is intentionally being destroyed.
-- Rebind WhatsApp and rotate external secrets if `/app/data`, an auth directory, backup, API credential, webhook signing secret, admin password, legacy setup token, or browser session is suspected to be exposed.
-- Treat terminal session invalidation as a recovery event: inspect sanitized audit evidence, then pair again rather than forcing an aggressive reconnect loop.
-
-## First-Run Ownership Boundary
-
-A fresh public Wago instance must not let the first anonymous visitor claim the gateway. The normal production root of trust is now the deployment-provided `WAGO_ADMIN_PASSWORD`.
-
-`POST /app/session` verifies that password using a timing-safe comparison and exchanges it for an opaque browser session. The password is not returned by the API and is not stored in SQLite, cookies, `localStorage`, or `sessionStorage`.
-
-`POST /app/bootstrap` then requires the valid browser session plus same-origin HTTPS before creating the generated machine API key. Only the API-key SHA-256 hash is persisted. The raw generated API key is shown to the authenticated operator so it can be stored in the application or secret manager that will call Wago.
-
-The legacy `X-Wago-Setup-Code` / `X-Wago-Setup-Token` path remains accepted only when an operator explicitly configures `SETUP_TOKEN`. Wago no longer creates or logs a random first-run setup code by default.
-
-## Browser Credential Boundary
-
-The dashboard and external API have distinct credential responsibilities:
+## Authentication boundary
 
 ```text
-human operator -> WAGO_ADMIN_PASSWORD -> HttpOnly browser session
+human operator -> WAGO_ADMIN_PASSWORD -> HttpOnly wago_session
 machine client  -> API_KEY / generated wa_ key -> Authorization: Bearer ...
 ```
 
-The raw browser-session token is sent only as an HttpOnly, SameSite=Lax cookie and is Secure in production. SQLite stores only its SHA-256 hash plus creation, last-seen, expiry, and revocation metadata. Browser sessions expire after 30 days and can be revoked without changing the API key.
+Production browser sign-in and cookie-authenticated state changes require same-origin requests. First generated machine-key bootstrap requires an authenticated browser session in production. Machine API keys cannot create dashboard sessions.
 
-A generated raw API key is returned to the authenticated operator only when it is created or rotated. Wago stores only its SHA-256 hash and does not persist the raw key in browser storage.
+Browser sessions are opaque, HttpOnly, SameSite=Lax, Secure in production, and stored in SQLite as hashes. Session revocation does not change WhatsApp authentication. Generated API-key rotation invalidates the old machine key and revokes other dashboard sessions while preserving the initiating session.
 
-For compatibility, an upgraded initialized gateway with no `WAGO_ADMIN_PASSWORD` may still exchange its existing API key for a browser session. This is a migration path, not the desired steady-state model. Once `WAGO_ADMIN_PASSWORD` is configured, dashboard sign-in no longer accepts the API key.
+## Operational boundary
 
-Rotating a generated API key from the authenticated dashboard immediately invalidates the previous machine API key and revokes every **other** browser session. The browser performing the rotation remains authenticated so the operator can save the newly generated key. WhatsApp/Baileys authentication state is not changed by API-key rotation.
+- Keep Wago behind HTTPS when exposed outside localhost.
+- Configure a strong `WAGO_ADMIN_PASSWORD`; the enforced minimum is 12 bytes, but substantially higher entropy is recommended.
+- Keep machine credentials in a server-side secret manager, never a public browser bundle.
+- Run exactly one active process for one `/app/data` volume and WhatsApp account.
+- Production must use durable `/app/data`; Wago rejects disposable container storage.
+- Back up the whole `/app/data` state after a controlled stop and rehearse restores in isolation.
+- Never use `docker compose down -v` for a normal upgrade.
+- Configure webhook URL/signing-secret lifecycle through authenticated Settings.
+- Treat webhook delivery as at least once and deduplicate by `Webhook-Id`.
+- Rebind WhatsApp and rotate affected secrets if durable state or credentials are exposed.
 
-`POST /app/session/logout-all` revokes every browser session without changing the machine API key or WhatsApp auth. Use it when dashboard-session compromise is suspected. If the machine API key may also be exposed, rotate that credential as well.
+Released SQLite migrations are append-only. Old schema columns may remain inert after compatibility code is removed; rewriting migration history would create a larger upgrade risk than leaving unused columns in place.
 
-Upgrades from the legacy dashboard clear the old `wa_gateway_api_key` cookie and remove the former `wago.apiKey` session-storage entry. Legacy raw-key cookies no longer authenticate protected routes.
+## Reporting a vulnerability
 
-External integrations should continue to use `Authorization: Bearer <API_KEY>` from a backend/server process rather than exposing the API key in a public frontend bundle.
+Use GitHub private security advisories when available. Do not open public issues for credential exposure, authentication bypass, request-forgery paths, persistence corruption that weakens safety decisions, or message-sending abuse paths.
 
-## Transport Boundary
+## Transport boundary
 
-This project uses Baileys, an unofficial WhatsApp Web client. Wago does not provide guaranteed ban prevention and does not support spam, bulk messaging, anti-detection behavior, or bypassing WhatsApp restrictions.
+Wago uses Baileys, an unofficial WhatsApp Web client. It does not offer guaranteed ban prevention, spam/bulk messaging, anti-detection behavior, or restriction bypasses.
