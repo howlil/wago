@@ -1,21 +1,21 @@
 import { Router } from "express";
 import QRCode from "qrcode";
 import { asyncHandler } from "../../http/middleware/async-handler.js";
-import { requireApiKey } from "../../http/middleware/auth.js";
+import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
 import { recordActivity } from "../activity/store.js";
 import { getCurrentQr, getWhatsAppStatus, pairWhatsApp, rebindWhatsApp } from "./index.js";
 
 export const whatsappRouter = Router();
 
-whatsappRouter.get("/status", requireApiKey, (_req, res) => {
+whatsappRouter.get("/status", requireAuthenticatedRequest, (_req, res) => {
   res.json({
     success: true,
     ...getWhatsAppStatus(),
   });
 });
 
-whatsappRouter.get("/qr", requireApiKey, (_req, res) => {
+whatsappRouter.get("/qr", requireAuthenticatedRequest, (_req, res) => {
   res.json({
     success: true,
     ...getCurrentQr(),
@@ -24,16 +24,15 @@ whatsappRouter.get("/qr", requireApiKey, (_req, res) => {
 
 whatsappRouter.get(
   "/qr/image",
-  requireApiKey,
+  requireAuthenticatedRequest,
   asyncHandler(async (_req, res) => {
-    const { qr, status } = getCurrentQr();
+    const { qr } = getCurrentQr();
 
     if (!qr) {
-      return res.status(status === "connected" ? 200 : 404).json({
-        success: status === "connected",
-        qr: null,
-        status,
-        message: status === "connected" ? "WhatsApp is already connected" : "QR is not available",
+      return res.status(404).json({
+        success: false,
+        error: "QR_NOT_AVAILABLE",
+        message: "QR is not available",
       });
     }
 
@@ -49,9 +48,9 @@ whatsappRouter.get(
 
 whatsappRouter.post(
   "/pair",
-  requireApiKey,
+  requireAuthenticatedRequest,
   createRateLimit({ limit: 5, windowMs: 60_000 }),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (_req, res, next) => {
     try {
       const before = getWhatsAppStatus();
       const result = await pairWhatsApp();
@@ -76,7 +75,7 @@ whatsappRouter.post(
               : "WhatsApp pairing started.",
         ...result,
       });
-    } catch {
+    } catch (error) {
       void recordActivity({
         level: "error",
         category: "connection",
@@ -85,20 +84,16 @@ whatsappRouter.post(
         description: "The gateway could not start a WhatsApp pairing session.",
       });
 
-      return res.status(500).json({
-        success: false,
-        error: "PAIRING_FAILED",
-        message: "Failed to start WhatsApp pairing",
-      });
+      return next(error);
     }
   }),
 );
 
 whatsappRouter.post(
   "/rebind",
-  requireApiKey,
+  requireAuthenticatedRequest,
   createRateLimit({ limit: 5, windowMs: 60_000 }),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (_req, res, next) => {
     try {
       const result = await rebindWhatsApp();
 
@@ -115,7 +110,7 @@ whatsappRouter.post(
         message: "Previous WhatsApp binding was cleared. Scan the new QR to bind another account.",
         ...result,
       });
-    } catch {
+    } catch (error) {
       void recordActivity({
         level: "error",
         category: "connection",
@@ -124,11 +119,7 @@ whatsappRouter.post(
         description: "The gateway could not clear and restart the WhatsApp session.",
       });
 
-      return res.status(500).json({
-        success: false,
-        error: "REBIND_FAILED",
-        message: "Failed to rebind WhatsApp session",
-      });
+      return next(error);
     }
   }),
 );
