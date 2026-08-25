@@ -1,6 +1,15 @@
 import { resolve } from "node:path";
 import { dataDirectory, nodeEnv } from "./runtime-paths.js";
 
+function envFlag(name: string, fallback = false): boolean {
+  const value = process.env[name]?.trim().toLowerCase();
+  if (!value) {
+    return fallback;
+  }
+
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
 const rawSetupToken = process.env.SETUP_TOKEN?.trim();
 const setupToken = rawSetupToken && Buffer.byteLength(rawSetupToken, "utf8") >= 32 ? rawSetupToken : null;
 
@@ -35,7 +44,7 @@ export const config: RuntimeConfig = {
   frontendDirectory: nodeEnv === "production" ? "/app/public" : null,
   nodeEnv,
   requestLogging: true,
-  trustProxy: false,
-  defaultCountryCode: "62",
+  trustProxy: envFlag("TRUST_PROXY"),
+  defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE?.trim() || "62",
   logLevel: nodeEnv === "production" ? "info" : "debug",
 };
