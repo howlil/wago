@@ -47,23 +47,17 @@ export type StatusResponse = {
 };
 
 export type QrResponse = {
-  success: boolean;
+  success: true;
   qr: string | null;
   status: WhatsAppStatus;
   message?: string;
 };
 
-export type PairingResponse =
-  | {
-      success: true;
-      message: string;
-      status: WhatsAppStatus;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type PairingResponse = {
+  success: true;
+  message: string;
+  status: WhatsAppStatus;
+};
 
 export type RebindResponse = PairingResponse;
 
