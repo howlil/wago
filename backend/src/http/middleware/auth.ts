@@ -55,10 +55,8 @@ export const requireAuthenticatedRequest: RequestHandler = (req, res, next) => {
   }
 
   if (!requestIsAuthenticated(req)) {
-    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
+    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid credentials" });
   }
 
   return next();
 };
-
-export const requireApiKey = requireAuthenticatedRequest;
