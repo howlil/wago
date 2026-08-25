@@ -22,15 +22,16 @@ export async function resolveRecipientJid(activeSocket: WASocket, jid: string): 
     throw recipientNotOnWhatsAppError();
   }
 
-  let contact: Awaited<ReturnType<WASocket["onWhatsApp"]>>[number] | undefined;
+  let contacts: Awaited<ReturnType<WASocket["onWhatsApp"]>>;
   try {
-    [contact] = (await activeSocket.onWhatsApp(jid)) ?? [];
+    contacts = await activeSocket.onWhatsApp(jid);
   } catch (error) {
     throw new ApplicationError("RECIPIENT_LOOKUP_FAILED", "Failed to resolve recipient with WhatsApp", {
       cause: error,
     });
   }
 
+  const [contact] = contacts ?? [];
   if (!contact?.exists) {
     recipientLookupCache.set(jid, {
       exists: false,
