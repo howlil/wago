@@ -4,7 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import { config } from "./config/index.js";
 import { errorHandler } from "./http/middleware/error-handler.js";
-import { requestHasSameOrigin } from "./http/middleware/origin.js";
+import { requireSameOriginForCookieMutation } from "./http/middleware/origin.js";
 import { requestLogger } from "./http/middleware/request-logger.js";
 import { appRouter } from "./modules/access/routes.js";
 import { activityRouter } from "./modules/activity/routes.js";
@@ -39,19 +39,7 @@ app.use(
 );
 app.use(express.json({ limit: config.bodyLimit }));
 app.use(requestLogger);
-app.use((req, res, next) => {
-  const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-  const hasCookieAuth = Boolean(req.header("cookie")?.includes(`${config.authCookieName}=`));
-  const origin = req.header("origin");
-  if (stateChangingMethods.has(req.method) && hasCookieAuth && origin && !requestHasSameOrigin(req)) {
-    return res.status(403).json({
-      success: false,
-      error: "INVALID_ORIGIN",
-      message: "Cookie-authenticated requests must come from the Wago origin",
-    });
-  }
-  return next();
-});
+app.use(requireSameOriginForCookieMutation);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/ready", (_req, res) => {
