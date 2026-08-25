@@ -1,6 +1,7 @@
 .git
 .github
-docs
+docs/*
+!docs/package.json
 .env
 .env.*
 node_modules
