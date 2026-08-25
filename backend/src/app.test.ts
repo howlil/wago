@@ -285,8 +285,7 @@ describe("app", () => {
     expect(response.body).toEqual({
       success: false,
       error: "APP_ALREADY_INITIALIZED",
-      message:
-        "This app already has a machine API key. Sign in to the dashboard with the configured admin credential.",
+      message: "This app already has a machine API key. Sign in to the dashboard with the configured admin credential.",
     });
   });
 });
