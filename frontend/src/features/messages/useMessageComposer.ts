@@ -1,4 +1,5 @@
 import { type FormEvent, useMemo, useState } from "react";
+import { ApiError } from "../../shared/api/client.js";
 import type { Notice } from "../../shared/ui/feedback.js";
 import type { WhatsAppStatus } from "../whatsapp/api.js";
 import { sendMessage } from "./api.js";
@@ -53,29 +54,25 @@ export function useMessageComposer({
 
       const result = await sendMessage(target, text);
 
-      if (result.success) {
-        if (result.messageId) {
-          setLastMessage({ id: result.messageId, status: result.status });
-          onNotice({ type: "success", message: "Message accepted by the gateway. Live status is tracked below." });
-        } else {
-          onNotice({ type: "success", message: `Message ${result.status}.` });
-        }
-
-        setRecipientApprovalPhone(null);
-        setMessage("");
+      if (result.messageId) {
+        setLastMessage({ id: result.messageId, status: result.status });
+        onNotice({ type: "success", message: "Message accepted by the gateway. Live status is tracked below." });
       } else {
-        onNotice({ type: "error", message: result.message });
+        onNotice({ type: "success", message: `Message ${result.status}.` });
       }
-    } catch (error) {
-      const apiError = error as { message?: string; error?: string };
 
-      if (apiError.error === "RECIPIENT_NOT_ALLOWED") {
+      setRecipientApprovalPhone(null);
+      setMessage("");
+    } catch (error) {
+      const apiError = error instanceof ApiError ? error : null;
+
+      if (apiError?.code === "RECIPIENT_NOT_ALLOWED") {
         setRecipientApprovalPhone(target);
         onNotice({
           type: "error",
           message: "This recipient is not allowed yet. Confirm permission, then use Allow & Send.",
         });
-      } else if (apiError.error === "RECIPIENT_OPTED_OUT") {
+      } else if (apiError?.code === "RECIPIENT_OPTED_OUT") {
         setRecipientApprovalPhone(null);
         onNotice({
           type: "error",
@@ -83,7 +80,10 @@ export function useMessageComposer({
         });
       } else {
         setRecipientApprovalPhone(null);
-        onNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to send message" });
+        onNotice({
+          type: "error",
+          message: error instanceof Error ? error.message : "Failed to send message",
+        });
       }
     } finally {
       setIsSending(false);
