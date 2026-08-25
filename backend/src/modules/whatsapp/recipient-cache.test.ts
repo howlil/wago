@@ -22,9 +22,9 @@ describe("recipient resolution", () => {
   });
 
   it("resolves and remembers the canonical WhatsApp JID", async () => {
-    const onWhatsApp = vi.fn().mockResolvedValue([
-      { exists: true, jid: "6281234567890@s.whatsapp.net" },
-    ]) as unknown as WASocket["onWhatsApp"];
+    const onWhatsApp = vi
+      .fn()
+      .mockResolvedValue([{ exists: true, jid: "6281234567890@s.whatsapp.net" }]) as unknown as WASocket["onWhatsApp"];
     const socket = createSocket(onWhatsApp);
 
     await expect(resolveRecipientJid(socket, "6281234567890@s.whatsapp.net")).resolves.toBe(
@@ -55,7 +55,9 @@ describe("recipient resolution", () => {
   });
 
   it("classifies transient Baileys lookup failures separately from invalid recipients", async () => {
-    const onWhatsApp = vi.fn().mockRejectedValue(new Error("upstream unavailable")) as unknown as WASocket["onWhatsApp"];
+    const onWhatsApp = vi
+      .fn()
+      .mockRejectedValue(new Error("upstream unavailable")) as unknown as WASocket["onWhatsApp"];
     const socket = createSocket(onWhatsApp);
 
     await expect(resolveRecipientJid(socket, "6281234567890@s.whatsapp.net")).rejects.toMatchObject({
