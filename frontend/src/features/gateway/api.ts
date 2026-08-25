@@ -1,4 +1,4 @@
-import { requestJson } from "../../shared/api/client.js";
+import { ApiError, requestJson } from "../../shared/api/client.js";
 
 export type AppInfoResponse = {
   success: true;
@@ -14,48 +14,30 @@ export type AppInfoResponse = {
   webBootstrapEnabled?: boolean;
 };
 
-export type BootstrapAppResponse =
-  | {
-      success: true;
-      appId: string;
-      apiKey: string;
-      recovered: boolean;
-      sessionExpiresAt: string;
-      message: string;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type BootstrapAppResponse = {
+  success: true;
+  appId: string;
+  apiKey: string;
+  recovered: boolean;
+  sessionExpiresAt: string;
+  message: string;
+};
 
-export type BrowserSessionResponse =
-  | {
-      success: true;
-      authenticated: boolean;
-      expiresAt?: string;
-      revokedBrowserSessions?: number;
-      message: string;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type BrowserSessionResponse = {
+  success: true;
+  authenticated: boolean;
+  expiresAt?: string;
+  revokedBrowserSessions?: number;
+  message: string;
+};
 
-export type ApiKeyRotationResponse =
-  | {
-      success: true;
-      apiKey: string;
-      generatedAt: string;
-      revokedBrowserSessions?: number;
-      message: string;
-    }
-  | {
-      success: false;
-      error: string;
-      message: string;
-    };
+export type ApiKeyRotationResponse = {
+  success: true;
+  apiKey: string;
+  generatedAt: string;
+  revokedBrowserSessions?: number;
+  message: string;
+};
 
 export type HealthResponse = {
   status: string;
@@ -134,11 +116,7 @@ export async function getReadiness(): Promise<GatewayReadinessSnapshot> {
   const value = await requestJson<unknown>("/ready", undefined, { allowedStatuses: [503] });
 
   if (!isGatewayReadinessSnapshot(value)) {
-    throw {
-      success: false,
-      error: "INVALID_READINESS_RESPONSE",
-      message: "Readiness endpoint returned an invalid JSON payload",
-    };
+    throw new ApiError(0, "INVALID_READINESS_RESPONSE", "Readiness endpoint returned an invalid JSON payload", value);
   }
 
   return value;
