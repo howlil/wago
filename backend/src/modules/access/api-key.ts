@@ -13,8 +13,6 @@ type MutableAccessState = {
   apiKeyHash: string | null;
   apiKeySource: ApiKeySource;
   generatedAt: string | null;
-  setupCodeHash: string | null;
-  setupCodeGeneratedAt: string | null;
 };
 
 export type AccessSnapshot = {
@@ -22,8 +20,6 @@ export type AccessSnapshot = {
   apiKeySource: ApiKeySource;
   apiKeyConfigured: boolean;
   credentialSetupRequired: boolean;
-  setupCodeRequired: boolean;
-  webBootstrapEnabled: boolean;
 };
 
 export type BootstrapApiKeyResult =
@@ -39,13 +35,7 @@ const persistedSettings = settingsStore.get();
 const initialAppId = persistedSettings?.appId ?? `wa-gateway-${randomUUID().slice(0, 8)}`;
 
 if (!persistedSettings) {
-  settingsStore.save({
-    appId: initialAppId,
-    apiKeyHash: null,
-    generatedAt: null,
-    setupCodeHash: null,
-    setupCodeGeneratedAt: null,
-  });
+  settingsStore.save({ appId: initialAppId, apiKeyHash: null, generatedAt: null });
 }
 
 let state: MutableAccessState = {
@@ -54,8 +44,6 @@ let state: MutableAccessState = {
   apiKeyHash: config.deploymentApiKey ? null : (persistedSettings?.apiKeyHash ?? null),
   apiKeySource: config.deploymentApiKey ? "env" : persistedSettings?.apiKeyHash ? "generated" : "unset",
   generatedAt: persistedSettings?.generatedAt ?? null,
-  setupCodeHash: persistedSettings?.setupCodeHash ?? null,
-  setupCodeGeneratedAt: persistedSettings?.setupCodeGeneratedAt ?? null,
 };
 
 function generateApiKey(): string {
@@ -64,14 +52,6 @@ function generateApiKey(): string {
 
 export function hashApiKey(apiKey: string): string {
   return createHash("sha256").update(apiKey).digest("hex");
-}
-
-function hashSecret(secret: string): Buffer {
-  return createHash("sha256").update(secret).digest();
-}
-
-function hashSetupCode(setupCode: string): string {
-  return createHash("sha256").update(setupCode).digest("hex");
 }
 
 function constantTimeEquals(left: string, right: string): boolean {
@@ -86,47 +66,17 @@ function saveState(nextState: MutableAccessState): void {
     appId: nextState.appId,
     apiKeyHash: nextState.apiKeySource === "generated" ? nextState.apiKeyHash : null,
     generatedAt: nextState.generatedAt,
-    setupCodeHash: nextState.setupCodeHash,
-    setupCodeGeneratedAt: nextState.setupCodeGeneratedAt,
   });
   state = nextState;
 }
 
-function persistSetupCode(setupCode: string): void {
-  saveState({
-    ...state,
-    setupCodeHash: hashSetupCode(setupCode),
-    setupCodeGeneratedAt: new Date().toISOString(),
-  });
-}
-
-function prepareLegacySetupToken(): void {
-  if (config.nodeEnv !== "production" || state.apiKey || state.apiKeyHash) return;
-
-  if (config.setupToken) {
-    persistSetupCode(config.setupToken);
-    return;
-  }
-
-  if (state.setupCodeHash || state.setupCodeGeneratedAt) {
-    saveState({ ...state, setupCodeHash: null, setupCodeGeneratedAt: null });
-  }
-}
-
-prepareLegacySetupToken();
-
 export function getAccessSnapshot(): AccessSnapshot {
   const apiKeyConfigured = Boolean(state.apiKey || state.apiKeyHash);
-  const setupCodeRequired = !apiKeyConfigured && config.nodeEnv === "production" && Boolean(config.setupToken);
-
   return {
     appId: state.appId,
     apiKeySource: state.apiKeySource,
     apiKeyConfigured,
     credentialSetupRequired: !apiKeyConfigured,
-    setupCodeRequired,
-    webBootstrapEnabled:
-      !apiKeyConfigured && (config.nodeEnv !== "production" || Boolean(config.adminPassword) || setupCodeRequired),
   };
 }
 
@@ -138,21 +88,6 @@ export function isApiKeyValid(candidate: string): boolean {
   if (state.apiKey && constantTimeEquals(candidate, state.apiKey)) return true;
   if (state.apiKeyHash && constantTimeEquals(hashApiKey(candidate), state.apiKeyHash)) return true;
   return false;
-}
-
-export function isSetupCodeValid(candidate: string): boolean {
-  if (!candidate) return false;
-
-  const expectedHash = state.setupCodeHash ?? (config.setupToken ? hashSetupCode(config.setupToken) : null);
-  if (!expectedHash) return false;
-
-  return timingSafeEqual(Buffer.from(hashSetupCode(candidate), "hex"), Buffer.from(expectedHash, "hex"));
-}
-
-/** @deprecated Use isSetupCodeValid. Retained during the SETUP_TOKEN compatibility window. */
-export function isSetupTokenValid(candidate: string): boolean {
-  if (!config.setupToken || !candidate) return false;
-  return timingSafeEqual(hashSecret(candidate), hashSecret(config.setupToken));
 }
 
 export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult {
@@ -193,8 +128,6 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     apiKeyHash,
     apiKeySource: "generated",
     generatedAt,
-    setupCodeHash: null,
-    setupCodeGeneratedAt: null,
   });
 
   return { success: true, appId: state.appId, apiKey, recovered: false };
@@ -227,20 +160,13 @@ export function rotateGeneratedApiKey(): ApiKeyRotationResult {
     apiKeyHash,
     apiKeySource: "generated",
     generatedAt,
-    setupCodeHash: null,
-    setupCodeGeneratedAt: null,
   });
 
   return { success: true, apiKey, generatedAt };
 }
 
 export function resetAccessStateForTest(
-  overrides: Partial<
-    Pick<
-      MutableAccessState,
-      "apiKey" | "apiKeyHash" | "apiKeySource" | "generatedAt" | "setupCodeHash" | "setupCodeGeneratedAt"
-    >
-  > = {},
+  overrides: Partial<Pick<MutableAccessState, "apiKey" | "apiKeyHash" | "apiKeySource" | "generatedAt">> = {},
 ): void {
   const apiKey = overrides.apiKey ?? null;
   const apiKeyHash = apiKey ? null : (overrides.apiKeyHash ?? null);
@@ -253,7 +179,5 @@ export function resetAccessStateForTest(
     apiKeyHash,
     apiKeySource,
     generatedAt: overrides.generatedAt ?? null,
-    setupCodeHash: overrides.setupCodeHash ?? null,
-    setupCodeGeneratedAt: overrides.setupCodeGeneratedAt ?? null,
   });
 }

@@ -22,13 +22,6 @@ export type WebhookSettings = {
   updatedAt: string;
 };
 
-export type LegacyWebhookSettings = {
-  enabled: boolean;
-  url: string | null;
-  secret: string | null;
-  previousSecret: string | null;
-};
-
 export type SaveWebhookSettingsResult = {
   settings: WebhookSettings;
   generatedSecret?: string;
@@ -44,9 +37,7 @@ function generateSecret(): string {
 
 function normalizeUrl(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
-  if (!trimmed) {
-    return null;
-  }
+  if (!trimmed) return null;
 
   let parsed: URL;
   try {
@@ -58,18 +49,10 @@ function normalizeUrl(value: string | null | undefined): string | null {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return invalidSettings("Webhook URL must use http or https");
   }
-
   if (parsed.username || parsed.password) {
     return invalidSettings("Webhook URL must not contain embedded credentials");
   }
-
   return parsed.toString();
-}
-
-function validateSecret(secret: string | null, name = "Webhook secret"): void {
-  if (secret && secret.length < MIN_SECRET_LENGTH) {
-    invalidSettings(`${name} must contain at least ${MIN_SECRET_LENGTH} characters`);
-  }
 }
 
 function mapRow(row: WebhookSettingsRow): WebhookSettings {
@@ -118,40 +101,10 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
     return get() as WebhookSettings;
   }
 
-  function importLegacyIfEmpty(legacy: LegacyWebhookSettings): WebhookSettings | null {
-    const current = get();
-    if (current) {
-      return current;
-    }
-
-    if (!legacy.enabled) {
-      return null;
-    }
-
-    const url = normalizeUrl(legacy.url);
-    if (!url || !legacy.secret) {
-      invalidSettings("Webhook URL and secret are required when webhook delivery is enabled");
-    }
-    validateSecret(legacy.secret);
-    validateSecret(legacy.previousSecret, "Previous webhook secret");
-
-    const now = new Date().toISOString();
-    return write({
-      enabled: true,
-      url,
-      secret: legacy.secret,
-      previousSecret: legacy.previousSecret,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
   function save(input: { enabled: boolean; url?: string | null }): SaveWebhookSettingsResult {
     const current = get();
     const url = input.url === undefined ? (current?.url ?? null) : normalizeUrl(input.url);
-    if (input.enabled && !url) {
-      invalidSettings("Webhook URL is required when webhook delivery is enabled");
-    }
+    if (input.enabled && !url) invalidSettings("Webhook URL is required when webhook delivery is enabled");
 
     const now = new Date().toISOString();
     const generatedSecret = input.enabled && !current?.secret ? generateSecret() : undefined;
@@ -163,15 +116,12 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
       createdAt: current?.createdAt ?? now,
       updatedAt: now,
     });
-
     return generatedSecret ? { settings, generatedSecret } : { settings };
   }
 
   function rotateSecret(): SaveWebhookSettingsResult {
     const current = get();
-    if (!current?.secret) {
-      invalidSettings("Webhook signing secret is not configured");
-    }
+    if (!current?.secret) invalidSettings("Webhook signing secret is not configured");
 
     const generatedSecret = generateSecret();
     const settings = write({
@@ -185,27 +135,13 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
 
   function completeRotation(): WebhookSettings {
     const current = get();
-    if (!current) {
-      invalidSettings("Webhook settings are not configured");
-    }
-
-    return write({
-      ...current,
-      previousSecret: null,
-      updatedAt: new Date().toISOString(),
-    });
+    if (!current) invalidSettings("Webhook settings are not configured");
+    return write({ ...current, previousSecret: null, updatedAt: new Date().toISOString() });
   }
 
   function clear(): void {
     clearStatement.run();
   }
 
-  return {
-    get,
-    save,
-    rotateSecret,
-    completeRotation,
-    importLegacyIfEmpty,
-    clear,
-  };
+  return { get, save, rotateSecret, completeRotation, clear };
 }

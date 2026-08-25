@@ -13,7 +13,6 @@ const apiKeyRequiredResponse = {
 };
 
 const pairingCandidate = `wa_${"a".repeat(64)}`;
-const productionSetupCode = "production-setup-code-with-at-least-32-bytes";
 const productionAdminPassword = "correct-horse-battery-staple";
 
 function firstCookie(response: request.Response): string {
@@ -25,7 +24,6 @@ function firstCookie(response: request.Response): string {
 describe("app", () => {
   beforeEach(async () => {
     resetAccessStateForTest();
-    config.setupToken = null;
     config.adminPassword = null;
     config.nodeEnv = "test";
     config.requestLogging = false;
@@ -81,17 +79,10 @@ describe("app", () => {
   });
 
   it("returns a JSON API error for malformed JSON bodies", async () => {
-    const response = await request(app)
-      .post("/messages/send")
-      .set("Content-Type", "application/json")
-      .send("{bad json");
+    const response = await request(app).post("/messages/send").set("Content-Type", "application/json").send("{bad json");
     expect(response.status).toBe(400);
     expect(response.headers["content-type"]).toContain("application/json");
-    expect(response.body).toEqual({
-      success: false,
-      error: "INVALID_JSON",
-      message: "Request body must be valid JSON",
-    });
+    expect(response.body).toEqual({ success: false, error: "INVALID_JSON", message: "Request body must be valid JSON" });
   });
 
   it("returns a JSON API error for oversized JSON bodies", async () => {
@@ -123,32 +114,18 @@ describe("app", () => {
 
   it("allows, lists, and opts out recipients through protected routes", async () => {
     resetAccessStateForTest({ apiKey: "test-key", apiKeySource: "env" });
-
     const allowResponse = await request(app).post("/recipients/allow").set("Authorization", "Bearer test-key").send({
       phone: "081234567890",
       label: "Customer A",
     });
     expect(allowResponse.status).toBe(201);
-    expect(allowResponse.body.recipient).toMatchObject({
-      jid: "6281234567890@s.whatsapp.net",
-      label: "Customer A",
-      allowed: true,
-      optedOut: false,
-    });
-
+    expect(allowResponse.body.recipient).toMatchObject({ jid: "6281234567890@s.whatsapp.net", label: "Customer A", allowed: true, optedOut: false });
     const listResponse = await request(app).get("/recipients").set("Authorization", "Bearer test-key");
     expect(listResponse.status).toBe(200);
     expect(listResponse.body.recipients).toHaveLength(1);
-
-    const optOutResponse = await request(app)
-      .post("/recipients/6281234567890/opt-out")
-      .set("Authorization", "Bearer test-key");
+    const optOutResponse = await request(app).post("/recipients/6281234567890/opt-out").set("Authorization", "Bearer test-key");
     expect(optOutResponse.status).toBe(200);
-    expect(optOutResponse.body.recipient).toMatchObject({
-      jid: "6281234567890@s.whatsapp.net",
-      allowed: true,
-      optedOut: true,
-    });
+    expect(optOutResponse.body.recipient).toMatchObject({ jid: "6281234567890@s.whatsapp.net", allowed: true, optedOut: true });
   });
 
   it("bootstraps the pairing-generated API key and a separate browser session in development", async () => {
@@ -161,7 +138,6 @@ describe("app", () => {
     expect(response.headers["set-cookie"]?.[0]).not.toContain(pairingCandidate);
     expect(getAccessSnapshot().apiKeySource).toBe("generated");
     expect(getAccessSnapshot().apiKeyConfigured).toBe(true);
-    expect(getAccessSnapshot().webBootstrapEnabled).toBe(false);
     expect(isApiKeyValid(pairingCandidate)).toBe(true);
   });
 
@@ -170,11 +146,7 @@ describe("app", () => {
     config.adminPassword = productionAdminPassword;
 
     const info = await request(app).get("/app/info");
-    expect(info.body).toMatchObject({
-      adminPasswordConfigured: true,
-      dashboardAuthMode: "password",
-      apiKeyConfigured: false,
-    });
+    expect(info.body).toMatchObject({ adminPasswordConfigured: true, apiKeyConfigured: false });
 
     const rejected = await request(app)
       .post("/app/session")
@@ -203,54 +175,16 @@ describe("app", () => {
     expect(bootstrap.headers["set-cookie"]).toBeUndefined();
   });
 
-  it("retains SETUP_TOKEN only as a legacy production bootstrap path", async () => {
-    config.nodeEnv = "production";
-    config.setupToken = productionSetupCode;
-
-    const missing = await request(app)
-      .post("/app/bootstrap")
-      .set("Host", "wago.example.com")
-      .set("Origin", "https://wago.example.com")
-      .send({ apiKey: pairingCandidate });
-    expect(missing.status).toBe(403);
-    expect(missing.body.error).toBe("SETUP_CODE_REQUIRED");
-
-    const invalidLegacyHeader = await request(app)
-      .post("/app/bootstrap")
-      .set("Host", "wago.example.com")
-      .set("Origin", "https://wago.example.com")
-      .set("X-Wago-Setup-Token", `${productionSetupCode}-wrong`)
-      .send({ apiKey: pairingCandidate });
-    expect(invalidLegacyHeader.status).toBe(403);
-    expect(invalidLegacyHeader.body.error).toBe("INVALID_SETUP_CODE");
-
-    const response = await request(app)
-      .post("/app/bootstrap")
-      .set("Host", "wago.example.com")
-      .set("Origin", "https://wago.example.com")
-      .set("X-Wago-Setup-Code", productionSetupCode)
-      .send({ apiKey: pairingCandidate });
-
-    expect(response.status).toBe(201);
-    expect(response.body.apiKey).toBe(pairingCandidate);
-  });
-
   it("rejects first-run production bootstrap from a different origin", async () => {
     config.nodeEnv = "production";
     config.adminPassword = productionAdminPassword;
-
     const response = await request(app)
       .post("/app/bootstrap")
       .set("Host", "wago.example.com")
       .set("Origin", "https://evil.example.com")
       .send({ apiKey: pairingCandidate });
-
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({
-      success: false,
-      error: "INVALID_SETUP_ORIGIN",
-      message: "First-run setup must come from the Wago dashboard origin.",
-    });
+    expect(response.body).toEqual({ success: false, error: "INVALID_SETUP_ORIGIN", message: "First-run setup must come from the Wago dashboard origin." });
   });
 
   it("authenticates generated API keys by persisted hash", async () => {
@@ -259,59 +193,44 @@ describe("app", () => {
     expect(response.status).toBe(200);
   });
 
-  it("keeps API-key dashboard sign-in as a legacy fallback when no admin password is configured", async () => {
+  it("does not allow machine API keys to create dashboard sessions", async () => {
     resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
-
-    const info = await request(app).get("/app/info");
-    expect(info.body.dashboardAuthMode).toBe("legacy_api_key");
-
-    const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
-    expect(login.status).toBe(200);
-    expect(login.headers["set-cookie"]?.[0]).toContain(config.authCookieName);
+    const response = await request(app).post("/app/session").send({ apiKey: "generated-key" });
+    expect(response.status).toBe(503);
+    expect(response.body.error).toBe("ADMIN_PASSWORD_REQUIRED");
+    expect(response.headers["set-cookie"]).toBeUndefined();
   });
 
   it("rejects cookie-authenticated state changes from a different request origin", async () => {
-    resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
-
-    const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
+    config.adminPassword = productionAdminPassword;
+    const login = await request(app).post("/app/session").send({ password: productionAdminPassword });
     const cookie = firstCookie(login);
-
     const response = await request(app)
       .post("/recipients/allow")
       .set("Host", "wago.example.com")
       .set("Origin", "https://evil.example.com")
       .set("Cookie", cookie)
       .send({ phone: "6281234567890" });
-
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({
-      success: false,
-      error: "INVALID_ORIGIN",
-      message: "Cookie-authenticated requests must come from the Wago origin",
-    });
+    expect(response.body).toEqual({ success: false, error: "INVALID_ORIGIN", message: "Cookie-authenticated requests must come from the Wago origin" });
   });
 
   it("accepts cookie-authenticated state changes from the detected Wago origin", async () => {
-    resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
-
-    const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
+    config.adminPassword = productionAdminPassword;
+    const login = await request(app).post("/app/session").send({ password: productionAdminPassword });
     const cookie = firstCookie(login);
-
     const response = await request(app)
       .post("/recipients/allow")
       .set("Host", "wago.example.com")
       .set("Origin", "https://wago.example.com")
       .set("Cookie", cookie)
       .send({ phone: "6281234567890" });
-
     expect(response.status).toBe(201);
   });
 
   it("requires WAGO_ADMIN_PASSWORD for a fresh production dashboard", async () => {
     config.nodeEnv = "production";
-    config.setupToken = null;
     config.adminPassword = null;
-
     const login = await request(app)
       .post("/app/session")
       .set("Host", "wago.example.com")
@@ -325,22 +244,14 @@ describe("app", () => {
       .set("Host", "wago.example.com")
       .set("Origin", "https://wago.example.com")
       .send({ apiKey: pairingCandidate });
-    expect(response.status).toBe(403);
-    expect(response.body).toEqual({
-      success: false,
-      error: "ADMIN_PASSWORD_REQUIRED",
-      message: "Configure WAGO_ADMIN_PASSWORD and sign in to the dashboard before first pairing.",
-    });
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ success: false, error: "ADMIN_PASSWORD_REQUIRED", message: "Configure WAGO_ADMIN_PASSWORD before first pairing." });
   });
 
   it("rejects bootstrap after an API key exists", async () => {
     resetAccessStateForTest({ apiKey: "existing-key", apiKeySource: "env" });
     const response = await request(app).post("/app/bootstrap").send({ apiKey: pairingCandidate });
     expect(response.status).toBe(409);
-    expect(response.body).toEqual({
-      success: false,
-      error: "APP_ALREADY_INITIALIZED",
-      message: "This app already has a machine API key. Sign in to the dashboard with the configured admin credential.",
-    });
+    expect(response.body).toEqual({ success: false, error: "APP_ALREADY_INITIALIZED", message: "This app already has a machine API key. Sign in to the dashboard with the configured admin credential." });
   });
 });
