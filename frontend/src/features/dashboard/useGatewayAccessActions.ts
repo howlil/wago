@@ -44,7 +44,8 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     if (!candidate) {
       setNotice({
         type: "error",
-        message: snapshot.dashboardAuthMode === "password" ? "Enter the admin password first." : "Enter the API key first.",
+        message:
+          snapshot.dashboardAuthMode === "password" ? "Enter the admin password first." : "Enter the API key first.",
       });
       return;
     }
