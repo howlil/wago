@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useGatewaySnapshotState } from "./useGatewaySnapshotState.js";
-import { useWhatsAppSnapshotState } from "./useWhatsAppSnapshotState.js";
+import { useGatewaySnapshotState } from "../gateway/useGatewaySnapshotState.js";
+import { useWhatsAppSnapshotState } from "../whatsapp/useWhatsAppSnapshotState.js";
 
 type DashboardStatus = ReturnType<typeof useWhatsAppSnapshotState>["status"];
 
