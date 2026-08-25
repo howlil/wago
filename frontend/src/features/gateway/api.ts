@@ -1,5 +1,7 @@
 import { ApiError, requestJson } from "../../shared/api/client.js";
 
+export type DashboardAuthMode = "password" | "legacy_api_key" | "unconfigured";
+
 export type AppInfoResponse = {
   success: true;
   appId: string;
@@ -7,6 +9,8 @@ export type AppInfoResponse = {
   apiKeyConfigured: boolean;
   apiKeySource: "env" | "generated" | "unset";
   authenticated: boolean;
+  adminPasswordConfigured: boolean;
+  dashboardAuthMode: DashboardAuthMode;
   credentialSetupRequired: boolean;
   setupRequired: boolean;
   setupCodeRequired?: boolean;
@@ -19,7 +23,7 @@ export type BootstrapAppResponse = {
   appId: string;
   apiKey: string;
   recovered: boolean;
-  sessionExpiresAt: string;
+  sessionExpiresAt?: string;
   message: string;
 };
 
@@ -88,11 +92,12 @@ export function bootstrapApp(candidate: string, setupCode?: string): Promise<Boo
   });
 }
 
-export function createBrowserSession(apiKey: string): Promise<BrowserSessionResponse> {
+export function createBrowserSession(credential: string, mode: DashboardAuthMode): Promise<BrowserSessionResponse> {
+  const body = mode === "legacy_api_key" ? { apiKey: credential } : { password: credential };
   return requestJson<BrowserSessionResponse>("/app/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ apiKey }),
+    body: JSON.stringify(body),
   });
 }
 
