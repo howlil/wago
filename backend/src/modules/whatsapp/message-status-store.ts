@@ -34,7 +34,6 @@ function canTransition(from: MessageDeliveryStatus, to: MessageDeliveryStatus): 
     return from === "pending" || from === "accepted";
   }
 
-  if (from === "rejected") return false;
   return successRank[to] > successRank[from];
 }
 
