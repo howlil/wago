@@ -68,13 +68,22 @@ export function createMessageRouter(messageService: MessageService) {
               description: "WhatsApp is not connected. Reconnect the session before sending again.",
               metadata: { targetPhone: to },
             });
-          } else if (error.code === "PHONE_NOT_ON_WHATSAPP") {
+          } else if (error.code === "RECIPIENT_NOT_ON_WHATSAPP") {
             void recordActivity({
               level: "warning",
               category: "messaging",
               code: "message.phone_not_registered",
               title: "Recipient not found on WhatsApp",
               description: "WhatsApp reported that the destination number is not registered.",
+              metadata: { targetPhone: to },
+            });
+          } else if (error.code === "RECIPIENT_LOOKUP_FAILED") {
+            void recordActivity({
+              level: "error",
+              category: "messaging",
+              code: "message.recipient_lookup_failed",
+              title: "Recipient lookup failed",
+              description: "WhatsApp could not resolve the destination before sending.",
               metadata: { targetPhone: to },
             });
           } else if (error.code === "REACHOUT_RESTRICTED") {
