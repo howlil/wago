@@ -55,6 +55,26 @@ describe("delivery webhook signing and attempts", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ["accepted", "message.server_accepted"],
+    ["delivered", "message.delivered"],
+    ["read", "message.read"],
+    ["rejected", "message.rejected"],
+  ] as const)("maps %s status to %s event", (status, event) => {
+    expect(
+      createMessageDeliveryWebhookEnvelope(
+        { messageId: "message-2", status },
+        {
+          createDeliveryId: () => "delivery-2",
+          now: () => new Date("2026-08-12T14:00:00.000Z"),
+        },
+      ),
+    ).toMatchObject({
+      event,
+      data: { messageId: "message-2", status },
+    });
+  });
+
   it("classifies retryable HTTP failures without retrying in the request sender", async () => {
     const sender = createWebhookAttemptSender({
       url: "https://consumer.example/webhooks/wago",
