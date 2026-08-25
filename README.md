@@ -1,7 +1,6 @@
 # Wago
 
 [![CI](https://github.com/howlil/wago/actions/workflows/ci.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/ci.yml)
-[![Docs CI](https://github.com/howlil/wago/actions/workflows/docs-ci.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/docs-ci.yml)
 [![CodeQL](https://github.com/howlil/wago/actions/workflows/codeql.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/codeql.yml)
 [![Container](https://github.com/howlil/wago/actions/workflows/release-container.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/release-container.yml)
 [![License](https://img.shields.io/github/license/howlil/wago)](LICENSE)
@@ -18,9 +17,10 @@ Wago is intentionally narrow. It is designed for developers and self-hosters who
 Current capabilities include:
 
 - one WhatsApp account per Wago instance
-- one-time first-run setup-code authorization or an optional deployment-managed `API_KEY`
-- separate HttpOnly dashboard sessions and machine Bearer credentials
-- API-key rotation and browser-session revocation
+- separate admin-password dashboard authentication and machine Bearer API credentials
+- opaque HttpOnly dashboard sessions with revocation
+- generated or deployment-managed machine API keys
+- API-key rotation independent from normal dashboard sign-in
 - QR pairing, reconnect handling, terminal-session invalidation, and explicit rebind
 - recipient allow and opt-out controls
 - protected outbound text messaging with idempotency and local guardrails
@@ -35,24 +35,29 @@ Current capabilities include:
 
 Wago intentionally does **not** provide bulk campaigns, scraping, multi-session/multi-tenant behavior, anti-detection features, restriction bypassing, message-history persistence, inbound messaging APIs, media, or groups.
 
-## Architecture
+## Authentication model
+
+Wago deliberately separates human and machine credentials:
 
 ```text
+Human operator
+    |
+    | WAGO_ADMIN_PASSWORD
+    v
+Wago dashboard
+    |
+    | HttpOnly wago_session
+    v
+Protected dashboard actions
+
 Application backend
-      |
-      | Authorization: Bearer <WAGO_API_KEY>
-      v
-     Wago
-  /        \
-SQLite    Baileys
-  |          |
-  |          v
-  |      WhatsApp Web
-  v
-/app/data
+    |
+    | Authorization: Bearer <WAGO_API_KEY>
+    v
+Wago HTTP API
 ```
 
-Keep the Wago API key on the **server side** of the application integrating Wago. Do not embed it in a public browser bundle.
+The admin password is a deployment secret used to create browser sessions. The API key is a machine credential for external server-to-server clients. Do not embed either one in a public browser bundle.
 
 Durable state lives under one directory:
 
@@ -69,35 +74,38 @@ Wago remains single-account and single-active-instance. Never run two active Wag
 
 Requirements: Docker Engine, Docker Compose v2, and an HTTPS reverse proxy/tunnel/PaaS route when Wago is exposed outside localhost.
 
-### Option A — generated one-time setup code
+### Default — admin password + generated machine API key
 
-A fresh production deployment needs no setup environment variable:
+Choose the dashboard password as a deployment secret before starting Wago:
 
 ```bash
 git clone https://github.com/howlil/wago.git
 cd wago
+export WAGO_ADMIN_PASSWORD="$(openssl rand -base64 32)"
 docker compose pull
 docker compose up -d
 curl http://127.0.0.1:3000/health
-docker compose logs wago | grep "first-run setup code"
 ```
 
-Open the dashboard through your HTTPS route and click **Pair WhatsApp**. Enter the latest one-time setup code from the deployment/container logs. Wago validates same-origin plus possession of that code, generates the machine API key, stores only its SHA-256 hash in SQLite, invalidates the setup code, creates a separate browser session, and then starts WhatsApp pairing.
+Open the dashboard through your HTTPS route and sign in with `WAGO_ADMIN_PASSWORD`. The backend exchanges the password for an opaque HttpOnly browser session; the password is not persisted into SQLite or browser storage.
 
-Save the generated API key when it is shown. The raw generated key is not persisted by Wago. If Wago restarts before initialization completes, use the newest setup code from the logs because the previous generated code is no longer valid.
+Click **Pair WhatsApp**. Because the dashboard session is already authenticated, Wago generates the machine API key, persists only its SHA-256 hash, shows the raw key once for you to save in your application/secret manager, and starts WhatsApp QR pairing.
 
-`SETUP_TOKEN` remains supported only as a temporary compatibility override for older deployments. New deployments do not need it.
+There is no normal first-run requirement to retrieve a secret from deployment logs.
 
-### Option B — pre-provisioned API key
+`SETUP_TOKEN` remains supported only as a compatibility path for older deployment automation. Wago no longer generates a random first-run setup code or prints one to startup logs.
+
+### Optional — pre-provisioned machine API key
 
 Use this when your deployment platform or secret manager owns the machine credential:
 
 ```bash
+export WAGO_ADMIN_PASSWORD="$(openssl rand -base64 32)"
 export API_KEY="$(openssl rand -hex 32)"
 docker compose up -d
 ```
 
-An environment-managed API key is not copied into SQLite and cannot be rotated from the dashboard; rotate it in the deployment secret manager instead. When `API_KEY` exists, Wago does not create a first-run setup code.
+An environment-managed API key is not copied into SQLite and cannot be rotated from the dashboard; rotate it in the deployment secret manager instead. `WAGO_ADMIN_PASSWORD` still owns dashboard sign-in.
 
 ## Production storage is mandatory
 
@@ -115,21 +123,31 @@ Never use `docker compose down -v` for a normal upgrade; `-v` removes persistent
 
 ## Browser and API authentication
 
-The dashboard and external application API use different credential forms:
+The dashboard and external application API use different credentials:
 
+- human operators use `WAGO_ADMIN_PASSWORD`
+- `POST /app/session` exchanges that password for an opaque HttpOnly `wago_session` cookie
 - external applications use `Authorization: Bearer <API_KEY>`
-- the dashboard exchanges a valid API key for an opaque HttpOnly `wago_session` cookie
 - generated API keys are stored as hashes only
-- rotating a generated API key revokes other dashboard sessions while preserving the initiating recovery session
+- rotating a generated API key revokes other dashboard sessions while preserving the initiating session
 - `POST /app/session/logout-all` revokes every dashboard session without changing WhatsApp auth
 
-Production first-run bootstrap requires same-origin HTTPS plus possession of the current one-time setup code when no API credential exists yet. The generated setup code is printed once to deployment logs, stored only as a SHA-256 hash in SQLite, and invalidated after successful initialization.
+Production dashboard sign-in and state-changing cookie requests enforce same-origin checks. First machine-key bootstrap also requires an authenticated browser session in production.
+
+For upgrade compatibility, an already-initialized instance that does not yet have `WAGO_ADMIN_PASSWORD` can still exchange its existing API key for a browser session. Configure `WAGO_ADMIN_PASSWORD` on the next deployment to remove that legacy coupling.
 
 Wago does not expose a configurable browser CORS allowlist. External integrations should normally call Wago from their backend.
 
 ## Pairing
 
-On a fresh gateway, click **Pair WhatsApp**, enter the one-time setup code from deployment logs, save the generated API key, and scan the QR from **WhatsApp → Linked devices → Link a device**. After the gateway is initialized, later pairing/rebind operations use the authenticated browser session and do not require the setup code again.
+On a fresh gateway:
+
+1. sign in with `WAGO_ADMIN_PASSWORD`
+2. click **Pair WhatsApp**
+3. save the generated machine API key when it is shown
+4. scan the QR from **WhatsApp → Linked devices → Link a device**
+
+Later pairing/rebind operations use the authenticated browser session. The machine API key is not required for normal dashboard sign-in.
 
 Before creating a socket, Wago attempts to resolve the current WhatsApp Web version through Baileys. If that lookup fails, it continues with the Baileys bundled/default version rather than hard-coding a deployment version.
 
@@ -195,9 +213,9 @@ Wago deliberately excludes message text, API credentials, and recipient phone/JI
 | --- | --- | --- | --- |
 | `GET` | `/health` | Public | HTTP process liveness |
 | `GET` | `/ready` | Public | Operational `ok` / `degraded` / `not_ready` snapshot |
-| `GET` | `/app/info` | Public | Setup, credential-source, and request-auth state |
-| `POST` | `/app/bootstrap` | First run | Same-origin + one-time setup-code authorized initial credential setup |
-| `POST` | `/app/session` | API key | Exchange machine key for dashboard session |
+| `GET` | `/app/info` | Public | Dashboard-auth mode, API credential source, and request-auth state |
+| `POST` | `/app/session` | Admin password | Exchange the human credential for a browser session; legacy API-key fallback only on upgraded instances without an admin password |
+| `POST` | `/app/bootstrap` | Browser session | Create the first generated machine API key; legacy `SETUP_TOKEN` path retained for compatibility |
 | `POST` | `/app/api-key/rotate` | Browser session | Rotate generated machine API key |
 | `POST` | `/app/session/logout` | Browser session | End current dashboard session |
 | `POST` | `/app/session/logout-all` | Browser session | Revoke every dashboard session |
@@ -239,9 +257,9 @@ These are Wago defensive defaults, **not** official WhatsApp safe limits or anti
 
 ## Persistence, backup, and restore
 
-`wago.db` contains gateway settings, generated API-key hash, an active one-time setup-code hash only while first-run initialization is pending, browser sessions, WhatsApp binding metadata, recipient state, outbound policy state, webhook queue/settings, instance lease, migrations, and bounded structured audit events.
+`wago.db` contains gateway settings, generated API-key hash, browser sessions, WhatsApp binding metadata, recipient state, outbound policy state, webhook queue/settings, instance lease, migrations, and bounded structured audit events.
 
-Message bodies, current QR values, reconnect state, account-health cache, and recent message-status cache are not persisted as durable application history. The plaintext generated setup code is also not stored in SQLite or browser storage; it is emitted only to the startup deployment log for operator use.
+Message bodies, current QR values, reconnect state, account-health cache, recent message-status cache, and `WAGO_ADMIN_PASSWORD` are not persisted as durable application history.
 
 For filesystem backup, stop Wago cleanly and capture the entire `/app/data` volume as one secret-bearing snapshot. Do not copy only `wago.db` from a live WAL-mode database. Backups contain WhatsApp credentials and webhook signing material; protect them accordingly.
 
@@ -266,7 +284,6 @@ pnpm install --frozen-lockfile
 pnpm check
 pnpm test
 pnpm build
-pnpm build:docs
 ```
 
 Useful local commands:
@@ -281,7 +298,7 @@ pnpm --dir docs dev
 
 Read [SECURITY.md](SECURITY.md) before reporting a vulnerability and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
-Never publish live API keys, active one-time setup codes, legacy setup-token overrides, webhook signing secrets, auth cookies, QR payloads, `/app/data` backups, Baileys credentials, full phone/JID identifiers, message content, or raw unredacted production logs.
+Never publish live admin passwords, API keys, legacy setup-token overrides, webhook signing secrets, auth cookies, QR payloads, `/app/data` backups, Baileys credentials, full phone/JID identifiers, message content, or raw unredacted production logs.
 
 ## License
 
