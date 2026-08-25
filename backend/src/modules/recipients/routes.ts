@@ -41,36 +41,24 @@ recipientRouter.post(
       });
     }
 
-    try {
-      const recipient = await allowRecipient(phone, typeof label === "string" ? label : undefined);
+    const recipient = await allowRecipient(phone, typeof label === "string" ? label : undefined);
 
-      void recordActivity({
-        level: "success",
-        category: "recipient",
-        code: "recipient.allowed",
-        title: "Recipient allowed",
-        description: "This recipient can now receive outbound messages from the gateway.",
-        metadata: {
-          recipientJid: recipient.jid,
-          label: recipient.label ?? null,
-        },
-      });
+    void recordActivity({
+      level: "success",
+      category: "recipient",
+      code: "recipient.allowed",
+      title: "Recipient allowed",
+      description: "This recipient can now receive outbound messages from the gateway.",
+      metadata: {
+        recipientJid: recipient.jid,
+        label: recipient.label ?? null,
+      },
+    });
 
-      return res.status(201).json({
-        success: true,
-        recipient,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("Phone number")) {
-        return res.status(400).json({
-          success: false,
-          error: "INVALID_PHONE",
-          message: error.message,
-        });
-      }
-
-      throw error;
-    }
+    return res.status(201).json({
+      success: true,
+      recipient,
+    });
   }),
 );
 
@@ -88,35 +76,23 @@ recipientRouter.post(
       });
     }
 
-    try {
-      const recipient = await optOutRecipient(phone);
+    const recipient = await optOutRecipient(phone);
 
-      void recordActivity({
-        level: "warning",
-        category: "recipient",
-        code: "recipient.opted_out",
-        title: "Recipient opted out",
-        description: "Outbound messages to this recipient are blocked until permission is explicitly restored.",
-        metadata: {
-          recipientJid: recipient.jid,
-          label: recipient.label ?? null,
-        },
-      });
+    void recordActivity({
+      level: "warning",
+      category: "recipient",
+      code: "recipient.opted_out",
+      title: "Recipient opted out",
+      description: "Outbound messages to this recipient are blocked until permission is explicitly restored.",
+      metadata: {
+        recipientJid: recipient.jid,
+        label: recipient.label ?? null,
+      },
+    });
 
-      return res.json({
-        success: true,
-        recipient,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("Phone number")) {
-        return res.status(400).json({
-          success: false,
-          error: "INVALID_PHONE",
-          message: error.message,
-        });
-      }
-
-      throw error;
-    }
+    return res.json({
+      success: true,
+      recipient,
+    });
   }),
 );
