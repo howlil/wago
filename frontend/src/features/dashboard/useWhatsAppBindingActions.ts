@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useState } from "react";
+import { ApiError } from "../../shared/api/client.js";
 import type { Notice } from "../../shared/ui/feedback.js";
 import { bootstrapApp, createApiKeyCandidate } from "../gateway/api.js";
 import { pairWhatsApp, rebindWhatsApp } from "../whatsapp/api.js";
@@ -12,6 +13,10 @@ type WhatsAppBindingActionsOptions = {
   apiKeyInput: string;
   setApiKeyInput: Dispatch<SetStateAction<string>>;
 };
+
+function apiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError || error instanceof Error ? error.message : fallback;
+}
 
 export function useWhatsAppBindingActions({
   snapshot,
@@ -46,20 +51,13 @@ export function useWhatsAppBindingActions({
         const candidate = createApiKeyCandidate();
         try {
           const result = await bootstrapApp(candidate, setupCode);
-          if (!result.success) {
-            if (setupCode) setSetupCodeError(result.message);
-            else setNotice({ type: "error", message: result.message });
-            return false;
-          }
-
           setApiKeyInput(result.apiKey);
           snapshot.applyBootstrap(result);
           setSetupCodeInput("");
           setSetupCodeError(null);
           setIsFirstRunSetupDialogOpen(false);
         } catch (error) {
-          const apiError = error as { message?: string; error?: string };
-          if (apiError.error === "APP_ALREADY_INITIALIZED") {
+          if (error instanceof ApiError && error.code === "APP_ALREADY_INITIALIZED") {
             const info = await snapshot.loadAppInfo().catch(() => null);
             if (!info?.authenticated) {
               setNotice({
@@ -72,7 +70,7 @@ export function useWhatsAppBindingActions({
             setSetupCodeError(null);
             setIsFirstRunSetupDialogOpen(false);
           } else {
-            const message = apiError.message ?? "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.";
+            const message = apiErrorMessage(error, "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely.");
             if (setupCode) setSetupCodeError(message);
             else setNotice({ type: "error", message });
             return false;
@@ -81,10 +79,6 @@ export function useWhatsAppBindingActions({
       }
 
       const result = await pairWhatsApp();
-      if (!result.success) {
-        setNotice({ type: "error", message: result.message });
-        return false;
-      }
       snapshot.updateStatus(result.status);
       setNotice({
         type: "success",
@@ -98,8 +92,7 @@ export function useWhatsAppBindingActions({
       await snapshot.refresh({ showLoading: true });
       return true;
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
-      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to start pairing" });
+      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to start pairing") });
       return false;
     } finally {
       setIsPairing(false);
@@ -144,19 +137,14 @@ export function useWhatsAppBindingActions({
     setNotice(null);
     try {
       const result = await rebindWhatsApp();
-      if (!result.success) {
-        setNotice({ type: "error", message: result.message });
-        return;
-      }
       snapshot.resetBinding(result.status);
       setNotice({ type: "success", message: "Previous account unbound. Scan the new QR when it appears." });
       setIsRebindDialogOpen(false);
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
       setNotice({
         type: "error",
-        message: apiError.message ?? apiError.error ?? "Failed to start a new WhatsApp pairing session",
+        message: apiErrorMessage(error, "Failed to start a new WhatsApp pairing session"),
       });
     } finally {
       setIsRebinding(false);
