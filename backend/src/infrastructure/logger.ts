@@ -1,6 +1,7 @@
 import pino from "pino";
 import { config } from "../config/index.js";
 
+const REDACTED = "[REDACTED]";
 const sensitiveFieldNames = new Set([
   "apiKey",
   "authorization",
@@ -16,27 +17,20 @@ const sensitiveFieldNames = new Set([
   "token",
 ]);
 
+const structuredRedactionPaths = [
+  "req.headers.authorization",
+  "req.headers.cookie",
+  "headers.authorization",
+  "headers.cookie",
+  ...sensitiveFieldNames,
+];
+
 export const logger = pino({
   enabled: config.nodeEnv !== "test" || process.env.ENABLE_TEST_LOGS === "true",
   level: config.logLevel,
   redact: {
-    paths: [
-      "req.headers.authorization",
-      "req.headers.cookie",
-      "headers.authorization",
-      "headers.cookie",
-      "apiKey",
-      "cookie",
-      "authorization",
-      "qr",
-      "text",
-      "message",
-      "authDirectory",
-      "authPath",
-      "dataDirectory",
-      "settingsFile",
-    ],
-    censor: "[REDACTED]",
+    paths: structuredRedactionPaths,
+    censor: REDACTED,
   },
 });
 
@@ -76,7 +70,7 @@ export function redactLogFields<T>(input: T): T {
 
   for (const [key, value] of Object.entries(input)) {
     if (sensitiveFieldNames.has(key)) {
-      output[key] = "[REDACTED]";
+      output[key] = REDACTED;
       continue;
     }
 
