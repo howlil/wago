@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useState } from "react";
+import { ApiError } from "../../shared/api/client.js";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import type { Notice } from "../../shared/ui/feedback.js";
 import { createBrowserSession, logoutAllBrowserSessions, logoutBrowserSession, rotateApiKey } from "../gateway/api.js";
@@ -11,6 +12,10 @@ type GatewayAccessActionsOptions = {
   snapshot: DashboardSnapshot;
   setNotice: Dispatch<SetStateAction<Notice>>;
 };
+
+function apiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError || error instanceof Error ? error.message : fallback;
+}
 
 export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessActionsOptions) {
   const [apiKeyInput, setApiKeyInput] = useState("");
@@ -33,11 +38,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     setIsSigningIn(true);
     setNotice(null);
     try {
-      const result = await createBrowserSession(candidate);
-      if (!result.success) {
-        setNotice({ type: "error", message: result.message });
-        return;
-      }
+      await createBrowserSession(candidate);
       setApiKeyInput("");
       setShowApiKey(false);
       const info = await snapshot.loadAppInfo();
@@ -48,8 +49,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
       setNotice({ type: "success", message: "Signed in. The API key was not stored in this browser." });
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
-      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to sign in" });
+      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to sign in") });
     } finally {
       setIsSigningIn(false);
     }
@@ -66,8 +66,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
       await snapshot.refresh({ showLoading: true });
       setNotice({ type: "success", message: "Signed out from this browser. External API clients are unaffected." });
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
-      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to sign out" });
+      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to sign out") });
     } finally {
       setIsSigningOut(false);
     }
@@ -87,8 +86,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
         message: "All dashboard sessions were revoked. Machine API clients and WhatsApp auth are unchanged.",
       });
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
-      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to sign out all sessions" });
+      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to sign out all sessions") });
     } finally {
       setIsSigningOutAll(false);
     }
@@ -103,20 +101,15 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     setNotice(null);
     try {
       const result = await rotateApiKey();
-      if (!result.success) {
-        setNotice({ type: "error", message: result.message });
-        return;
-      }
       setApiKeyInput(result.apiKey);
       setShowApiKey(true);
       setIsApiKeyRotationDialogOpen(false);
       setNotice({
         type: "success",
-        message: `API key rotated and ${result.revokedBrowserSessions} other dashboard session(s) revoked. Save the new key now.`,
+        message: `API key rotated and ${result.revokedBrowserSessions ?? 0} other dashboard session(s) revoked. Save the new key now.`,
       });
     } catch (error) {
-      const apiError = error as { message?: string; error?: string };
-      setNotice({ type: "error", message: apiError.message ?? apiError.error ?? "Failed to rotate API key" });
+      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to rotate API key") });
     } finally {
       setIsRotatingApiKey(false);
     }
