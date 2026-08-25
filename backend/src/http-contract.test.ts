@@ -49,14 +49,14 @@ describe("HTTP message contracts", () => {
     whatsappMock.sendTextMessage.mockResolvedValue({ messageId: "message-1", status: "pending" });
   });
 
-  it("returns the stable unauthorized contract for an invalid API key", async () => {
+  it("returns the stable unauthorized contract for invalid credentials", async () => {
     const response = await request(app)
       .post("/messages/send")
       .set("Authorization", "Bearer wrong-key")
       .send({ to: "6281234567890", text: "Hello" });
 
     expect(response.status).toBe(401);
-    expect(response.body).toEqual({ success: false, error: "UNAUTHORIZED", message: "Invalid API key" });
+    expect(response.body).toEqual({ success: false, error: "UNAUTHORIZED", message: "Invalid credentials" });
     expect(whatsappMock.sendTextMessage).not.toHaveBeenCalled();
   });
 
@@ -125,8 +125,8 @@ describe("HTTP message contracts", () => {
     expect(response.status).toBe(500);
     expect(response.body).toEqual({
       success: false,
-      error: "SEND_MESSAGE_FAILED",
-      message: "Failed to send WhatsApp message",
+      error: "INTERNAL_ERROR",
+      message: "Internal server error",
     });
     expect(JSON.stringify(response.body)).not.toContain("database password");
   });
