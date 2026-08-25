@@ -17,11 +17,7 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError || error instanceof Error ? error.message : fallback;
 }
 
-export function useWhatsAppBindingActions({
-  snapshot,
-  setNotice,
-  setApiKeyInput,
-}: WhatsAppBindingActionsOptions) {
+export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput }: WhatsAppBindingActionsOptions) {
   const [isRebinding, setIsRebinding] = useState(false);
   const [isPairing, setIsPairing] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
