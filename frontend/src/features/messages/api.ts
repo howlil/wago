@@ -10,7 +10,7 @@ export type MessageStatusResponse = {
   success: true;
   id: string;
   to: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "delivered" | "read" | "rejected";
   error?: string;
   message?: string;
   updatedAt: string;
