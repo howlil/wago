@@ -126,8 +126,7 @@ export function getAccessSnapshot(): AccessSnapshot {
     credentialSetupRequired: !apiKeyConfigured,
     setupCodeRequired,
     webBootstrapEnabled:
-      !apiKeyConfigured &&
-      (config.nodeEnv !== "production" || Boolean(config.adminPassword) || setupCodeRequired),
+      !apiKeyConfigured && (config.nodeEnv !== "production" || Boolean(config.adminPassword) || setupCodeRequired),
   };
 }
 
