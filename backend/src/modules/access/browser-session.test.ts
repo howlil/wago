@@ -23,6 +23,7 @@ describe("browser session authentication", () => {
     resetAccessStateForTest();
     resetBrowserSessionsForTest();
     config.setupToken = null;
+    config.adminPassword = null;
     config.nodeEnv = "test";
     config.requestLogging = false;
   });
