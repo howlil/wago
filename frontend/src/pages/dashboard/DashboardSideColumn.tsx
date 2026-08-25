@@ -2,9 +2,7 @@ import type { DashboardController } from "../../features/dashboard/useDashboardC
 import { GatewayCredentialsCard } from "../../features/gateway/GatewayCredentialsCard.js";
 import { AccountHealthCard } from "../../features/whatsapp/AccountHealthCard.js";
 
-type DashboardSideColumnProps = {
-  dashboard: DashboardController;
-};
+type DashboardSideColumnProps = { dashboard: DashboardController };
 
 export function DashboardSideColumn({ dashboard }: DashboardSideColumnProps) {
   return (
@@ -13,7 +11,7 @@ export function DashboardSideColumn({ dashboard }: DashboardSideColumnProps) {
         appId={dashboard.appId}
         apiKeyConfigured={dashboard.apiKeyConfigured}
         apiKeySource={dashboard.apiKeySource}
-        dashboardAuthMode={dashboard.dashboardAuthMode}
+        adminPasswordConfigured={dashboard.adminPasswordConfigured}
         signInCredential={dashboard.signInCredential}
         apiKeyInput={dashboard.apiKeyInput}
         credentialSetupRequired={dashboard.credentialSetupRequired}

@@ -6,7 +6,7 @@ const firstRunProps = {
   appId: "wa-gateway-test",
   apiKeyConfigured: false,
   apiKeySource: "unset" as const,
-  dashboardAuthMode: "password" as const,
+  adminPasswordConfigured: true,
   signInCredential: "",
   apiKeyInput: "",
   credentialSetupRequired: true,
@@ -32,9 +32,7 @@ const firstRunProps = {
 describe("first-run gateway credentials", () => {
   it("shows admin-password access separately from the generated machine API key", () => {
     render(<GatewayCredentialsCard {...firstRunProps} />);
-
     expect(screen.getByLabelText(/admin password/i)).toBeTruthy();
-    expect(screen.queryByLabelText(/deployment setup token/i)).toBeNull();
     expect(screen.getByLabelText(/machine api key/i).getAttribute("placeholder")).toBe("Generated after first pairing");
   });
 });

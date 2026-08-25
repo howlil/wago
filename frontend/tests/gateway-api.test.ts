@@ -6,12 +6,11 @@ describe("gateway API", () => {
     window.sessionStorage.clear();
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ success: true, authenticated: true, message: "Signed in" }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }),
+      vi.fn(async () =>
+        new Response(JSON.stringify({ success: true, authenticated: true, message: "Signed in" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
       ),
     );
   });
@@ -23,18 +22,8 @@ describe("gateway API", () => {
   });
 
   it("exchanges an admin password for an HttpOnly browser session without persisting it in browser storage", async () => {
-    window.sessionStorage.setItem("wago.apiKey", "legacy-secret");
-
     const { createBrowserSession } = await import("../src/features/gateway/api.js");
-
-    expect(window.sessionStorage.getItem("wago.apiKey")).toBe("legacy-secret");
-
-    const { clearLegacyApiKeySessionStorage } = await import("../src/features/gateway/legacy-session.js");
-    clearLegacyApiKeySessionStorage();
-
-    expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
-
-    await createBrowserSession("admin-test-secret", "password");
+    await createBrowserSession("admin-test-secret");
 
     expect(fetch).toHaveBeenCalledWith("/app/session", {
       method: "POST",
@@ -42,23 +31,20 @@ describe("gateway API", () => {
       body: JSON.stringify({ password: "admin-test-secret" }),
       credentials: "include",
     });
-    expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
+    expect(window.sessionStorage.length).toBe(0);
   });
 
   it("rejects a malformed JSON readiness response even when 503 is allowed", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ error: "upstream_unavailable" }), {
-            status: 503,
-            headers: { "Content-Type": "application/json" },
-          }),
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: "upstream_unavailable" }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
       ),
     );
-
     const { getReadiness } = await import("../src/features/gateway/api.js");
-
     await expect(getReadiness()).rejects.toMatchObject({
       success: false,
       status: 0,

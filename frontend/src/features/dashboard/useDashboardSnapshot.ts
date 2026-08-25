@@ -10,14 +10,12 @@ const visibleRefreshIntervalsMs: Record<DashboardStatus, number> = {
   connected: 30000,
   disconnected: 15000,
 };
-
 const hiddenRefreshIntervalMs = 60000;
 
 export function useDashboardSnapshot() {
   const gateway = useGatewaySnapshotState();
   const whatsapp = useWhatsAppSnapshotState();
   const [isRefreshing, setIsRefreshing] = useState(false);
-
   const isRefreshInFlight = useRef(false);
   const pollTimer = useRef<number | null>(null);
   const { refreshHealth, markHealthError, refreshReadiness, loadAppInfo } = gateway;
@@ -26,29 +24,19 @@ export function useDashboardSnapshot() {
   const refresh = useCallback(
     async (options: { showLoading?: boolean } = {}) => {
       const showLoading = options.showLoading ?? true;
-
-      if (isRefreshInFlight.current) {
-        return;
-      }
-
+      if (isRefreshInFlight.current) return;
       isRefreshInFlight.current = true;
-
-      if (showLoading) {
-        setIsRefreshing(true);
-      }
+      if (showLoading) setIsRefreshing(true);
 
       try {
         const backendHealthy = await refreshHealth();
-
         if (!backendHealthy) {
           clearWhatsAppView();
           return;
         }
-
         void refreshReadiness();
 
         let info: Awaited<ReturnType<typeof loadAppInfo>>;
-
         try {
           info = await loadAppInfo();
         } catch {
@@ -69,10 +57,7 @@ export function useDashboardSnapshot() {
         }
       } finally {
         isRefreshInFlight.current = false;
-
-        if (showLoading) {
-          setIsRefreshing(false);
-        }
+        if (showLoading) setIsRefreshing(false);
       }
     },
     [clearWhatsAppView, loadAppInfo, markHealthError, refreshHealth, refreshReadiness, refreshWhatsAppView],
@@ -89,51 +74,32 @@ export function useDashboardSnapshot() {
     }
 
     function getNextRefreshDelay() {
-      return document.visibilityState === "hidden"
-        ? hiddenRefreshIntervalMs
-        : visibleRefreshIntervalsMs[getCurrentStatus()];
+      return document.visibilityState === "hidden" ? hiddenRefreshIntervalMs : visibleRefreshIntervalsMs[getCurrentStatus()];
     }
 
     function scheduleNextRefresh(delay = getNextRefreshDelay()) {
       clearPollTimer();
       pollTimer.current = window.setTimeout(async () => {
-        if (disposed) {
-          return;
-        }
-
-        if (document.visibilityState === "visible") {
-          await refresh({ showLoading: false });
-        }
-
-        if (!disposed) {
-          scheduleNextRefresh();
-        }
+        if (disposed) return;
+        if (document.visibilityState === "visible") await refresh({ showLoading: false });
+        if (!disposed) scheduleNextRefresh();
       }, delay);
     }
 
     function handleVisibilityChange() {
-      if (disposed) {
-        return;
-      }
-
+      if (disposed) return;
       clearPollTimer();
-
       if (document.visibilityState === "visible") {
         void refresh({ showLoading: false }).finally(() => {
-          if (!disposed) {
-            scheduleNextRefresh();
-          }
+          if (!disposed) scheduleNextRefresh();
         });
         return;
       }
-
       scheduleNextRefresh(hiddenRefreshIntervalMs);
     }
 
     void refresh({ showLoading: true }).finally(() => {
-      if (!disposed) {
-        scheduleNextRefresh();
-      }
+      if (!disposed) scheduleNextRefresh();
     });
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -151,10 +117,7 @@ export function useDashboardSnapshot() {
     apiKeyConfigured: gateway.apiKeyConfigured,
     apiKeySource: gateway.apiKeySource,
     adminPasswordConfigured: gateway.adminPasswordConfigured,
-    dashboardAuthMode: gateway.dashboardAuthMode,
     credentialSetupRequired: gateway.credentialSetupRequired,
-    setupCodeRequired: gateway.setupCodeRequired,
-    webBootstrapEnabled: gateway.webBootstrapEnabled,
     isAuthenticated: gateway.isAuthenticated,
     status: whatsapp.status,
     binding: whatsapp.binding,

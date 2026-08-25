@@ -1,7 +1,5 @@
 import { ApiError, requestJson } from "../../shared/api/client.js";
 
-export type DashboardAuthMode = "password" | "legacy_api_key" | "unconfigured";
-
 export type AppInfoResponse = {
   success: true;
   appId: string;
@@ -10,12 +8,7 @@ export type AppInfoResponse = {
   apiKeySource: "env" | "generated" | "unset";
   authenticated: boolean;
   adminPasswordConfigured: boolean;
-  dashboardAuthMode: DashboardAuthMode;
   credentialSetupRequired: boolean;
-  setupRequired: boolean;
-  setupCodeRequired?: boolean;
-  setupTokenRequired?: boolean;
-  webBootstrapEnabled?: boolean;
 };
 
 export type BootstrapAppResponse = {
@@ -43,15 +36,10 @@ export type ApiKeyRotationResponse = {
   message: string;
 };
 
-export type HealthResponse = {
-  status: string;
-};
+export type HealthResponse = { status: string };
 
 export type ReadinessLevel = "ok" | "degraded" | "not_ready";
-export type ReadinessCheck = {
-  status: ReadinessLevel;
-  reason?: string;
-};
+export type ReadinessCheck = { status: ReadinessLevel; reason?: string };
 
 export type GatewayReadinessSnapshot = {
   status: ReadinessLevel;
@@ -60,7 +48,6 @@ export type GatewayReadinessSnapshot = {
 
 function isGatewayReadinessSnapshot(value: unknown): value is GatewayReadinessSnapshot {
   if (!value || typeof value !== "object") return false;
-
   const candidate = value as { status?: unknown; checks?: unknown };
   return (
     (candidate.status === "ok" || candidate.status === "degraded" || candidate.status === "not_ready") &&
@@ -81,23 +68,19 @@ export function getAppInfo(): Promise<AppInfoResponse> {
   return requestJson<AppInfoResponse>("/app/info");
 }
 
-export function bootstrapApp(candidate: string, setupCode?: string): Promise<BootstrapAppResponse> {
+export function bootstrapApp(candidate: string): Promise<BootstrapAppResponse> {
   return requestJson<BootstrapAppResponse>("/app/bootstrap", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(setupCode ? { "X-Wago-Setup-Code": setupCode } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ apiKey: candidate }),
   });
 }
 
-export function createBrowserSession(credential: string, mode: DashboardAuthMode): Promise<BrowserSessionResponse> {
-  const body = mode === "legacy_api_key" ? { apiKey: credential } : { password: credential };
+export function createBrowserSession(password: string): Promise<BrowserSessionResponse> {
   return requestJson<BrowserSessionResponse>("/app/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ password }),
   });
 }
 
@@ -119,10 +102,8 @@ export function getHealth(): Promise<HealthResponse> {
 
 export async function getReadiness(): Promise<GatewayReadinessSnapshot> {
   const value = await requestJson<unknown>("/ready", undefined, { allowedStatuses: [503] });
-
   if (!isGatewayReadinessSnapshot(value)) {
     throw new ApiError(0, "INVALID_READINESS_RESPONSE", "Readiness endpoint returned an invalid JSON payload", value);
   }
-
   return value;
 }

@@ -18,10 +18,7 @@ export function useGatewaySnapshotState() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
   const [adminPasswordConfigured, setAdminPasswordConfigured] = useState(false);
-  const [dashboardAuthMode, setDashboardAuthMode] = useState<AppInfoResponse["dashboardAuthMode"]>("unconfigured");
   const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
-  const [setupCodeRequired, setSetupCodeRequired] = useState(false);
-  const [webBootstrapEnabled, setWebBootstrapEnabled] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const isReadinessRefreshInFlight = useRef(false);
@@ -29,17 +26,12 @@ export function useGatewaySnapshotState() {
 
   const loadAppInfo = useCallback(async () => {
     const info = await getAppInfo();
-
     setAppId(info.appId);
     setApiKeyConfigured(info.apiKeyConfigured);
     setApiKeySource(info.apiKeySource);
     setAdminPasswordConfigured(info.adminPasswordConfigured);
-    setDashboardAuthMode(info.dashboardAuthMode);
     setCredentialSetupRequired(info.credentialSetupRequired);
-    setSetupCodeRequired(Boolean(info.setupCodeRequired ?? info.setupTokenRequired));
-    setWebBootstrapEnabled(info.webBootstrapEnabled ?? true);
     setIsAuthenticated(info.authenticated);
-
     return info;
   }, []);
 
@@ -53,11 +45,7 @@ export function useGatewaySnapshotState() {
       const healthResult = await getHealth();
       const backendHealthy = healthResult.status === "ok";
       setHealth(backendHealthy ? "ok" : "error");
-
-      if (!backendHealthy) {
-        invalidateReadiness();
-      }
-
+      if (!backendHealthy) invalidateReadiness();
       return backendHealthy;
     } catch {
       setHealth("error");
@@ -66,26 +54,17 @@ export function useGatewaySnapshotState() {
     }
   }, [invalidateReadiness]);
 
-  const markHealthError = useCallback(() => {
-    setHealth("error");
-  }, []);
+  const markHealthError = useCallback(() => setHealth("error"), []);
 
   const refreshReadiness = useCallback(async () => {
-    if (isReadinessRefreshInFlight.current) {
-      return;
-    }
-
+    if (isReadinessRefreshInFlight.current) return;
     const generation = readinessGeneration.current;
     isReadinessRefreshInFlight.current = true;
     try {
       const nextReadiness = await getReadiness();
-      if (generation === readinessGeneration.current) {
-        setReadiness(nextReadiness);
-      }
+      if (generation === readinessGeneration.current) setReadiness(nextReadiness);
     } catch {
-      if (generation === readinessGeneration.current) {
-        setReadiness(null);
-      }
+      if (generation === readinessGeneration.current) setReadiness(null);
     } finally {
       isReadinessRefreshInFlight.current = false;
     }
@@ -96,7 +75,6 @@ export function useGatewaySnapshotState() {
     setApiKeyConfigured(true);
     setApiKeySource("generated");
     setCredentialSetupRequired(false);
-    setSetupCodeRequired(false);
     setIsAuthenticated(true);
   }, []);
 
@@ -107,10 +85,7 @@ export function useGatewaySnapshotState() {
     apiKeyConfigured,
     apiKeySource,
     adminPasswordConfigured,
-    dashboardAuthMode,
     credentialSetupRequired,
-    setupCodeRequired,
-    webBootstrapEnabled,
     isAuthenticated,
     refreshHealth,
     markHealthError,

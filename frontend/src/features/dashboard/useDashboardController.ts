@@ -10,11 +10,7 @@ export function useDashboardController() {
   const snapshot = useDashboardSnapshot();
   const [notice, setNotice] = useState<Notice>(null);
   const access = useGatewayAccessActions({ snapshot, setNotice });
-  const bindingActions = useWhatsAppBindingActions({
-    snapshot,
-    setNotice,
-    setApiKeyInput: access.setApiKeyInput,
-  });
+  const bindingActions = useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput: access.setApiKeyInput });
   const messaging = useMessageComposer({
     isAuthenticated: snapshot.isAuthenticated,
     status: snapshot.status,
@@ -30,10 +26,7 @@ export function useDashboardController() {
     apiKeyConfigured: snapshot.apiKeyConfigured,
     apiKeySource: snapshot.apiKeySource,
     adminPasswordConfigured: snapshot.adminPasswordConfigured,
-    dashboardAuthMode: snapshot.dashboardAuthMode,
     credentialSetupRequired: snapshot.credentialSetupRequired,
-    setupCodeRequired: snapshot.setupCodeRequired,
-    webBootstrapEnabled: snapshot.webBootstrapEnabled,
     isAuthenticated: snapshot.isAuthenticated,
     status: snapshot.status,
     binding: snapshot.binding,
@@ -70,20 +63,14 @@ export function useDashboardController() {
     isRebinding: bindingActions.isRebinding,
     isPairing: bindingActions.isPairing,
     isRebindDialogOpen: bindingActions.isRebindDialogOpen,
-    isFirstRunSetupDialogOpen: bindingActions.isFirstRunSetupDialogOpen,
-    setupCodeInput: bindingActions.setupCodeInput,
-    setupCodeError: bindingActions.setupCodeError,
     canStartPairing: bindingActions.canStartPairing,
     pairingInProgress: bindingActions.pairingInProgress,
     connectionDescription: bindingActions.connectionDescription,
     pairButtonLabel: bindingActions.pairButtonLabel,
-    setSetupCodeInput: bindingActions.setSetupCodeInput,
     handlePair: bindingActions.handlePair,
-    handleConfirmFirstRunSetup: bindingActions.handleConfirmFirstRunSetup,
     handleRebind: bindingActions.handleRebind,
     openRebindDialog: bindingActions.openRebindDialog,
     closeRebindDialog: bindingActions.closeRebindDialog,
-    closeFirstRunSetupDialog: bindingActions.closeFirstRunSetupDialog,
     phone: messaging.phone,
     message: messaging.message,
     recipientApprovalPhone: messaging.recipientApprovalPhone,
