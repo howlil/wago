@@ -47,26 +47,65 @@ vi.mock("./features/gateway/api.js", () => ({
     message: "App initialized",
   })),
   createApiKeyCandidate: vi.fn(() => generatedApiKey),
-  createBrowserSession: vi.fn(async () => ({ success: true, authenticated: true, expiresAt: "2026-09-12T00:00:00.000Z", message: "Browser session created" })),
+  createBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: true,
+    expiresAt: "2026-09-12T00:00:00.000Z",
+    message: "Browser session created",
+  })),
   getHealth: vi.fn(async () => ({ status: "ok" })),
   getReadiness: vi.fn(async () => ({ status: "ok", checks: {} })),
   logoutBrowserSession: vi.fn(async () => ({ success: true, authenticated: false, message: "Browser session ended" })),
-  logoutAllBrowserSessions: vi.fn(async () => ({ success: true, authenticated: false, message: "All browser sessions ended" })),
-  rotateApiKey: vi.fn(async () => ({ success: true, apiKey: rotatedApiKey, generatedAt: "2026-08-14T00:00:00.000Z", message: "API key rotated" })),
+  logoutAllBrowserSessions: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "All browser sessions ended",
+  })),
+  rotateApiKey: vi.fn(async () => ({
+    success: true,
+    apiKey: rotatedApiKey,
+    generatedAt: "2026-08-14T00:00:00.000Z",
+    message: "API key rotated",
+  })),
 }));
 vi.mock("./features/recipients/api.js", () => ({
-  allowRecipient: vi.fn(async (phone: string) => ({ success: true, recipient: { jid: `${phone}@s.whatsapp.net`, allowed: true, optedOut: false, createdAt: "2026-08-10T00:00:00.000Z", updatedAt: "2026-08-10T00:00:00.000Z" } })),
+  allowRecipient: vi.fn(async (phone: string) => ({
+    success: true,
+    recipient: {
+      jid: `${phone}@s.whatsapp.net`,
+      allowed: true,
+      optedOut: false,
+      createdAt: "2026-08-10T00:00:00.000Z",
+      updatedAt: "2026-08-10T00:00:00.000Z",
+    },
+  })),
   listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
   optOutRecipient: vi.fn(),
 }));
 vi.mock("./features/messages/api.js", () => ({
-  getMessageStatus: vi.fn(async () => ({ success: true, id: "message-1", to: "6281234567890@s.whatsapp.net", status: "pending", updatedAt: "2026-08-10T00:00:00.000Z" })),
+  getMessageStatus: vi.fn(async () => ({
+    success: true,
+    id: "message-1",
+    to: "6281234567890@s.whatsapp.net",
+    status: "pending",
+    updatedAt: "2026-08-10T00:00:00.000Z",
+  })),
   sendMessage: vi.fn(),
 }));
 vi.mock("./features/whatsapp/api.js", () => ({
   getCurrentQr: vi.fn(async () => ({ success: true, qr: null, status: "connected" })),
   getQrImageSvg: vi.fn(async () => "<svg />"),
-  getWhatsAppStatus: vi.fn(async () => ({ success: true, status: "connected", binding: { state: "bound", jid: "6281234567890@s.whatsapp.net", phone: "6281234567890", boundAt: "2026-08-10T00:00:00.000Z" }, accountHealth: { availability: "available" } })),
+  getWhatsAppStatus: vi.fn(async () => ({
+    success: true,
+    status: "connected",
+    binding: {
+      state: "bound",
+      jid: "6281234567890@s.whatsapp.net",
+      phone: "6281234567890",
+      boundAt: "2026-08-10T00:00:00.000Z",
+    },
+    accountHealth: { availability: "available" },
+  })),
   pairWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
   rebindWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
 }));
@@ -142,11 +181,28 @@ describe("dashboard", () => {
   });
 
   it("signs in with the admin password before generating the machine API key and pairing", async () => {
-    const firstRunAuthenticatedInfo = appInfo({ apiKeyConfigured: false, apiKeySource: "unset", authenticated: true, credentialSetupRequired: true });
+    const firstRunAuthenticatedInfo = appInfo({
+      apiKeyConfigured: false,
+      apiKeySource: "unset",
+      authenticated: true,
+      credentialSetupRequired: true,
+    });
     vi.mocked(getAppInfo)
-      .mockResolvedValueOnce(appInfo({ apiKeyConfigured: false, apiKeySource: "unset", authenticated: false, credentialSetupRequired: true }))
+      .mockResolvedValueOnce(
+        appInfo({
+          apiKeyConfigured: false,
+          apiKeySource: "unset",
+          authenticated: false,
+          credentialSetupRequired: true,
+        }),
+      )
       .mockResolvedValue(firstRunAuthenticatedInfo);
-    vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({ success: true, status: "disconnected", binding: { state: "unbound", jid: null, phone: null, boundAt: null }, accountHealth: { availability: "unavailable" } });
+    vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({
+      success: true,
+      status: "disconnected",
+      binding: { state: "unbound", jid: null, phone: null, boundAt: null },
+      accountHealth: { availability: "unavailable" },
+    });
 
     const user = userEvent.setup();
     render(<App />);
@@ -160,11 +216,15 @@ describe("dashboard", () => {
       expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey);
       expect(pairWhatsApp).toHaveBeenCalledTimes(1);
     });
-    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(generatedApiKey);
+    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
+      generatedApiKey,
+    );
   });
 
   it("signs a returning browser in with the admin password", async () => {
-    vi.mocked(getAppInfo).mockResolvedValueOnce(appInfo({ authenticated: false })).mockResolvedValue(appInfo({ authenticated: true }));
+    vi.mocked(getAppInfo)
+      .mockResolvedValueOnce(appInfo({ authenticated: false }))
+      .mockResolvedValue(appInfo({ authenticated: true }));
     const user = userEvent.setup();
     render(<App />);
     const input = await screen.findByLabelText("Admin password", { selector: "input" });
@@ -186,7 +246,9 @@ describe("dashboard", () => {
 
   it("keeps the pair action visible after signing out of the browser session", async () => {
     const user = userEvent.setup();
-    vi.mocked(getAppInfo).mockResolvedValueOnce(appInfo({ authenticated: true })).mockResolvedValueOnce(appInfo({ authenticated: false }));
+    vi.mocked(getAppInfo)
+      .mockResolvedValueOnce(appInfo({ authenticated: true }))
+      .mockResolvedValueOnce(appInfo({ authenticated: false }));
     render(<App />);
     await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
     await waitFor(() => expect(logoutBrowserSession).toHaveBeenCalledTimes(1));
@@ -201,7 +263,9 @@ describe("dashboard", () => {
     expect(rotateApiKey).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /rotate and revoke other sessions/i }));
     await waitFor(() => expect(rotateApiKey).toHaveBeenCalledTimes(1));
-    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(rotatedApiKey);
+    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
+      rotatedApiKey,
+    );
   });
 
   it("shows why pairing is unavailable when the backend is down", async () => {
@@ -212,7 +276,13 @@ describe("dashboard", () => {
 
   it("lets the operator allow and resend a recipient blocked by policy", async () => {
     vi.mocked(sendMessage)
-      .mockRejectedValueOnce(new ApiError(403, "RECIPIENT_NOT_ALLOWED", "Recipient is not allowed for outbound messages", { success: false, error: "RECIPIENT_NOT_ALLOWED", message: "Recipient is not allowed for outbound messages" }))
+      .mockRejectedValueOnce(
+        new ApiError(403, "RECIPIENT_NOT_ALLOWED", "Recipient is not allowed for outbound messages", {
+          success: false,
+          error: "RECIPIENT_NOT_ALLOWED",
+          message: "Recipient is not allowed for outbound messages",
+        }),
+      )
       .mockResolvedValueOnce({ success: true, messageId: "message-1", status: "pending" });
     const user = userEvent.setup();
     render(<App />);
