@@ -36,7 +36,9 @@ describe("browser session authentication", () => {
     expect(getAccessSnapshot().apiKeySource).toBe("generated");
     expect(isApiKeyValid(pairingCandidate)).toBe(true);
     expect((await request(app).get("/recipients").set("Cookie", cookie)).status).toBe(200);
-    expect((await request(app).get("/recipients").set("Cookie", `${config.authCookieName}=${pairingCandidate}`)).status).toBe(401);
+    expect(
+      (await request(app).get("/recipients").set("Cookie", `${config.authCookieName}=${pairingCandidate}`)).status,
+    ).toBe(401);
   });
 
   it("uses the admin password for a browser session without changing Bearer authentication", async () => {
