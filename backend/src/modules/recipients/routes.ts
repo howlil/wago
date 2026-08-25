@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../../http/middleware/async-handler.js";
-import { requireApiKey } from "../../http/middleware/auth.js";
+import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { recordActivity } from "../activity/store.js";
 import { allowRecipient, listRecipients, optOutRecipient } from "./store.js";
 
@@ -8,7 +8,7 @@ export const recipientRouter = Router();
 
 recipientRouter.get(
   "/",
-  requireApiKey,
+  requireAuthenticatedRequest,
   asyncHandler(async (_req, res) => {
     const recipients = await listRecipients();
 
@@ -21,7 +21,7 @@ recipientRouter.get(
 
 recipientRouter.post(
   "/allow",
-  requireApiKey,
+  requireAuthenticatedRequest,
   asyncHandler(async (req, res) => {
     const { phone, label } = req.body as { phone?: unknown; label?: unknown };
 
@@ -64,7 +64,7 @@ recipientRouter.post(
 
 recipientRouter.post(
   "/:phone/opt-out",
-  requireApiKey,
+  requireAuthenticatedRequest,
   asyncHandler(async (req, res) => {
     const phone = req.params.phone;
 
