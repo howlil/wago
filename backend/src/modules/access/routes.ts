@@ -47,7 +47,11 @@ function clearBrowserSessionCookie(res: Response): void {
 
 appRouter.get("/info", (req, res) => {
   const access = getAccessSnapshot();
-  const dashboardAuthMode = config.adminPassword ? "password" : access.apiKeyConfigured ? "legacy_api_key" : "unconfigured";
+  const dashboardAuthMode = config.adminPassword
+    ? "password"
+    : access.apiKeyConfigured
+      ? "legacy_api_key"
+      : "unconfigured";
 
   if (req.header("cookie")?.includes(`${config.legacyAuthCookieName}=`)) clearLegacyApiKeyCookie(res);
 
@@ -180,7 +184,8 @@ appRouter.post("/session", (req, res) => {
       return res.status(400).json({
         success: false,
         error: "INVALID_API_KEY",
-        message: "This upgraded gateway has no admin password yet; provide the existing API key once for legacy sign-in.",
+        message:
+          "This upgraded gateway has no admin password yet; provide the existing API key once for legacy sign-in.",
       });
     }
     if (!isApiKeyValid(apiKey.trim())) {
