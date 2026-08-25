@@ -263,8 +263,9 @@ describe("dashboard", () => {
 
     await waitFor(() => {
       expect(createBrowserSession).toHaveBeenCalledWith(adminPassword, "password");
-      expect((input as HTMLInputElement).value).toBe("");
+      expect(screen.queryByLabelText("Admin password", { selector: "input" })).toBeNull();
     });
+    expect(await screen.findByRole("button", { name: /^sign out$/i })).toBeTruthy();
   });
 
   it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {
