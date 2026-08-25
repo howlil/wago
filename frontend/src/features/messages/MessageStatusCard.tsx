@@ -12,20 +12,24 @@ type DeliveryStatus = Extract<MessageStatusResponse, { success: true }>;
 
 type MessageStatusCardProps = {
   messageId: string;
-  initialStatus: "pending" | "accepted" | "rejected";
+  initialStatus: "pending" | "accepted" | "delivered" | "read" | "rejected";
 };
 
 const POLL_INTERVAL_MS = 1500;
 const AUTO_POLL_WINDOW_MS = 30000;
 
 function statusClass(status: DeliveryStatus["status"]): string {
-  if (status === "accepted") {
+  if (status === "accepted" || status === "delivered" || status === "read") {
     return "text-wago-brand";
   }
   if (status === "rejected") {
     return "text-wago-danger";
   }
   return "text-wago-warning";
+}
+
+function isTerminalStatus(status: DeliveryStatus["status"]): boolean {
+  return status === "read" || status === "rejected";
 }
 
 export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCardProps) {
@@ -47,7 +51,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
   }, [initialStatus, messageId]);
 
   useEffect(() => {
-    if (delivery.status !== "pending") {
+    if (isTerminalStatus(delivery.status)) {
       return;
     }
 
@@ -64,6 +68,9 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
         if (!disposed && result.success) {
           setDelivery(result);
           setError(null);
+          if (isTerminalStatus(result.status)) {
+            return;
+          }
         }
       } catch (caught) {
         const apiError = caught as { message?: string };
@@ -105,12 +112,12 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
   }
 
   const icon =
-    delivery.status === "accepted" ? (
-      <CheckCircle2 size={15} />
-    ) : delivery.status === "rejected" ? (
+    delivery.status === "rejected" ? (
       <XCircle size={15} />
-    ) : (
+    ) : delivery.status === "pending" ? (
       <Clock3 size={15} />
+    ) : (
+      <CheckCircle2 size={15} />
     );
 
   return (
@@ -118,7 +125,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className={sectionTitleClass}>Last message status</h2>
-          <p className={sectionDescriptionClass}>Gateway acknowledgement status, not a WhatsApp read receipt.</p>
+          <p className={sectionDescriptionClass}>WhatsApp acknowledgement, delivery, and read receipt lifecycle.</p>
         </div>
         <button
           className={secondaryButtonClass}
