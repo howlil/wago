@@ -1,7 +1,7 @@
 import { type RequestHandler, Router } from "express";
 import { config } from "../../config/index.js";
 import { asyncHandler } from "../../http/middleware/async-handler.js";
-import { requireAuthenticatedRequest, requestHasValidBrowserSession } from "../../http/middleware/auth.js";
+import { requestHasValidBrowserSession, requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { requestHasSameOrigin } from "../../http/middleware/origin.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
 import { optionalHttpString, requiredHttpString } from "../../http/validation.js";
@@ -128,7 +128,8 @@ webhookRouter.post(
       category: "system",
       code: "webhook.test_requested",
       title: "Webhook test requested",
-      description: "An authenticated dashboard operator queued a signed test webhook through the production delivery path.",
+      description:
+        "An authenticated dashboard operator queued a signed test webhook through the production delivery path.",
       metadata: { deliveryId: result.delivery.id, status: result.delivery.status },
     });
 
