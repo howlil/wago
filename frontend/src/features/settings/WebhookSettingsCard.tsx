@@ -1,4 +1,4 @@
-import { Check, Copy, RefreshCcw } from "lucide-react";
+import { Check, Copy, RefreshCcw, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import {
@@ -14,7 +14,9 @@ import {
   completeWebhookSecretRotation,
   getWebhookSettings,
   rotateWebhookSecret,
+  sendWebhookTest,
   updateWebhookSettings,
+  type WebhookTestDelivery,
 } from "./api.js";
 
 function errorMessage(error: unknown): string {
@@ -24,15 +26,38 @@ function errorMessage(error: unknown): string {
   return "Webhook settings could not be updated.";
 }
 
+function testResultMessage(delivery: WebhookTestDelivery): string {
+  if (delivery.status === "delivered") {
+    return `Test webhook delivered${delivery.lastStatusCode ? ` (HTTP ${delivery.lastStatusCode})` : ""}.`;
+  }
+  if (delivery.status === "failed") {
+    return `Test webhook failed${delivery.lastStatusCode ? ` (HTTP ${delivery.lastStatusCode})` : ""}.`;
+  }
+  if (delivery.status === "expired") {
+    return "Test webhook expired before delivery.";
+  }
+  if (delivery.status === "pending" && delivery.lastStatusCode) {
+    return `Test webhook queued for retry after HTTP ${delivery.lastStatusCode}.`;
+  }
+  if (delivery.status === "delivering") {
+    return "Test webhook is being delivered.";
+  }
+  return "Test webhook queued.";
+}
+
 export function WebhookSettingsCard() {
   const [enabled, setEnabled] = useState(false);
   const [url, setUrl] = useState("");
+  const [savedEnabled, setSavedEnabled] = useState(false);
+  const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [secretConfigured, setSecretConfigured] = useState(false);
   const [rotationPending, setRotationPending] = useState(false);
   const [generatedSecret, setGeneratedSecret] = useState("");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState("");
   const [error, setError] = useState("");
   const { copiedField, copy } = useClipboard<"webhookSecret">({ onError: setError });
 
@@ -43,6 +68,8 @@ export function WebhookSettingsCard() {
         if (!active) return;
         setEnabled(settings.enabled);
         setUrl(settings.url ?? "");
+        setSavedEnabled(settings.enabled);
+        setSavedUrl(settings.url);
         setSecretConfigured(settings.secretConfigured);
         setRotationPending(settings.rotationPending);
         setUpdatedAt(settings.updatedAt);
@@ -62,10 +89,13 @@ export function WebhookSettingsCard() {
   async function save(): Promise<void> {
     setSaving(true);
     setError("");
+    setTestResult("");
     try {
       const settings = await updateWebhookSettings({ enabled, url: url.trim() || null });
       setEnabled(settings.enabled);
       setUrl(settings.url ?? "");
+      setSavedEnabled(settings.enabled);
+      setSavedUrl(settings.url);
       setSecretConfigured(settings.secretConfigured);
       setRotationPending(settings.rotationPending);
       setUpdatedAt(settings.updatedAt);
@@ -79,9 +109,24 @@ export function WebhookSettingsCard() {
     }
   }
 
+  async function testWebhook(): Promise<void> {
+    setTesting(true);
+    setError("");
+    setTestResult("");
+    try {
+      const result = await sendWebhookTest();
+      setTestResult(testResultMessage(result.delivery));
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setTesting(false);
+    }
+  }
+
   async function rotate(): Promise<void> {
     setSaving(true);
     setError("");
+    setTestResult("");
     try {
       const settings = await rotateWebhookSecret();
       setSecretConfigured(settings.secretConfigured);
@@ -98,6 +143,7 @@ export function WebhookSettingsCard() {
   async function completeRotation(): Promise<void> {
     setSaving(true);
     setError("");
+    setTestResult("");
     try {
       const settings = await completeWebhookSecretRotation();
       setRotationPending(settings.rotationPending);
@@ -108,6 +154,10 @@ export function WebhookSettingsCard() {
       setSaving(false);
     }
   }
+
+  const normalizedUrl = url.trim() || null;
+  const canTest =
+    savedEnabled && Boolean(savedUrl) && secretConfigured && enabled === savedEnabled && normalizedUrl === savedUrl;
 
   return (
     <section className={cardBodyClass}>
@@ -129,6 +179,12 @@ export function WebhookSettingsCard() {
         </div>
       ) : null}
 
+      {testResult ? (
+        <div className="mt-4 rounded-md border border-wago-line bg-wago-surface-soft px-3 py-2 text-xs text-wago-ink">
+          {testResult}
+        </div>
+      ) : null}
+
       <div className="mt-4 grid gap-4">
         <label className="flex items-start gap-3">
           <input
@@ -136,8 +192,11 @@ export function WebhookSettingsCard() {
             type="checkbox"
             aria-label="Enable webhook delivery"
             checked={enabled}
-            onChange={(event) => setEnabled(event.target.checked)}
-            disabled={loading || saving}
+            onChange={(event) => {
+              setEnabled(event.target.checked);
+              setTestResult("");
+            }}
+            disabled={loading || saving || testing}
           />
           <span className="min-w-0">
             <span className="block text-sm font-medium text-wago-ink">Enable webhook delivery</span>
@@ -152,11 +211,14 @@ export function WebhookSettingsCard() {
           <input
             className={inputClass}
             value={url}
-            onChange={(event) => setUrl(event.target.value)}
+            onChange={(event) => {
+              setUrl(event.target.value);
+              setTestResult("");
+            }}
             placeholder="https://your-backend.example.com/webhooks/wago"
             inputMode="url"
             autoComplete="url"
-            disabled={loading || saving}
+            disabled={loading || saving || testing}
           />
           <span className="mt-1 block text-[10px] leading-4 text-wago-muted">
             Use an HTTPS endpoint owned by the receiving backend in production.
@@ -178,7 +240,7 @@ export function WebhookSettingsCard() {
                 className={`${secondaryButtonClass} w-full sm:w-auto`}
                 type="button"
                 onClick={() => void rotate()}
-                disabled={saving}
+                disabled={saving || testing}
               >
                 <RefreshCcw size={14} />
                 Rotate secret
@@ -195,7 +257,7 @@ export function WebhookSettingsCard() {
                 className={`${secondaryButtonClass} w-full sm:w-auto`}
                 type="button"
                 onClick={() => void completeRotation()}
-                disabled={saving}
+                disabled={saving || testing}
               >
                 Complete rotation
               </button>
@@ -231,14 +293,26 @@ export function WebhookSettingsCard() {
               ? `Last updated ${new Date(updatedAt).toLocaleString()}`
               : "No persisted webhook configuration yet."}
           </span>
-          <button
-            className={`${primaryButtonClass} w-full sm:w-auto`}
-            type="button"
-            onClick={() => void save()}
-            disabled={loading || saving}
-          >
-            {saving ? "Saving" : "Save changes"}
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              type="button"
+              onClick={() => void testWebhook()}
+              disabled={loading || saving || testing || !canTest}
+              title={canTest ? undefined : "Save an enabled webhook configuration before testing"}
+            >
+              <Send size={14} />
+              {testing ? "Sending test" : "Send test webhook"}
+            </button>
+            <button
+              className={`${primaryButtonClass} w-full sm:w-auto`}
+              type="button"
+              onClick={() => void save()}
+              disabled={loading || saving || testing}
+            >
+              {saving ? "Saving" : "Save changes"}
+            </button>
+          </div>
         </div>
       </div>
     </section>

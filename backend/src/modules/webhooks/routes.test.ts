@@ -1,7 +1,9 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { app } from "../../app.js";
+import { config } from "../../config/index.js";
 import { resetAccessStateForTest } from "../access/api-key.js";
+import { createBrowserSession, resetBrowserSessionsForTest } from "../access/browser-session-store.js";
 import { webhookSettingsStore as settingsStore } from "./settings-runtime.js";
 
 const UNKNOWN_DELIVERY_ID = "11111111-1111-4111-8111-111111111111";
@@ -9,11 +11,13 @@ const UNKNOWN_DELIVERY_ID = "11111111-1111-4111-8111-111111111111";
 describe("webhook delivery routes", () => {
   beforeEach(() => {
     resetAccessStateForTest({ apiKey: "webhook-test-key", apiKeySource: "env" });
+    resetBrowserSessionsForTest();
     settingsStore.clear();
   });
 
   afterEach(() => {
     resetAccessStateForTest();
+    resetBrowserSessionsForTest();
     settingsStore.clear();
   });
 
@@ -21,6 +25,50 @@ describe("webhook delivery routes", () => {
     const response = await request(app).get("/webhooks/deliveries");
     expect(response.status).toBe(401);
     expect(response.body).toMatchObject({ success: false, error: "UNAUTHORIZED" });
+  });
+
+  it("rejects bearer-only authentication for webhook test deliveries", async () => {
+    settingsStore.save({ enabled: true, url: "https://receiver.example.test/webhook" });
+
+    const response = await request(app).post("/webhooks/test").set("Authorization", "Bearer webhook-test-key");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({ success: false, error: "BROWSER_SESSION_REQUIRED" });
+  });
+
+  it("queues a durable Wago test event from an authenticated browser session", async () => {
+    settingsStore.save({ enabled: true, url: "https://receiver.example.test/webhook" });
+    const session = createBrowserSession();
+
+    const response = await request(app)
+      .post("/webhooks/test")
+      .set("Cookie", `${config.authCookieName}=${session.token}`);
+
+    expect(response.status).toBe(202);
+    expect(response.body).toMatchObject({
+      success: true,
+      delivery: {
+        event: "wago.test",
+        status: expect.stringMatching(/^(pending|delivering|delivered|failed)$/),
+      },
+    });
+    expect(response.body.delivery.id).toEqual(expect.any(String));
+  });
+
+  it("rejects webhook tests while delivery is disabled", async () => {
+    settingsStore.save({ enabled: false, url: "https://receiver.example.test/webhook" });
+    const session = createBrowserSession();
+
+    const response = await request(app)
+      .post("/webhooks/test")
+      .set("Cookie", `${config.authCookieName}=${session.token}`);
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      success: false,
+      error: "WEBHOOK_DISABLED",
+      message: "Enable and save webhook delivery before sending a test callback",
+    });
   });
 
   it("rejects invalid delivery status filters", async () => {

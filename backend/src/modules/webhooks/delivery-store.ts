@@ -1,10 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { withTransaction } from "../../infrastructure/database/transaction.js";
-import type {
-  MessageDeliveryWebhookEnvelope,
-  MessageDeliveryWebhookEvent,
-  WebhookAttemptResult,
-} from "./delivery-webhook-core.js";
+import type { WebhookAttemptResult, WebhookEnvelope, WebhookEvent } from "./delivery-webhook-core.js";
 import { serializeWebhookEnvelope } from "./delivery-webhook-core.js";
 
 export const WEBHOOK_DELIVERY_HORIZON_MS = 24 * 60 * 60 * 1_000;
@@ -18,7 +14,7 @@ export type WebhookDeliveryStatus = "pending" | "delivering" | "delivered" | "fa
 export type StoredWebhookDelivery = {
   id: string;
   schemaVersion: number;
-  event: MessageDeliveryWebhookEvent;
+  event: WebhookEvent;
   messageId: string;
   payloadJson: string;
   status: WebhookDeliveryStatus;
@@ -38,7 +34,7 @@ export type StoredWebhookDelivery = {
 type WebhookDeliveryRow = {
   id: string;
   schema_version: number;
-  event_type: MessageDeliveryWebhookEvent;
+  event_type: WebhookEvent;
   message_id: string;
   payload_json: string;
   status: WebhookDeliveryStatus;
@@ -104,8 +100,9 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
     return row ? mapRow(row) : null;
   }
 
-  function enqueue(envelope: MessageDeliveryWebhookEnvelope, expiresAtMs: number): StoredWebhookDelivery {
+  function enqueue(envelope: WebhookEnvelope, expiresAtMs: number): StoredWebhookDelivery {
     const createdAtMs = Date.parse(envelope.createdAt);
+    const persistenceKey = envelope.event === "wago.test" ? envelope.id : envelope.data.messageId;
     database
       .prepare(`
         INSERT OR IGNORE INTO webhook_deliveries (
@@ -125,14 +122,14 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
       .run(
         envelope.id,
         envelope.event,
-        envelope.data.messageId,
+        persistenceKey,
         serializeWebhookEnvelope(envelope),
         createdAtMs,
         createdAtMs,
         expiresAtMs,
       );
 
-    const row = selectByMessageEvent.get(envelope.data.messageId, envelope.event) as WebhookDeliveryRow | undefined;
+    const row = selectByMessageEvent.get(persistenceKey, envelope.event) as WebhookDeliveryRow | undefined;
     if (!row) {
       throw new Error("Webhook delivery enqueue failed");
     }

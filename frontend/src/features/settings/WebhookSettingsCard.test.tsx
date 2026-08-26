@@ -5,6 +5,7 @@ import {
   completeWebhookSecretRotation,
   getWebhookSettings,
   rotateWebhookSecret,
+  sendWebhookTest,
   updateWebhookSettings,
 } from "./api.js";
 import { WebhookSettingsCard } from "./WebhookSettingsCard.js";
@@ -14,6 +15,7 @@ vi.mock("./api.js", () => ({
   updateWebhookSettings: vi.fn(),
   rotateWebhookSecret: vi.fn(),
   completeWebhookSecretRotation: vi.fn(),
+  sendWebhookTest: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -63,6 +65,35 @@ describe("WebhookSettingsCard", () => {
     });
     expect(await screen.findByDisplayValue("generated-secret-value")).toBeTruthy();
     expect(screen.getByText("Copy the new signing secret now")).toBeTruthy();
+  });
+
+  it("sends a production-path test webhook and reports the immediate attempt result", async () => {
+    vi.mocked(getWebhookSettings).mockResolvedValue({
+      success: true,
+      enabled: true,
+      url: "https://receiver.example.test/webhooks/wago",
+      secretConfigured: true,
+      rotationPending: false,
+      updatedAt: "2026-08-26T03:00:00.000Z",
+    });
+    vi.mocked(sendWebhookTest).mockResolvedValue({
+      success: true,
+      delivery: {
+        id: "11111111-1111-4111-8111-111111111111",
+        event: "wago.test",
+        status: "delivered",
+        lastStatusCode: 204,
+        lastErrorCode: null,
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<WebhookSettingsCard />);
+
+    await user.click(await screen.findByRole("button", { name: "Send test webhook" }));
+
+    await waitFor(() => expect(sendWebhookTest).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Test webhook delivered (HTTP 204).")).toBeTruthy();
   });
 
   it("rotates and completes signing-secret overlap", async () => {

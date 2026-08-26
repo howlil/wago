@@ -35,4 +35,34 @@ describe("settings feature API", () => {
       credentials: "include",
     });
   });
+
+  it("sends webhook tests through the dedicated dashboard endpoint", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              success: true,
+              delivery: {
+                id: "11111111-1111-4111-8111-111111111111",
+                event: "wago.test",
+                status: "delivered",
+                lastStatusCode: 204,
+                lastErrorCode: null,
+              },
+            }),
+            { status: 202, headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const { sendWebhookTest } = await import("../src/features/settings/api.js");
+    await sendWebhookTest();
+
+    expect(fetch).toHaveBeenCalledWith("/webhooks/test", {
+      method: "POST",
+      credentials: "include",
+    });
+  });
 });
