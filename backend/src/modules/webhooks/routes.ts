@@ -125,7 +125,7 @@ webhookRouter.post(
 
     void recordActivity({
       level: "info",
-      category: "webhook",
+      category: "system",
       code: "webhook.test_requested",
       title: "Webhook test requested",
       description: "An authenticated dashboard operator queued a signed test webhook through the production delivery path.",
