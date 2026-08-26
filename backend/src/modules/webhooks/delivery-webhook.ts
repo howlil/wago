@@ -8,6 +8,7 @@ import {
 } from "./delivery-store.js";
 import {
   createMessageDeliveryWebhookEnvelope,
+  createTestWebhookEnvelope,
   createWebhookAttemptSender,
   type MessageDeliveryWebhookInput,
 } from "./delivery-webhook-core.js";
@@ -97,6 +98,28 @@ export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput
       "Could not persist webhook delivery",
     );
   }
+}
+
+export async function sendTestWebhookDelivery(): Promise<
+  { kind: "disabled" } | { kind: "queued"; delivery: PublicWebhookDelivery }
+> {
+  const settings = settingsStore.get();
+  if (!settings?.enabled || !settings.url || !settings.secret) {
+    return { kind: "disabled" };
+  }
+
+  const now = new Date();
+  const envelope = createTestWebhookEnvelope({ now: () => now });
+  const queued = store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
+
+  await worker.tick();
+  let current = store.get(envelope.id) ?? queued;
+  if (current.status === "pending" && current.attemptCount === 0) {
+    await worker.tick();
+    current = store.get(envelope.id) ?? current;
+  }
+
+  return { kind: "queued", delivery: serializeWebhookDelivery(current) };
 }
 
 export function startWebhookDeliveryWorker(): void {

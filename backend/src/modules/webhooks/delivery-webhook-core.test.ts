@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createMessageDeliveryWebhookEnvelope,
+  createTestWebhookEnvelope,
   createWebhookAttemptSender,
   serializeWebhookEnvelope,
 } from "./delivery-webhook-core.js";
@@ -13,6 +14,22 @@ function response(status: number) {
 }
 
 describe("delivery webhook signing and attempts", () => {
+  it("creates a minimal Wago test event without message data", () => {
+    const envelope = createTestWebhookEnvelope({
+      createDeliveryId: () => "11111111-1111-4111-8111-111111111111",
+      now: () => new Date("2026-08-26T03:30:00.000Z"),
+    });
+
+    expect(envelope).toEqual({
+      version: "1",
+      id: "11111111-1111-4111-8111-111111111111",
+      event: "wago.test",
+      createdAt: "2026-08-26T03:30:00.000Z",
+      data: {},
+    });
+    expect(serializeWebhookEnvelope(envelope)).not.toContain("messageId");
+  });
+
   it("signs delivery id, timestamp, and raw body with current and previous secrets", async () => {
     const envelope = createMessageDeliveryWebhookEnvelope(
       { messageId: "message-1", status: "accepted" },

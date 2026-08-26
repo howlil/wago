@@ -181,22 +181,29 @@ describe("dashboard", () => {
   });
 
   it("signs in with the admin password before generating the machine API key and pairing", async () => {
+    const firstRunUnauthenticatedInfo = appInfo({
+      apiKeyConfigured: false,
+      apiKeySource: "unset",
+      authenticated: false,
+      credentialSetupRequired: true,
+      setupRequired: true,
+    });
     const firstRunAuthenticatedInfo = appInfo({
       apiKeyConfigured: false,
       apiKeySource: "unset",
       authenticated: true,
       credentialSetupRequired: true,
     });
-    vi.mocked(getAppInfo)
-      .mockResolvedValueOnce(
-        appInfo({
-          apiKeyConfigured: false,
-          apiKeySource: "unset",
-          authenticated: false,
-          credentialSetupRequired: true,
-        }),
-      )
-      .mockResolvedValue(firstRunAuthenticatedInfo);
+    vi.mocked(getAppInfo).mockResolvedValue(firstRunUnauthenticatedInfo);
+    vi.mocked(createBrowserSession).mockImplementationOnce(async () => {
+      vi.mocked(getAppInfo).mockResolvedValue(firstRunAuthenticatedInfo);
+      return {
+        success: true,
+        authenticated: true,
+        expiresAt: "2026-09-12T00:00:00.000Z",
+        message: "Browser session created",
+      };
+    });
     vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({
       success: true,
       status: "disconnected",
