@@ -10,6 +10,19 @@ export type WebhookSettingsResponse = {
   generatedSecret?: string;
 };
 
+export type WebhookTestDelivery = {
+  id: string;
+  event: "wago.test";
+  status: "pending" | "delivering" | "delivered" | "failed" | "expired";
+  lastStatusCode: number | null;
+  lastErrorCode: string | null;
+};
+
+export type WebhookTestResponse = {
+  success: true;
+  delivery: WebhookTestDelivery;
+};
+
 export function getWebhookSettings(): Promise<WebhookSettingsResponse> {
   return requestJson<WebhookSettingsResponse>("/webhooks/settings");
 }
@@ -31,4 +44,8 @@ export function rotateWebhookSecret(): Promise<WebhookSettingsResponse> {
 
 export function completeWebhookSecretRotation(): Promise<WebhookSettingsResponse> {
   return requestJson<WebhookSettingsResponse>("/webhooks/settings/complete-rotation", { method: "POST" });
+}
+
+export function sendWebhookTest(): Promise<WebhookTestResponse> {
+  return requestJson<WebhookTestResponse>("/webhooks/test", { method: "POST" });
 }
