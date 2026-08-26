@@ -4,6 +4,7 @@ export const WEBHOOK_SCHEMA_VERSION = "1" as const;
 
 export type MessageDeliveryWebhookStatus = "accepted" | "rejected";
 export type MessageDeliveryWebhookEvent = "message.server_accepted" | "message.rejected";
+export type WebhookEvent = MessageDeliveryWebhookEvent | "wago.test";
 
 export type MessageDeliveryWebhookInput = {
   messageId: string;
@@ -23,9 +24,19 @@ export type MessageDeliveryWebhookEnvelope = {
   };
 };
 
+export type TestWebhookEnvelope = {
+  version: typeof WEBHOOK_SCHEMA_VERSION;
+  id: string;
+  event: "wago.test";
+  createdAt: string;
+  data: Record<string, never>;
+};
+
+export type WebhookEnvelope = MessageDeliveryWebhookEnvelope | TestWebhookEnvelope;
+
 export type WebhookAttemptTarget = {
   id: string;
-  event: MessageDeliveryWebhookEvent;
+  event: WebhookEvent;
   payloadJson: string;
 };
 
@@ -93,7 +104,20 @@ export function createMessageDeliveryWebhookEnvelope(
   };
 }
 
-export function serializeWebhookEnvelope(envelope: MessageDeliveryWebhookEnvelope): string {
+export function createTestWebhookEnvelope(deps: EnvelopeDependencies = {}): TestWebhookEnvelope {
+  const createDeliveryId = deps.createDeliveryId ?? randomUUID;
+  const now = deps.now ?? (() => new Date());
+
+  return {
+    version: WEBHOOK_SCHEMA_VERSION,
+    id: createDeliveryId(),
+    event: "wago.test",
+    createdAt: now().toISOString(),
+    data: {},
+  };
+}
+
+export function serializeWebhookEnvelope(envelope: WebhookEnvelope): string {
   return JSON.stringify(envelope);
 }
 
