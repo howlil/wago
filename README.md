@@ -26,7 +26,7 @@ Current capabilities include:
 - protected outbound text messaging with idempotency and local guardrails
 - retained recent message state: `pending`, `accepted`, or `rejected`
 - durable signed delivery webhooks with retry, restart recovery, history, and manual redelivery
-- webhook configuration and signing-secret rotation from authenticated Settings
+- webhook configuration, test delivery, and signing-secret rotation from authenticated Settings
 - WhatsApp reach-out/new-chat account-health signals
 - structured sanitized Wago/Baileys audit events
 - SQLite-backed durable application state and persistent Baileys auth
@@ -196,6 +196,8 @@ Primary webhook configuration is managed from **Settings → Webhook integration
 
 `WEBHOOK_URL`, `WEBHOOK_SECRET`, and `WEBHOOK_SECRET_PREVIOUS` remain supported only as a **one-time compatibility import** when persisted webhook settings do not exist. New deployments should use Settings instead of treating those environment variables as the primary runtime configuration.
 
+After saving an enabled webhook configuration, **Send test webhook** queues a `wago.test` callback through the same production signing, timeout, durable queue, retry, and delivery-history path. The test body contains no message content or recipient data. `POST /webhooks/test` is a dashboard-only action: it requires a valid browser session, enforces same-origin in production, and does not accept Bearer-only API authentication.
+
 Webhook requests include a stable delivery ID, timestamp, event type, and HMAC-SHA256 signature. Consumers must:
 
 - verify the signature against the raw request body
@@ -234,11 +236,12 @@ Wago deliberately excludes message text, API credentials, and recipient phone/JI
 | `PUT` | `/webhooks/settings` | API key/session | Update webhook URL/enabled state |
 | `POST` | `/webhooks/settings/rotate-secret` | API key/session | Start signing-secret rotation |
 | `POST` | `/webhooks/settings/complete-rotation` | API key/session | Finish signing-secret rotation |
+| `POST` | `/webhooks/test` | Browser session | Queue a signed test callback through the durable production webhook path |
 | `GET` | `/webhooks/deliveries` | API key/session | List durable delivery metadata |
 | `GET` | `/webhooks/deliveries/:id` | API key/session | Inspect one delivery |
 | `POST` | `/webhooks/deliveries/:id/redeliver` | API key/session | Queue manual redelivery |
 
-See the Astro API reference for complete request fields, response contracts, errors, and the Hybrid API Explorer.
+See the Astro API reference for complete request fields, response contracts, errors, and the Hybrid API Explorer. Dashboard-only operator actions such as `/webhooks/test` are documented here and in Configuration rather than exposed through the machine-oriented API Explorer.
 
 ## Outbound safety
 
@@ -251,6 +254,7 @@ Current local defaults include:
 - new chats: 10 new recipients per hour
 - `/messages/send`: 30 HTTP requests/minute
 - `/whatsapp/pair` and `/whatsapp/rebind`: 5 HTTP requests/minute each
+- `/webhooks/test`: 5 requests/minute for authenticated dashboard sessions
 - webhook manual redelivery: 20 requests/minute per source IP
 
 These are Wago defensive defaults, **not** official WhatsApp safe limits or anti-ban guarantees.
