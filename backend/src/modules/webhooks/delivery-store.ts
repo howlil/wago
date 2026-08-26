@@ -69,7 +69,6 @@ function mapRow(row: WebhookDeliveryRow): StoredWebhookDelivery {
     nextAttemptAt: row.next_attempt_at,
     firstAttemptAt: row.first_attempt_at,
     lastAttemptAt: row.last_attempt_at,
-    nextAttemptAt: row.next_attempt_at,
     lastStatusCode: row.last_status_code,
     lastErrorCode: row.last_error_code,
     createdAt: row.created_at,
