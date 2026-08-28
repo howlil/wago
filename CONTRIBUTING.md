@@ -6,6 +6,8 @@ Wago is a single-account, self-hosted WhatsApp gateway. Keep changes aligned wit
 
 The distributable core is `backend/` + `frontend/`. The `docs/` site is maintained and hosted separately by the project owner and is not part of the runtime/container artifact.
 
+Repository-wide engineering policy is defined by `AGENTS.md`. When this document and `AGENTS.md` conflict, follow `AGENTS.md`.
+
 ## Local Setup
 
 Requirements: Node.js 26 and pnpm 11.21.0.
@@ -30,29 +32,36 @@ pnpm --dir backend test
 pnpm --dir frontend test
 ```
 
-## TDD Expectations
+## Testing and Verification
 
-When using TDD here, drive behavior with unit tests. Write or update the relevant unit test first, verify the failure when practical, implement the smallest change, then rerun the targeted test.
+Verification is risk-based. Identify what can realistically break, then choose the cheapest high-signal check that can detect that failure. Run focused checks during development and widen verification when risk or mandatory repository gates require it.
+
+TDD is optional. Use it when a deterministic automated test is the clearest and cheapest way to define or protect behavior; do not use it as ceremony.
+
+Prioritize durable automated tests for business/domain invariants, persistence/data integrity, lifecycle or concurrency behavior, migrations, security boundaries, public/provider contracts, and valuable deterministic regressions.
 
 Do not unit-test Baileys internals. Test Wago wrappers, policy decisions, validation, response mapping, caches, stores, and lifecycle behavior.
 
+Do not add a test without a realistic regression it protects. Do not weaken or delete a valid test merely to make CI green.
+
 ## Git Workflow
 
-Keep each change easy to review and clean up. The normal lifecycle is:
+Keep each change bounded, short-lived, and easy to review or revert. The normal lifecycle is:
 
 ```text
 sync main
   -> create one task branch
-  -> implement / test / fix on that branch
+  -> implement / verify / fix on that branch
   -> open one PR
   -> address review and CI on the same branch
+  -> required gates
   -> squash merge
-  -> delete branch and worktree
+  -> cleanup
 ```
 
 ### One task, one branch, one PR
 
-A task, bugfix, documentation update, or coherent feature should use at most one working branch and one pull request.
+A task, bugfix, documentation update, or coherent feature should normally use at most one working branch and one pull request.
 
 Use short purpose-prefixed names such as:
 
@@ -64,7 +73,7 @@ chore/dependency-refresh
 refactor/activity-store
 ```
 
-Do not create a replacement branch because a test or CI run failed, a typo was found, review requested a small change, another TDD cycle is needed, or `main` moved forward. Keep working on the existing branch and PR.
+Do not create a replacement branch because a test or CI run failed, a typo was found, review requested a small change, additional verification is needed, or `main` moved forward. Keep working on the existing branch and PR.
 
 Avoid branch churn such as:
 
@@ -77,13 +86,13 @@ iteration-3
 review-fixes-v4
 ```
 
-Normal changes should go through a task branch and PR rather than being developed directly on `main`.
+Normal changes should go through a short-lived task branch and PR rather than being developed directly on `main`.
 
 ### Commit discipline
 
 Commits on a task branch should be useful engineering checkpoints, not a transcript of every edit.
 
-Useful RED/GREEN TDD checkpoints are fine when they improve diagnosis or review. There is no arbitrary maximum commit count, but every retained commit should have a clear purpose.
+There is no arbitrary maximum commit count, but every retained commit should have a clear purpose. TDD-specific RED/GREEN checkpoints are allowed when useful but are never required.
 
 When they belong to the same task, avoid standalone commits such as:
 
@@ -96,13 +105,13 @@ formatting
 review fix
 ```
 
-Prefer folding those small corrections into the next meaningful checkpoint, or amend/squash them when rewriting the branch is safe.
+Prefer folding small corrections into the next meaningful checkpoint, or amend/squash them when rewriting the branch is safe.
 
 ### Merge policy
 
-Normal Wago pull requests use **squash merge**. This lets the working branch keep a small number of useful checkpoints while `main` receives one clean logical commit for the completed task.
+Normal Wago pull requests use **squash merge**. This lets the working branch retain useful checkpoints while `main` receives one clean logical commit for the completed task.
 
-Before merge, the current PR head should have the required tests/checks green and no unresolved review blocker. If the head changes after verification, verify the relevant checks again.
+Before merge, the current PR head should satisfy the approved scope, relevant risk-based verification, mandatory repository/CI gates for the change, and have no unresolved material review blocker. If the head changes after verification, rerun the checks materially affected by that change.
 
 Merge commits or rebase merges should be used only when there is a concrete reason.
 
@@ -129,10 +138,10 @@ Git worktrees provide isolation; they do not create a new task identity. A task 
 
 Pull requests should include:
 
-- a concise description of the behavior change
-- tests or a clear reason tests are not applicable
-- local verification commands run
-- screenshots for frontend UI changes
+- a concise description of the behavior or policy change
+- relevant verification evidence, or a clear reason a test is not useful/applicable
+- local verification commands run when relevant
+- screenshots for frontend UI changes when they materially help review
 - linked issues when relevant
 
 Apply CI fixes and review follow-ups to the same branch and PR when they are still part of the same task.
