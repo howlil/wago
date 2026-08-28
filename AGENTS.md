@@ -197,10 +197,15 @@ For every added or retained test, ask:
 
 If there is no strong answer, do not add the test.
 
+When a test or CI check fails, classify the failure from evidence before labeling it flaky or transient. Prefer a concrete hypothesis such as product regression, test isolation/state leakage, timing/race behavior, environment/infrastructure failure, or external dependency instability. Call a failure flaky only when there is evidence of nondeterminism under materially equivalent code and conditions.
+
+Retry is a diagnostic tool for a plausibly transient failure, not a substitute for root-cause analysis. Do not add automatic retries, repeated reruns, sleeps, or wider timeouts merely to make a deterministic failure pass.
+
 Project-specific verification guidance:
 
 - Use real SQLite behavior in persistence tests where practical.
 - For Baileys, test Wago adapters, classifiers, and lifecycle/state transitions rather than external WhatsApp connectivity in unit tests.
+- In mock-based tests, restore the behavior and mutable state that a test can change, not only call history. A test must not inherit another test's mock implementation, response sequence, fake timers, or other hidden state unless sharing is intentional and explicit.
 - Do not weaken, delete, skip, or rewrite a valid test merely to make CI green.
 - Prefer deterministic tests with clear failure reasons over broad brittle tests.
 - Run the smallest relevant check first, then widen verification according to risk.
@@ -341,7 +346,8 @@ Rules:
 - Check whether an active branch or PR already represents the task before creating new Git state.
 - One coherent task should normally use one branch and one PR.
 - Use short purpose-prefixed branch names such as `feat/<task>`, `fix/<task>`, `docs/<task>`, `chore/<task>`, or `refactor/<task>`.
-- Test failures, CI retries, formatting fixes, review feedback, or additional verification are feedback within the same task, not reasons for replacement branches.
+- Test failures, formatting fixes, review feedback, or additional verification are feedback within the same task, not reasons for replacement branches. Retry a failed CI run only when evidence makes a transient runner, infrastructure, or external-dependency failure plausible; deterministic code/test failures require diagnosis or a fix instead of repeated reruns.
+- When a task PR depends on another PR that has merged, or `main` has materially advanced beneath it, rebase or recreate the task commit directly on the latest `main` before final verification. Avoid partial content synchronization that leaves divergent history, duplicate commits, or unrelated files in the PR diff.
 - Do not create long-lived `develop`, iteration, retry, staging-code, personal, or experiment branches by default.
 - Keep commits as useful engineering checkpoints rather than a transcript of every edit. TDD-specific RED/GREEN commits are optional, never required.
 - Keep PRs small enough to review and revert confidently; split by coherent behavior or invariant boundaries, not arbitrary technical layers.
@@ -370,9 +376,11 @@ A small explicit module is preferable to a generic internal framework.
 - `AGENTS.md` is the canonical repository-wide execution policy.
 - `docs/` is public product documentation.
 - `.agent/specs/` contains internal designs only when a task genuinely benefits from a design artifact.
-- `.agent/plans/` contains implementation plans only when sequencing, dependencies, migration safety, or verification complexity warrants them.
+- `.agent/plans/` contains implementation plans only when sequencing, dependencies, migration safety, cross-module coordination, or verification complexity warrants them.
 - `.agent/checkpoints/` contains concise execution evidence when continuity or auditability benefits from it.
 - Root `plan.md` is the concise engineering roadmap.
+
+A small bounded task should normally keep its acceptance criteria, implementation notes, and status in the task conversation or PR rather than creating a `.agent` plan. Create an internal artifact only when it preserves information that would otherwise be difficult to execute, review, or recover.
 
 Do not create planning or documentation artifacts as ceremony. Do not put internal agent workflow notes under public `docs/`.
 
