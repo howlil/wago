@@ -121,7 +121,7 @@ Core invariants:
 - preserve required behavior
 - keep ownership clear
 - keep dependencies intentional
-- follow existing repository conventions
+- prefer established repository conventions unless the touched convention is clearly obsolete, harmful, or conflicts with correctness, ownership, current architecture, or maintainability
 - prefer the simplest reasonable design
 - avoid unnecessary abstractions and dependencies
 - avoid unrelated refactoring
@@ -134,9 +134,15 @@ Structure code according to responsibility and ownership:
 behavior -> ownership -> boundary -> module/package -> file
 ```
 
-Files and modules should contain cohesive behavior. Split only when separation improves ownership, navigation, dependency boundaries, or independent changeability. Do not split by arbitrary line-count rules and do not create generic dumping grounds.
+Optimize for **locality of reasoning**. Behavior, invariants, meaningful mutable state, and the code that mutates that state should remain as close together as practical so an engineer can understand a change with bounded context rather than tracing unnecessary indirection across the repository.
 
-Prefer explicit code over clever indirection. Add interfaces, layers, factories, mappers, adapters, or generic utilities only when they create a concrete ownership boundary, test seam, replacement point, or repeated behavior that exists now.
+Every meaningful mutable state should have an identifiable owner, mutation boundary, lifecycle, and invariant. Avoid shared mutable state whose ownership or mutation authority is unclear.
+
+Dependencies should point toward the component that owns the invariant or policy. Stable business/application decisions should not depend directly on incidental transport, framework, or provider details when an existing boundary can contain those details without unnecessary layering.
+
+Files and modules should contain cohesive behavior. Split only when separation improves ownership, navigation, dependency boundaries, locality of reasoning, or independent changeability. Do not split by arbitrary line-count rules and do not create generic dumping grounds.
+
+Prefer explicit code over clever indirection. Add interfaces, layers, factories, mappers, adapters, or generic utilities only when they improve a real ownership boundary, dependency boundary, substitution point, or repeated behavior that exists now. A useful test seam may reinforce an abstraction decision, but testability by itself is not sufficient justification. Do not introduce production abstractions solely to make mocking easier.
 
 ## Implementation Principle
 
@@ -258,7 +264,7 @@ Keep module ownership explicit.
 - Routes and unrelated modules must not manipulate or expose the raw Baileys socket.
 - `index.ts` wires the application, lifecycle, HTTP server, and operating-system signals. It must not become a business-logic module.
 
-Prefer narrow public APIs. Add an interface or layer only when it creates a concrete ownership boundary, test seam, or replacement point.
+Prefer narrow public APIs. Add an interface or layer only when it improves a concrete ownership, dependency, or replacement boundary. Testability alone is not sufficient justification for a production layer.
 
 ## Mandatory Backend Rules
 
