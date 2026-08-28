@@ -129,7 +129,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   cleanup();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("dashboard", () => {
@@ -236,8 +236,13 @@ describe("dashboard", () => {
     render(<App />);
 
     const passwordInput = await screen.findByLabelText("Admin password", { selector: "input" });
+    const signInButton = screen.getByRole("button", { name: /^sign in$/i });
+    await waitFor(() => {
+      expect((passwordInput as HTMLInputElement).disabled).toBe(false);
+      expect((signInButton as HTMLButtonElement).disabled).toBe(false);
+    });
     await user.type(passwordInput, adminPassword);
-    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+    await user.click(signInButton);
 
     await waitFor(() => {
       expect(createBrowserSession).toHaveBeenCalledWith(adminPassword, "password");
