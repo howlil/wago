@@ -2,38 +2,31 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GatewayCredentialsCard } from "./GatewayCredentialsCard.js";
 
-const firstRunProps = {
+const gatewayProps = {
   appId: "wa-gateway-test",
   apiKeyConfigured: false,
   apiKeySource: "unset" as const,
-  dashboardAuthMode: "password" as const,
-  signInCredential: "",
   apiKeyInput: "",
   credentialSetupRequired: true,
-  isAuthenticated: false,
-  showSignInCredential: false,
   showApiKey: false,
   copiedField: null,
   credentialHint: "Generated after first pairing.",
-  signInHint: "Use WAGO_ADMIN_PASSWORD.",
-  isSigningIn: false,
   isSigningOut: false,
   isRotatingApiKey: false,
-  onSignInCredentialChange: vi.fn(),
-  onToggleSignInCredential: vi.fn(),
   onToggleApiKey: vi.fn(),
   onCopyAppId: vi.fn(),
   onCopyApiKey: vi.fn(),
-  onSignIn: vi.fn(),
   onSignOut: vi.fn(),
   onRotateApiKey: vi.fn(),
 };
 
-describe("first-run gateway credentials", () => {
-  it("shows admin-password access separately from the generated machine API key", () => {
-    render(<GatewayCredentialsCard {...firstRunProps} />);
+describe("gateway credentials", () => {
+  it("keeps dashboard authentication out of the machine-credential card", () => {
+    render(<GatewayCredentialsCard {...gatewayProps} />);
 
-    expect(screen.getByLabelText(/admin password/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/admin password/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /create account/i })).toBeNull();
     expect(screen.getByLabelText(/machine api key/i).getAttribute("placeholder")).toBe("Generated after first pairing");
+    expect(screen.getByRole("button", { name: /^sign out$/i })).toBeTruthy();
   });
 });

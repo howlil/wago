@@ -22,12 +22,29 @@ describe("gateway API", () => {
     vi.restoreAllMocks();
   });
 
+  it("creates the first admin account without persisting browser credentials", async () => {
+    window.sessionStorage.setItem("unrelated", "preserve-me");
+    const storageEntriesBefore = window.sessionStorage.length;
+
+    const { createAdminAccount } = await import("../src/features/gateway/api.js");
+    await createAdminAccount("admin-test-secret");
+
+    expect(fetch).toHaveBeenCalledWith("/app/admin/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "admin-test-secret" }),
+      credentials: "include",
+    });
+    expect(window.sessionStorage.length).toBe(storageEntriesBefore);
+    expect(window.sessionStorage.getItem("unrelated")).toBe("preserve-me");
+  });
+
   it("exchanges an admin password for an HttpOnly browser session without persisting browser credentials", async () => {
     window.sessionStorage.setItem("unrelated", "preserve-me");
     const storageEntriesBefore = window.sessionStorage.length;
 
     const { createBrowserSession } = await import("../src/features/gateway/api.js");
-    await createBrowserSession("admin-test-secret", "password");
+    await createBrowserSession("admin-test-secret");
 
     expect(fetch).toHaveBeenCalledWith("/app/session", {
       method: "POST",

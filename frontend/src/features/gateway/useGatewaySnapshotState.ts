@@ -18,7 +18,7 @@ export function useGatewaySnapshotState() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeySource, setApiKeySource] = useState<AppInfoResponse["apiKeySource"]>("unset");
   const [adminPasswordConfigured, setAdminPasswordConfigured] = useState(false);
-  const [dashboardAuthMode, setDashboardAuthMode] = useState<AppInfoResponse["dashboardAuthMode"]>("unconfigured");
+  const [dashboardAuthMode, setDashboardAuthMode] = useState<AppInfoResponse["dashboardAuthMode"]>("setup");
   const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
   const [webBootstrapEnabled, setWebBootstrapEnabled] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);

@@ -8,7 +8,7 @@ import {
 import { requestHasSameOrigin } from "../../http/middleware/origin.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
 import { recordActivity } from "../activity/store.js";
-import { isAdminPasswordValid } from "./admin-password.js";
+import { createAdminPassword, isAdminPasswordConfigured, isAdminPasswordValid } from "./admin-password.js";
 import { bootstrapApiKey, getAccessSnapshot, rotateGeneratedApiKey } from "./api-key.js";
 import {
   createBrowserSession,
@@ -38,6 +38,7 @@ function clearBrowserSessionCookie(res: Response): void {
 
 appRouter.get("/info", (req, res) => {
   const access = getAccessSnapshot();
+  const adminPasswordConfigured = isAdminPasswordConfigured();
 
   res.json({
     success: true,
@@ -46,11 +47,52 @@ appRouter.get("/info", (req, res) => {
     apiKeyConfigured: access.apiKeyConfigured,
     apiKeySource: access.apiKeySource,
     authenticated: requestIsAuthenticated(req),
-    adminPasswordConfigured: Boolean(config.adminPassword),
-    dashboardAuthMode: config.adminPassword ? "password" : "unconfigured",
+    adminPasswordConfigured,
+    dashboardAuthMode: adminPasswordConfigured ? "password" : "setup",
     credentialSetupRequired: access.credentialSetupRequired,
     setupRequired: access.credentialSetupRequired,
     webBootstrapEnabled: access.webBootstrapEnabled,
+  });
+});
+
+appRouter.post("/admin/setup", browserSignInRateLimit, (req, res) => {
+  if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
+    return res.status(403).json({
+      success: false,
+      error: "INVALID_SETUP_ORIGIN",
+      message: "Admin setup must come from the Wago dashboard origin.",
+    });
+  }
+
+  const password = (req.body as { password?: unknown } | undefined)?.password;
+  if (typeof password !== "string" || !password) {
+    return res.status(400).json({
+      success: false,
+      error: "INVALID_ADMIN_PASSWORD",
+      message: "password must be a non-empty string.",
+    });
+  }
+
+  const result = createAdminPassword(password);
+  if (!result.success) {
+    return res.status(result.error === "ADMIN_ALREADY_CONFIGURED" ? 409 : 400).json(result);
+  }
+
+  const session = createBrowserSession();
+  setBrowserSessionCookie(res, session.token);
+  void recordActivity({
+    level: "success",
+    category: "security",
+    code: "gateway.admin_account.created",
+    title: "Admin account created",
+    description: "The first-run admin password was hashed into durable Wago state and a browser session was created.",
+  });
+
+  return res.status(201).json({
+    success: true,
+    authenticated: true,
+    expiresAt: new Date(session.expiresAt).toISOString(),
+    message: "Admin account created. Continue with WhatsApp pairing; no environment credential is required.",
   });
 });
 
@@ -61,8 +103,6 @@ appRouter.post("/bootstrap", (req, res) => {
       .status(400)
       .json({ success: false, error: "INVALID_API_KEY", message: "apiKey must be a string when provided." });
   }
-
-  const access = getAccessSnapshot();
 
   if (config.nodeEnv === "production" && !requestHasSameOrigin(req)) {
     return res.status(403).json({
@@ -75,10 +115,8 @@ appRouter.post("/bootstrap", (req, res) => {
   if (config.nodeEnv === "production" && !requestHasValidBrowserSession(req)) {
     return res.status(403).json({
       success: false,
-      error: access.apiKeyConfigured ? "BROWSER_SESSION_REQUIRED" : "ADMIN_PASSWORD_REQUIRED",
-      message: access.apiKeyConfigured
-        ? "Sign in to the dashboard before managing machine API credentials."
-        : "Configure WAGO_ADMIN_PASSWORD and sign in to the dashboard before first pairing.",
+      error: "BROWSER_SESSION_REQUIRED",
+      message: "Create or sign in to the admin account before managing machine API credentials.",
     });
   }
 
@@ -123,11 +161,11 @@ appRouter.post("/session", browserSignInRateLimit, (req, res) => {
     });
   }
 
-  if (!config.adminPassword) {
-    return res.status(503).json({
+  if (!isAdminPasswordConfigured()) {
+    return res.status(409).json({
       success: false,
-      error: "ADMIN_PASSWORD_REQUIRED",
-      message: "Configure WAGO_ADMIN_PASSWORD in the deployment before signing in to the dashboard.",
+      error: "ADMIN_SETUP_REQUIRED",
+      message: "Create the admin account from the Wago dashboard before signing in.",
     });
   }
 

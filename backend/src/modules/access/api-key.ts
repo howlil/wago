@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { config } from "../../config/index.js";
 import { getDatabase } from "../../infrastructure/database.js";
+import { isAdminPasswordConfigured } from "./admin-password.js";
 import { createAppSettingsStore } from "./app-settings-store.js";
 
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
@@ -83,7 +84,7 @@ export function getAccessSnapshot(): AccessSnapshot {
     apiKeySource: state.apiKeySource,
     apiKeyConfigured,
     credentialSetupRequired: !apiKeyConfigured,
-    webBootstrapEnabled: !apiKeyConfigured && (config.nodeEnv !== "production" || Boolean(config.adminPassword)),
+    webBootstrapEnabled: !apiKeyConfigured && (config.nodeEnv !== "production" || isAdminPasswordConfigured()),
   };
 }
 

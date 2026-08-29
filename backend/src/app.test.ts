@@ -2,6 +2,11 @@ import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "./app.js";
 import { config } from "./config/index.js";
+import {
+  isAdminPasswordConfigured,
+  isAdminPasswordValid,
+  resetAdminPasswordForTest,
+} from "./modules/access/admin-password.js";
 import { getAccessSnapshot, hashApiKey, isApiKeyValid, resetAccessStateForTest } from "./modules/access/api-key.js";
 import { resetBrowserSessionsForTest } from "./modules/access/browser-session-store.js";
 import { resetRecipientStoreForTest } from "./modules/recipients/store.js";
@@ -24,7 +29,7 @@ function firstCookie(response: request.Response): string {
 describe("app", () => {
   beforeEach(async () => {
     resetAccessStateForTest();
-    config.adminPassword = null;
+    resetAdminPasswordForTest();
     config.nodeEnv = "test";
     config.requestLogging = false;
     resetBrowserSessionsForTest();
@@ -163,9 +168,9 @@ describe("app", () => {
     expect(isApiKeyValid(pairingCandidate)).toBe(true);
   });
 
-  it("uses the admin password to establish a production dashboard session before API bootstrap", async () => {
+  it("uses the persisted admin password to establish a production dashboard session before API bootstrap", async () => {
     config.nodeEnv = "production";
-    config.adminPassword = productionAdminPassword;
+    resetAdminPasswordForTest(productionAdminPassword);
 
     const info = await request(app).get("/app/info");
     expect(info.body).toMatchObject({
@@ -201,9 +206,80 @@ describe("app", () => {
     expect(bootstrap.headers["set-cookie"]).toBeUndefined();
   });
 
+  it("creates a fresh production admin account without environment setup", async () => {
+    config.nodeEnv = "production";
+
+    const before = await request(app).get("/app/info");
+    expect(before.body).toMatchObject({
+      adminPasswordConfigured: false,
+      dashboardAuthMode: "setup",
+      authenticated: false,
+      apiKeyConfigured: false,
+    });
+
+    const weakPassword = await request(app)
+      .post("/app/admin/setup")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ password: "short" });
+    expect(weakPassword.status).toBe(400);
+    expect(weakPassword.body.error).toBe("INVALID_ADMIN_PASSWORD");
+
+    const setup = await request(app)
+      .post("/app/admin/setup")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ password: productionAdminPassword });
+    expect(setup.status).toBe(201);
+    const cookie = firstCookie(setup);
+    expect(cookie).not.toContain(productionAdminPassword);
+    expect(isAdminPasswordConfigured()).toBe(true);
+    expect(isAdminPasswordValid(productionAdminPassword)).toBe(true);
+
+    const after = await request(app).get("/app/info").set("Cookie", cookie);
+    expect(after.body).toMatchObject({
+      adminPasswordConfigured: true,
+      dashboardAuthMode: "password",
+      authenticated: true,
+    });
+
+    const duplicate = await request(app)
+      .post("/app/admin/setup")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .send({ password: "another-valid-password" });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error).toBe("ADMIN_ALREADY_CONFIGURED");
+
+    const bootstrap = await request(app)
+      .post("/app/bootstrap")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://wago.example.com")
+      .set("Cookie", cookie)
+      .send({ apiKey: pairingCandidate });
+    expect(bootstrap.status).toBe(201);
+    expect(bootstrap.body.apiKey).toBe(pairingCandidate);
+  });
+
+  it("rejects first-run admin setup from a different origin", async () => {
+    config.nodeEnv = "production";
+
+    const response = await request(app)
+      .post("/app/admin/setup")
+      .set("Host", "wago.example.com")
+      .set("Origin", "https://evil.example.com")
+      .send({ password: productionAdminPassword });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      success: false,
+      error: "INVALID_SETUP_ORIGIN",
+      message: "Admin setup must come from the Wago dashboard origin.",
+    });
+  });
+
   it("rejects first-run production bootstrap from a different origin", async () => {
     config.nodeEnv = "production";
-    config.adminPassword = productionAdminPassword;
 
     const response = await request(app)
       .post("/app/bootstrap")
@@ -229,19 +305,19 @@ describe("app", () => {
     resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
 
     const info = await request(app).get("/app/info");
-    expect(info.body.dashboardAuthMode).toBe("unconfigured");
+    expect(info.body.dashboardAuthMode).toBe("setup");
 
     const login = await request(app).post("/app/session").send({ apiKey: "generated-key" });
-    expect(login.status).toBe(503);
-    expect(login.body.error).toBe("ADMIN_PASSWORD_REQUIRED");
+    expect(login.status).toBe(409);
+    expect(login.body.error).toBe("ADMIN_SETUP_REQUIRED");
     expect(login.headers["set-cookie"]).toBeUndefined();
     expect((await request(app).get("/recipients").set("Authorization", "Bearer generated-key")).status).toBe(200);
   });
 
   it("does not recover a production dashboard session through API-key bootstrap", async () => {
     config.nodeEnv = "production";
-    config.adminPassword = productionAdminPassword;
     resetAccessStateForTest({ apiKeyHash: hashApiKey(pairingCandidate), apiKeySource: "generated" });
+    resetAdminPasswordForTest(productionAdminPassword);
 
     const response = await request(app)
       .post("/app/bootstrap")
@@ -255,8 +331,8 @@ describe("app", () => {
   });
 
   it("rejects cookie-authenticated state changes from a different request origin", async () => {
-    config.adminPassword = productionAdminPassword;
     resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
+    resetAdminPasswordForTest(productionAdminPassword);
 
     const login = await request(app).post("/app/session").send({ password: productionAdminPassword });
     const cookie = firstCookie(login);
@@ -277,8 +353,8 @@ describe("app", () => {
   });
 
   it("accepts cookie-authenticated state changes from the detected Wago origin", async () => {
-    config.adminPassword = productionAdminPassword;
     resetAccessStateForTest({ apiKeyHash: hashApiKey("generated-key"), apiKeySource: "generated" });
+    resetAdminPasswordForTest(productionAdminPassword);
 
     const login = await request(app).post("/app/session").send({ password: productionAdminPassword });
     const cookie = firstCookie(login);
@@ -293,17 +369,16 @@ describe("app", () => {
     expect(response.status).toBe(201);
   });
 
-  it("requires WAGO_ADMIN_PASSWORD for a fresh production dashboard", async () => {
+  it("requires an admin browser session before fresh production API bootstrap", async () => {
     config.nodeEnv = "production";
-    config.adminPassword = null;
 
     const login = await request(app)
       .post("/app/session")
       .set("Host", "wago.example.com")
       .set("Origin", "https://wago.example.com")
       .send({ password: productionAdminPassword });
-    expect(login.status).toBe(503);
-    expect(login.body.error).toBe("ADMIN_PASSWORD_REQUIRED");
+    expect(login.status).toBe(409);
+    expect(login.body.error).toBe("ADMIN_SETUP_REQUIRED");
 
     const response = await request(app)
       .post("/app/bootstrap")
@@ -313,8 +388,8 @@ describe("app", () => {
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       success: false,
-      error: "ADMIN_PASSWORD_REQUIRED",
-      message: "Configure WAGO_ADMIN_PASSWORD and sign in to the dashboard before first pairing.",
+      error: "BROWSER_SESSION_REQUIRED",
+      message: "Create or sign in to the admin account before managing machine API credentials.",
     });
   });
 

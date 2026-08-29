@@ -2,6 +2,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app } from "../../app.js";
 import { config } from "../../config/index.js";
+import { resetAdminPasswordForTest } from "./admin-password.js";
 import { getAccessSnapshot, hashApiKey, isApiKeyValid, resetAccessStateForTest } from "./api-key.js";
 import { resetBrowserSessionsForTest } from "./browser-session-store.js";
 
@@ -22,8 +23,8 @@ function cookieFrom(response: ResponseWithHeaders): string {
 describe("browser session authentication", () => {
   beforeEach(() => {
     resetAccessStateForTest();
+    resetAdminPasswordForTest(adminPassword);
     resetBrowserSessionsForTest();
-    config.adminPassword = adminPassword;
     config.nodeEnv = "test";
     config.requestLogging = false;
   });
@@ -50,6 +51,7 @@ describe("browser session authentication", () => {
 
   it("uses the admin password for a browser session without changing Bearer authentication", async () => {
     resetAccessStateForTest({ apiKeyHash: hashApiKey("existing-key"), apiKeySource: "generated" });
+    resetAdminPasswordForTest(adminPassword);
 
     const login = await request(app).post("/app/session").send({ password: adminPassword });
     expect(login.status).toBe(200);
@@ -68,6 +70,7 @@ describe("browser session authentication", () => {
 
   it("revokes the browser session on logout while leaving the API key valid", async () => {
     resetAccessStateForTest({ apiKeyHash: hashApiKey("existing-key"), apiKeySource: "generated" });
+    resetAdminPasswordForTest(adminPassword);
 
     const login = await request(app).post("/app/session").send({ password: adminPassword });
     const cookie = cookieFrom(login);
