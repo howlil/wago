@@ -14,26 +14,17 @@ type GatewayCredentialsCardProps = {
   appId: string;
   apiKeyConfigured: boolean;
   apiKeySource: AppInfoResponse["apiKeySource"];
-  dashboardAuthMode: AppInfoResponse["dashboardAuthMode"];
-  signInCredential: string;
   apiKeyInput: string;
   credentialSetupRequired: boolean;
-  isAuthenticated: boolean;
-  showSignInCredential: boolean;
   showApiKey: boolean;
   copiedField: CopiedField;
   credentialHint: string;
-  signInHint: string;
-  isSigningIn: boolean;
   isSigningOut: boolean;
   isSigningOutAll?: boolean;
   isRotatingApiKey: boolean;
-  onSignInCredentialChange: (value: string) => void;
-  onToggleSignInCredential: () => void;
   onToggleApiKey: () => void;
   onCopyAppId: () => void;
   onCopyApiKey: () => void;
-  onSignIn: () => void;
   onSignOut: () => void;
   onSignOutAll?: () => void;
   onRotateApiKey: () => void;
@@ -43,40 +34,28 @@ export function GatewayCredentialsCard({
   appId,
   apiKeyConfigured,
   apiKeySource,
-  dashboardAuthMode,
-  signInCredential,
   apiKeyInput,
   credentialSetupRequired,
-  isAuthenticated,
-  showSignInCredential,
   showApiKey,
   copiedField,
   credentialHint,
-  signInHint,
-  isSigningIn,
   isSigningOut,
   isSigningOutAll = false,
   isRotatingApiKey,
-  onSignInCredentialChange,
-  onToggleSignInCredential,
   onToggleApiKey,
   onCopyAppId,
   onCopyApiKey,
-  onSignIn,
   onSignOut,
   onSignOutAll,
   onRotateApiKey,
 }: GatewayCredentialsCardProps) {
-  const creatingAccount = dashboardAuthMode === "setup";
-  const signInLabel = "Admin password";
-
   return (
     <section className={cardBodyClass}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>Gateway access</h2>
           <p className={sectionDescriptionClass}>
-            Dashboard access and machine API credentials are intentionally separate.
+            Machine API credentials are separate from dashboard authentication.
           </p>
         </div>
         {apiKeyConfigured ? (
@@ -87,53 +66,6 @@ export function GatewayCredentialsCard({
       </div>
 
       <div className="mt-4 grid gap-4">
-        {!isAuthenticated ? (
-          <div>
-            <label className={fieldLabelClass} htmlFor="gateway-sign-in-credential">
-              {signInLabel}
-            </label>
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="relative min-w-0">
-                <input
-                  id="gateway-sign-in-credential"
-                  className={`${inputClass} pr-9 text-xs`}
-                  value={signInCredential}
-                  onChange={(event) => onSignInCredentialChange(event.target.value)}
-                  placeholder={creatingAccount ? "Create a password (12+ characters)" : "Admin password"}
-                  type={showSignInCredential ? "text" : "password"}
-                  autoComplete={creatingAccount ? "new-password" : "current-password"}
-                  aria-label={signInLabel}
-                />
-                {signInCredential ? (
-                  <button
-                    className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-[#758079]"
-                    type="button"
-                    onClick={onToggleSignInCredential}
-                    aria-label={showSignInCredential ? `Hide ${signInLabel}` : `Show ${signInLabel}`}
-                  >
-                    {showSignInCredential ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                ) : null}
-              </div>
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onSignIn}
-                disabled={isSigningIn}
-              >
-                {isSigningIn
-                  ? creatingAccount
-                    ? "Creating"
-                    : "Signing in"
-                  : creatingAccount
-                    ? "Create account"
-                    : "Sign in"}
-              </button>
-            </div>
-            <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{signInHint}</span>
-          </div>
-        ) : null}
-
         <div>
           <label className={fieldLabelClass} htmlFor="gateway-app-id">
             App ID
@@ -193,41 +125,39 @@ export function GatewayCredentialsCard({
           <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
         </div>
 
-        {isAuthenticated ? (
-          <div className="flex flex-col justify-end gap-2 sm:flex-row">
-            {apiKeySource === "generated" ? (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onRotateApiKey}
-                disabled={isRotatingApiKey}
-              >
-                <KeyRound size={14} />
-                {isRotatingApiKey ? "Rotating" : "Rotate API key"}
-              </button>
-            ) : null}
-            {onSignOutAll ? (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={onSignOutAll}
-                disabled={isSigningOutAll || isRotatingApiKey}
-              >
-                <LogOut size={14} />
-                {isSigningOutAll ? "Signing out all" : "Sign out all"}
-              </button>
-            ) : null}
+        <div className="flex flex-col justify-end gap-2 sm:flex-row">
+          {apiKeySource === "generated" ? (
             <button
               className={`${secondaryButtonClass} w-full sm:w-auto`}
               type="button"
-              onClick={onSignOut}
-              disabled={isSigningOut || isSigningOutAll || isRotatingApiKey}
+              onClick={onRotateApiKey}
+              disabled={isRotatingApiKey}
+            >
+              <KeyRound size={14} />
+              {isRotatingApiKey ? "Rotating" : "Rotate API key"}
+            </button>
+          ) : null}
+          {onSignOutAll ? (
+            <button
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              type="button"
+              onClick={onSignOutAll}
+              disabled={isSigningOutAll || isRotatingApiKey}
             >
               <LogOut size={14} />
-              {isSigningOut ? "Signing out" : "Sign out"}
+              {isSigningOutAll ? "Signing out all" : "Sign out all"}
             </button>
-          </div>
-        ) : null}
+          ) : null}
+          <button
+            className={`${secondaryButtonClass} w-full sm:w-auto`}
+            type="button"
+            onClick={onSignOut}
+            disabled={isSigningOut || isSigningOutAll || isRotatingApiKey}
+          >
+            <LogOut size={14} />
+            {isSigningOut ? "Signing out" : "Sign out"}
+          </button>
+        </div>
       </div>
     </section>
   );
