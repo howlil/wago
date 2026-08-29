@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/howlil/wago/actions/workflows/ci.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/howlil/wago/actions/workflows/codeql.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/codeql.yml)
-[![Container](https://github.com/howlil/wago/actions/workflows/release-container.yml/badge.svg)](https://github.com/howlil/wago/actions/actions/workflows/release-container.yml)
+[![Container](https://github.com/howlil/wago/actions/workflows/release-container.yml/badge.svg)](https://github.com/howlil/wago/actions/workflows/release-container.yml)
 [![License](https://img.shields.io/github/license/howlil/wago)](LICENSE)
 
 Wago is a lightweight, self-hosted WhatsApp gateway for one WhatsApp account. It combines a protected HTTP API, a React control dashboard, SQLite application state, and a Baileys session in one small runtime.
@@ -88,14 +88,14 @@ docker compose up -d
 curl http://127.0.0.1:3000/health
 ```
 
-Open the dashboard. On a fresh Wago instance, **Gateway access** asks you to create the first admin password. Wago stores only a salted password hash in SQLite and immediately creates an HttpOnly browser session.
+Open Wago. On a fresh instance, a dedicated setup screen asks you to create the admin password before any Control, Settings, or Audit workspace is rendered. Wago stores only a salted password hash in SQLite and immediately creates an HttpOnly browser session.
 
 Then click **Pair WhatsApp**. Wago generates the machine API key, persists only its SHA-256 hash, shows the raw key once for you to save in your application or secret manager, and starts WhatsApp QR pairing.
 
 No `.env`, setup token, log-derived secret, or restart is required for the default first-run path.
 
 > [!IMPORTANT]
-> A fresh instance uses first-browser ownership for admin setup. Complete the first-run admin account creation before exposing an uninitialized Wago dashboard to an untrusted network.
+> A fresh instance uses first-browser ownership for admin setup. Complete the first-run admin setup before exposing an uninitialized Wago dashboard to an untrusted network.
 
 ### Optional — pre-provisioned machine API key
 
@@ -141,7 +141,7 @@ Wago does not expose a configurable browser CORS allowlist. External integration
 
 On a fresh gateway:
 
-1. open the dashboard and create the admin account
+1. open Wago and set the admin password on the dedicated setup screen
 2. click **Pair WhatsApp**
 3. save the generated machine API key when it is shown
 4. scan the QR from **WhatsApp → Linked devices → Link a device**
@@ -213,7 +213,7 @@ Wago deliberately excludes message text, API credentials, and recipient phone/JI
 | `GET` | `/health` | Public | HTTP process liveness |
 | `GET` | `/ready` | Public | Operational `ok` / `degraded` / `not_ready` snapshot |
 | `GET` | `/app/info` | Public | Dashboard-auth mode, API credential source, and request-auth state |
-| `POST` | `/app/admin/setup` | Fresh same-origin dashboard | Create the one-time admin account and browser session |
+| `POST` | `/app/admin/setup` | Fresh same-origin dashboard | Create the one-time admin credential and browser session |
 | `POST` | `/app/session` | Admin password | Exchange the human credential for a browser session |
 | `POST` | `/app/bootstrap` | Browser session | Create or verify the generated machine API key; production requires an authenticated same-origin dashboard session |
 | `POST` | `/app/api-key/rotate` | Browser session | Rotate generated machine API key |
