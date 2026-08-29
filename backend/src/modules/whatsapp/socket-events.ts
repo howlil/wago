@@ -1,5 +1,6 @@
 import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
+import { markRecipientReachoutRestricted, recordOutboundAcknowledged } from "../messages/outbound-policy.js";
 import {
   invalidateAccountHealth,
   markReachoutRestricted,
@@ -10,7 +11,7 @@ import { bindWhatsAppAccount, clearWhatsAppBinding } from "./binding-store.js";
 import { markConnected, markDisconnected, markQr } from "./connection-state.js";
 import { classifyDisconnect } from "./disconnect-classifier.js";
 import { mapMessageRejection } from "./message-rejection.js";
-import { updateMessageStatus } from "./message-status-store.js";
+import { getMessageStatus, updateMessageStatus } from "./message-status-store.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
 import {
   getActiveSocket,
@@ -59,6 +60,8 @@ export function registerSocketEvents({
       const messageId = entry.key?.id;
       if (!messageId || entry.update.status == null) continue;
 
+      const storedMessage = getMessageStatus(messageId);
+
       if (entry.update.status === WAMessageStatus.ERROR) {
         const mapped = mapMessageRejection(entry.update.messageStubParameters);
         logger.warn({ event: "wa.message.rejected", messageId, reason: mapped.code });
@@ -78,6 +81,9 @@ export function registerSocketEvents({
         if (mapped.code === "REACHOUT_RESTRICTED") {
           markReachoutRestricted();
           void refreshAccountHealth(createAccountHealthFetcher(socket, generation), { force: true });
+          if (storedMessage?.status === "pending") {
+            void markRecipientReachoutRestricted(storedMessage.recipientJid ?? storedMessage.to);
+          }
         }
 
         updateMessageStatus(messageId, {
@@ -89,6 +95,21 @@ export function registerSocketEvents({
       }
 
       if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
+        if (storedMessage?.status === "pending") {
+          try {
+            recordOutboundAcknowledged(storedMessage.recipientJid ?? storedMessage.to, storedMessage.to);
+          } catch (error) {
+            logger.error(
+              {
+                event: "outbound.ack_persistence_failed",
+                errorName: error instanceof Error ? error.name : "UNKNOWN",
+                messageId,
+              },
+              "WhatsApp acknowledged a message but Wago could not persist recipient success state",
+            );
+          }
+        }
+
         updateMessageStatus(messageId, { status: "accepted" });
         auditBaileys({
           level: "info",
