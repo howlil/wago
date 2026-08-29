@@ -2,7 +2,13 @@ import { type Dispatch, type SetStateAction, useState } from "react";
 import { ApiError } from "../../shared/api/client.js";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import type { Notice } from "../../shared/ui/feedback.js";
-import { createBrowserSession, logoutAllBrowserSessions, logoutBrowserSession, rotateApiKey } from "../gateway/api.js";
+import {
+  createAdminAccount,
+  createBrowserSession,
+  logoutAllBrowserSessions,
+  logoutBrowserSession,
+  rotateApiKey,
+} from "../gateway/api.js";
 import type { CopiedField } from "../gateway/types.js";
 import type { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 
@@ -32,24 +38,24 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
   });
 
   async function handleSignIn() {
-    if (snapshot.dashboardAuthMode === "unconfigured") {
+    const candidate = signInCredential;
+    if (!candidate) {
       setNotice({
         type: "error",
-        message: "Configure WAGO_ADMIN_PASSWORD in the deployment, then restart Wago before signing in.",
+        message: snapshot.dashboardAuthMode === "setup" ? "Create an admin password first." : "Enter the admin password first.",
       });
       return;
     }
 
-    const candidate = signInCredential;
-    if (!candidate) {
-      setNotice({ type: "error", message: "Enter the admin password first." });
-      return;
-    }
-
+    const creatingAccount = snapshot.dashboardAuthMode === "setup";
     setIsSigningIn(true);
     setNotice(null);
     try {
-      await createBrowserSession(candidate);
+      if (creatingAccount) {
+        await createAdminAccount(candidate);
+      } else {
+        await createBrowserSession(candidate);
+      }
       setSignInCredential("");
       setShowSignInCredential(false);
       const info = await snapshot.loadAppInfo();
@@ -57,10 +63,15 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
         setNotice({ type: "error", message: "The backend did not establish a browser session." });
         return;
       }
-      setNotice({ type: "success", message: "Signed in. The admin password was not stored in this browser." });
+      setNotice({
+        type: "success",
+        message: creatingAccount
+          ? "Admin account created. The password is stored only as a hash in Wago state."
+          : "Signed in. The admin password was not stored in this browser.",
+      });
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
-      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to sign in") });
+      setNotice({ type: "error", message: apiErrorMessage(error, creatingAccount ? "Failed to create admin account" : "Failed to sign in") });
     } finally {
       setIsSigningIn(false);
     }
@@ -137,9 +148,9 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
       : "Machine API key for external REST clients. Dashboard sign-in uses its own browser session.";
 
   const signInHint =
-    snapshot.dashboardAuthMode === "password"
-      ? "Use WAGO_ADMIN_PASSWORD. Wago exchanges it for an HttpOnly browser session and does not store it in the browser."
-      : "Set WAGO_ADMIN_PASSWORD in the deployment environment and restart Wago to enable dashboard sign-in.";
+    snapshot.dashboardAuthMode === "setup"
+      ? "Create the first admin password here. Wago stores only a salted hash in SQLite; no .env credential is required."
+      : "Use the admin password created during first-run setup. Wago exchanges it for an HttpOnly browser session.";
 
   return {
     signInCredential,
