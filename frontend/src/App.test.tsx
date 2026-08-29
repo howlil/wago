@@ -5,6 +5,7 @@ import { App } from "./App.js";
 import { listActivity } from "./features/activity/api.js";
 import {
   bootstrapApp,
+  createAdminAccount,
   createApiKeyCandidate,
   createBrowserSession,
   getAppInfo,
@@ -50,6 +51,12 @@ vi.mock("./features/gateway/api.js", () => ({
     apiKey: candidate,
     recovered: false,
     message: "App initialized",
+  })),
+  createAdminAccount: vi.fn(async () => ({
+    success: true,
+    authenticated: true,
+    expiresAt: "2026-09-12T00:00:00.000Z",
+    message: "Admin account created",
   })),
   createApiKeyCandidate: vi.fn(() => generatedApiKey),
   createBrowserSession: vi.fn(async () => ({
@@ -200,11 +207,13 @@ describe("dashboard", () => {
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("signs in with the admin password before generating the machine API key and pairing", async () => {
+  it("creates the admin account before generating the machine API key and pairing", async () => {
     const firstRunUnauthenticatedInfo = appInfo({
       apiKeyConfigured: false,
       apiKeySource: "unset",
       authenticated: false,
+      adminPasswordConfigured: false,
+      dashboardAuthMode: "setup",
       credentialSetupRequired: true,
       setupRequired: true,
     });
@@ -212,17 +221,19 @@ describe("dashboard", () => {
       apiKeyConfigured: false,
       apiKeySource: "unset",
       authenticated: true,
+      adminPasswordConfigured: true,
+      dashboardAuthMode: "password",
       credentialSetupRequired: true,
       setupRequired: true,
     });
     vi.mocked(getAppInfo).mockResolvedValue(firstRunUnauthenticatedInfo);
-    vi.mocked(createBrowserSession).mockImplementationOnce(async () => {
+    vi.mocked(createAdminAccount).mockImplementationOnce(async () => {
       vi.mocked(getAppInfo).mockResolvedValue(firstRunAuthenticatedInfo);
       return {
         success: true,
         authenticated: true,
         expiresAt: "2026-09-12T00:00:00.000Z",
-        message: "Browser session created",
+        message: "Admin account created",
       };
     });
     vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({
@@ -236,16 +247,17 @@ describe("dashboard", () => {
     render(<App />);
 
     const passwordInput = await screen.findByLabelText("Admin password", { selector: "input" });
-    const signInButton = screen.getByRole("button", { name: /^sign in$/i });
+    const createAccountButton = screen.getByRole("button", { name: /create account/i });
     await waitFor(() => {
       expect((passwordInput as HTMLInputElement).disabled).toBe(false);
-      expect((signInButton as HTMLButtonElement).disabled).toBe(false);
+      expect((createAccountButton as HTMLButtonElement).disabled).toBe(false);
     });
     await user.type(passwordInput, adminPassword);
-    await user.click(signInButton);
+    await user.click(createAccountButton);
 
     await waitFor(() => {
-      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword);
+      expect(createAdminAccount).toHaveBeenCalledWith(adminPassword);
+      expect(createBrowserSession).not.toHaveBeenCalled();
     });
 
     await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
