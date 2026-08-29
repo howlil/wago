@@ -3,9 +3,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { migrations, runMigrations } from "../../infrastructure/database/migrations.js";
 import { createWebhookSettingsStore } from "./settings-store.js";
 
-const legacySecret = "a".repeat(32);
-const previousLegacySecret = "b".repeat(32);
-
 describe("webhook settings store", () => {
   let database: DatabaseSync;
 
@@ -13,36 +10,6 @@ describe("webhook settings store", () => {
     database = new DatabaseSync(":memory:");
     database.exec("PRAGMA foreign_keys = ON");
     runMigrations(database, migrations);
-  });
-
-  it("imports valid legacy env settings only when persisted settings are empty", () => {
-    const store = createWebhookSettingsStore(database);
-
-    const imported = store.importLegacyIfEmpty({
-      enabled: true,
-      url: "https://legacy.example.test/webhook",
-      secret: legacySecret,
-      previousSecret: previousLegacySecret,
-    });
-
-    expect(imported).toMatchObject({
-      enabled: true,
-      url: "https://legacy.example.test/webhook",
-      secret: legacySecret,
-      previousSecret: previousLegacySecret,
-    });
-
-    store.importLegacyIfEmpty({
-      enabled: true,
-      url: "https://ignored.example.test/webhook",
-      secret: "c".repeat(32),
-      previousSecret: null,
-    });
-
-    expect(store.get()).toMatchObject({
-      url: "https://legacy.example.test/webhook",
-      secret: legacySecret,
-    });
   });
 
   it("generates a signing secret on first enable and keeps it when only URL changes", () => {

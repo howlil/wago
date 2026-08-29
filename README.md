@@ -91,9 +91,7 @@ Open the dashboard through your HTTPS route and sign in with `WAGO_ADMIN_PASSWOR
 
 Click **Pair WhatsApp**. Because the dashboard session is already authenticated, Wago generates the machine API key, persists only its SHA-256 hash, shows the raw key once for you to save in your application/secret manager, and starts WhatsApp QR pairing.
 
-There is no normal first-run requirement to retrieve a secret from deployment logs.
-
-`SETUP_TOKEN` remains supported only as a compatibility path for older deployment automation. Wago no longer generates a random first-run setup code or prints one to startup logs.
+There is no first-run requirement to retrieve a secret from deployment logs.
 
 ### Optional — pre-provisioned machine API key
 
@@ -134,7 +132,7 @@ The dashboard and external application API use different credentials:
 
 Production dashboard sign-in and state-changing cookie requests enforce same-origin checks. First machine-key bootstrap also requires an authenticated browser session in production.
 
-For upgrade compatibility, an already-initialized instance that does not yet have `WAGO_ADMIN_PASSWORD` can still exchange its existing API key for a browser session. Configure `WAGO_ADMIN_PASSWORD` on the next deployment to remove that legacy coupling.
+An initialized deployment without `WAGO_ADMIN_PASSWORD` keeps its machine API available to Bearer clients, but dashboard access remains unavailable until the admin password is configured and Wago is restarted.
 
 Wago does not expose a configurable browser CORS allowlist. External integrations should normally call Wago from their backend.
 
@@ -192,9 +190,7 @@ The retained states are `pending`, `accepted`, and `rejected`. `accepted` means 
 
 ## Delivery webhooks
 
-Primary webhook configuration is managed from **Settings → Webhook integration**. Wago persists the callback URL and signing secret in private SQLite state because the raw signing secret is required to produce HMAC signatures.
-
-`WEBHOOK_URL`, `WEBHOOK_SECRET`, and `WEBHOOK_SECRET_PREVIOUS` remain supported only as a **one-time compatibility import** when persisted webhook settings do not exist. New deployments should use Settings instead of treating those environment variables as the primary runtime configuration.
+Webhook configuration is managed from **Settings → Webhook integration**. Wago persists the callback URL and signing secret in private SQLite state because the raw signing secret is required to produce HMAC signatures.
 
 After saving an enabled webhook configuration, **Send test webhook** queues a `wago.test` callback through the same production signing, timeout, durable queue, retry, and delivery-history path. The test body contains no message content or recipient data. `POST /webhooks/test` is a dashboard-only action: it requires a valid browser session, enforces same-origin in production, and does not accept Bearer-only API authentication.
 
@@ -216,8 +212,8 @@ Wago deliberately excludes message text, API credentials, and recipient phone/JI
 | `GET` | `/health` | Public | HTTP process liveness |
 | `GET` | `/ready` | Public | Operational `ok` / `degraded` / `not_ready` snapshot |
 | `GET` | `/app/info` | Public | Dashboard-auth mode, API credential source, and request-auth state |
-| `POST` | `/app/session` | Admin password | Exchange the human credential for a browser session; legacy API-key fallback only on upgraded instances without an admin password |
-| `POST` | `/app/bootstrap` | Browser session | Create the first generated machine API key; legacy `SETUP_TOKEN` path retained for compatibility |
+| `POST` | `/app/session` | Admin password | Exchange the human credential for a browser session |
+| `POST` | `/app/bootstrap` | Browser session | Create or verify the generated machine API key; production requires an authenticated same-origin dashboard session |
 | `POST` | `/app/api-key/rotate` | Browser session | Rotate generated machine API key |
 | `POST` | `/app/session/logout` | Browser session | End current dashboard session |
 | `POST` | `/app/session/logout-all` | Browser session | Revoke every dashboard session |
@@ -302,7 +298,7 @@ pnpm --dir docs dev
 
 Read [SECURITY.md](SECURITY.md) before reporting a vulnerability and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
-Never publish live admin passwords, API keys, legacy setup-token overrides, webhook signing secrets, auth cookies, QR payloads, `/app/data` backups, Baileys credentials, full phone/JID identifiers, message content, or raw unredacted production logs.
+Never publish live admin passwords, API keys, webhook signing secrets, auth cookies, QR payloads, `/app/data` backups, Baileys credentials, full phone/JID identifiers, message content, or raw unredacted production logs.
 
 ## License
 

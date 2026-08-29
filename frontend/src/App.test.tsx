@@ -245,13 +245,13 @@ describe("dashboard", () => {
     await user.click(signInButton);
 
     await waitFor(() => {
-      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword, "password");
+      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword);
     });
 
     await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
     await waitFor(() => {
       expect(createApiKeyCandidate).toHaveBeenCalledTimes(1);
-      expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey, undefined);
+      expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey);
       expect(pairWhatsApp).toHaveBeenCalledTimes(1);
     });
 
@@ -273,7 +273,7 @@ describe("dashboard", () => {
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
-      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword, "password");
+      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword);
       expect(screen.queryByLabelText("Admin password", { selector: "input" })).toBeNull();
     });
     expect(await screen.findByRole("button", { name: /^sign out$/i })).toBeTruthy();

@@ -22,18 +22,11 @@ describe("gateway API", () => {
     vi.restoreAllMocks();
   });
 
-  it("exchanges an admin password for an HttpOnly browser session without persisting it in browser storage", async () => {
-    window.sessionStorage.setItem("wago.apiKey", "legacy-secret");
+  it("exchanges an admin password for an HttpOnly browser session without persisting browser credentials", async () => {
+    window.sessionStorage.setItem("unrelated", "preserve-me");
+    const storageEntriesBefore = window.sessionStorage.length;
 
     const { createBrowserSession } = await import("../src/features/gateway/api.js");
-
-    expect(window.sessionStorage.getItem("wago.apiKey")).toBe("legacy-secret");
-
-    const { clearLegacyApiKeySessionStorage } = await import("../src/features/gateway/legacy-session.js");
-    clearLegacyApiKeySessionStorage();
-
-    expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
-
     await createBrowserSession("admin-test-secret", "password");
 
     expect(fetch).toHaveBeenCalledWith("/app/session", {
@@ -42,7 +35,8 @@ describe("gateway API", () => {
       body: JSON.stringify({ password: "admin-test-secret" }),
       credentials: "include",
     });
-    expect(window.sessionStorage.getItem("wago.apiKey")).toBeNull();
+    expect(window.sessionStorage.length).toBe(storageEntriesBefore);
+    expect(window.sessionStorage.getItem("unrelated")).toBe("preserve-me");
   });
 
   it("rejects a malformed JSON readiness response even when 503 is allowed", async () => {

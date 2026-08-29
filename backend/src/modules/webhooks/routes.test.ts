@@ -130,12 +130,8 @@ describe("webhook delivery routes", () => {
   });
 
   it("returns webhook settings without exposing signing secrets", async () => {
-    settingsStore.importLegacyIfEmpty({
-      enabled: true,
-      url: "https://receiver.example.test/webhook",
-      secret: "a".repeat(32),
-      previousSecret: "b".repeat(32),
-    });
+    settingsStore.save({ enabled: true, url: "https://receiver.example.test/webhook" });
+    settingsStore.rotateSecret();
 
     const response = await request(app).get("/webhooks/settings").set("Authorization", "Bearer webhook-test-key");
 

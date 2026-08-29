@@ -2,8 +2,6 @@ import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { ApplicationError } from "../../errors/application-error.js";
 
-const MIN_SECRET_LENGTH = 32;
-
 type WebhookSettingsRow = {
   enabled: number;
   url: string | null;
@@ -20,13 +18,6 @@ export type WebhookSettings = {
   previousSecret: string | null;
   createdAt: string;
   updatedAt: string;
-};
-
-export type LegacyWebhookSettings = {
-  enabled: boolean;
-  url: string | null;
-  secret: string | null;
-  previousSecret: string | null;
 };
 
 export type SaveWebhookSettingsResult = {
@@ -64,12 +55,6 @@ function normalizeUrl(value: string | null | undefined): string | null {
   }
 
   return parsed.toString();
-}
-
-function validateSecret(secret: string | null, name = "Webhook secret"): void {
-  if (secret && secret.length < MIN_SECRET_LENGTH) {
-    invalidSettings(`${name} must contain at least ${MIN_SECRET_LENGTH} characters`);
-  }
 }
 
 function mapRow(row: WebhookSettingsRow): WebhookSettings {
@@ -116,34 +101,6 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
       settings.updatedAt,
     );
     return get() as WebhookSettings;
-  }
-
-  function importLegacyIfEmpty(legacy: LegacyWebhookSettings): WebhookSettings | null {
-    const current = get();
-    if (current) {
-      return current;
-    }
-
-    if (!legacy.enabled) {
-      return null;
-    }
-
-    const url = normalizeUrl(legacy.url);
-    if (!url || !legacy.secret) {
-      invalidSettings("Webhook URL and secret are required when webhook delivery is enabled");
-    }
-    validateSecret(legacy.secret);
-    validateSecret(legacy.previousSecret, "Previous webhook secret");
-
-    const now = new Date().toISOString();
-    return write({
-      enabled: true,
-      url,
-      secret: legacy.secret,
-      previousSecret: legacy.previousSecret,
-      createdAt: now,
-      updatedAt: now,
-    });
   }
 
   function save(input: { enabled: boolean; url?: string | null }): SaveWebhookSettingsResult {
@@ -205,7 +162,6 @@ export function createWebhookSettingsStore(database: DatabaseSync) {
     save,
     rotateSecret,
     completeRotation,
-    importLegacyIfEmpty,
     clear,
   };
 }

@@ -67,7 +67,7 @@ export function GatewayCredentialsCard({
   onSignOutAll,
   onRotateApiKey,
 }: GatewayCredentialsCardProps) {
-  const signInLabel = dashboardAuthMode === "legacy_api_key" ? "Legacy API key" : "Admin password";
+  const signInLabel = "Admin password";
 
   return (
     <section className={cardBodyClass}>
@@ -99,11 +99,7 @@ export function GatewayCredentialsCard({
                   value={signInCredential}
                   onChange={(event) => onSignInCredentialChange(event.target.value)}
                   placeholder={
-                    dashboardAuthMode === "legacy_api_key"
-                      ? "Existing API key"
-                      : dashboardAuthMode === "password"
-                        ? "WAGO_ADMIN_PASSWORD"
-                        : "Configure WAGO_ADMIN_PASSWORD"
+                    dashboardAuthMode === "password" ? "WAGO_ADMIN_PASSWORD" : "Configure WAGO_ADMIN_PASSWORD"
                   }
                   type={showSignInCredential ? "text" : "password"}
                   disabled={dashboardAuthMode === "unconfigured"}

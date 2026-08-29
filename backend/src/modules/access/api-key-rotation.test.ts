@@ -1,11 +1,13 @@
 import request from "supertest";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { app } from "../../app.js";
 import { config } from "../../config/index.js";
 import { hashApiKey, resetAccessStateForTest } from "./api-key.js";
 import { resetBrowserSessionsForTest } from "./browser-session-store.js";
 
 const oldApiKey = `wa_${"a".repeat(64)}`;
+const adminPassword = "test-admin-password";
+const originalAdminPassword = config.adminPassword;
 type ResponseWithHeaders = { headers: Record<string, string | string[] | undefined> };
 
 function cookieFrom(response: ResponseWithHeaders): string {
@@ -19,9 +21,13 @@ describe("credential rotation endpoint", () => {
   beforeEach(() => {
     resetAccessStateForTest({ apiKeyHash: hashApiKey(oldApiKey), apiKeySource: "generated" });
     resetBrowserSessionsForTest();
-    config.setupToken = null;
+    config.adminPassword = adminPassword;
     config.nodeEnv = "test";
     config.requestLogging = false;
+  });
+
+  afterEach(() => {
+    config.adminPassword = originalAdminPassword;
   });
 
   it("rotates the Bearer key, preserves the initiating session, and revokes other dashboard sessions", async () => {
@@ -29,8 +35,8 @@ describe("credential rotation endpoint", () => {
       401,
     );
 
-    const loginA = await request(app).post("/app/session").send({ apiKey: oldApiKey });
-    const loginB = await request(app).post("/app/session").send({ apiKey: oldApiKey });
+    const loginA = await request(app).post("/app/session").send({ password: adminPassword });
+    const loginB = await request(app).post("/app/session").send({ password: adminPassword });
     const cookieA = cookieFrom(loginA);
     const cookieB = cookieFrom(loginB);
 
@@ -53,8 +59,8 @@ describe("credential rotation endpoint", () => {
   });
 
   it("revokes every dashboard session on logout-all without changing the machine key", async () => {
-    const loginA = await request(app).post("/app/session").send({ apiKey: oldApiKey });
-    const loginB = await request(app).post("/app/session").send({ apiKey: oldApiKey });
+    const loginA = await request(app).post("/app/session").send({ password: adminPassword });
+    const loginB = await request(app).post("/app/session").send({ password: adminPassword });
     const cookieA = cookieFrom(loginA);
     const cookieB = cookieFrom(loginB);
 
@@ -68,7 +74,7 @@ describe("credential rotation endpoint", () => {
 
   it("does not allow the dashboard to rotate an environment-managed credential", async () => {
     resetAccessStateForTest({ apiKey: "deployment-owned-key", apiKeySource: "env" });
-    const login = await request(app).post("/app/session").send({ apiKey: "deployment-owned-key" });
+    const login = await request(app).post("/app/session").send({ password: adminPassword });
     const response = await request(app).post("/app/api-key/rotate").set("Cookie", cookieFrom(login));
     expect(response.status).toBe(409);
     expect(response.body.error).toBe("API_KEY_MANAGED_BY_ENV");
