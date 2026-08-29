@@ -6,6 +6,7 @@ export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
 export type StoredMessageStatus = {
   id: string;
   to: string;
+  recipientJid?: string;
   status: MessageDeliveryStatus;
   error?: string;
   message?: string;
@@ -32,10 +33,11 @@ export function rememberMessageStatus(statusEntry: StoredMessageStatus): void {
   }, MESSAGE_STATUS_TTL_MS).unref();
 }
 
-export function rememberPendingMessageStatus(input: { id: string; to: string }): void {
+export function rememberPendingMessageStatus(input: { id: string; to: string; recipientJid?: string }): void {
   rememberMessageStatus({
     id: input.id,
     to: input.to,
+    recipientJid: input.recipientJid,
     status: "pending",
     updatedAt: nowIso(),
   });
@@ -72,21 +74,14 @@ export function updateMessageStatus(messageId: string, update: Partial<Omit<Stor
   }
 
   if (next.status === "accepted") {
-    enqueueMessageDeliveryWebhook({
-      messageId,
-      status: "accepted",
-    });
-
+    enqueueMessageDeliveryWebhook({ messageId, status: "accepted" });
     void recordActivity({
       level: "success",
       category: "messaging",
       code: "message.accepted",
       title: "Message accepted by WhatsApp",
       description: "WhatsApp acknowledged the outbound message.",
-      metadata: {
-        messageId,
-        targetJid: existing.to,
-      },
+      metadata: { messageId, targetJid: existing.to },
     });
     return;
   }
@@ -97,18 +92,13 @@ export function updateMessageStatus(messageId: string, update: Partial<Omit<Stor
       status: "rejected",
       ...(next.error ? { error: next.error } : {}),
     });
-
     void recordActivity({
       level: "warning",
       category: "messaging",
       code: "message.rejected",
       title: "Message rejected by WhatsApp",
       description: "WhatsApp reported that the outbound message could not be accepted.",
-      metadata: {
-        messageId,
-        targetJid: existing.to,
-        reason: next.error ?? null,
-      },
+      metadata: { messageId, targetJid: existing.to, reason: next.error ?? null },
     });
   }
 }
