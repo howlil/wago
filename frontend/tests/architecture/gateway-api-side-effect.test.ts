@@ -1,23 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const legacyApiKeyStorageKey = "wago.apiKey";
-
 afterEach(() => {
   window.sessionStorage.clear();
   vi.resetModules();
 });
 
 describe("gateway API module side effects", () => {
-  it("keeps API imports passive and exposes legacy session cleanup explicitly", async () => {
-    window.sessionStorage.setItem(legacyApiKeyStorageKey, "wa_legacy");
+  it("keeps API imports passive with respect to browser storage", async () => {
+    window.sessionStorage.setItem("unrelated", "preserve-me");
+    const storageEntriesBefore = window.sessionStorage.length;
 
     await import("../../src/features/gateway/api.js");
 
-    expect(window.sessionStorage.getItem(legacyApiKeyStorageKey)).toBe("wa_legacy");
-
-    const { clearLegacyApiKeySessionStorage } = await import("../../src/features/gateway/legacy-session.js");
-    clearLegacyApiKeySessionStorage();
-
-    expect(window.sessionStorage.getItem(legacyApiKeyStorageKey)).toBeNull();
+    expect(window.sessionStorage.length).toBe(storageEntriesBefore);
+    expect(window.sessionStorage.getItem("unrelated")).toBe("preserve-me");
   });
 });
