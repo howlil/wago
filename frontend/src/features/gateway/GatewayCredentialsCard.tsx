@@ -121,7 +121,13 @@ export function GatewayCredentialsCard({
                 onClick={onSignIn}
                 disabled={isSigningIn}
               >
-                {isSigningIn ? (creatingAccount ? "Creating" : "Signing in") : creatingAccount ? "Create account" : "Sign in"}
+                {isSigningIn
+                  ? creatingAccount
+                    ? "Creating"
+                    : "Signing in"
+                  : creatingAccount
+                    ? "Create account"
+                    : "Sign in"}
               </button>
             </div>
             <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{signInHint}</span>
