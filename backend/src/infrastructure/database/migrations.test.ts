@@ -20,6 +20,7 @@ describe("database migrations", () => {
       { version: 6 },
       { version: 7 },
       { version: 8 },
+      { version: 9 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -47,6 +48,7 @@ describe("database migrations", () => {
         "generated_at",
         "setup_code_hash",
         "setup_code_generated_at",
+        "admin_password_hash",
       ]),
     );
 
