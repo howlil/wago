@@ -39,8 +39,8 @@ export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput 
         setNotice({
           type: "error",
           message:
-            snapshot.dashboardAuthMode === "unconfigured"
-              ? "Configure WAGO_ADMIN_PASSWORD, restart Wago, then sign in before pairing WhatsApp."
+            snapshot.dashboardAuthMode === "setup"
+              ? "Create the admin account first, then pair WhatsApp."
               : "Sign in to the dashboard before managing WhatsApp binding.",
         });
         return false;
@@ -103,8 +103,8 @@ export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput 
       setNotice({
         type: "error",
         message:
-          snapshot.dashboardAuthMode === "unconfigured"
-            ? "Configure WAGO_ADMIN_PASSWORD in the deployment, restart Wago, then sign in before pairing."
+          snapshot.dashboardAuthMode === "setup"
+            ? "Create the admin account first, then pair WhatsApp."
             : "Sign in to the dashboard before pairing WhatsApp.",
       });
       return;
@@ -138,8 +138,8 @@ export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput 
       : snapshot.health === "checking"
         ? "Checking backend before pairing."
         : !snapshot.isAuthenticated
-          ? snapshot.dashboardAuthMode === "unconfigured"
-            ? "Configure WAGO_ADMIN_PASSWORD in the deployment, restart Wago, then sign in."
+          ? snapshot.dashboardAuthMode === "setup"
+            ? "Create the admin account in Gateway access, then pair WhatsApp."
             : "Sign in with the admin password to manage this gateway."
           : snapshot.binding.state === "bound"
             ? snapshot.status === "connected"
