@@ -3,6 +3,11 @@ import { config } from "../../config/index.js";
 
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "[::1]";
+}
+
 export function requestHasSameOrigin(req: Request): boolean {
   const origin = req.header("origin");
   const host = req.header("host");
@@ -13,8 +18,10 @@ export function requestHasSameOrigin(req: Request): boolean {
 
   try {
     const parsedOrigin = new URL(origin);
+    const secureTransport = parsedOrigin.protocol === "https:";
+    const loopbackHttp = parsedOrigin.protocol === "http:" && isLoopbackHostname(parsedOrigin.hostname);
 
-    if (config.nodeEnv === "production" && parsedOrigin.protocol !== "https:") {
+    if (config.nodeEnv === "production" && !secureTransport && !loopbackHttp) {
       return false;
     }
 
