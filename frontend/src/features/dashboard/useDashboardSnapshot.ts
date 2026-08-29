@@ -153,7 +153,6 @@ export function useDashboardSnapshot() {
     adminPasswordConfigured: gateway.adminPasswordConfigured,
     dashboardAuthMode: gateway.dashboardAuthMode,
     credentialSetupRequired: gateway.credentialSetupRequired,
-    setupCodeRequired: gateway.setupCodeRequired,
     webBootstrapEnabled: gateway.webBootstrapEnabled,
     isAuthenticated: gateway.isAuthenticated,
     status: whatsapp.status,
