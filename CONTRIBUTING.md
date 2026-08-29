@@ -15,13 +15,14 @@ Requirements: Node.js 26 and pnpm 11.21.0.
 ```bash
 pnpm install
 pnpm check
-pnpm test
-pnpm build
+pnpm test:core
+pnpm build:core
 ```
 
-`pnpm build` verifies the distributable core only. When intentionally working on the documentation site, validate it separately:
+When intentionally working on the documentation site, validate it separately:
 
 ```bash
+pnpm test:docs
 pnpm build:docs
 ```
 
@@ -34,7 +35,7 @@ pnpm --dir frontend test
 
 ## Testing and Verification
 
-Verification is risk-based. Identify what can realistically break, then choose the cheapest high-signal check that can detect that failure. Run focused checks during development and widen verification when risk or mandatory repository gates require it.
+Verification is risk-based. Identify what can realistically break, then choose the cheapest high-signal check that can detect that failure. Run focused checks during development and widen verification when risk or repository gates that apply to the affected scope require it.
 
 TDD is optional. Use it when a deterministic automated test is the clearest and cheapest way to define or protect behavior; do not use it as ceremony.
 
@@ -46,7 +47,7 @@ Do not add a test without a realistic regression it protects. Do not weaken or d
 
 ## Git Workflow
 
-Keep each change bounded, short-lived, and easy to review or revert. The normal lifecycle is:
+Keep substantive repository changes bounded, short-lived, and easy to review or revert. The normal lifecycle is:
 
 ```text
 sync main
@@ -54,7 +55,7 @@ sync main
   -> implement / verify / fix on that branch
   -> open one PR
   -> address review and CI on the same branch
-  -> required gates
+  -> applicable gates
   -> squash merge
   -> cleanup
 ```
@@ -86,7 +87,9 @@ iteration-3
 review-fixes-v4
 ```
 
-Normal changes should go through a short-lived task branch and PR rather than being developed directly on `main`.
+Do not create repository branches or PRs solely for plans, iteration announcements, checkpoints, status updates, or evidence transcripts.
+
+Normal substantive changes should go through a short-lived task branch and PR rather than being developed directly on `main`.
 
 ### Commit discipline
 
@@ -111,7 +114,7 @@ Prefer folding small corrections into the next meaningful checkpoint, or amend/s
 
 Normal Wago pull requests use **squash merge**. This lets the working branch retain useful checkpoints while `main` receives one clean logical commit for the completed task.
 
-Before merge, the current PR head should satisfy the approved scope, relevant risk-based verification, mandatory repository/CI gates for the change, and have no unresolved material review blocker. If the head changes after verification, rerun the checks materially affected by that change.
+Before merge, the current PR head should satisfy the approved scope, relevant risk-based verification, repository/CI gates that apply to the affected change, and have no unresolved material review blocker. If the head changes after verification, rerun only checks materially affected by that change.
 
 Merge commits or rebase merges should be used only when there is a concrete reason.
 
@@ -136,14 +139,8 @@ Git worktrees provide isolation; they do not create a new task identity. A task 
 
 ## Pull Requests
 
-Pull requests should include:
+Keep PR descriptions proportional to the change. Include only context that materially helps review: a concise description of the behavior/policy change, non-obvious risk or verification evidence, screenshots when visual review materially benefits, and linked issues when they add useful context.
 
-- a concise description of the behavior or policy change
-- relevant verification evidence, or a clear reason a test is not useful/applicable
-- local verification commands run when relevant
-- screenshots for frontend UI changes when they materially help review
-- linked issues when relevant
-
-Apply CI fixes and review follow-ups to the same branch and PR when they are still part of the same task.
+Do not duplicate CI output, command transcripts, or routine status reporting in the PR body. Apply CI fixes and review follow-ups to the same branch and PR when they are still part of the same task.
 
 Never attach auth directories, QR payloads, API keys, full phone numbers, full JIDs, message text, or raw production logs.

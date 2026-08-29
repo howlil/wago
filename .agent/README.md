@@ -8,13 +8,13 @@
 
 | Need | Read |
 | --- | --- |
-| current committed state and active constraints | `STATE.md` |
+| durable current project state/direction | `STATE.md` |
 | product shape, architecture, project structure, ownership, non-goals | `PROJECT.md` |
 | code organization, design discipline, testing, verification, Git | `ENGINEERING.md` |
 | persistence, deployment, readiness, backup, rollback, release | `OPERATIONS.md` |
 | durable architectural/product engineering choices and rationale | `DECISIONS.md` |
 
-Do not preload every file and do not begin ordinary work with a recursive repository audit.
+Do not preload every file and do not begin ordinary work with a recursive repository audit. `STATE.md` is not mandatory reading for a task whose scope is already clear from the request and affected code.
 
 ## Information model
 
@@ -24,9 +24,9 @@ Keep these concerns separate:
 2. `ENGINEERING.md` — how implementation changes should be shaped and verified.
 3. `OPERATIONS.md` — how Wago remains safe and operable in production.
 4. `DECISIONS.md` — why durable choices exist.
-5. `STATE.md` — where the committed project is now.
+5. `STATE.md` — durable current baseline/direction, not a task plan or sprint log.
 
-If a fact changes, update the document that owns that fact rather than creating another overlapping file.
+If a durable fact changes, update the document that owns that fact rather than creating another overlapping file.
 
 ## Artifact discipline
 
@@ -38,8 +38,11 @@ Do not use `.agent/` as a permanent archive for:
 - CI/run evidence
 - retrospective scratchpads
 - generic task playbooks or skills
+- iteration announcements or status-only updates
 
-Routine bounded work belongs in the task conversation and PR. A temporary plan may exist outside the committed project model when complexity genuinely requires it, but completed task machinery should not become permanent repository knowledge.
+Routine bounded work belongs in the task conversation and substantive PR. A temporary plan may exist outside the committed project model when complexity genuinely requires it, but completed task machinery should not become permanent repository knowledge.
+
+Do not create a standalone repository change merely to announce that an iteration started or ended. Update `STATE.md` only when the durable current project state itself materially changes, and fold that update into the substantive change when practical.
 
 Preserve durable project knowledge before deleting obsolete task artifacts: current requirements, architecture boundaries, state/data ownership, security/operational constraints, compatibility rules, and material decision rationale.
 

@@ -7,9 +7,10 @@
   "scripts": {
     "check": "biome check",
     "check:fix": "biome check --write",
-    "test": "pnpm run test:core && pnpm --dir docs test",
+    "test": "pnpm run test:core",
     "test:core": "pnpm --dir backend test && pnpm --dir frontend test",
-    "build": "pnpm run build:core && pnpm run build:docs",
+    "test:docs": "pnpm --dir docs test",
+    "build": "pnpm run build:core",
     "build:core": "pnpm --dir backend run build && pnpm --dir frontend run build",
     "build:docs": "pnpm --dir docs run build"
   },

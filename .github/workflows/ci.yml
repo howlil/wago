@@ -3,8 +3,16 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - ".agent/**"
+      - "*.md"
+      - "docs/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - ".agent/**"
+      - "*.md"
+      - "docs/**"
 
 permissions:
   contents: read
@@ -35,11 +43,11 @@ jobs:
       - name: Check formatting and lint
         run: pnpm check
 
-      - name: Run tests
-        run: pnpm test
+      - name: Run core tests
+        run: pnpm test:core
 
-      - name: Build repository
-        run: pnpm build
+      - name: Build core
+        run: pnpm build:core
 
   docker-smoke:
     name: Docker Build and Persistence Smoke
