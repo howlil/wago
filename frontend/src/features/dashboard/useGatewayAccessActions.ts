@@ -42,18 +42,14 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
 
     const candidate = signInCredential;
     if (!candidate) {
-      setNotice({
-        type: "error",
-        message:
-          snapshot.dashboardAuthMode === "password" ? "Enter the admin password first." : "Enter the API key first.",
-      });
+      setNotice({ type: "error", message: "Enter the admin password first." });
       return;
     }
 
     setIsSigningIn(true);
     setNotice(null);
     try {
-      await createBrowserSession(candidate, snapshot.dashboardAuthMode);
+      await createBrowserSession(candidate);
       setSignInCredential("");
       setShowSignInCredential(false);
       const info = await snapshot.loadAppInfo();
@@ -61,13 +57,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
         setNotice({ type: "error", message: "The backend did not establish a browser session." });
         return;
       }
-      setNotice({
-        type: "success",
-        message:
-          snapshot.dashboardAuthMode === "password"
-            ? "Signed in. The admin password was not stored in this browser."
-            : "Signed in through the legacy API-key recovery path. Configure WAGO_ADMIN_PASSWORD to separate dashboard and API credentials.",
-      });
+      setNotice({ type: "success", message: "Signed in. The admin password was not stored in this browser." });
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
       setNotice({ type: "error", message: apiErrorMessage(error, "Failed to sign in") });
@@ -149,9 +139,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
   const signInHint =
     snapshot.dashboardAuthMode === "password"
       ? "Use WAGO_ADMIN_PASSWORD. Wago exchanges it for an HttpOnly browser session and does not store it in the browser."
-      : snapshot.dashboardAuthMode === "legacy_api_key"
-        ? "Compatibility mode: use the existing API key once. Configure WAGO_ADMIN_PASSWORD to remove this legacy coupling."
-        : "Set WAGO_ADMIN_PASSWORD in the deployment environment and restart Wago to enable dashboard sign-in.";
+      : "Set WAGO_ADMIN_PASSWORD in the deployment environment and restart Wago to enable dashboard sign-in.";
 
   return {
     signInCredential,
