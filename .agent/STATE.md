@@ -58,16 +58,18 @@ Architecture/dependency regression tests exist under `backend/src/architecture/`
 - this file owns only the concise committed state.
 - historical task plans/specs/checkpoints are not part of the current project model.
 
-## Current integration baseline
+## Integration state
 
-The latest completed engineering work before this project-model cleanup established:
+- current `main` includes the semantic `.agent` project-model cleanup from PR #74;
+- the older broad draft PR #67 is closed as superseded and is not active scope;
+- none of PR #67's unmerged runtime changes are implicitly authorized by its history;
+- there is no active product feature iteration;
+- there is no known current blocker.
 
-- canonical operating/process rules in `AGENTS.md`;
-- deterministic isolation for the previously failing dashboard access tests;
-- stronger codebase-quality guidance around ownership, locality, state ownership, dependency direction, and evidence-based CI failure classification.
+## Active iteration
 
-## Active work and next direction
+None.
 
-No product feature is authorized by this file. The current task is complete when the semantic `.agent` model replaces the historical task archive, references to the old model are removed, mandatory gates pass, and the change is merged.
+## Next authorized work
 
-Future product or architecture work starts from explicit user intent, not from old milestone entries or deleted planning artifacts.
+None. Start the next iteration from explicit user intent and current `main`, not from superseded drafts or deleted historical planning artifacts.
