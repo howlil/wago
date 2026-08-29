@@ -20,7 +20,6 @@ export function useGatewaySnapshotState() {
   const [adminPasswordConfigured, setAdminPasswordConfigured] = useState(false);
   const [dashboardAuthMode, setDashboardAuthMode] = useState<AppInfoResponse["dashboardAuthMode"]>("unconfigured");
   const [credentialSetupRequired, setCredentialSetupRequired] = useState(false);
-  const [setupCodeRequired, setSetupCodeRequired] = useState(false);
   const [webBootstrapEnabled, setWebBootstrapEnabled] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -36,7 +35,6 @@ export function useGatewaySnapshotState() {
     setAdminPasswordConfigured(info.adminPasswordConfigured);
     setDashboardAuthMode(info.dashboardAuthMode);
     setCredentialSetupRequired(info.credentialSetupRequired);
-    setSetupCodeRequired(Boolean(info.setupCodeRequired ?? info.setupTokenRequired));
     setWebBootstrapEnabled(info.webBootstrapEnabled ?? true);
     setIsAuthenticated(info.authenticated);
 
@@ -96,7 +94,6 @@ export function useGatewaySnapshotState() {
     setApiKeyConfigured(true);
     setApiKeySource("generated");
     setCredentialSetupRequired(false);
-    setSetupCodeRequired(false);
     setIsAuthenticated(true);
   }, []);
 
@@ -109,7 +106,6 @@ export function useGatewaySnapshotState() {
     adminPasswordConfigured,
     dashboardAuthMode,
     credentialSetupRequired,
-    setupCodeRequired,
     webBootstrapEnabled,
     isAuthenticated,
     refreshHealth,
