@@ -162,7 +162,7 @@ describe("dashboard", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    await user.click(await screen.findByRole("button", { name: "Collapse sidebar" }));
     expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Expand sidebar" }));
@@ -207,7 +207,7 @@ describe("dashboard", () => {
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("creates the admin account before generating the machine API key and pairing", async () => {
+  it("sets up the admin credential before generating the machine API key and pairing", async () => {
     const firstRunUnauthenticatedInfo = appInfo({
       apiKeyConfigured: false,
       apiKeySource: "unset",
@@ -246,14 +246,13 @@ describe("dashboard", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    const passwordInput = await screen.findByLabelText("Admin password", { selector: "input" });
-    const createAccountButton = screen.getByRole("button", { name: /create account/i });
-    await waitFor(() => {
-      expect((passwordInput as HTMLInputElement).disabled).toBe(false);
-      expect((createAccountButton as HTMLButtonElement).disabled).toBe(false);
-    });
+    expect(await screen.findByRole("heading", { name: /set up your gateway/i })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Control" })).toBeNull();
+    const passwordInput = screen.getByLabelText("Admin password", { selector: "input" });
+    const confirmationInput = screen.getByLabelText("Confirm password", { selector: "input" });
     await user.type(passwordInput, adminPassword);
-    await user.click(createAccountButton);
+    await user.type(confirmationInput, adminPassword);
+    await user.click(screen.getByRole("button", { name: /set up wago/i }));
 
     await waitFor(() => {
       expect(createAdminAccount).toHaveBeenCalledWith(adminPassword);
@@ -272,7 +271,32 @@ describe("dashboard", () => {
     );
   });
 
-  it("signs a returning browser in with the admin password", async () => {
+  it("does not submit first-run setup when password confirmation differs", async () => {
+    vi.mocked(getAppInfo).mockResolvedValue(
+      appInfo({
+        apiKeyConfigured: false,
+        apiKeySource: "unset",
+        authenticated: false,
+        adminPasswordConfigured: false,
+        dashboardAuthMode: "setup",
+        credentialSetupRequired: true,
+        setupRequired: true,
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(await screen.findByLabelText("Admin password", { selector: "input" }), adminPassword);
+    await user.type(screen.getByLabelText("Confirm password", { selector: "input" }), `${adminPassword}-different`);
+    await user.click(screen.getByRole("button", { name: /set up wago/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Passwords do not match.");
+    expect(createAdminAccount).not.toHaveBeenCalled();
+  });
+
+  it("signs a returning browser in and keeps the requested workspace", async () => {
+    window.history.replaceState({}, "", "/settings");
     vi.mocked(getAppInfo)
       .mockResolvedValueOnce(appInfo({ authenticated: false }))
       .mockResolvedValue(appInfo({ authenticated: true }));
@@ -280,35 +304,46 @@ describe("dashboard", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    const input = await screen.findByLabelText("Admin password", { selector: "input" });
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
+    const input = screen.getByLabelText("Admin password", { selector: "input" });
     await user.type(input, adminPassword);
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
-    await waitFor(() => {
-      expect(createBrowserSession).toHaveBeenCalledWith(adminPassword);
-      expect(screen.queryByLabelText("Admin password", { selector: "input" })).toBeNull();
-    });
-    expect(await screen.findByRole("button", { name: /^sign out$/i })).toBeTruthy();
+    await waitFor(() => expect(createBrowserSession).toHaveBeenCalledWith(adminPassword));
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
+    expect(screen.queryByLabelText("Admin password", { selector: "input" })).toBeNull();
   });
 
-  it("does not call protected WhatsApp endpoints when the browser is not authenticated", async () => {
-    vi.mocked(getAppInfo).mockResolvedValueOnce(appInfo({ authenticated: false }));
+  it("does not render protected workspaces or call WhatsApp endpoints before authentication", async () => {
+    vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: false }));
     render(<App />);
-    expect(await screen.findByText(/sign in with the admin password/i)).toBeTruthy();
+
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Control" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
     expect(getCurrentQr).not.toHaveBeenCalled();
+    expect(getWhatsAppStatus).not.toHaveBeenCalled();
   });
 
-  it("keeps the pair action visible after signing out of the browser session", async () => {
+  it("returns to the sign-in surface after signing out", async () => {
     const user = userEvent.setup();
-    vi.mocked(getAppInfo)
-      .mockResolvedValueOnce(appInfo({ authenticated: true }))
-      .mockResolvedValueOnce(appInfo({ authenticated: false }));
+    vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: true }));
+    vi.mocked(logoutBrowserSession).mockImplementationOnce(async () => {
+      vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: false }));
+      return {
+        success: true,
+        authenticated: false,
+        message: "Browser session ended",
+      };
+    });
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
     await waitFor(() => expect(logoutBrowserSession).toHaveBeenCalledTimes(1));
 
-    expect(await screen.findByRole("button", { name: /pair whatsapp/i })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /pair whatsapp/i })).toBeNull();
   });
 
   it("requires confirmation and shows the replacement API key after rotation", async () => {
