@@ -26,12 +26,8 @@ export function createAppSettingsStore(database: DatabaseSync) {
       api_key_hash = excluded.api_key_hash,
       generated_at = excluded.generated_at
   `);
-  const readAdminPasswordStatement = database.prepare(
-    "SELECT admin_password_hash FROM app_settings WHERE id = 1",
-  );
-  const writeAdminPasswordStatement = database.prepare(
-    "UPDATE app_settings SET admin_password_hash = ? WHERE id = 1",
-  );
+  const readAdminPasswordStatement = database.prepare("SELECT admin_password_hash FROM app_settings WHERE id = 1");
+  const writeAdminPasswordStatement = database.prepare("UPDATE app_settings SET admin_password_hash = ? WHERE id = 1");
   const clearStatement = database.prepare("DELETE FROM app_settings WHERE id = 1");
 
   function get(): PersistedAppSettings | null {
