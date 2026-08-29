@@ -59,6 +59,7 @@ const RECIPIENT_WINDOW_MS = 1000 * 60;
 const RECIPIENT_LIMIT = 5;
 const NEW_CHAT_WINDOW_MS = 1000 * 60 * 60;
 const NEW_CHAT_LIMIT = 10;
+const REACHOUT_RESTRICTION_COOLDOWN_MS = 1000 * 60 * 30;
 
 function checkPauseState(): OutboundPolicyDecision | undefined {
   const pause = getOutboundPauseState();
@@ -221,27 +222,23 @@ export async function checkOutboundPolicy(input: OutboundPolicyInput): Promise<O
   return { allowed: true };
 }
 
-export async function recordOutboundAccepted(
-  input: OutboundPolicyInput,
-  messageId: string | null,
-  resolvedJid?: string,
-): Promise<void> {
-  const now = Date.now();
+function persistOutboundSafety(input: OutboundPolicyInput, now: number): void {
   const recipient = getRecipientByJidSync(input.jid);
   const isNewRecipient = !recipient?.lastSuccessfulOutboundAt;
 
+  recordAcceptedOutbound({
+    jid: input.jid,
+    acceptedAt: now,
+    isNewRecipient,
+    idempotencyKey: input.idempotencyKey,
+    idempotencyExpiresAt: input.idempotencyKey ? now + IDEMPOTENCY_TTL_MS : undefined,
+  });
+  pruneOutboundSafety(now, now - NEW_CHAT_WINDOW_MS);
+}
+
+function persistOutboundTransition(messageId: string | null, operation: () => void, failureMessage: string): void {
   try {
-    withTransaction(() => {
-      recordAcceptedOutbound({
-        jid: input.jid,
-        acceptedAt: now,
-        isNewRecipient,
-        idempotencyKey: input.idempotencyKey,
-        idempotencyExpiresAt: input.idempotencyKey ? now + IDEMPOTENCY_TTL_MS : undefined,
-      });
-      rememberSuccessfulOutboundSync(input.jid, resolvedJid);
-      pruneOutboundSafety(now, now - NEW_CHAT_WINDOW_MS);
-    });
+    withTransaction(operation);
   } catch (error) {
     logger.error(
       {
@@ -249,14 +246,39 @@ export async function recordOutboundAccepted(
         errorName: error instanceof Error ? error.name : "UNKNOWN",
         messageId,
       },
-      "Outbound message was sent but safety state could not be fully persisted",
+      failureMessage,
     );
-    throw new ApplicationError(
-      "OUTBOUND_STATE_PERSIST_FAILED",
-      "Message was accepted by WhatsApp but Wago could not persist outbound safety state",
-      { cause: error },
-    );
+    throw new ApplicationError("OUTBOUND_STATE_PERSIST_FAILED", failureMessage, { cause: error });
   }
+}
+
+export async function recordOutboundDispatched(input: OutboundPolicyInput, messageId: string | null): Promise<void> {
+  const now = Date.now();
+  persistOutboundTransition(
+    messageId,
+    () => persistOutboundSafety(input, now),
+    "Message was submitted to WhatsApp but Wago could not persist outbound safety state",
+  );
+}
+
+export function recordOutboundAcknowledged(jid: string, resolvedJid?: string): void {
+  rememberSuccessfulOutboundSync(jid, resolvedJid);
+}
+
+export async function recordOutboundAccepted(
+  input: OutboundPolicyInput,
+  messageId: string | null,
+  resolvedJid?: string,
+): Promise<void> {
+  const now = Date.now();
+  persistOutboundTransition(
+    messageId,
+    () => {
+      persistOutboundSafety(input, now);
+      recordOutboundAcknowledged(input.jid, resolvedJid);
+    },
+    "Message was accepted by WhatsApp but Wago could not persist outbound safety state",
+  );
 }
 
 export function recordOutboundRejected(_input: OutboundPolicyInput, _error: unknown): void {
@@ -264,7 +286,10 @@ export function recordOutboundRejected(_input: OutboundPolicyInput, _error: unkn
   // idempotency key, so a deliberate retry can proceed.
 }
 
-export async function markRecipientReachoutRestricted(jid: string, restrictedUntil: number): Promise<void> {
+export async function markRecipientReachoutRestricted(
+  jid: string,
+  restrictedUntil = Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS,
+): Promise<void> {
   setRecipientReachoutCooldown(jid, restrictedUntil);
 }
 
