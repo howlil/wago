@@ -2,9 +2,9 @@ import { type Dispatch, type SetStateAction, useState } from "react";
 import { ApiError } from "../../shared/api/client.js";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import type { Notice } from "../../shared/ui/feedback.js";
-import { rotateApiKey, logoutAllBrowserSessions, logoutBrowserSession } from "../gateway/api.js";
-import type { CopiedField } from "../gateway/types.js";
 import { useAccessGate } from "../access/AccessGate.js";
+import { logoutAllBrowserSessions, logoutBrowserSession, rotateApiKey } from "../gateway/api.js";
+import type { CopiedField } from "../gateway/types.js";
 import type { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 
 type DashboardSnapshot = ReturnType<typeof useDashboardSnapshot>;

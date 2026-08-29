@@ -54,9 +54,7 @@ export function GatewayCredentialsCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>Gateway access</h2>
-          <p className={sectionDescriptionClass}>
-            Machine API credentials are separate from dashboard authentication.
-          </p>
+          <p className={sectionDescriptionClass}>Machine API credentials are separate from dashboard authentication.</p>
         </div>
         {apiKeyConfigured ? (
           <span className="shrink-0 rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">

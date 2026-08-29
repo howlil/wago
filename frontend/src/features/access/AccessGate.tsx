@@ -1,21 +1,8 @@
 import { Eye, EyeOff } from "lucide-react";
-import {
-  type FormEvent,
-  type ReactNode,
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { type FormEvent, type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { ApiError } from "../../shared/api/client.js";
 import { fieldLabelClass, inputClass, primaryButtonClass, secondaryButtonClass } from "../../shared/ui/classes.js";
-import {
-  type AppInfoResponse,
-  createAdminAccount,
-  createBrowserSession,
-  getAppInfo,
-} from "../gateway/api.js";
+import { type AppInfoResponse, createAdminAccount, createBrowserSession, getAppInfo } from "../gateway/api.js";
 
 type AccessGateProps = {
   children: ReactNode;
@@ -113,7 +100,6 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
               type={showPassword ? "text" : "password"}
               placeholder={creatingAccount ? "12+ characters" : "Admin password"}
               autoComplete={creatingAccount ? "new-password" : "current-password"}
-              autoFocus
             />
             {password ? (
               <button
@@ -146,7 +132,10 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
         ) : null}
 
         {submitError ? (
-          <div className="rounded-md border border-[#e4b8bc] bg-wago-danger-soft px-3 py-2 text-xs leading-5 text-wago-danger" role="alert">
+          <div
+            className="rounded-md border border-[#e4b8bc] bg-wago-danger-soft px-3 py-2 text-xs leading-5 text-wago-danger"
+            role="alert"
+          >
             {submitError}
           </div>
         ) : null}
