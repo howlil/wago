@@ -60,16 +60,50 @@ Architecture/dependency regression tests exist under `backend/src/architecture/`
 
 ## Integration state
 
-- current `main` includes the semantic `.agent` project-model cleanup from PR #74;
+- current `main` includes the semantic `.agent` project-model cleanup from PR #74 and the post-cleanup state refresh from PR #75;
 - the older broad draft PR #67 is closed as superseded and is not active scope;
 - none of PR #67's unmerged runtime changes are implicitly authorized by its history;
-- there is no active product feature iteration;
 - there is no known current blocker.
 
 ## Active iteration
 
-None.
+### Outbound correctness
+
+Outcome: make outbound safety state match the actual WhatsApp side effect and remain correct under concurrent sends, without changing Wago's single-process SQLite architecture.
+
+In scope:
+
+- make same-idempotency-key concurrent sends safe before the external Baileys send side effect;
+- keep rate-limit/idempotency state transitions coherent around the outbound critical section;
+- stop treating `sendMessage()` return as confirmed recipient success;
+- record recipient successful-outbound state only when WhatsApp reports an accepted/server-acknowledged outcome;
+- propagate asynchronous reach-out rejection into recipient-specific outbound cooldown state;
+- add only the deterministic tests needed to prove these invariants and regressions.
+
+Execution order:
+
+1. Close the concurrent idempotency/reservation gap around outbound send admission.
+2. Align recipient success state with actual WhatsApp acknowledgement.
+3. Feed asynchronous reach-out rejection back into recipient policy state.
+4. Run focused verification, then mandatory repository CI/CodeQL before merge.
+
+Acceptance criteria:
+
+- two materially concurrent requests using the same active idempotency key cannot cause two Baileys send side effects;
+- a pending send does not update `lastSuccessfulOutboundAt`;
+- a WhatsApp server acknowledgement updates the successful-recipient state exactly through the owned outcome path;
+- an asynchronous `REACHOUT_RESTRICTED` outcome establishes recipient cooldown state that later outbound policy checks enforce;
+- existing public HTTP behavior and the single-process/SQLite/Baileys ownership boundaries remain unchanged unless a material incompatibility is discovered and explicitly approved;
+- no Redis, queue infrastructure, distributed lock, new service boundary, or speculative abstraction is introduced;
+- mandatory repository gates pass on the final change.
+
+Out of scope:
+
+- removing `SETUP_TOKEN`, legacy dashboard API-key login, legacy cookie/session-storage cleanup, legacy JSON import, or legacy webhook environment import;
+- unrelated frontend cleanup;
+- broad module restructuring;
+- delivery semantics beyond the current outbound correctness gaps.
 
 ## Next authorized work
 
-None. Start the next iteration from explicit user intent and current `main`, not from superseded drafts or deleted historical planning artifacts.
+Complete the active outbound-correctness iteration. After it is closed, reassess legacy compatibility cleanup as a separate bounded iteration; do not start it automatically.
