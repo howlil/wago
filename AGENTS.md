@@ -4,15 +4,15 @@ This file is the canonical execution adapter for Wago. It owns the lifecycle, au
 
 ## Read progressively
 
-Start with the minimum context needed for the task:
+Start from the user request, not from a fixed documentation-reading sequence. Read only the context needed for the task:
 
-1. `.agent/STATE.md` — current committed project state.
-2. `.agent/PROJECT.md` — product/system shape, source structure, ownership, constraints, and non-goals when implementation placement or architecture matters.
-3. `.agent/ENGINEERING.md` — detailed code quality, design, testing/verification, and Git rules for code changes.
-4. `.agent/OPERATIONS.md` — persistence, deployment, readiness, backup/restore, rollback, or release work.
-5. `.agent/DECISIONS.md` — durable rationale when a task touches an established material boundary.
+- `.agent/STATE.md` — current durable project state when current work/direction matters.
+- `.agent/PROJECT.md` — product/system shape, source structure, ownership, constraints, and non-goals when implementation placement or architecture matters.
+- `.agent/ENGINEERING.md` — detailed code quality, design, testing/verification, and Git rules for code changes.
+- `.agent/OPERATIONS.md` — persistence, deployment, readiness, backup/restore, rollback, or release work.
+- `.agent/DECISIONS.md` — durable rationale when a task touches an established material boundary.
 
-Do not load the whole `.agent/` model or recursively audit the repository by default. Expand context only when the requested change or a discovered dependency materially requires it.
+Do not require `STATE.md` or preload the whole `.agent/` model for every task. Do not recursively audit the repository by default. Expand context only when the requested change or a discovered dependency materially requires it.
 
 ## Authority model
 
@@ -59,7 +59,7 @@ understand explicit request/problem
   -> implement minimum complete change
   -> identify realistic regression risk
   -> choose cheapest high-signal verification
-  -> satisfy mandatory repository gates
+  -> satisfy repository gates that apply to the affected scope
   -> release/merge when evidence supports readiness
   -> stop
 ```
@@ -150,7 +150,7 @@ A change is release-ready when:
 
 - approved scope and acceptance criteria are satisfied;
 - relevant risk-based verification has passed;
-- mandatory repository/CI/build/security/migration/release checks for the scope have passed;
+- repository/CI/build/security/migration/release checks that apply to the affected scope have passed;
 - no known material in-scope blocker remains;
 - compatibility and rollback risk are acceptable for the change.
 
@@ -160,21 +160,21 @@ Release the smallest complete useful increment.
 
 ## Git integration
 
-Use the repository's short-lived trunk-oriented flow described in `.agent/ENGINEERING.md`.
+Use the repository's short-lived trunk-oriented flow described in `.agent/ENGINEERING.md` when a repository change is actually being made.
 
-Default shape:
+Default shape for substantive repository work:
 
 ```text
 main
   -> one short-lived task branch
   -> implement / verify / review / fix
   -> one PR
-  -> required gates
+  -> applicable gates
   -> squash merge
   -> cleanup
 ```
 
-Branches/PRs are integration tools. Do not create iteration/retry/staging/personal branch machinery for routine work.
+Branches/PRs are integration tools, not planning artifacts. Do not create a branch or PR solely to announce an iteration, record a plan/status update, produce evidence, or create process checkpoints. Do not create iteration/retry/staging/personal branch machinery for routine work.
 
 ## Stop conditions
 
@@ -186,7 +186,7 @@ Stop normal implementation and surface the decision when continuing requires an 
 - security/privacy/trust-boundary change;
 - major architecture/service/consistency/infrastructure change.
 
-Stop the task when approved scope is satisfied, justified verification and mandatory gates pass, and no material in-scope issue remains.
+Stop the task when approved scope is satisfied, justified verification and applicable required gates pass, and no material in-scope issue remains.
 
 After that point, do not continue into adjacent features, aesthetic refactors, speculative cleanup, future-proofing, broad audits, extra tests/docs, metrics, or infrastructure without a concrete authorized need.
 
@@ -198,7 +198,7 @@ After that point, do not continue into adjacent features, aesthetic refactors, s
 - `.agent/ENGINEERING.md` — detailed engineering rules.
 - `.agent/OPERATIONS.md` — operational/release constraints.
 - `.agent/DECISIONS.md` — durable rationale.
-- `.agent/STATE.md` — short current committed state.
+- `.agent/STATE.md` — concise durable current state, not a sprint plan or task tracker.
 - `docs/` — public product documentation.
 
-Do not commit permanent task plans/spec snapshots/checkpoints/skills as project-model artifacts. Routine task evidence belongs in PR/CI history and the task conversation.
+Do not commit permanent task plans/spec snapshots/checkpoints/skills as project-model artifacts. Acceptance criteria, iteration plans, command transcripts, and routine evidence belong in the task conversation or substantive PR when useful. Update `STATE.md` only when durable current project state materially changes; do not create a standalone state/status PR merely to announce work.

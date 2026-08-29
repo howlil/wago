@@ -116,7 +116,7 @@ Project-specific guidance:
 - keep mock-based tests isolated: restore behavior, response queues, timers, and mutable state that a test can change, not only call history;
 - do not weaken/delete/skip a valid test merely to make CI green;
 - prefer deterministic tests with clear failure reasons over broad brittle tests;
-- run the smallest relevant check first, then widen according to risk and mandatory gates.
+- run the smallest relevant check first, then widen according to risk and repository gates that apply to the affected scope.
 
 ## Failure classification
 
@@ -136,14 +136,14 @@ Retry is diagnostic for a plausibly transient failure, not a root-cause substitu
 
 ## Git and integration
 
-Prefer short-lived, trunk-oriented task integration:
+Prefer short-lived, trunk-oriented task integration for substantive repository changes:
 
 ```text
 main
   -> one short-lived task branch
   -> implement / verify / review / fix on the same branch
   -> one PR
-  -> required gates
+  -> applicable gates
   -> squash merge
   -> cleanup
 ```
@@ -152,6 +152,7 @@ Rules:
 
 - check whether an active branch/PR already represents the task before creating Git state;
 - one coherent task normally uses one branch and one PR;
+- do not create a branch/PR solely for a plan, iteration announcement, status update, checkpoint, or evidence transcript;
 - use purpose-prefixed names such as `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`;
 - CI failures, formatting fixes, and review feedback stay on the same task branch;
 - when `main` materially advances beneath a dependent task, rebase or recreate the task commit directly on latest `main` before final verification; do not partially synchronize content and leave divergent history/unrelated diff;
@@ -163,17 +164,18 @@ Rules:
 
 ## Typical verification commands
 
-Use only the checks relevant during the inner loop; mandatory repository gates still apply before merge.
+Use only checks relevant to the affected risk and scope. Repository gates that apply to that scope still apply before merge.
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm run check
-pnpm --dir backend test
-pnpm --dir backend run build
-pnpm --dir frontend test
-pnpm --dir frontend run build
+pnpm run test:core
+pnpm run build:core
+pnpm run test:docs
 pnpm run build:docs
+pnpm --dir backend test
+pnpm --dir frontend test
 docker build .
 ```
 
-Use container persistence/rollback smoke verification when the affected change can realistically break durable deployment behavior.
+Use container persistence/rollback smoke verification only when the affected change can realistically break durable deployment behavior.
