@@ -6,7 +6,7 @@ const firstRunProps = {
   appId: "wa-gateway-test",
   apiKeyConfigured: false,
   apiKeySource: "unset" as const,
-  dashboardAuthMode: "password" as const,
+  dashboardAuthMode: "setup" as const,
   signInCredential: "",
   apiKeyInput: "",
   credentialSetupRequired: true,
@@ -15,7 +15,7 @@ const firstRunProps = {
   showApiKey: false,
   copiedField: null,
   credentialHint: "Generated after first pairing.",
-  signInHint: "Use WAGO_ADMIN_PASSWORD.",
+  signInHint: "Create the first admin password here. No .env credential is required.",
   isSigningIn: false,
   isSigningOut: false,
   isRotatingApiKey: false,
@@ -30,10 +30,12 @@ const firstRunProps = {
 };
 
 describe("first-run gateway credentials", () => {
-  it("shows admin-password access separately from the generated machine API key", () => {
+  it("creates the admin account in the dashboard before generating the machine API key", () => {
     render(<GatewayCredentialsCard {...firstRunProps} />);
 
-    expect(screen.getByLabelText(/admin password/i)).toBeTruthy();
+    expect(screen.getByLabelText(/admin password/i).getAttribute("placeholder")).toContain("Create a password");
+    expect(screen.getByRole("button", { name: /create account/i })).toBeTruthy();
+    expect(screen.getByText(/no \.env credential is required/i)).toBeTruthy();
     expect(screen.getByLabelText(/machine api key/i).getAttribute("placeholder")).toBe("Generated after first pairing");
   });
 });
