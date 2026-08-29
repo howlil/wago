@@ -1,6 +1,6 @@
 import { ApiError, requestJson } from "../../shared/api/client.js";
 
-export type DashboardAuthMode = "password" | "legacy_api_key" | "unconfigured";
+export type DashboardAuthMode = "password" | "unconfigured";
 
 export type AppInfoResponse = {
   success: true;
@@ -13,8 +13,6 @@ export type AppInfoResponse = {
   dashboardAuthMode: DashboardAuthMode;
   credentialSetupRequired: boolean;
   setupRequired: boolean;
-  setupCodeRequired?: boolean;
-  setupTokenRequired?: boolean;
   webBootstrapEnabled?: boolean;
 };
 
@@ -81,23 +79,19 @@ export function getAppInfo(): Promise<AppInfoResponse> {
   return requestJson<AppInfoResponse>("/app/info");
 }
 
-export function bootstrapApp(candidate: string, setupCode?: string): Promise<BootstrapAppResponse> {
+export function bootstrapApp(candidate: string): Promise<BootstrapAppResponse> {
   return requestJson<BootstrapAppResponse>("/app/bootstrap", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(setupCode ? { "X-Wago-Setup-Code": setupCode } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ apiKey: candidate }),
   });
 }
 
-export function createBrowserSession(credential: string, mode: DashboardAuthMode): Promise<BrowserSessionResponse> {
-  const body = mode === "legacy_api_key" ? { apiKey: credential } : { password: credential };
+export function createBrowserSession(password: string): Promise<BrowserSessionResponse> {
   return requestJson<BrowserSessionResponse>("/app/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ password }),
   });
 }
 
