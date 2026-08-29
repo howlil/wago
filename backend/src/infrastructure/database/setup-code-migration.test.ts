@@ -8,7 +8,7 @@ describe("setup-code migration", () => {
     runMigrations(database, migrations);
 
     const versions = database.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
-    expect(versions.at(-1)).toEqual({ version: 8 });
+    expect(versions.at(-1)).toEqual({ version: 9 });
 
     const columns = database.prepare("PRAGMA table_info(app_settings)").all() as Array<{ name: string }>;
     expect(columns.map((column) => column.name)).toEqual(
