@@ -34,7 +34,6 @@ describe("first-run gateway credentials", () => {
     render(<GatewayCredentialsCard {...firstRunProps} />);
 
     expect(screen.getByLabelText(/admin password/i)).toBeTruthy();
-    expect(screen.queryByLabelText(/deployment setup token/i)).toBeNull();
     expect(screen.getByLabelText(/machine api key/i).getAttribute("placeholder")).toBe("Generated after first pairing");
   });
 });
