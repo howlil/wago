@@ -1,125 +1,50 @@
-# Wago Agent Workspace
+# Wago Project Context
 
-`.agent/` is the repository-local workspace for internal engineering artifacts that are useful to contributors or coding agents but are **not public product documentation**.
+`.agent/` is Wago's small semantic project model. It stores current project truth that is expensive to rediscover, not task history or agent scratchpads.
 
-## Source of Truth
+`AGENTS.md` is the canonical execution adapter. Read this directory progressively and only for the concern the current task touches.
 
-Root `AGENTS.md` is the canonical repository-wide operating policy.
+## Context routing
 
-The canonical lifecycle is:
+| Need | Read |
+| --- | --- |
+| current committed state and active constraints | `STATE.md` |
+| product shape, architecture, project structure, ownership, non-goals | `PROJECT.md` |
+| code organization, design discipline, testing, verification, Git | `ENGINEERING.md` |
+| persistence, deployment, readiness, backup, rollback, release | `OPERATIONS.md` |
+| durable architectural/product engineering choices and rationale | `DECISIONS.md` |
 
-```text
-USER INTENT
-  -> UNDERSTAND
-  -> BOUND
-  -> SPECIFY
-  -> DESIGN
-  -> IMPLEMENT
-  -> VERIFY
-  -> QUALITY GATES
-  -> RELEASE READY
-  -> STOP
-```
+Do not preload every file and do not begin ordinary work with a recursive repository audit.
 
-This is a reasoning and execution model, not a mandatory artifact pipeline or approval-gate SOP. Small tasks may collapse stages. Verification may happen throughout the lifecycle.
+## Information model
 
-If an older plan, spec, checkpoint, or contributor note conflicts with current `AGENTS.md`, follow `AGENTS.md`. Historical artifacts remain task history and should not be rewritten solely to match newer policy.
+Keep these concerns separate:
 
-## Boundary
+1. `PROJECT.md` — what Wago is and which component owns what.
+2. `ENGINEERING.md` — how implementation changes should be shaped and verified.
+3. `OPERATIONS.md` — how Wago remains safe and operable in production.
+4. `DECISIONS.md` — why durable choices exist.
+5. `STATE.md` — where the committed project is now.
 
-Use `.agent/` for internal work products when they materially improve execution, continuity, review, or auditability, for example:
+If a fact changes, update the document that owns that fact rather than creating another overlapping file.
 
-- design specs for material design decisions
-- implementation plans for genuinely multi-step work
-- focused audit notes when an audit is explicitly useful
-- execution/checkpoint evidence for complex or interrupted work
+## Artifact discipline
 
-Use `docs/` only for public Wago documentation.
+Do not use `.agent/` as a permanent archive for:
 
-Do not place agent plans/specs under `docs/`, because everything under `docs/` belongs to the public documentation product boundary.
+- implementation plans
+- design-spec snapshots for completed tasks
+- checkpoints or command transcripts
+- CI/run evidence
+- retrospective scratchpads
+- generic task playbooks or skills
 
-## Operating Principles
+Routine bounded work belongs in the task conversation and PR. A temporary plan may exist outside the committed project model when complexity genuinely requires it, but completed task machinery should not become permanent repository knowledge.
 
-Use `.agent/` to support delivery, not to create ceremony.
+Preserve durable project knowledge before deleting obsolete task artifacts: current requirements, architecture boundaries, state/data ownership, security/operational constraints, compatibility rules, and material decision rationale.
 
-- Start from the explicit user intent and approved scope.
-- Do not invent features, product semantics, or adjacent requirements.
-- Inspect only the minimum repository context necessary to implement safely.
-- Prefer the smallest coherent vertical slice.
-- Reuse existing patterns before introducing abstractions or architecture.
-- Keep ordinary local implementation autonomous and reversible.
-- Surface material product, architecture, security, contract, or destructive-data decisions instead of silently choosing them.
-- Use risk-based verification: choose the cheapest high-signal check for the realistic failure mode.
-- TDD is optional and should be used when it is the cheapest deterministic way to define or protect behavior.
-- Do not require TDD for styling/layout, static markup, copy/docs, trivial wiring, or exploratory implementation.
-- Do not require repo-wide audits, delivery metrics, instrumentation, specs, plans, or checkpoints for ordinary bounded work.
-- Instrumentation is conditional: add it when needed to evaluate an outcome, diagnose a meaningful new failure mode, or operate changed behavior safely.
-- Stop once approved scope is satisfied, justified verification and mandatory gates pass, and no material in-scope blocker remains.
+## Public documentation boundary
 
-## Structure
+`docs/` is public Wago documentation. Internal execution policy and project-model files stay in `AGENTS.md` and `.agent/`.
 
-```text
-.agent/
-  README.md
-  specs/
-    YYYY-MM-DD-<topic>-design.md
-  plans/
-    YYYY-MM-DD-<topic>.md
-  checkpoints/
-    YYYY-MM-DD-<topic>.md
-```
-
-Add another subdirectory only when a real recurring artifact type appears. Do not mirror source-code architecture inside `.agent/`.
-
-## Artifact Rules
-
-### Specs
-
-Use `.agent/specs/` when a task has material design risk or trade-offs worth settling explicitly before or during implementation, such as:
-
-- service or ownership boundary changes
-- public/persisted contract changes
-- security/trust-boundary changes
-- destructive or irreversible data behavior
-- consistency-model changes
-- material infrastructure changes
-
-Keep specs decision-oriented: problem, approved requirement, constraints, invariants, chosen design, important alternatives when relevant, risks, and acceptance criteria.
-
-Do not create a spec for a trivial or locally obvious implementation decision.
-
-### Plans
-
-Use `.agent/plans/` when sequencing, dependencies, migration safety, cross-module coordination, or verification complexity would otherwise be easy to lose.
-
-Plans should be executable and bounded. They should not repeat repository documentation, create speculative future scope, or prescribe broad audits unrelated to the task.
-
-### Checkpoints
-
-Use `.agent/checkpoints/` only when concise execution evidence materially helps continuity or review:
-
-- what changed
-- what was verified
-- current result
-- remaining material blocker or risk, if any
-
-Do not create checkpoint spam for every command, test run, edit, or CI retry.
-
-## Source-of-Truth Hierarchy
-
-For future execution:
-
-1. Explicit current user requirement and approved product decision.
-2. Root `AGENTS.md` for repository-wide engineering policy.
-3. Current runtime/backend/frontend code and tests for actual implemented behavior.
-4. Root `plan.md` for the engineering roadmap and milestone state.
-5. Relevant approved `.agent/specs/` for task-specific design decisions.
-6. Relevant `.agent/plans/` for task-specific sequencing.
-7. `.agent/checkpoints/` for execution evidence.
-8. `docs/` for released/current public behavior.
-
-Historical task artifacts can contain superseded workflow language. Treat them as evidence of what happened, not as policy for new work.
-
-## Public Documentation Rule
-
-Never publish agent workflow language, internal checkpoints, speculative implementation details, unfinished requirements, or internal decision records in the Astro docs unless they are intentionally rewritten as user-facing documentation.
+Do not publish internal agent workflow, unfinished requirements, or decision scratchpads under `docs/` unless intentionally rewritten as user-facing documentation.
