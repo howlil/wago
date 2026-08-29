@@ -12,6 +12,10 @@ type AppSettingsRow = {
   generated_at?: string | null;
 };
 
+type AdminPasswordRow = {
+  admin_password_hash?: string | null;
+};
+
 export function createAppSettingsStore(database: DatabaseSync) {
   const readStatement = database.prepare("SELECT app_id, api_key_hash, generated_at FROM app_settings WHERE id = 1");
   const writeStatement = database.prepare(`
@@ -22,6 +26,12 @@ export function createAppSettingsStore(database: DatabaseSync) {
       api_key_hash = excluded.api_key_hash,
       generated_at = excluded.generated_at
   `);
+  const readAdminPasswordStatement = database.prepare(
+    "SELECT admin_password_hash FROM app_settings WHERE id = 1",
+  );
+  const writeAdminPasswordStatement = database.prepare(
+    "UPDATE app_settings SET admin_password_hash = ? WHERE id = 1",
+  );
   const clearStatement = database.prepare("DELETE FROM app_settings WHERE id = 1");
 
   function get(): PersistedAppSettings | null {
@@ -39,9 +49,18 @@ export function createAppSettingsStore(database: DatabaseSync) {
     writeStatement.run(settings.appId, settings.apiKeyHash, settings.generatedAt);
   }
 
+  function getAdminPasswordHash(): string | null {
+    const row = readAdminPasswordStatement.get() as AdminPasswordRow | undefined;
+    return row?.admin_password_hash ?? null;
+  }
+
+  function setAdminPasswordHash(hash: string | null): void {
+    writeAdminPasswordStatement.run(hash);
+  }
+
   function clear(): void {
     clearStatement.run();
   }
 
-  return { get, save, clear };
+  return { get, save, getAdminPasswordHash, setAdminPasswordHash, clear };
 }
