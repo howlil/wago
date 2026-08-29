@@ -1,16 +1,37 @@
-# AGENTS.md
+# Wago Agent Adapter
 
-## Project State
+This file is the canonical execution adapter for Wago. It owns the lifecycle, authority model, scope discipline, release-ready boundary, and stop conditions. Detailed project knowledge lives under `.agent/`; those files refine concerns but must not create a competing workflow.
 
-Wago is a production-grade, single-instance modular monolith for one self-hosted WhatsApp account per instance.
+## Read progressively
 
-The runtime is intentionally small: Express + TypeScript, Baileys, SQLite, filesystem-backed Baileys authentication, React, and one Docker container. Preserve that shape unless an approved requirement makes it insufficient.
+Start with the minimum context needed for the task:
 
-## Canonical Operating Model
+1. `.agent/STATE.md` — current committed project state.
+2. `.agent/PROJECT.md` — product/system shape, source structure, ownership, constraints, and non-goals when implementation placement or architecture matters.
+3. `.agent/ENGINEERING.md` — detailed code quality, design, testing/verification, and Git rules for code changes.
+4. `.agent/OPERATIONS.md` — persistence, deployment, readiness, backup/restore, rollback, or release work.
+5. `.agent/DECISIONS.md` — durable rationale when a task touches an established material boundary.
 
-This file is the repository-wide source of truth for coding-agent and contributor execution policy.
+Do not load the whole `.agent/` model or recursively audit the repository by default. Expand context only when the requested change or a discovered dependency materially requires it.
 
-These are **operating principles, not a rigid SOP**. Use the lifecycle as a reasoning model; do not turn it into mandatory approval ceremony or create artifacts merely to prove that a stage happened.
+## Authority model
+
+The user owns:
+
+- WHY and desired product outcome;
+- WHAT behavior/capability is in scope;
+- product semantics and scope boundaries;
+- priorities/product trade-offs;
+- material architecture decisions;
+- final approve/reject/release/revert/change-of-direction decisions.
+
+The agent has high autonomy for ordinary local engineering execution inside approved scope. It may inspect relevant code/tests/docs, derive concise acceptance criteria from approved intent, choose reversible local implementation details, reuse/extend current patterns, add justified verification, fix defects created by the change, and remove code made dead by the change.
+
+The agent must not invent features or product behavior, expand scope because of best practice, silently resolve material product ambiguity, introduce speculative architecture/infrastructure, or refactor unrelated code.
+
+Do not ask for approval for ordinary local implementation choices that preserve approved product and architecture boundaries.
+
+## Canonical execution loop
 
 ```text
 USER INTENT
@@ -25,388 +46,159 @@ USER INTENT
   -> STOP
 ```
 
-The stages may overlap or collapse for small changes. Verification can happen throughout the lifecycle.
+This is a reasoning model, not a rigid SOP. Stages may overlap or collapse for small work, and verification may happen throughout.
 
-When an older `.agent/` plan, spec, checkpoint, contributor note, or historical workflow conflicts with this file, this file wins. Historical artifacts remain useful as task history; do not rewrite them solely to make old execution records look current.
+Operationally:
 
-## Product Authority and Agent Autonomy
+```text
+understand explicit request/problem
+  -> inspect only relevant existing implementation/contracts
+  -> bound smallest coherent change
+  -> derive only acceptance criteria needed to remove ambiguity
+  -> choose smallest design using existing owner/pattern
+  -> implement minimum complete change
+  -> identify realistic regression risk
+  -> choose cheapest high-signal verification
+  -> satisfy mandatory repository gates
+  -> release/merge when evidence supports readiness
+  -> stop
+```
 
-The user owns:
-
-- WHY and desired product outcome
-- WHAT behavior or capability is in scope
-- product semantics and scope boundaries
-- priorities and product trade-offs
-- material architecture decisions
-- final approve, reject, release, revert, or change-of-direction decisions
-
-The agent has high autonomy for ordinary local engineering execution inside approved scope. The agent may:
-
-- inspect relevant code, tests, and documentation
-- clarify the implementation meaning of an approved requirement
-- draft acceptance criteria from approved intent
-- choose local implementation details
-- reuse or extend existing patterns
-- add justified tests and verification
-- fix incidental defects created by the change
-- remove code made dead by the change
-
-The agent must not:
-
-- invent features, product requirements, or product behavior
-- expand scope because something is considered a best practice
-- silently resolve material product ambiguity
-- introduce speculative architecture, infrastructure, or extensibility
-- change unrelated behavior or refactor unrelated code
-- make unsolicited product-direction changes
-
-Surface material ambiguity, contradiction, or missing product semantics instead of guessing. Do not require approval for ordinary reversible local implementation decisions that stay inside the approved boundaries.
-
-## Understand, Bound, Specify
-
-Start from the request, not from a framework, architecture pattern, test strategy, or repository-wide audit.
+## Understand and bound
 
 For each task:
 
-1. Separate the problem, any proposed solution, and the explicit requirement.
-2. Identify the expected observable product or engineering outcome.
-3. Inspect only the minimum repository context needed to implement safely: affected code, contracts, tests, and relevant docs.
-4. Bound the change surface and identify material risks or dependencies.
-5. Express concise acceptance criteria sufficient to verify the approved intent.
+1. separate the problem, any proposed solution, and the explicit requirement;
+2. identify the expected observable product/engineering outcome;
+3. inspect only affected code, contracts, tests, and relevant project context;
+4. identify material risks/dependencies;
+5. keep acceptance criteria concise and sufficient to verify the authorized intent.
 
-Do not require repo-wide reconnaissance, bottleneck analysis, DORA/flow metrics, broad inventories, or instrumentation for an ordinary bounded task. Perform broader analysis only when the task itself requires it or the local change cannot be understood safely without it.
+Do not require repo-wide reconnaissance, bottleneck analysis, DORA/flow metrics, broad inventories, instrumentation, plans, specs, checkpoints, or mini-PRDs for ordinary bounded work.
 
-## Design Decision Rule
+## Design rule
 
-Design the smallest solution that satisfies the current requirement while preserving existing system boundaries.
-
-Before introducing a new design, determine:
+Before introducing design, answer:
 
 1. What behavior must change?
-2. Which existing component owns that behavior?
-3. Can the requirement be implemented using the current architecture and patterns?
+2. Which existing component/module/feature owns it?
+3. Can current architecture/patterns satisfy the requirement?
 4. What is the smallest design with the lowest justified blast radius?
 
-Prefer, in order:
+Prefer:
 
 ```text
-reuse existing pattern
-  -> extend existing component
-  -> small local abstraction
-  -> new component when ownership requires it
-  -> architecture change only when necessary
+reuse current pattern
+  -> extend current owner
+  -> small local abstraction when current pressure justifies it
+  -> new owner/component when responsibility is genuinely distinct
+  -> material architecture change only when necessary
 ```
 
-When multiple designs are valid, prefer lower coupling, smaller change surface, fewer new dependencies, fewer new abstractions, lower migration cost, easier reversibility, and clearer ownership.
+Use `.agent/PROJECT.md` for placement, state ownership, dependency, and hard architecture constraints. Use `.agent/ENGINEERING.md` for detailed code/abstraction/testing rules.
 
-Do not introduce architectural complexity for hypothetical scale, reuse, flexibility, or future requirements.
+Explicit user approval is required before an otherwise-unauthorized material change to:
 
-Explicit user approval is required before a material change to:
+- service/deployment boundaries;
+- durable data ownership/persistence model;
+- materially breaking public or persisted contracts;
+- major inter-component communication patterns;
+- consistency model;
+- security/privacy/trust boundaries;
+- infrastructure topology;
+- destructive or irreversible data behavior.
 
-- service or deployment boundaries
-- durable data ownership or persistence model
-- public API or persisted contracts when compatibility is materially affected
-- inter-component communication patterns
-- consistency model
-- security or trust boundaries
-- infrastructure topology
-- destructive or irreversible data behavior
+If the user's explicit request already authorizes the material decision, execute it within that scope instead of asking again.
 
-## Codebase Quality Rule
+## Implementation rule
 
-Optimize for the **smallest correct, clear, maintainable change**. Code quality supports delivery; it must not become ceremony.
+Prefer the smallest coherent vertical slice that produces the required observable behavior or protects the required invariant.
 
-Core invariants:
+- preserve current contracts unless change is explicitly authorized;
+- keep frontend/backend aligned to one product contract when both are affected;
+- avoid speculative future-proofing and unrelated cleanup;
+- remove superseded local paths made obsolete by the current change;
+- keep changes reviewable and reversible;
+- if implementation reveals an unauthorized material requirement/architecture decision, surface that decision rather than silently widening scope.
 
-- preserve required behavior
-- keep ownership clear
-- keep dependencies intentional
-- prefer established repository conventions unless the touched convention is clearly obsolete, harmful, or conflicts with correctness, ownership, current architecture, or maintainability
-- prefer the simplest reasonable design
-- avoid unnecessary abstractions and dependencies
-- avoid unrelated refactoring
-- remove dead code created or made obsolete by the change
-- keep the change surface proportional to the requirement
+## Testing and verification
 
-Structure code according to responsibility and ownership:
+Tests reduce meaningful delivery risk; they do not exist to maximize coverage/test count or enforce TDD ceremony.
 
-```text
-behavior -> ownership -> boundary -> module/package -> file
-```
+For each change:
 
-Optimize for **locality of reasoning**. Behavior, invariants, meaningful mutable state, and the code that mutates that state should remain as close together as practical so an engineer can understand a change with bounded context rather than tracing unnecessary indirection across the repository.
+1. identify realistic failure modes;
+2. estimate impact/likelihood;
+3. choose the cheapest high-signal verification;
+4. deepen only when risk justifies it.
 
-Every meaningful mutable state should have an identifiable owner, mutation boundary, lifecycle, and invariant. Avoid shared mutable state whose ownership or mutation authority is unclear.
+TDD is optional. Use it when a deterministic automated test is the cheapest useful way to define/protect behavior. Do not require it for presentation-only changes, styling/layout, static markup, copy/docs, trivial wiring, or exploratory work.
 
-Dependencies should point toward the component that owns the invariant or policy. Stable business/application decisions should not depend directly on incidental transport, framework, or provider details when an existing boundary can contain those details without unnecessary layering.
-
-Files and modules should contain cohesive behavior. Split only when separation improves ownership, navigation, dependency boundaries, locality of reasoning, or independent changeability. Do not split by arbitrary line-count rules and do not create generic dumping grounds.
-
-Prefer explicit code over clever indirection. Add interfaces, layers, factories, mappers, adapters, or generic utilities only when they improve a real ownership boundary, dependency boundary, substitution point, or repeated behavior that exists now. A useful test seam may reinforce an abstraction decision, but testability by itself is not sufficient justification. Do not introduce production abstractions solely to make mocking easier.
-
-## Implementation Principle
-
-Prefer the smallest coherent **vertical slice** that produces the required observable behavior or protects the required invariant.
-
-- Reuse current contracts and patterns before adding new ones.
-- Keep frontend and backend changes aligned to one product contract when both are affected.
-- Implement only current requirements; do not future-proof speculatively.
-- Keep changes reviewable and reversible.
-- Do not perform opportunistic cleanup outside the touched behavior.
-- If implementation reveals a material requirement or architecture conflict, stop that material decision and surface it rather than silently broadening the task.
-
-## Testing and Verification Principle
-
-Tests exist to reduce meaningful delivery risk, not to maximize coverage, test count, or testing ceremony.
-
-Verification is risk-based and can occur before, during, or after implementation. It is not a mandatory separate phase and TDD is not the default requirement.
-
-For every change:
-
-1. Identify what can realistically break.
-2. Estimate the impact and likelihood of that failure.
-3. Choose the cheapest high-signal verification that can detect it.
-4. Increase verification depth only when risk justifies the additional cost.
-
-Use TDD when a deterministic automated test is the cheapest high-signal way to define or protect behavior. A reproducible high-value bug should normally leave a deterministic regression test when that test provides durable signal.
-
-Do **not** require TDD for:
-
-- presentation-only changes
-- styling or layout
-- static markup
-- copy or documentation
-- trivial wiring
-- exploratory implementation
-
-Prioritize automated tests for:
-
-- domain and business invariants
-- persistence and data integrity
-- concurrency and lifecycle state transitions
-- migrations
-- security and privacy boundaries
-- public/provider contracts
-- valuable deterministic regressions
-
-Avoid duplicated confidence across layers. Test observable behavior and durable invariants rather than private implementation details unless the implementation boundary itself is the contract.
-
-For every added or retained test, ask:
+Before adding or retaining a test ask:
 
 > What realistic regression does this prevent?
 
-If there is no strong answer, do not add the test.
+Do not weaken/delete/skip a valid test merely to make CI green.
 
-When a test or CI check fails, classify the failure from evidence before labeling it flaky or transient. Prefer a concrete hypothesis such as product regression, test isolation/state leakage, timing/race behavior, environment/infrastructure failure, or external dependency instability. Call a failure flaky only when there is evidence of nondeterminism under materially equivalent code and conditions.
+When a test/CI check fails, classify from evidence before calling it flaky/transient. Retry only when a transient runner/infrastructure/external-dependency failure is plausible; deterministic code/test failures require diagnosis or a fix.
 
-Retry is a diagnostic tool for a plausibly transient failure, not a substitute for root-cause analysis. Do not add automatic retries, repeated reruns, sleeps, or wider timeouts merely to make a deterministic failure pass.
+Detailed verification and mock-isolation rules live in `.agent/ENGINEERING.md`.
 
-Project-specific verification guidance:
-
-- Use real SQLite behavior in persistence tests where practical.
-- For Baileys, test Wago adapters, classifiers, and lifecycle/state transitions rather than external WhatsApp connectivity in unit tests.
-- In mock-based tests, restore the behavior and mutable state that a test can change, not only call history. A test must not inherit another test's mock implementation, response sequence, fake timers, or other hidden state unless sharing is intentional and explicit.
-- Do not weaken, delete, skip, or rewrite a valid test merely to make CI green.
-- Prefer deterministic tests with clear failure reasons over broad brittle tests.
-- Run the smallest relevant check first, then widen verification according to risk.
-- Mandatory repository/CI checks still apply even when no new automated test is justified.
-
-## Quality Gates and Release Readiness
+## Quality gates and release readiness
 
 A change is release-ready when:
 
-- the approved scope and acceptance criteria are satisfied
-- relevant risk-based verification has passed
-- mandatory repository, CI, build, security, migration, or release checks for the scope have passed
-- no known material in-scope blocker remains
-- compatibility and rollback risk are acceptable for the change
+- approved scope and acceptance criteria are satisfied;
+- relevant risk-based verification has passed;
+- mandatory repository/CI/build/security/migration/release checks for the scope have passed;
+- no known material in-scope blocker remains;
+- compatibility and rollback risk are acceptable for the change.
 
-Instrumentation is **conditional**, not a default requirement. Add or change product/operational instrumentation when it is necessary to evaluate the expected outcome, diagnose a meaningful new failure mode, or operate the changed behavior safely.
+Instrumentation is conditional, not a default deliverable. Add it only when needed to evaluate an expected outcome, diagnose a meaningful new failure mode, or operate changed behavior safely.
 
-Release the smallest complete useful increment. Do not add polish, refactors, tests, documentation, metrics, infrastructure, or abstractions without a concrete need from the current change.
+Release the smallest complete useful increment.
 
-After release, observe technical health, user behavior, or product outcome when the task or risk warrants it. Use evidence to recommend keep, iterate, revert, remove, or investigate; the user owns the final product decision.
+## Git integration
 
-## Stop Conditions
+Use the repository's short-lived trunk-oriented flow described in `.agent/ENGINEERING.md`.
 
-Stop normal implementation and surface the issue when continuing would require an unapproved material decision, especially:
-
-- requirement conflicts or missing semantics that change product behavior
-- destructive or irreversible migration/data behavior
-- breaking public or persisted contract changes
-- security/trust-boundary changes
-- major architecture, service-boundary, consistency-model, or infrastructure changes
-
-Stop the task when approved scope is satisfied, justified verification and mandatory gates pass, and no material in-scope issue remains.
-
-After that point, do not continue with adjacent features, aesthetic refactors, speculative cleanup, future-proofing, broad audits, extra tests, new documentation, or infrastructure unless explicitly required.
-
-## Engineering Priorities
-
-When trade-offs genuinely conflict, use this order unless the approved requirement says otherwise:
-
-1. Correctness
-2. Security
-3. Data integrity
-4. Reliability
-5. Maintainability
-6. Observability
-7. Simplicity
-8. Performance
-9. Extensibility
-
-Do not optimize for hypothetical scale or introduce infrastructure to imitate a larger platform.
-
-## Architecture Boundaries
-
-Keep module ownership explicit.
-
-- HTTP routes own transport concerns: authentication middleware, request-shape validation, rate limiting, HTTP responses, and transport-specific activity reporting.
-- Application services own use-case orchestration when a real boundary is useful.
-- Business policy owns decisions and invariants, not HTTP status codes.
-- Persistence modules own SQLite statements, migrations, transactions, and durable-state semantics.
-- The WhatsApp module owns all Baileys-specific socket, lifecycle, connection, sender, and protocol-adaptation behavior.
-- Routes and unrelated modules must not manipulate or expose the raw Baileys socket.
-- `index.ts` wires the application, lifecycle, HTTP server, and operating-system signals. It must not become a business-logic module.
-
-Prefer narrow public APIs. Add an interface or layer only when it improves a concrete ownership, dependency, or replacement boundary. Testability alone is not sufficient justification for a production layer.
-
-## Mandatory Backend Rules
-
-Every backend change must preserve these invariants where applicable:
-
-- Validate external input at the boundary before it reaches business logic.
-- Represent expected application failures with stable typed error codes.
-- Keep HTTP status mapping at the HTTP boundary.
-- Keep multi-write durable invariants inside explicit SQLite transaction boundaries.
-- Released database migrations are append-only. Never rewrite migration versions already shipped.
-- Make lifecycle and state transitions explicit, especially socket generation, reconnect, rebind, shutdown, and account-health invalidation.
-- Use idempotency when retries can duplicate side effects.
-- Use structured sanitized logging. Never log API keys, cookies, authorization headers, QR payloads, Baileys credentials, message text, full phone numbers/JIDs, or arbitrary raw protocol payloads.
-- Startup and shutdown must be deterministic and graceful. Stop accepting new HTTP work before closing runtime/persistence state.
-- Deliberate public API contract changes must be documented and protected by appropriate characterization/contract verification.
-- Baileys internals must remain contained inside the WhatsApp module.
-
-## Persistence and State
-
-Durable application state lives under `/app/data`.
-
-- SQLite database: `/app/data/wago.db`
-- SQLite WAL/SHM files may exist while WAL mode is active.
-- Baileys authentication: `/app/data/auth/`
-
-Treat the entire directory and its backups as secret-bearing state.
-
-SQLite is the durable application store. Keep released migrations append-only and preserve backward compatibility when possible. Use the shared transaction helper for multi-write invariants. Never move SQL into HTTP routes.
-
-Transient socket, QR, reconnect, account-health cache, recent-message cache, and message-status cache state may remain in memory when durability is not required for correctness, safety, or diagnosis.
-
-Never run multiple Wago replicas against the same SQLite/auth volume.
-
-## WhatsApp and Baileys
-
-Wago uses Baileys, an unofficial WhatsApp Web client. Do not claim guaranteed ban prevention or unrestricted deliverability.
-
-Maintain one active WhatsApp account and one active socket lifecycle per process. Recoverable disconnects may reconnect with bounded backoff. Terminal session invalidation must stop reconnect attempts and require pairing again.
-
-Keep low-level observability structured and sanitized. Persist normalized audit facts, not raw Baileys packet/frame objects. QR values, credentials, message content, full identifiers, tokens, and arbitrary protocol payloads must never enter the audit database.
-
-Outbound safety controls are defensive controls, not anti-detection mechanisms. Do not implement fake typing, fingerprint spoofing, proxy rotation, bulk/campaign behavior, or restriction bypasses.
-
-## HTTP and Errors
-
-Keep public responses stable unless a change is explicitly approved.
-
-Expected failures should flow as typed application errors into the shared HTTP error mapper. Unknown failures must be logged with sanitized context and returned as a generic 500 response without stack traces, causes, credentials, request bodies, or secret headers.
-
-Asynchronous Express handlers should use the shared async-handler boundary rather than relying on unhandled promise behavior. Avoid catch/rethrow blocks that add no value.
-
-## Frontend
-
-The frontend is React + Vite + TypeScript. Keep the feature-first structure and shared application shell already established. Prefer local state and focused hooks. Do not add Redux, Zustand, TanStack Query, or another router/state dependency unless current complexity demonstrates the need.
-
-The UI must render backend uncertainty truthfully. Disconnected, unavailable, checking, and invalid-session states must never be presented as healthy/normal.
-
-## Git Workflow
-
-Prefer a simple trunk-oriented flow with short-lived task branches.
+Default shape:
 
 ```text
 main
   -> one short-lived task branch
-  -> implement / verify / review / fix on the same branch
+  -> implement / verify / review / fix
   -> one PR
   -> required gates
   -> squash merge
   -> cleanup
 ```
 
-Rules:
+Branches/PRs are integration tools. Do not create iteration/retry/staging/personal branch machinery for routine work.
 
-- Check whether an active branch or PR already represents the task before creating new Git state.
-- One coherent task should normally use one branch and one PR.
-- Use short purpose-prefixed branch names such as `feat/<task>`, `fix/<task>`, `docs/<task>`, `chore/<task>`, or `refactor/<task>`.
-- Test failures, formatting fixes, review feedback, or additional verification are feedback within the same task, not reasons for replacement branches. Retry a failed CI run only when evidence makes a transient runner, infrastructure, or external-dependency failure plausible; deterministic code/test failures require diagnosis or a fix instead of repeated reruns.
-- When a task PR depends on another PR that has merged, or `main` has materially advanced beneath it, rebase or recreate the task commit directly on the latest `main` before final verification. Avoid partial content synchronization that leaves divergent history, duplicate commits, or unrelated files in the PR diff.
-- Do not create long-lived `develop`, iteration, retry, staging-code, personal, or experiment branches by default.
-- Keep commits as useful engineering checkpoints rather than a transcript of every edit. TDD-specific RED/GREEN commits are optional, never required.
-- Keep PRs small enough to review and revert confidently; split by coherent behavior or invariant boundaries, not arbitrary technical layers.
-- Normal merge method is squash merge unless a concrete reason requires another method.
-- If the verified PR head changes, rerun the checks materially affected by that change.
-- After merge, remove temporary branch/worktree state when tooling permits. Never discard uncommitted work accidentally.
+## Stop conditions
 
-## Anti-Over-Engineering Rules
+Stop normal implementation and surface the decision when continuing requires an unauthorized material choice, especially:
 
-Do not add these by default:
+- conflicting/missing product semantics that change observable behavior;
+- destructive/irreversible migration or data behavior;
+- materially breaking public/persisted contract change;
+- security/privacy/trust-boundary change;
+- major architecture/service/consistency/infrastructure change.
 
-- microservices
-- Redis or queues as decoration
-- background-worker infrastructure without a demonstrated workload
-- generic repository/service/controller layers for every feature
-- ports/adapters/factories/mappers/DTO layers without a concrete need
-- dependency-injection frameworks without a concrete need
-- Kafka, RabbitMQ, BullMQ, Kubernetes, service mesh, CQRS, or event-sourcing infrastructure
-- SQL inside routes
-- HTTP status decisions inside business policy
+Stop the task when approved scope is satisfied, justified verification and mandatory gates pass, and no material in-scope issue remains.
 
-A small explicit module is preferable to a generic internal framework.
+After that point, do not continue into adjacent features, aesthetic refactors, speculative cleanup, future-proofing, broad audits, extra tests/docs, metrics, or infrastructure without a concrete authorized need.
 
-## Documentation and `.agent/` Workspace
+## Documentation model
 
-- `AGENTS.md` is the canonical repository-wide execution policy.
-- `docs/` is public product documentation.
-- `.agent/specs/` contains internal designs only when a task genuinely benefits from a design artifact.
-- `.agent/plans/` contains implementation plans only when sequencing, dependencies, migration safety, cross-module coordination, or verification complexity warrants them.
-- `.agent/checkpoints/` contains concise execution evidence when continuity or auditability benefits from it.
-- Root `plan.md` is the concise engineering roadmap.
+- `AGENTS.md` — canonical execution adapter.
+- `.agent/README.md` — project-context router and artifact discipline.
+- `.agent/PROJECT.md` — product/system/source-structure truth.
+- `.agent/ENGINEERING.md` — detailed engineering rules.
+- `.agent/OPERATIONS.md` — operational/release constraints.
+- `.agent/DECISIONS.md` — durable rationale.
+- `.agent/STATE.md` — short current committed state.
+- `docs/` — public product documentation.
 
-A small bounded task should normally keep its acceptance criteria, implementation notes, and status in the task conversation or PR rather than creating a `.agent` plan. Create an internal artifact only when it preserves information that would otherwise be difficult to execute, review, or recover.
-
-Do not create planning or documentation artifacts as ceremony. Do not put internal agent workflow notes under public `docs/`.
-
-Internal artifacts may describe the historical workflow used for their task. They do not override this file for future execution.
-
-## Verification Commands
-
-Typical repository gates include:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm run check
-pnpm --dir backend test
-pnpm --dir backend run build
-pnpm --dir frontend test
-pnpm --dir frontend run build
-pnpm run build:docs
-docker build .
-```
-
-Run only the checks relevant to the change during the inner loop, then run mandatory scope-appropriate gates before merge. Use the repository container smoke script when present for release/hardening verification.
-
-## Security and Operational Constraints
-
-- Never commit `/app/data`, SQLite WAL/SHM files, Baileys auth state, credentials, API keys, or live QR material.
-- Keep production deployments behind HTTPS when exposed outside localhost.
-- Do not use `docker compose down -v` during a normal upgrade unless durable gateway state is intentionally being destroyed.
-- Back up `/app/data` before risky operational changes and treat that backup as sensitive credential material.
-- Preserve rollback compatibility when changing durable state; if a migration prevents a known-good revision from opening a copied persistent volume, stop and redesign before merge.
+Do not commit permanent task plans/spec snapshots/checkpoints/skills as project-model artifacts. Routine task evidence belongs in PR/CI history and the task conversation.
