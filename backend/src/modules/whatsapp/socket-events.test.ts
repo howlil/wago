@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkOutboundPolicy, resetOutboundPolicyState } from "../messages/outbound-policy.js";
 import { allowRecipientJid, getRecipientByJid, resetRecipientStoreForTest } from "../recipients/store.js";
 import { resetAccountHealthForTest } from "./account-health.js";
-import { getMessageStatus, rememberPendingMessageStatus, resetMessageStatusStoreForTest } from "./message-status-store.js";
+import {
+  getMessageStatus,
+  rememberPendingMessageStatus,
+  resetMessageStatusStoreForTest,
+} from "./message-status-store.js";
 import { registerSocketEvents } from "./socket-events.js";
 
 type Handler = (...args: unknown[]) => void;
