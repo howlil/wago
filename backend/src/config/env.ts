@@ -10,20 +10,8 @@ function envFlag(name: string, fallback = false): boolean {
   return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
-function optionalSecret(name: string, minimumBytes: number): string | null {
-  const value = process.env[name]?.trim();
-  if (!value) return null;
-  if (Buffer.byteLength(value, "utf8") < minimumBytes) {
-    throw new Error(`${name} must be at least ${minimumBytes} bytes long`);
-  }
-  return value;
-}
-
-const adminPassword = optionalSecret("WAGO_ADMIN_PASSWORD", 12);
-
 export type RuntimeConfig = {
   deploymentApiKey: string | null;
-  adminPassword: string | null;
   authCookieName: string;
   authCookieSecure: boolean;
   browserSessionMaxAgeMs: number;
@@ -40,7 +28,6 @@ export type RuntimeConfig = {
 
 export const config: RuntimeConfig = {
   deploymentApiKey: process.env.API_KEY?.trim() || null,
-  adminPassword,
   authCookieName: "wago_session",
   authCookieSecure: nodeEnv === "production",
   browserSessionMaxAgeMs: 1000 * 60 * 60 * 24 * 30,
