@@ -24,7 +24,7 @@ const id = lang === 'id';
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Docker Compose</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Buat password dashboard sebagai deployment secret sebelum start. Wago tidak lagi membuat first-run secret acak atau meminta operator mengambil key dari container log.' : 'Create the dashboard password as a deployment secret before startup. Wago no longer creates a random first-run secret or asks the operator to retrieve a key from container logs.'}</p>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Buat password dashboard sebagai deployment secret sebelum start. Wago tidak membuat first-run secret acak atau meminta operator mengambil key dari container log.' : 'Create the dashboard password as a deployment secret before startup. Wago does not create a random first-run secret or ask the operator to retrieve a key from container logs.'}</p>
   <CodeBlock label="shell" code={`git clone https://github.com/howlil/wago.git\ncd wago\nexport WAGO_ADMIN_PASSWORD="$(openssl rand -base64 32)"\ndocker compose pull\ndocker compose up -d\ndocker compose ps\ncurl http://127.0.0.1:3000/health`} />
   <p class="text-sm text-[#71717a] mb-4">{id ? 'Buka dashboard melalui route HTTPS, sign in dengan WAGO_ADMIN_PASSWORD, lalu klik Pair WhatsApp. Wago membuat machine API key setelah browser session terautentikasi, menampilkan raw key untuk disimpan operator, kemudian memulai QR pairing.' : 'Open the dashboard through your HTTPS route, sign in with WAGO_ADMIN_PASSWORD, then click Pair WhatsApp. Wago creates the machine API key after the browser session is authenticated, shows the raw key for operator storage, then starts QR pairing.'}</p>
   <Callout title={id ? 'Network default sengaja tetap' : 'Network default is intentionally fixed'}>
@@ -34,7 +34,6 @@ const id = lang === 'id';
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Pre-provisioned machine API key opsional' : 'Optional pre-provisioned machine API key'}</h2>
   <CodeBlock label="shell" code={`export WAGO_ADMIN_PASSWORD="$(openssl rand -base64 32)"\nexport API_KEY="$(openssl rand -hex 32)"\ndocker compose up -d`} />
   <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Gunakan jalur ini bila deployment platform/secret manager sudah mengelola machine credential. API_KEY tidak menggantikan WAGO_ADMIN_PASSWORD: operator manusia tetap sign in dengan admin password, sedangkan API_KEY dipakai external server-to-server client.' : 'Use this path when a deployment platform or secret manager already owns the machine credential. API_KEY does not replace WAGO_ADMIN_PASSWORD: human operators still sign in with the admin password while external server-to-server clients use API_KEY.'}</p>
-  <p class="text-sm text-[#71717a] mb-4">{id ? 'SETUP_TOKEN tetap diterima hanya sebagai compatibility override untuk automation lama. Wago tidak lagi menghasilkan setup code acak atau menuliskannya ke startup log.' : 'SETUP_TOKEN remains accepted only as a compatibility override for older automation. Wago no longer generates a random setup code or writes it to startup logs.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Hardening container' : 'Container hardening'}</h2>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
@@ -72,10 +71,10 @@ const id = lang === 'id';
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'WhatsApp Web version saat pairing' : 'WhatsApp Web version during pairing'}</h2>
   <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Ketika membuat socket baru, Wago mencoba resolve versi WhatsApp Web terbaru melalui Baileys. Jika lookup gagal, lifecycle melanjutkan dengan versi default/bundled Baileys.' : 'When creating a new socket, Wago attempts to resolve the latest WhatsApp Web version through Baileys. If lookup fails, the lifecycle continues with the Baileys default/bundled version.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Upgrade dari JSON store lama' : 'Upgrade from the legacy JSON store'}</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Pada startup pertama setelah upgrade, Wago mengimpor legacy state ke wago.db dalam satu transaksi dan menyimpan import marker. File JSON lama tidak dihapus otomatis agar tetap tersedia sebagai recovery artifact.' : 'On the first startup after upgrading, Wago imports legacy state into wago.db in one transaction and records an import marker. Legacy JSON files are not deleted automatically and remain available as recovery artifacts.'}</p>
-  <Callout title={id ? 'Upgrade auth tetap kompatibel' : 'Authentication upgrades remain compatible'}>
-    {id ? 'Initialized gateway lama tanpa WAGO_ADMIN_PASSWORD masih dapat menukar existing API key menjadi browser session. Tambahkan WAGO_ADMIN_PASSWORD pada deployment berikutnya untuk memisahkan human dan machine credential.' : 'An older initialized gateway without WAGO_ADMIN_PASSWORD can still exchange its existing API key for a browser session. Add WAGO_ADMIN_PASSWORD on the next deployment to separate human and machine credentials.'}
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Upgrade' : 'Upgrade'}</h2>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Upgrade normal mempertahankan /app/data yang sama dan menjalankan migration SQLite yang tersedia. Wago tidak mengimpor state dari legacy JSON files atau legacy environment compatibility paths.' : 'Normal upgrades retain the same /app/data and run available SQLite migrations. Wago does not import state from legacy JSON files or legacy environment compatibility paths.'}</p>
+  <Callout title={id ? 'Pastikan admin password tersedia sebelum upgrade' : 'Ensure the admin password is configured before upgrade'}>
+    {id ? 'Machine Bearer API tetap terpisah dari dashboard access. Deployment initialized tanpa WAGO_ADMIN_PASSWORD tidak dapat sign in ke dashboard sampai password dikonfigurasi dan Wago direstart.' : 'Machine Bearer API access remains separate from dashboard access. An initialized deployment without WAGO_ADMIN_PASSWORD cannot sign in to the dashboard until the password is configured and Wago is restarted.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Backup & restore</h2>
@@ -86,7 +85,7 @@ const id = lang === 'id';
     {id ? 'Archive berisi WhatsApp auth dan webhook signing secret. Generated machine API key hanya disimpan sebagai hash, tetapi backup tetap sangat sensitif. Batasi akses/enkripsi sesuai threat model dan jangan upload ke CI artifact, issue, atau repository.' : 'The archive contains WhatsApp auth and the webhook signing secret. Generated machine API keys are stored only as hashes, but the backup remains highly sensitive. Restrict access/encrypt it for your threat model and never upload it to CI artifacts, issues, or repositories.'}
   </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Upgrade</h2>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Upgrade command</h2>
   <CodeBlock label="shell" code={`docker compose pull\ndocker compose up -d`} />
   <p class="text-sm text-[#71717a]">{id ? 'Compose default memakai latest. Untuk deployment reproducible, pin release semver atau immutable digest. Jangan gunakan docker compose down -v untuk upgrade normal.' : 'Compose defaults to latest. For reproducible deployment, pin a semver release or immutable digest. Do not use docker compose down -v for a normal upgrade.'}</p>
 </DocsLayout>
