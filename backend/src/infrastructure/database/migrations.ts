@@ -198,6 +198,13 @@ export const migrations: Migration[] = [
         ADD COLUMN setup_code_generated_at TEXT;
     `,
   },
+  {
+    version: 9,
+    sql: `
+      ALTER TABLE app_settings
+        ADD COLUMN admin_password_hash TEXT;
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
