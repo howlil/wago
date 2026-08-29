@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
@@ -201,9 +201,14 @@ describe("dashboard", () => {
     vi.useFakeTimers();
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
     render(<App />);
-    await vi.runOnlyPendingTimersAsync();
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(getHealth).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(60000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000);
+    });
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
