@@ -1,6 +1,6 @@
 import { ApiError, requestJson } from "../../shared/api/client.js";
 
-export type DashboardAuthMode = "password" | "unconfigured";
+export type DashboardAuthMode = "password" | "setup";
 
 export type AppInfoResponse = {
   success: true;
@@ -84,6 +84,14 @@ export function bootstrapApp(candidate: string): Promise<BootstrapAppResponse> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ apiKey: candidate }),
+  });
+}
+
+export function createAdminAccount(password: string): Promise<BrowserSessionResponse> {
+  return requestJson<BrowserSessionResponse>("/app/admin/setup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
   });
 }
 
