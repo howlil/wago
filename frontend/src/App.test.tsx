@@ -291,7 +291,7 @@ describe("dashboard", () => {
     await user.type(screen.getByLabelText("Confirm password", { selector: "input" }), `${adminPassword}-different`);
     await user.click(screen.getByRole("button", { name: /set up wago/i }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Passwords do not match.");
+    expect((await screen.findByRole("alert")).textContent).toContain("Passwords do not match.");
     expect(createAdminAccount).not.toHaveBeenCalled();
   });
 
