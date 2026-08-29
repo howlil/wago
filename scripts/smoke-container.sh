@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE="${IMAGE:-wago-hardening-smoke}"
 ROLLBACK_IMAGE="${ROLLBACK_IMAGE:-}"
 ROLLBACK_CORS_ORIGIN="${ROLLBACK_CORS_ORIGIN:-https://wago.example.com}"
-EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4,5,6,7,8]}"
+EXPECTED_MIGRATIONS="${EXPECTED_MIGRATIONS:-[1,2,3,4,5,6,7,8,9]}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-wago-smoke-admin-password-2026}"
 API_KEY_CANDIDATE="${API_KEY_CANDIDATE:-wa_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
 NAME="wago-hardening-smoke-$RANDOM"
@@ -63,7 +63,7 @@ run_container() {
   local container_name="$1"
   local image="$2"
   local cors_origin="${3:-}"
-  local env_args=(-e "WAGO_ADMIN_PASSWORD=$ADMIN_PASSWORD")
+  local env_args=()
 
   if [[ -n "$cors_origin" ]]; then
     env_args+=(-e "CORS_ORIGIN=$cors_origin")
@@ -111,6 +111,17 @@ read_api_key_hash() {
   '
 }
 
+read_admin_password_hash() {
+  local container_name="$1"
+  docker exec "$container_name" node --input-type=module -e '
+    import { DatabaseSync } from "node:sqlite";
+    const db = new DatabaseSync("/app/data/wago.db");
+    const row = db.prepare("SELECT admin_password_hash FROM app_settings WHERE id = 1").get();
+    process.stdout.write(String(row?.admin_password_hash ?? ""));
+    db.close();
+  '
+}
+
 read_setup_code_hash() {
   local container_name="$1"
   docker exec "$container_name" node --input-type=module -e '
@@ -130,19 +141,19 @@ assert_no_setup_secret_log() {
   ! grep -Eq '"setupCode":"setup_[A-Za-z0-9_-]+"' <<< "$logs"
 }
 
-sign_in_and_bootstrap() {
-  local login_headers
+setup_and_bootstrap() {
+  local setup_headers
   local session_cookie
   local bootstrap_response
 
-  login_headers="$(curl -fsS -D - -o /tmp/wago-login-body \
-    -X POST "http://127.0.0.1:${PORT}/app/session" \
+  setup_headers="$(curl -fsS -D - -o /tmp/wago-setup-body \
+    -X POST "http://127.0.0.1:${PORT}/app/admin/setup" \
     -H 'Host: wago.example.com' \
     -H 'Origin: https://wago.example.com' \
     -H 'Content-Type: application/json' \
     --data "{\"password\":\"$ADMIN_PASSWORD\"}")"
-  grep -q '"authenticated":true' /tmp/wago-login-body
-  session_cookie="$(awk 'BEGIN { IGNORECASE=1 } /^set-cookie:/ { print $2; exit }' <<< "$login_headers" | tr -d '\r' | cut -d';' -f1)"
+  grep -q '"authenticated":true' /tmp/wago-setup-body
+  session_cookie="$(awk 'BEGIN { IGNORECASE=1 } /^set-cookie:/ { print $2; exit }' <<< "$setup_headers" | tr -d '\r' | cut -d';' -f1)"
   [[ "$session_cookie" == wago_session=* ]]
 
   bootstrap_response="$(curl -fsS \
@@ -161,7 +172,7 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
 fi
 
 # Production image-mode deploys without durable /app/data must fail closed.
-docker run -d --name "$EPHEMERAL_NAME" -e "WAGO_ADMIN_PASSWORD=$ADMIN_PASSWORD" "$IMAGE" >/dev/null
+docker run -d --name "$EPHEMERAL_NAME" "$IMAGE" >/dev/null
 wait_for_exit "$EPHEMERAL_NAME"
 EPHEMERAL_LOGS="$(docker logs "$EPHEMERAL_NAME" 2>&1)"
 grep -q 'PERSISTENT_DATA_REQUIRED' <<< "$EPHEMERAL_LOGS"
@@ -179,21 +190,23 @@ MIGRATIONS_BEFORE="$(read_migrations "$NAME")"
 [[ "$MIGRATIONS_BEFORE" == "$EXPECTED_MIGRATIONS" ]]
 APP_ID_BEFORE="$(read_app_id "$NAME")"
 [[ -n "$APP_ID_BEFORE" ]]
+[[ -z "$(read_admin_password_hash "$NAME")" ]]
 [[ -z "$(read_setup_code_hash "$NAME")" ]]
 assert_no_setup_secret_log "$NAME"
 
-sign_in_and_bootstrap
+setup_and_bootstrap
 READY_INITIALIZED="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 grep -q '"apiKeyConfigured":true' <<< "$READY_INITIALIZED"
 API_KEY_HASH_BEFORE="$(read_api_key_hash "$NAME")"
 [[ "$API_KEY_HASH_BEFORE" =~ ^[0-9a-f]{64}$ ]]
+ADMIN_PASSWORD_HASH_BEFORE="$(read_admin_password_hash "$NAME")"
+[[ "$ADMIN_PASSWORD_HASH_BEFORE" == scrypt\$* ]]
 [[ -z "$(read_setup_code_hash "$NAME")" ]]
 assert_no_setup_secret_log "$NAME"
 
 # A second process sharing the same volume must not become active.
 docker run -d \
   --name "$CONTENDER_NAME" \
-  -e "WAGO_ADMIN_PASSWORD=$ADMIN_PASSWORD" \
   -v "$VOLUME:/app/data" \
   "$IMAGE" >/dev/null
 wait_for_exit "$CONTENDER_NAME"
@@ -209,6 +222,7 @@ MIGRATIONS_AFTER="$(read_migrations "$NAME")"
 [[ "$MIGRATIONS_AFTER" == "$EXPECTED_MIGRATIONS" ]]
 API_KEY_HASH_AFTER="$(read_api_key_hash "$NAME")"
 [[ "$API_KEY_HASH_AFTER" == "$API_KEY_HASH_BEFORE" ]]
+[[ "$(read_admin_password_hash "$NAME")" == "$ADMIN_PASSWORD_HASH_BEFORE" ]]
 [[ -z "$(read_setup_code_hash "$NAME")" ]]
 assert_no_setup_secret_log "$NAME"
 
@@ -219,6 +233,7 @@ APP_ID_AFTER="$(read_app_id "$REPLACEMENT_NAME")"
 [[ "$APP_ID_AFTER" == "$APP_ID_BEFORE" ]]
 API_KEY_HASH_REPLACEMENT="$(read_api_key_hash "$REPLACEMENT_NAME")"
 [[ "$API_KEY_HASH_REPLACEMENT" == "$API_KEY_HASH_BEFORE" ]]
+[[ "$(read_admin_password_hash "$REPLACEMENT_NAME")" == "$ADMIN_PASSWORD_HASH_BEFORE" ]]
 [[ -z "$(read_setup_code_hash "$REPLACEMENT_NAME")" ]]
 assert_no_setup_secret_log "$REPLACEMENT_NAME"
 
@@ -235,4 +250,4 @@ if [[ -n "$ROLLBACK_IMAGE" ]]; then
   [[ "$(read_api_key_hash "$ROLLBACK_NAME")" == "$API_KEY_HASH_BEFORE" ]]
 fi
 
-echo "Container storage, password-first bootstrap, machine-key persistence, single-instance, replacement, and rollback checks passed."
+echo "Container storage, zero-env admin setup, machine-key persistence, single-instance, replacement, and rollback checks passed."
