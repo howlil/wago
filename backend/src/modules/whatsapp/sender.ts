@@ -6,7 +6,7 @@ import {
   checkOutboundPolicy,
   createOutboundPolicyError,
   markRecipientReachoutRestricted,
-  recordOutboundAccepted,
+  recordOutboundDispatched,
   recordOutboundRejected,
 } from "../messages/outbound-policy.js";
 import { checkAccountHealth, markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
@@ -31,7 +31,22 @@ export type WhatsAppSenderDependencies = {
   getConnectionStatus: () => WhatsAppStatus;
 };
 
-const REACHOUT_RESTRICTION_COOLDOWN_MS = 1000 * 60 * 30;
+let outboundCriticalSection: Promise<void> = Promise.resolve();
+
+async function withOutboundCriticalSection<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = outboundCriticalSection;
+  let release!: () => void;
+  outboundCriticalSection = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+  }
+}
 
 function normalizeBaileysSendError(error: unknown): unknown {
   if (isApplicationError(error)) {
@@ -52,9 +67,9 @@ function normalizeBaileysSendError(error: unknown): unknown {
 export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
   return {
     async sendText(to: string, text: string, options: SendTextMessageOptions = {}): Promise<SendTextMessageResult> {
-      const activeSocket = deps.getSocket();
+      const initialSocket = deps.getSocket();
 
-      if (!activeSocket || deps.getConnectionStatus() !== "connected") {
+      if (!initialSocket || deps.getConnectionStatus() !== "connected") {
         throw new ApplicationError("WHATSAPP_NOT_CONNECTED", "WhatsApp is not connected");
       }
 
@@ -67,79 +82,87 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
         });
       }
 
-      const generation = getSocketGeneration();
-      const accountHealthFetcher = createAccountHealthFetcher(activeSocket, generation);
-      const policyInput = {
-        to,
-        jid,
-        text,
-        idempotencyKey: options.idempotencyKey,
-        accountHealthCheck: ({ isNewRecipient }: { isNewRecipient: boolean }) =>
-          checkAccountHealth(accountHealthFetcher, { isNewRecipient }),
-      };
-      const policyDecision = await checkOutboundPolicy(policyInput);
-
-      if (!policyDecision.allowed) {
-        logger.warn({
-          event: "wa.outbound.blocked",
-          reason: policyDecision.reason,
-          to: maskIdentifier(jid),
-          retryAt: policyDecision.retryAt,
-        });
-        throw createOutboundPolicyError(policyDecision);
-      }
-
-      try {
-        const resolvedJid = await resolveRecipientJid(activeSocket, jid);
-        const result = await activeSocket.sendMessage(resolvedJid, { text });
-        const messageId = result?.key?.id ?? null;
-
-        if (messageId) {
-          rememberRecentTextMessage(
-            {
-              id: messageId,
-              remoteJid: resolvedJid,
-            },
-            text,
-          );
-          rememberPendingMessageStatus({
-            id: messageId,
-            to: resolvedJid,
-          });
+      return withOutboundCriticalSection(async () => {
+        const activeSocket = deps.getSocket();
+        if (!activeSocket || deps.getConnectionStatus() !== "connected") {
+          throw new ApplicationError("WHATSAPP_NOT_CONNECTED", "WhatsApp is not connected");
         }
 
-        await recordOutboundAccepted(policyInput, messageId, resolvedJid);
-        logger.info({
-          event: "wa.outbound.accepted",
-          messageId,
-          to: maskIdentifier(resolvedJid),
-        });
-
-        return {
-          messageId,
-          status: "pending",
+        const generation = getSocketGeneration();
+        const accountHealthFetcher = createAccountHealthFetcher(activeSocket, generation);
+        const policyInput = {
+          to,
+          jid,
+          text,
+          idempotencyKey: options.idempotencyKey,
+          accountHealthCheck: ({ isNewRecipient }: { isNewRecipient: boolean }) =>
+            checkAccountHealth(accountHealthFetcher, { isNewRecipient }),
         };
-      } catch (error) {
-        const normalizedError = normalizeBaileysSendError(error);
-        recordOutboundRejected(policyInput, normalizedError);
-        logger.warn({
-          event: "wa.outbound.rejected",
-          reason: isApplicationError(normalizedError)
-            ? normalizedError.code
-            : normalizedError instanceof Error
-              ? normalizedError.name
-              : "UNKNOWN",
-          to: maskIdentifier(jid),
-        });
+        const policyDecision = await checkOutboundPolicy(policyInput);
 
-        if (isApplicationError(normalizedError) && normalizedError.code === "REACHOUT_RESTRICTED") {
-          markReachoutRestricted();
-          await refreshAccountHealth(accountHealthFetcher, { force: true });
-          await markRecipientReachoutRestricted(jid, Date.now() + REACHOUT_RESTRICTION_COOLDOWN_MS);
+        if (!policyDecision.allowed) {
+          logger.warn({
+            event: "wa.outbound.blocked",
+            reason: policyDecision.reason,
+            to: maskIdentifier(jid),
+            retryAt: policyDecision.retryAt,
+          });
+          throw createOutboundPolicyError(policyDecision);
         }
 
-        throw normalizedError;
-      }
+        try {
+          const resolvedJid = await resolveRecipientJid(activeSocket, jid);
+          const result = await activeSocket.sendMessage(resolvedJid, { text });
+          const messageId = result?.key?.id ?? null;
+
+          if (messageId) {
+            rememberRecentTextMessage(
+              {
+                id: messageId,
+                remoteJid: resolvedJid,
+              },
+              text,
+            );
+            rememberPendingMessageStatus({
+              id: messageId,
+              to: resolvedJid,
+              recipientJid: jid,
+            });
+          }
+
+          await recordOutboundDispatched(policyInput, messageId);
+          logger.info({
+            event: "wa.outbound.submitted",
+            messageId,
+            to: maskIdentifier(resolvedJid),
+          });
+
+          return {
+            messageId,
+            status: "pending",
+          };
+        } catch (error) {
+          const normalizedError = normalizeBaileysSendError(error);
+          recordOutboundRejected(policyInput, normalizedError);
+          logger.warn({
+            event: "wa.outbound.rejected",
+            reason: isApplicationError(normalizedError)
+              ? normalizedError.code
+              : normalizedError instanceof Error
+                ? normalizedError.name
+                : "UNKNOWN",
+            to: maskIdentifier(jid),
+          });
+
+          if (isApplicationError(normalizedError) && normalizedError.code === "REACHOUT_RESTRICTED") {
+            markReachoutRestricted();
+            await refreshAccountHealth(accountHealthFetcher, { force: true });
+            await markRecipientReachoutRestricted(jid);
+          }
+
+          throw normalizedError;
+        }
+      });
     },
   };
 }
