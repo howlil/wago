@@ -42,7 +42,10 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     if (!candidate) {
       setNotice({
         type: "error",
-        message: snapshot.dashboardAuthMode === "setup" ? "Create an admin password first." : "Enter the admin password first.",
+        message:
+          snapshot.dashboardAuthMode === "setup"
+            ? "Create an admin password first."
+            : "Enter the admin password first.",
       });
       return;
     }
@@ -71,7 +74,10 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
       });
       await snapshot.refresh({ showLoading: true });
     } catch (error) {
-      setNotice({ type: "error", message: apiErrorMessage(error, creatingAccount ? "Failed to create admin account" : "Failed to sign in") });
+      setNotice({
+        type: "error",
+        message: apiErrorMessage(error, creatingAccount ? "Failed to create admin account" : "Failed to sign in"),
+      });
     } finally {
       setIsSigningIn(false);
     }
