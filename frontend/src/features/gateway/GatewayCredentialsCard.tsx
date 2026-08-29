@@ -67,6 +67,7 @@ export function GatewayCredentialsCard({
   onSignOutAll,
   onRotateApiKey,
 }: GatewayCredentialsCardProps) {
+  const creatingAccount = dashboardAuthMode === "setup";
   const signInLabel = "Admin password";
 
   return (
@@ -98,12 +99,9 @@ export function GatewayCredentialsCard({
                   className={`${inputClass} pr-9 text-xs`}
                   value={signInCredential}
                   onChange={(event) => onSignInCredentialChange(event.target.value)}
-                  placeholder={
-                    dashboardAuthMode === "password" ? "WAGO_ADMIN_PASSWORD" : "Configure WAGO_ADMIN_PASSWORD"
-                  }
+                  placeholder={creatingAccount ? "Create a password (12+ characters)" : "Admin password"}
                   type={showSignInCredential ? "text" : "password"}
-                  disabled={dashboardAuthMode === "unconfigured"}
-                  autoComplete={dashboardAuthMode === "password" ? "current-password" : "off"}
+                  autoComplete={creatingAccount ? "new-password" : "current-password"}
                   aria-label={signInLabel}
                 />
                 {signInCredential ? (
@@ -121,9 +119,9 @@ export function GatewayCredentialsCard({
                 className={`${secondaryButtonClass} w-full sm:w-auto`}
                 type="button"
                 onClick={onSignIn}
-                disabled={isSigningIn || dashboardAuthMode === "unconfigured"}
+                disabled={isSigningIn}
               >
-                {isSigningIn ? "Signing in" : "Sign in"}
+                {isSigningIn ? (creatingAccount ? "Creating" : "Signing in") : creatingAccount ? "Create account" : "Sign in"}
               </button>
             </div>
             <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{signInHint}</span>
