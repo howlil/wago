@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { getDatabase } from "../../infrastructure/database.js";
 import {
   createAdminPassword,
@@ -22,9 +22,9 @@ describe("admin password", () => {
     expect(isAdminPasswordValid(password)).toBe(true);
     expect(isAdminPasswordValid("wrong-password")).toBe(false);
 
-    const row = getDatabase()
-      .prepare("SELECT admin_password_hash FROM app_settings WHERE id = 1")
-      .get() as { admin_password_hash?: string | null };
+    const row = getDatabase().prepare("SELECT admin_password_hash FROM app_settings WHERE id = 1").get() as {
+      admin_password_hash?: string | null;
+    };
     expect(row.admin_password_hash).toMatch(/^scrypt\$/);
     expect(row.admin_password_hash).not.toContain(password);
   });
