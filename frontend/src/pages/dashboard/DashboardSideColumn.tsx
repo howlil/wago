@@ -1,6 +1,6 @@
 import type { DashboardController } from "../../features/dashboard/useDashboardController.js";
 import { GatewayCredentialsCard } from "../../features/gateway/GatewayCredentialsCard.js";
-import { AccountHealthCard } from "../../features/whatsapp/AccountHealthCard.js";
+import { RecipientAccessCard } from "../../features/recipients/RecipientAccessCard.js";
 
 type DashboardSideColumnProps = {
   dashboard: DashboardController;
@@ -30,7 +30,12 @@ export function DashboardSideColumn({ dashboard }: DashboardSideColumnProps) {
         onSignOutAll={() => void dashboard.handleSignOutAll()}
         onRotateApiKey={dashboard.openApiKeyRotationDialog}
       />
-      <AccountHealthCard accountHealth={dashboard.accountHealth} />
+      <RecipientAccessCard
+        enabled={dashboard.isAuthenticated}
+        refreshKey={dashboard.recipientRefreshKey}
+        suggestedPhone={dashboard.recipientApprovalPhone}
+        onAllowed={dashboard.handleRecipientAllowed}
+      />
     </div>
   );
 }
