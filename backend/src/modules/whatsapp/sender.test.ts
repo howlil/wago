@@ -1,6 +1,7 @@
 import type { WASocket } from "@whiskeysockets/baileys";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetMessageStatusStoreForTest } from "../messages/message-status-store.js";
+import { getDatabase } from "../../infrastructure/database.js";
+import { getMessageStatus, resetMessageStatusStoreForTest } from "../messages/message-status-store.js";
 import { resetOutboundPolicyState } from "../messages/outbound-policy.js";
 import { allowRecipientJid, getRecipientByJid, resetRecipientStoreForTest } from "../recipients/store.js";
 import { resetAccountHealthForTest } from "./account-health.js";
@@ -9,6 +10,7 @@ import { createWhatsAppSender } from "./sender.js";
 
 const fakeSocket = {} as WASocket;
 const recipientJid = "6281234567890@s.whatsapp.net";
+const database = getDatabase();
 
 function connectedSocket(sendMessage: (...args: unknown[]) => unknown): WASocket {
   return {
@@ -59,6 +61,67 @@ describe("WhatsApp sender", () => {
       name: "ApplicationError",
       code: "INVALID_PHONE",
     });
+  });
+
+  it("persists intent and idempotency reservation before invoking the WhatsApp transport", async () => {
+    const sendMessage = vi.fn(async () => {
+      expect(getMessageStatus("trace-prepared")).toMatchObject({
+        status: "pending",
+        dispatchState: "submitting",
+        providerMessageId: null,
+      });
+      expect(
+        database.prepare("SELECT message_id FROM idempotency_keys WHERE key = ?").get("request-prepared"),
+      ).toEqual({ message_id: "trace-prepared" });
+      return { key: { id: "provider-prepared" } };
+    });
+    const socket = connectedSocket(sendMessage);
+    const sender = createWhatsAppSender({
+      getSocket: () => socket,
+      getConnectionStatus: () => "connected",
+    });
+
+    await expect(
+      sender.sendText("6281234567890", "hello", {
+        idempotencyKey: "request-prepared",
+        messageId: "trace-prepared",
+      }),
+    ).resolves.toEqual({ messageId: "trace-prepared", status: "pending" });
+
+    expect(getMessageStatus("trace-prepared")).toMatchObject({
+      dispatchState: "submitted",
+      providerMessageId: "provider-prepared",
+    });
+  });
+
+  it("releases prepared state and idempotency when the transport rejects synchronously", async () => {
+    const sendMessage = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("transport failed"))
+      .mockResolvedValueOnce({ key: { id: "provider-retry" } });
+    const socket = connectedSocket(sendMessage);
+    const sender = createWhatsAppSender({
+      getSocket: () => socket,
+      getConnectionStatus: () => "connected",
+    });
+
+    await expect(
+      sender.sendText("6281234567890", "first", {
+        idempotencyKey: "retryable-request",
+        messageId: "trace-failed",
+      }),
+    ).rejects.toThrow("transport failed");
+
+    expect(getMessageStatus("trace-failed")).toBeNull();
+    expect(database.prepare("SELECT 1 FROM idempotency_keys WHERE key = ?").get("retryable-request")).toBeUndefined();
+
+    await expect(
+      sender.sendText("6281234567890", "retry", {
+        idempotencyKey: "retryable-request",
+        messageId: "trace-retry",
+      }),
+    ).resolves.toEqual({ messageId: "trace-retry", status: "pending" });
+    expect(sendMessage).toHaveBeenCalledTimes(2);
   });
 
   it("allows only one Baileys side effect for concurrent requests with the same idempotency key", async () => {
