@@ -1,9 +1,9 @@
 import type { WASocket } from "@whiskeysockets/baileys";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetMessageStatusStoreForTest } from "../messages/message-status-store.js";
 import { resetOutboundPolicyState } from "../messages/outbound-policy.js";
 import { allowRecipientJid, getRecipientByJid, resetRecipientStoreForTest } from "../recipients/store.js";
 import { resetAccountHealthForTest } from "./account-health.js";
-import { resetMessageStatusStoreForTest } from "./message-status-store.js";
 import { resetRecipientLookupCacheForTest } from "./recipient-cache.js";
 import { createWhatsAppSender } from "./sender.js";
 
@@ -43,7 +43,7 @@ describe("WhatsApp sender", () => {
       getConnectionStatus: () => "disconnected",
     });
 
-    await expect(sender.sendText("6281234567890", "hello")).rejects.toMatchObject({
+    await expect(sender.sendText("6281234567890", "hello", { messageId: "trace-disconnected" })).rejects.toMatchObject({
       name: "ApplicationError",
       code: "WHATSAPP_NOT_CONNECTED",
     });
@@ -55,7 +55,7 @@ describe("WhatsApp sender", () => {
       getConnectionStatus: () => "connected",
     });
 
-    await expect(sender.sendText("not-a-phone", "hello")).rejects.toMatchObject({
+    await expect(sender.sendText("not-a-phone", "hello", { messageId: "trace-invalid" })).rejects.toMatchObject({
       name: "ApplicationError",
       code: "INVALID_PHONE",
     });
@@ -66,7 +66,7 @@ describe("WhatsApp sender", () => {
     const sendMessage = vi.fn(
       () =>
         new Promise((resolve) => {
-          releaseFirstSend = () => resolve({ key: { id: "msg-1" } });
+          releaseFirstSend = () => resolve({ key: { id: "provider-1" } });
         }),
     );
     const socket = connectedSocket(sendMessage);
@@ -75,28 +75,34 @@ describe("WhatsApp sender", () => {
       getConnectionStatus: () => "connected",
     });
 
-    const first = sender.sendText("6281234567890", "first", { idempotencyKey: "same-request" });
+    const first = sender.sendText("6281234567890", "first", {
+      idempotencyKey: "same-request",
+      messageId: "trace-1",
+    });
     await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(1));
 
-    const second = sender.sendText("6281234567890", "second", { idempotencyKey: "same-request" });
+    const second = sender.sendText("6281234567890", "second", {
+      idempotencyKey: "same-request",
+      messageId: "trace-2",
+    });
     await Promise.resolve();
     expect(sendMessage).toHaveBeenCalledTimes(1);
 
     releaseFirstSend();
-    await expect(first).resolves.toEqual({ messageId: "msg-1", status: "pending" });
+    await expect(first).resolves.toEqual({ messageId: "trace-1", status: "pending" });
     await expect(second).rejects.toMatchObject({ code: "DUPLICATE_MESSAGE" });
     expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 
   it("does not mark a submitted message as a successful recipient interaction before acknowledgement", async () => {
-    const socket = connectedSocket(vi.fn(async () => ({ key: { id: "msg-pending" } })));
+    const socket = connectedSocket(vi.fn(async () => ({ key: { id: "provider-pending" } })));
     const sender = createWhatsAppSender({
       getSocket: () => socket,
       getConnectionStatus: () => "connected",
     });
 
-    await expect(sender.sendText("6281234567890", "hello")).resolves.toEqual({
-      messageId: "msg-pending",
+    await expect(sender.sendText("6281234567890", "hello", { messageId: "trace-pending" })).resolves.toEqual({
+      messageId: "trace-pending",
       status: "pending",
     });
 
