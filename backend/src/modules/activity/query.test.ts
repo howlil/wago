@@ -36,6 +36,32 @@ describe("audit query", () => {
     expect(page.events.map((event) => event.code)).toEqual(["baileys.connection.close"]);
   });
 
+  it("finds a message trace by sanitized metadata correlation", async () => {
+    await recordActivity({
+      level: "success",
+      category: "messaging",
+      code: "message.accepted",
+      title: "Message accepted by WhatsApp",
+      description: "WhatsApp produced a server acknowledgement for the outbound message.",
+      metadata: { messageId: "trace-123" },
+    });
+    await recordActivity({
+      level: "info",
+      category: "system",
+      code: "gateway.started",
+      title: "Gateway started",
+      description: "Wago is ready.",
+    });
+
+    const page = await listAudit({ limit: 20, category: "messaging", q: "trace-123" });
+
+    expect(page.events).toHaveLength(1);
+    expect(page.events[0]).toMatchObject({
+      code: "message.accepted",
+      metadata: { messageId: "trace-123" },
+    });
+  });
+
   it("paginates newest-first without duplicate rows when timestamps are equal", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-10T12:00:00.000Z"));
