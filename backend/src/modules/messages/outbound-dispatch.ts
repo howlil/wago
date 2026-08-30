@@ -28,8 +28,26 @@ export type PrepareOutboundDispatchInput = {
   idempotencyKey?: string;
 };
 
+type IndeterminateReason = "restart" | "transport_failure";
+
 function persistenceFailure(message: string, cause?: unknown): ApplicationError {
   return new ApplicationError("OUTBOUND_STATE_PERSIST_FAILED", message, { cause });
+}
+
+function recordIndeterminateActivity(messageId: string, reason: IndeterminateReason): void {
+  const description =
+    reason === "restart"
+      ? "Wago restarted while a WhatsApp submission was in progress. The message will not be retried automatically because WhatsApp may already have accepted it."
+      : "The WhatsApp transport returned an ambiguous failure after submission began. Wago cannot know whether WhatsApp accepted the message, so it will not be retried automatically.";
+
+  void recordActivity({
+    level: "warning",
+    category: "messaging",
+    code: "message.outcome_indeterminate",
+    title: "Message outcome is indeterminate",
+    description,
+    metadata: { messageId, reason },
+  });
 }
 
 export function prepareOutboundDispatch(input: PrepareOutboundDispatchInput): void {
@@ -87,6 +105,22 @@ export function markOutboundDispatchSubmitted(messageId: string, providerMessage
   }
 }
 
+export function markOutboundDispatchIndeterminate(
+  messageId: string,
+  reason: IndeterminateReason = "transport_failure",
+): void {
+  try {
+    const status = markMessageIndeterminate(messageId);
+    if (status?.dispatchState !== "indeterminate") {
+      throw new Error("Submitting outbound message was not found");
+    }
+  } catch (error) {
+    throw persistenceFailure("Wago could not persist an indeterminate outbound outcome", error);
+  }
+
+  recordIndeterminateActivity(messageId, reason);
+}
+
 export function abandonOutboundDispatch(messageId: string): void {
   try {
     withTransaction(() => {
@@ -132,15 +166,7 @@ export function recoverInterruptedOutboundDispatches(): { abandoned: number; ind
   }
 
   for (const message of submitting) {
-    void recordActivity({
-      level: "warning",
-      category: "messaging",
-      code: "message.outcome_indeterminate",
-      title: "Message outcome is indeterminate",
-      description:
-        "Wago restarted while a WhatsApp submission was in progress. The message will not be retried automatically because WhatsApp may already have accepted it.",
-      metadata: { messageId: message.id },
-    });
+    recordIndeterminateActivity(message.id, "restart");
   }
 
   logger.info({
