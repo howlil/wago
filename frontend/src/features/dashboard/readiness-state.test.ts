@@ -26,7 +26,8 @@ describe("operational readiness warning", () => {
   it("guides disconnected sessions into WhatsApp connection warnings", () => {
     expect(getOperationalReadinessWarning(snapshot("degraded", "bound_session_disconnected"))).toEqual({
       tone: "warning",
-      message: "The bound WhatsApp session is disconnected. Inspect connection events; rebind only if the session is invalid.",
+      message:
+        "The bound WhatsApp session is disconnected. Inspect connection events; rebind only if the session is invalid.",
       auditHref: "/audit?category=connection&level=warning",
     });
   });
