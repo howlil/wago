@@ -37,6 +37,7 @@ Current ownership:
 - Settings owns machine API credentials, recipient policy, webhook/delivery integration, and operator browser-session management;
 - Audit Log owns searchable operational evidence and progressively disclosed technical details;
 - global Control status follows gateway readiness rather than reporting WhatsApp connectivity as overall gateway health;
+- degraded/not-ready readiness warnings can hand off directly to Audit with validated category/severity filters while keeping those filters editable;
 - after WhatsApp is operational, application integration is an optional next step rather than a pairing prerequisite;
 - user-facing audit vocabulary prefers gateway/WhatsApp transport concepts instead of exposing Baileys as the primary operator abstraction.
 

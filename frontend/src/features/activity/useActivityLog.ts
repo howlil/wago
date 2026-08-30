@@ -12,6 +12,13 @@ export type SourceFilter = "all" | AuditSource;
 export type CategoryFilter = "all" | ActivityCategory;
 export type LevelFilter = "all" | ActivityLevel;
 
+export type ActivityLogInitialFilters = {
+  source?: SourceFilter;
+  category?: CategoryFilter;
+  level?: LevelFilter;
+  search?: string;
+};
+
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -33,13 +40,14 @@ function appendUniqueEvents(current: ActivityEvent[], incoming: ActivityEvent[])
   return Array.from(byId.values());
 }
 
-export function useActivityLog(enabled: boolean) {
+export function useActivityLog(enabled: boolean, initialFilters: ActivityLogInitialFilters = {}) {
+  const initialSearch = initialFilters.search?.trim().slice(0, 100) ?? "";
   const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [source, setSource] = useState<SourceFilter>("all");
-  const [category, setCategory] = useState<CategoryFilter>("all");
-  const [level, setLevel] = useState<LevelFilter>("all");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [source, setSource] = useState<SourceFilter>(initialFilters.source ?? "all");
+  const [category, setCategory] = useState<CategoryFilter>(initialFilters.category ?? "all");
+  const [level, setLevel] = useState<LevelFilter>(initialFilters.level ?? "all");
+  const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);

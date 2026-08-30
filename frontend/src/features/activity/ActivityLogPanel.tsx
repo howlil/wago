@@ -6,17 +6,24 @@ import {
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
 import { ActivityEventList } from "./ActivityEventList.js";
-import { type CategoryFilter, type LevelFilter, type SourceFilter, useActivityLog } from "./useActivityLog.js";
+import {
+  type ActivityLogInitialFilters,
+  type CategoryFilter,
+  type LevelFilter,
+  type SourceFilter,
+  useActivityLog,
+} from "./useActivityLog.js";
 
 type ActivityLogPanelProps = {
   enabled: boolean;
   heading?: string;
+  initialFilters?: ActivityLogInitialFilters;
 };
 
 const selectClass =
   "h-9 w-full appearance-none rounded-md border border-[#d6dfda] bg-white py-2 pl-3 pr-8 text-xs font-medium text-[#415048] outline-none transition-colors focus:border-wago-brand focus:ring-2 focus:ring-[#dcefe6]";
 
-export function ActivityLogPanel({ enabled, heading = "Activity Log" }: ActivityLogPanelProps) {
+export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFilters }: ActivityLogPanelProps) {
   const {
     events,
     source,
@@ -33,7 +40,7 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
     setSearch,
     refresh,
     loadMore,
-  } = useActivityLog(enabled);
+  } = useActivityLog(enabled, initialFilters);
 
   return (
     <section className={cardBodyClass}>

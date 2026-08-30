@@ -78,6 +78,8 @@ Control detects problem
      or Settings for configuration action
 ```
 
+Readiness warnings should not dead-end in explanatory copy. When Audit evidence can help, Control should offer a direct investigation action and carry only narrow, validated filter context such as category and severity. Audit filters remain editable after navigation, and unsupported query parameters must be ignored safely.
+
 ## 3. Visual posture
 
 Wago UI must be:
@@ -269,7 +271,7 @@ Filters apply immediately:
 Search | Source | Category | Level | Refresh
 ```
 
-On smaller screens, filters stack. There is no separate Apply button. Technical metadata stays behind progressive disclosure.
+On smaller screens, filters stack. There is no separate Apply button. Technical metadata stays behind progressive disclosure. Entry links from Control may preselect validated filters, but the operator can always broaden or change them.
 
 ## 9. Status overview and readiness
 
