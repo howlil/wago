@@ -159,7 +159,9 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
         <div>
           <dt className="text-[#818b86]">Webhook</dt>
           <dd className="mt-0.5 font-medium text-[#33413a]">
-            {delivery.webhook ? `${delivery.webhook.status} · ${delivery.webhook.attemptCount} attempt(s)` : "Not queued"}
+            {delivery.webhook
+              ? `${delivery.webhook.status} · ${delivery.webhook.attemptCount} attempt(s)`
+              : "Not queued"}
           </dd>
         </div>
         <div>
