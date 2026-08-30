@@ -148,7 +148,7 @@ appRouter.post("/bootstrap", (req, res) => {
     sessionExpiresAt,
     message: result.recovered
       ? "Machine API credentials verified."
-      : "Machine API key generated. Save it for external API clients, then continue with WhatsApp pairing.",
+      : "Machine API key generated. Save it now; Wago stores only its hash and cannot show this raw key again.",
   });
 });
 
