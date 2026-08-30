@@ -18,6 +18,7 @@ Wago is a production-grade, single-instance, self-hosted WhatsApp gateway with:
 - admin-password/HttpOnly browser-session dashboard access separated from machine Bearer API-key access;
 - recipient permission, concurrency-safe idempotency, and bounded outbound safeguards;
 - Wago-owned canonical outbound message IDs with durable bounded message diagnostics correlated to provider acknowledgement/rejection and webhook delivery;
+- crash-safe outbound intent and idempotency reservation written before WhatsApp transport submission, with explicit indeterminate diagnostics for uncertain transport outcomes;
 - outbound success aligned with WhatsApp server acknowledgement and asynchronous reach-out rejection feedback;
 - persisted webhook configuration/delivery with signed at-least-once semantics;
 - public documentation under `docs/`.
@@ -89,7 +90,9 @@ Route/page composition lives under `frontend/src/pages/`. Architecture/dependenc
 - the semantic `.agent` project model is the active repository context model;
 - the control-plane UX baseline is integrated on `main` through PR #85 / merge commit `cdf2c63d62c23b0341db814f79e8bf6381a19bcc`;
 - CI, CodeQL, ARM64 Docker build, persistence/rollback smoke, and the container release for that UX baseline completed successfully;
-- outbound correctness includes concurrency-safe same-key dispatch, successful-recipient state following WhatsApp acknowledgement, asynchronous reach-out rejection feeding recipient cooldown state, and durable canonical message diagnostics that survive restart within bounded retention;
+- outbound correctness includes concurrency-safe same-key dispatch, write-before-send durable intent/idempotency reservation, successful-recipient state following WhatsApp acknowledgement, asynchronous reach-out rejection feeding recipient cooldown state, and durable canonical message diagnostics that survive restart within bounded retention;
+- outbound transport diagnostics distinguish `prepared`, `submitting`, `submitted`, and `indeterminate`; interrupted or ambiguously failed submissions become indeterminate and are never automatically resent because WhatsApp may already have accepted them;
+- known definitive WhatsApp rejections can release their idempotency reservation for a deliberate retry, while uncertain outcomes retain the reservation to suppress accidental duplicates;
 - outbound diagnostic metadata is retained for 30 days with a maximum of 2,000 records; message bodies are not persisted by that diagnostic store and provider message IDs remain an internal correlation detail;
 - audit search includes sanitized metadata so canonical message IDs can correlate request, transport outcome, and webhook delivery evidence;
 - obsolete runtime compatibility paths for `SETUP_TOKEN`, machine-API-key dashboard sign-in, legacy raw-key browser storage/cookies, legacy webhook environment import, and legacy JSON-state import are removed;
