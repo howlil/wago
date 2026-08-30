@@ -4,10 +4,7 @@ import { createMessageService } from "./message.service.js";
 describe("message service", () => {
   it("creates a canonical Wago message id before delegating to the transport", async () => {
     const sendText = vi.fn().mockResolvedValue({ messageId: "trace-1", status: "pending" as const });
-    const service = createMessageService(
-      { sendText, getStatus: vi.fn() },
-      { createMessageId: () => "trace-1" },
-    );
+    const service = createMessageService({ sendText, getStatus: vi.fn() }, { createMessageId: () => "trace-1" });
 
     const result = await service.send({ to: "6281234567890", text: "Hello", idempotencyKey: "idem-1" });
 
