@@ -49,6 +49,34 @@ afterEach(() => {
 });
 
 describe("AuditPage", () => {
+  it("uses troubleshooting query params as initial filters", async () => {
+    window.history.replaceState({}, "", "/audit?category=connection&level=warning");
+
+    render(<AuditPage />);
+
+    await waitFor(() => {
+      expect(listActivity).toHaveBeenCalledWith({
+        limit: 50,
+        category: "connection",
+        level: "warning",
+      });
+    });
+    expect((screen.getByLabelText("Filter audit category") as HTMLSelectElement).value).toBe("connection");
+    expect((screen.getByLabelText("Filter audit level") as HTMLSelectElement).value).toBe("warning");
+  });
+
+  it("ignores unsupported troubleshooting query params", async () => {
+    window.history.replaceState({}, "", "/audit?category=internal&level=critical");
+
+    render(<AuditPage />);
+
+    await waitFor(() => {
+      expect(listActivity).toHaveBeenCalledWith({ limit: 50 });
+    });
+    expect((screen.getByLabelText("Filter audit category") as HTMLSelectElement).value).toBe("all");
+    expect((screen.getByLabelText("Filter audit level") as HTMLSelectElement).value).toBe("all");
+  });
+
   it("applies source, category, level, and bounded search filters automatically", async () => {
     const user = userEvent.setup();
     render(<AuditPage />);
