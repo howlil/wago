@@ -20,8 +20,8 @@ type AppSidebarProps = {
 
 const navigationItems: NavigationItem[] = [
   { href: "/", label: "Control", icon: Gauge },
-  { href: "/audit", label: "Audit Log", icon: ScrollText },
   { href: "/settings", label: "Settings", icon: Settings2 },
+  { href: "/audit", label: "Audit Log", icon: ScrollText },
 ];
 
 function WorkspaceNavigation({
