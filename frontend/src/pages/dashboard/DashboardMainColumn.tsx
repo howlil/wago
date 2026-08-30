@@ -1,7 +1,5 @@
 import type { DashboardController } from "../../features/dashboard/useDashboardController.js";
-import { MessageStatusCard } from "../../features/messages/MessageStatusCard.js";
-import { SendMessageCard } from "../../features/messages/SendMessageCard.js";
-import { RecipientAccessCard } from "../../features/recipients/RecipientAccessCard.js";
+import { AccountHealthCard } from "../../features/whatsapp/AccountHealthCard.js";
 import { WhatsAppBindingCard } from "../../features/whatsapp/WhatsAppBindingCard.js";
 
 type DashboardMainColumnProps = {
@@ -27,27 +25,14 @@ export function DashboardMainColumn({ dashboard }: DashboardMainColumnProps) {
         onPair={() => void dashboard.handlePair()}
         onChangeAccount={dashboard.openRebindDialog}
       />
-      <SendMessageCard
-        status={dashboard.status}
-        phone={dashboard.phone}
-        message={dashboard.message}
-        isSending={dashboard.isSending}
-        canSend={dashboard.canSend}
-        approvalRequired={dashboard.approvalRequired}
-        onPhoneChange={dashboard.handlePhoneChange}
-        onMessageChange={dashboard.setMessage}
-        onSubmit={dashboard.handleSubmit}
-        onAllowAndSend={dashboard.allowAndSend}
-      />
-      {dashboard.lastMessage ? (
-        <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
-      ) : null}
-      <RecipientAccessCard
-        enabled={dashboard.isAuthenticated}
-        refreshKey={dashboard.recipientRefreshKey}
-        suggestedPhone={dashboard.recipientApprovalPhone}
-        onAllowed={dashboard.handleRecipientAllowed}
-      />
+      {dashboard.isAuthenticated ? (
+        <AccountHealthCard accountHealth={dashboard.accountHealth} />
+      ) : (
+        <section className="rounded-lg border border-wago-line bg-white p-4">
+          <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-wago-ink">Account health</h2>
+          <p className="mb-0 mt-1 text-xs leading-5 text-wago-muted">Available after the gateway is authenticated.</p>
+        </section>
+      )}
     </div>
   );
 }
