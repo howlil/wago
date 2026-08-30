@@ -20,6 +20,7 @@ export type MessageStatusResponse = {
 };
 
 export type MessageDiagnosticResponse = Omit<MessageStatusResponse, "to"> & {
+  dispatchState: "prepared" | "submitting" | "submitted" | "indeterminate";
   webhook: {
     id: string;
     event: string;
