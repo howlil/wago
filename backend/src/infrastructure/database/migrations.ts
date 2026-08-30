@@ -231,6 +231,22 @@ export const migrations: Migration[] = [
         ON outbound_messages(status, updated_at DESC);
     `,
   },
+  {
+    version: 11,
+    sql: `
+      ALTER TABLE outbound_messages
+        ADD COLUMN dispatch_state TEXT NOT NULL DEFAULT 'submitted'
+        CHECK (dispatch_state IN ('prepared', 'submitting', 'submitted', 'indeterminate'));
+
+      ALTER TABLE idempotency_keys
+        ADD COLUMN message_id TEXT;
+
+      CREATE INDEX IF NOT EXISTS idx_idempotency_message_id
+        ON idempotency_keys(message_id);
+      CREATE INDEX IF NOT EXISTS idx_outbound_messages_dispatch_state
+        ON outbound_messages(dispatch_state, updated_at DESC);
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
