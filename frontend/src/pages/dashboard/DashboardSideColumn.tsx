@@ -18,12 +18,14 @@ export function DashboardSideColumn({ dashboard }: DashboardSideColumnProps) {
         showApiKey={dashboard.showApiKey}
         copiedField={dashboard.copiedField}
         credentialHint={dashboard.credentialHint}
+        isGeneratingApiKey={dashboard.isGeneratingApiKey}
         isSigningOut={dashboard.isSigningOut}
         isSigningOutAll={dashboard.isSigningOutAll}
         isRotatingApiKey={dashboard.isRotatingApiKey}
         onToggleApiKey={dashboard.toggleApiKey}
         onCopyAppId={dashboard.copyAppId}
         onCopyApiKey={dashboard.copyApiKey}
+        onGenerateApiKey={() => void dashboard.handleGenerateApiKey()}
         onSignOut={() => void dashboard.handleSignOut()}
         onSignOutAll={() => void dashboard.handleSignOutAll()}
         onRotateApiKey={dashboard.openApiKeyRotationDialog}

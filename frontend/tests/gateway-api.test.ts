@@ -56,6 +56,18 @@ describe("gateway API", () => {
     expect(window.sessionStorage.getItem("unrelated")).toBe("preserve-me");
   });
 
+  it("generates the optional machine API key through an authenticated bootstrap request", async () => {
+    const { generateApiKey } = await import("../src/features/gateway/api.js");
+    await generateApiKey();
+
+    expect(fetch).toHaveBeenCalledWith("/app/bootstrap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+      credentials: "include",
+    });
+  });
+
   it("rejects a malformed JSON readiness response even when 503 is allowed", async () => {
     vi.stubGlobal(
       "fetch",

@@ -3,7 +3,7 @@ import { ApiError } from "../../shared/api/client.js";
 import { useClipboard } from "../../shared/hooks/useClipboard.js";
 import type { Notice } from "../../shared/ui/feedback.js";
 import { useAccessGate } from "../access/AccessGate.js";
-import { logoutAllBrowserSessions, logoutBrowserSession, rotateApiKey } from "../gateway/api.js";
+import { generateApiKey, logoutAllBrowserSessions, logoutBrowserSession, rotateApiKey } from "../gateway/api.js";
 import type { CopiedField } from "../gateway/types.js";
 import type { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 
@@ -21,6 +21,7 @@ function apiErrorMessage(error: unknown, fallback: string): string {
 export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessActionsOptions) {
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
+  const [isGeneratingApiKey, setIsGeneratingApiKey] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isSigningOutAll, setIsSigningOutAll] = useState(false);
   const [isRotatingApiKey, setIsRotatingApiKey] = useState(false);
@@ -29,6 +30,33 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
   const { copiedField, copy } = useClipboard<Exclude<CopiedField, null>>({
     onError: (message) => setNotice({ type: "error", message }),
   });
+
+  async function handleGenerateApiKey() {
+    if (!snapshot.isAuthenticated || snapshot.apiKeyConfigured) {
+      setNotice({
+        type: "error",
+        message: "A machine API key can only be generated once from an authenticated gateway.",
+      });
+      return;
+    }
+
+    setIsGeneratingApiKey(true);
+    setNotice(null);
+    try {
+      const result = await generateApiKey();
+      setApiKeyInput(result.apiKey);
+      setShowApiKey(true);
+      snapshot.applyBootstrap(result);
+      setNotice({
+        type: "success",
+        message: "Machine API key generated. Save it now; Wago stores only its hash and will not show this key again.",
+      });
+    } catch (error) {
+      setNotice({ type: "error", message: apiErrorMessage(error, "Failed to generate API key") });
+    } finally {
+      setIsGeneratingApiKey(false);
+    }
+  }
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -86,7 +114,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
   }
 
   const credentialHint = snapshot.credentialSetupRequired
-    ? "Generated once after first pairing. Save it for external REST clients and automation."
+    ? "Optional. Generate a machine API key only when an external REST client needs access to Wago."
     : snapshot.apiKeySource === "generated" && apiKeyInput
       ? "Shown once. Save this machine API key now; Wago does not persist it in browser storage."
       : "Machine API key for external REST clients. Dashboard authentication is managed separately.";
@@ -95,6 +123,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     apiKeyInput,
     showApiKey,
     copiedField,
+    isGeneratingApiKey,
     isSigningOut,
     isSigningOutAll,
     isRotatingApiKey,
@@ -104,6 +133,7 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
     toggleApiKey: () => setShowApiKey((value) => !value),
     copyAppId: () => void copy(snapshot.appId, "appId"),
     copyApiKey: () => void copy(apiKeyInput, "apiKey"),
+    handleGenerateApiKey,
     handleSignOut,
     handleSignOutAll,
     handleRotateApiKey,

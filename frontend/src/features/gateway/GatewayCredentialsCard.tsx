@@ -19,12 +19,14 @@ type GatewayCredentialsCardProps = {
   showApiKey: boolean;
   copiedField: CopiedField;
   credentialHint: string;
+  isGeneratingApiKey: boolean;
   isSigningOut: boolean;
   isSigningOutAll?: boolean;
   isRotatingApiKey: boolean;
   onToggleApiKey: () => void;
   onCopyAppId: () => void;
   onCopyApiKey: () => void;
+  onGenerateApiKey: () => void;
   onSignOut: () => void;
   onSignOutAll?: () => void;
   onRotateApiKey: () => void;
@@ -39,12 +41,14 @@ export function GatewayCredentialsCard({
   showApiKey,
   copiedField,
   credentialHint,
+  isGeneratingApiKey,
   isSigningOut,
   isSigningOutAll = false,
   isRotatingApiKey,
   onToggleApiKey,
   onCopyAppId,
   onCopyApiKey,
+  onGenerateApiKey,
   onSignOut,
   onSignOutAll,
   onRotateApiKey,
@@ -54,7 +58,9 @@ export function GatewayCredentialsCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>Gateway access</h2>
-          <p className={sectionDescriptionClass}>Machine API credentials are separate from dashboard authentication.</p>
+          <p className={sectionDescriptionClass}>
+            Machine API credentials are optional and separate from dashboard authentication.
+          </p>
         </div>
         {apiKeyConfigured ? (
           <span className="shrink-0 rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
@@ -93,7 +99,7 @@ export function GatewayCredentialsCard({
                 id="gateway-api-key"
                 className={`${inputClass} pr-9 font-mono text-xs`}
                 value={apiKeyInput}
-                placeholder={credentialSetupRequired ? "Generated after first pairing" : "Not stored in browser"}
+                placeholder={credentialSetupRequired ? "Not generated" : "Not stored in browser"}
                 type={showApiKey ? "text" : "password"}
                 readOnly
                 autoComplete="off"
@@ -124,6 +130,17 @@ export function GatewayCredentialsCard({
         </div>
 
         <div className="flex flex-col justify-end gap-2 sm:flex-row">
+          {!apiKeyConfigured ? (
+            <button
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              type="button"
+              onClick={onGenerateApiKey}
+              disabled={isGeneratingApiKey}
+            >
+              <KeyRound size={14} />
+              {isGeneratingApiKey ? "Generating" : "Generate API key"}
+            </button>
+          ) : null}
           {apiKeySource === "generated" ? (
             <button
               className={`${secondaryButtonClass} w-full sm:w-auto`}
@@ -140,7 +157,7 @@ export function GatewayCredentialsCard({
               className={`${secondaryButtonClass} w-full sm:w-auto`}
               type="button"
               onClick={onSignOutAll}
-              disabled={isSigningOutAll || isRotatingApiKey}
+              disabled={isSigningOutAll || isRotatingApiKey || isGeneratingApiKey}
             >
               <LogOut size={14} />
               {isSigningOutAll ? "Signing out all" : "Sign out all"}
@@ -150,7 +167,7 @@ export function GatewayCredentialsCard({
             className={`${secondaryButtonClass} w-full sm:w-auto`}
             type="button"
             onClick={onSignOut}
-            disabled={isSigningOut || isSigningOutAll || isRotatingApiKey}
+            disabled={isSigningOut || isSigningOutAll || isRotatingApiKey || isGeneratingApiKey}
           >
             <LogOut size={14} />
             {isSigningOut ? "Signing out" : "Sign out"}
