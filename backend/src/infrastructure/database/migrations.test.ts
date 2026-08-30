@@ -22,6 +22,7 @@ describe("database migrations", () => {
       { version: 8 },
       { version: 9 },
       { version: 10 },
+      { version: 11 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -48,6 +49,7 @@ describe("database migrations", () => {
         "recipient_jid",
         "resolved_jid",
         "status",
+        "dispatch_state",
         "error_code",
         "error_message",
         "created_at",
@@ -55,6 +57,11 @@ describe("database migrations", () => {
         "accepted_at",
         "rejected_at",
       ]),
+    );
+
+    const idempotencyColumns = database.prepare("PRAGMA table_info(idempotency_keys)").all() as Array<{ name: string }>;
+    expect(idempotencyColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(["key", "expires_at", "message_id"]),
     );
 
     const appSettingsColumns = database.prepare("PRAGMA table_info(app_settings)").all() as Array<{ name: string }>;
