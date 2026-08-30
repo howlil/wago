@@ -8,7 +8,7 @@ type DashboardSideColumnProps = {
 
 export function DashboardSideColumn({ dashboard }: DashboardSideColumnProps) {
   return (
-    <div className="grid min-w-0 content-start gap-4">
+    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
       <GatewayCredentialsCard
         appId={dashboard.appId}
         apiKeyConfigured={dashboard.apiKeyConfigured}
