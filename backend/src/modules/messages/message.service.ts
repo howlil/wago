@@ -32,7 +32,7 @@ export type MessageStatus = {
 };
 
 type MessageStatusRecord = MessageStatus & {
-  dispatchState: MessageDispatchState;
+  dispatchState?: MessageDispatchState;
 };
 
 export type MessageWebhookDiagnostic = {
@@ -110,7 +110,7 @@ export function createMessageService(
       return {
         id: status.id,
         status: status.status,
-        dispatchState: rawStatus.dispatchState,
+        dispatchState: rawStatus.dispatchState ?? "submitted",
         error: status.error,
         message: status.message,
         createdAt: status.createdAt,
