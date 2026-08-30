@@ -41,7 +41,8 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>{heading}</h2>
           <p className={sectionDescriptionClass}>
-            Sanitized gateway and WhatsApp transport lifecycle evidence. Message content and session secrets are not shown here.
+            Sanitized gateway and WhatsApp transport lifecycle evidence. Message content and session secrets are not
+            shown here.
           </p>
         </div>
         <button
