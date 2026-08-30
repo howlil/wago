@@ -10,11 +10,7 @@ export function useDashboardController() {
   const snapshot = useDashboardSnapshot();
   const [notice, setNotice] = useState<Notice>(null);
   const access = useGatewayAccessActions({ snapshot, setNotice });
-  const bindingActions = useWhatsAppBindingActions({
-    snapshot,
-    setNotice,
-    setApiKeyInput: access.setApiKeyInput,
-  });
+  const bindingActions = useWhatsAppBindingActions({ snapshot, setNotice });
   const messaging = useMessageComposer({
     isAuthenticated: snapshot.isAuthenticated,
     status: snapshot.status,
@@ -42,6 +38,7 @@ export function useDashboardController() {
     apiKeyInput: access.apiKeyInput,
     showApiKey: access.showApiKey,
     copiedField: access.copiedField,
+    isGeneratingApiKey: access.isGeneratingApiKey,
     isSigningOut: access.isSigningOut,
     isSigningOutAll: access.isSigningOutAll,
     isRotatingApiKey: access.isRotatingApiKey,
@@ -51,6 +48,7 @@ export function useDashboardController() {
     toggleApiKey: access.toggleApiKey,
     copyAppId: access.copyAppId,
     copyApiKey: access.copyApiKey,
+    handleGenerateApiKey: access.handleGenerateApiKey,
     handleSignOut: access.handleSignOut,
     handleSignOutAll: access.handleSignOutAll,
     handleRotateApiKey: access.handleRotateApiKey,
