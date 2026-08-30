@@ -205,6 +205,32 @@ export const migrations: Migration[] = [
         ADD COLUMN admin_password_hash TEXT;
     `,
   },
+  {
+    version: 10,
+    sql: `
+      CREATE TABLE IF NOT EXISTS outbound_messages (
+        id TEXT PRIMARY KEY,
+        provider_message_id TEXT,
+        recipient_jid TEXT,
+        resolved_jid TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'rejected')),
+        error_code TEXT,
+        error_message TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        accepted_at INTEGER,
+        rejected_at INTEGER
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_outbound_messages_provider_id
+        ON outbound_messages(provider_message_id)
+        WHERE provider_message_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_outbound_messages_created_at
+        ON outbound_messages(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_outbound_messages_status_updated_at
+        ON outbound_messages(status, updated_at DESC);
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
