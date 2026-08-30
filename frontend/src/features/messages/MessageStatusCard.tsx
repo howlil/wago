@@ -194,8 +194,8 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
 
       {delivery.dispatchState === "indeterminate" ? (
         <p className="mb-0 mt-2 text-xs text-wago-warning">
-          Wago restarted while submission was in progress. The WhatsApp outcome is unknown, so this message will not be
-          retried automatically.
+          Wago cannot determine whether WhatsApp accepted this submission, so this message will not be retried
+          automatically.
         </p>
       ) : null}
       {delivery.message ? <p className="mb-0 mt-2 text-xs text-wago-danger">{delivery.message}</p> : null}
