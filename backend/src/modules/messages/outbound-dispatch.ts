@@ -39,11 +39,7 @@ export function prepareOutboundDispatch(input: PrepareOutboundDispatchInput): vo
     withTransaction(() => {
       if (input.idempotencyKey) {
         deleteExpiredReservation.run(input.idempotencyKey, now);
-        const reservation = reserveIdempotencyKey.run(
-          input.idempotencyKey,
-          now + IDEMPOTENCY_TTL_MS,
-          input.messageId,
-        );
+        const reservation = reserveIdempotencyKey.run(input.idempotencyKey, now + IDEMPOTENCY_TTL_MS, input.messageId);
         if (Number(reservation.changes) === 0) {
           throw new ApplicationError(
             "DUPLICATE_MESSAGE",
@@ -69,7 +65,7 @@ export function prepareOutboundDispatch(input: PrepareOutboundDispatchInput): vo
 export function markOutboundDispatchSubmitting(messageId: string): void {
   try {
     const status = markMessageSubmitting(messageId);
-    if (!status || status.dispatchState !== "submitting") {
+    if (status?.dispatchState !== "submitting") {
       throw new Error("Prepared outbound message was not found");
     }
   } catch (error) {
@@ -80,11 +76,14 @@ export function markOutboundDispatchSubmitting(messageId: string): void {
 export function markOutboundDispatchSubmitted(messageId: string, providerMessageId: string | null): void {
   try {
     const status = markMessageSubmitted(messageId, providerMessageId);
-    if (!status || status.dispatchState !== "submitted") {
+    if (status?.dispatchState !== "submitted") {
       throw new Error("Submitting outbound message was not found");
     }
   } catch (error) {
-    throw persistenceFailure("Message was submitted to WhatsApp but Wago could not persist transport correlation", error);
+    throw persistenceFailure(
+      "Message was submitted to WhatsApp but Wago could not persist transport correlation",
+      error,
+    );
   }
 }
 
@@ -123,7 +122,7 @@ export function recoverInterruptedOutboundDispatches(): { abandoned: number; ind
 
       for (const message of submitting) {
         const recovered = markMessageIndeterminate(message.id);
-        if (!recovered || recovered.dispatchState !== "indeterminate") {
+        if (recovered?.dispatchState !== "indeterminate") {
           throw new Error(`Could not recover outbound message ${message.id}`);
         }
       }
