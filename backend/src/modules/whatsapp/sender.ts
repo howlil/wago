@@ -4,6 +4,7 @@ import { logger, maskIdentifier } from "../../infrastructure/logger.js";
 import { toWhatsAppJid } from "../../utils/phone.js";
 import {
   abandonOutboundDispatch,
+  markOutboundDispatchIndeterminate,
   markOutboundDispatchSubmitted,
   markOutboundDispatchSubmitting,
   prepareOutboundDispatch,
@@ -68,6 +69,12 @@ function normalizeBaileysSendError(error: unknown): unknown {
   }
 
   return error;
+}
+
+function isDefinitiveTransportRejection(error: unknown): error is ApplicationError {
+  return (
+    isApplicationError(error) && (error.code === "REACHOUT_RESTRICTED" || error.code === "MESSAGE_REJECTED")
+  );
 }
 
 async function handleOutboundFailure(input: {
@@ -176,14 +183,33 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
         try {
           result = await activeSocket.sendMessage(resolvedJid, { text });
         } catch (error) {
-          abandonOutboundDispatch(options.messageId);
-          return handleOutboundFailure({
-            error,
-            jid,
+          const normalizedError = normalizeBaileysSendError(error);
+          if (isDefinitiveTransportRejection(normalizedError)) {
+            abandonOutboundDispatch(options.messageId);
+            return handleOutboundFailure({
+              error: normalizedError,
+              jid,
+              messageId: options.messageId,
+              policyInput,
+              accountHealthFetcher,
+            });
+          }
+
+          markOutboundDispatchIndeterminate(options.messageId, "transport_failure");
+          logger.warn(
+            {
+              event: "wa.outbound.indeterminate",
+              messageId: options.messageId,
+              errorName: error instanceof Error ? error.name : "UNKNOWN",
+              to: maskIdentifier(resolvedJid),
+            },
+            "WhatsApp transport outcome is indeterminate; automatic retry is suppressed",
+          );
+
+          return {
             messageId: options.messageId,
-            policyInput,
-            accountHealthFetcher,
-          });
+            status: "pending",
+          };
         }
 
         const providerMessageId = result?.key?.id ?? null;
