@@ -17,7 +17,7 @@ const levelLabel: Record<ActivityLevel, string> = {
 
 const sourceLabel: Record<AuditSource, string> = {
   wago: "Wago",
-  baileys: "Baileys",
+  baileys: "WhatsApp transport",
 };
 
 const levelDot: Record<ActivityLevel, string> = {
@@ -59,7 +59,7 @@ function humanizeKey(key: string): string {
 export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
   return (
     <div className="mt-4 overflow-hidden rounded-lg border border-wago-line bg-white">
-      <div className="hidden grid-cols-[120px_80px_minmax(0,1fr)_90px] gap-4 border-b border-wago-line bg-[#f7f9f8] px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#7b8781] sm:grid">
+      <div className="hidden grid-cols-[120px_120px_minmax(0,1fr)_90px] gap-4 border-b border-wago-line bg-[#f7f9f8] px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#7b8781] sm:grid">
         <span>Time</span>
         <span>Source</span>
         <span>Event</span>
@@ -74,7 +74,7 @@ export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
           return (
             <article
               key={event.id}
-              className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[120px_80px_minmax(0,1fr)_90px] sm:gap-4"
+              className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[120px_120px_minmax(0,1fr)_90px] sm:gap-4"
             >
               <time className="text-[10px] leading-5 text-[#7b8781]" dateTime={event.timestamp}>
                 {formatTime(event.timestamp)}

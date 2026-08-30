@@ -12,24 +12,21 @@ const gatewayProps = {
   copiedField: null,
   credentialHint: "Optional. Generate a machine API key only for external REST clients.",
   isGeneratingApiKey: false,
-  isSigningOut: false,
   isRotatingApiKey: false,
   onToggleApiKey: vi.fn(),
   onCopyAppId: vi.fn(),
   onCopyApiKey: vi.fn(),
   onGenerateApiKey: vi.fn(),
-  onSignOut: vi.fn(),
   onRotateApiKey: vi.fn(),
 };
 
 describe("gateway credentials", () => {
-  it("keeps dashboard authentication out of the optional machine-credential card", () => {
+  it("keeps dashboard authentication out of the machine-access card", () => {
     render(<GatewayCredentialsCard {...gatewayProps} />);
 
     expect(screen.queryByLabelText(/admin password/i)).toBeNull();
-    expect(screen.queryByRole("button", { name: /create account/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^sign out$/i })).toBeNull();
     expect(screen.getByLabelText(/machine api key/i).getAttribute("placeholder")).toBe("Not generated");
     expect(screen.getByRole("button", { name: /generate api key/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^sign out$/i })).toBeTruthy();
   });
 });

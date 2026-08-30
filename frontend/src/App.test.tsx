@@ -138,16 +138,31 @@ afterEach(() => {
 });
 
 describe("dashboard", () => {
-  it("renders Control as a dedicated workspace without an embedded Activity Log", async () => {
+  it("renders Control as the operational workspace without configuration or embedded audit", async () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Control" })).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Control" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Settings" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Audit Log" })).toHaveLength(1);
     expect(screen.queryByRole("heading", { name: "Activity Log" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Machine access" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Recipient access" })).toBeNull();
   });
 
-  it("renders Audit Log as a dedicated workspace route", async () => {
+  it("renders Settings as the configuration workspace", async () => {
+    window.history.replaceState({}, "", "/settings");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("heading", { name: "Machine access" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Recipient access" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Webhook integration" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Dashboard session" })).toBeTruthy();
+  });
+
+  it("renders Audit Log as a dedicated investigation workspace route", async () => {
     window.history.replaceState({}, "", "/audit");
     render(<App />);
 
@@ -266,11 +281,12 @@ describe("dashboard", () => {
     await waitFor(() => expect(pairWhatsApp).toHaveBeenCalledTimes(1));
 
     expect(generateApiKey).not.toHaveBeenCalled();
-    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe("");
-    expect(screen.getByRole("button", { name: /generate api key/i })).toBeTruthy();
+    expect(screen.queryByLabelText("Machine API key", { selector: "input" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
   });
 
-  it("generates a machine API key only after the explicit gateway-access action", async () => {
+  it("generates a machine API key only from Settings", async () => {
+    window.history.replaceState({}, "", "/settings");
     vi.mocked(getAppInfo).mockResolvedValue(
       appInfo({
         apiKeyConfigured: false,
@@ -347,7 +363,8 @@ describe("dashboard", () => {
     expect(getWhatsAppStatus).not.toHaveBeenCalled();
   });
 
-  it("returns to the sign-in surface after signing out", async () => {
+  it("returns to the sign-in surface after signing out from Settings", async () => {
+    window.history.replaceState({}, "", "/settings");
     const user = userEvent.setup();
     vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: true }));
     vi.mocked(logoutBrowserSession).mockImplementationOnce(async () => {
@@ -364,10 +381,11 @@ describe("dashboard", () => {
     await waitFor(() => expect(logoutBrowserSession).toHaveBeenCalledTimes(1));
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /pair whatsapp/i })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
   });
 
-  it("requires confirmation and shows the replacement API key after rotation", async () => {
+  it("requires confirmation and shows the replacement API key after rotation in Settings", async () => {
+    window.history.replaceState({}, "", "/settings");
     const user = userEvent.setup();
     render(<App />);
 
