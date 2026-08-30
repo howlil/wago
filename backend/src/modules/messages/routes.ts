@@ -124,7 +124,7 @@ export function createMessageRouter(messageService: MessageService) {
       return res.status(404).json({
         success: false,
         error: "MESSAGE_STATUS_NOT_FOUND",
-        message: "Message status was not found or is outside the retained diagnostics window",
+        message: "Message status was not found or has expired",
       });
     }
 
