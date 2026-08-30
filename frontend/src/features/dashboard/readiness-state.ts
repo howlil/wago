@@ -75,7 +75,8 @@ export function getOperationalReadinessWarning(
   if (reason === "bound_session_disconnected") {
     return {
       tone: "warning",
-      message: "The bound WhatsApp session is disconnected. Inspect connection events; rebind only if the session is invalid.",
+      message:
+        "The bound WhatsApp session is disconnected. Inspect connection events; rebind only if the session is invalid.",
       auditHref: targetAuditHref,
     };
   }
