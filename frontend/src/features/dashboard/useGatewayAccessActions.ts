@@ -33,7 +33,10 @@ export function useGatewayAccessActions({ snapshot, setNotice }: GatewayAccessAc
 
   async function handleGenerateApiKey() {
     if (!snapshot.isAuthenticated || snapshot.apiKeyConfigured) {
-      setNotice({ type: "error", message: "A machine API key can only be generated once from an authenticated gateway." });
+      setNotice({
+        type: "error",
+        message: "A machine API key can only be generated once from an authenticated gateway.",
+      });
       return;
     }
 
