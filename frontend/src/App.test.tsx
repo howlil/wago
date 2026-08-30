@@ -1,177 +1,140 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
-import { getActivity } from "./features/activity/api.js";
-import { createAdminPassword, getAccessState, signIn, signOut } from "./features/access/api.js";
-import { getGatewayInfo, getHealth, getReadiness, rotateApiKey, setupGateway } from "./features/gateway/api.js";
+import { listActivity } from "./features/activity/api.js";
+import {
+  createAdminAccount,
+  createBrowserSession,
+  generateApiKey,
+  getAppInfo,
+  getHealth,
+  logoutBrowserSession,
+  rotateApiKey,
+} from "./features/gateway/api.js";
 import { sendMessage } from "./features/messages/api.js";
-import { allowRecipient, listRecipients } from "./features/recipients/api.js";
-import { getWebhookSettings } from "./features/settings/api.js";
-import { pairWhatsApp, rebindWhatsApp, getWhatsAppQr, getWhatsAppStatus } from "./features/whatsapp/api.js";
+import { allowRecipient } from "./features/recipients/api.js";
+import { getCurrentQr, getWhatsAppStatus, pairWhatsApp } from "./features/whatsapp/api.js";
+import { RebindSessionDialog } from "./features/whatsapp/RebindSessionDialog.js";
 import { ApiError } from "./shared/api/client.js";
 
-vi.mock("./features/access/api.js", async (importOriginal) => {
-  const original = await importOriginal<typeof import("./features/access/api.js")>();
-  return {
-    ...original,
-    createAdminPassword: vi.fn(),
-    getAccessState: vi.fn(),
-    signIn: vi.fn(),
-    signOut: vi.fn(),
-  };
-});
+const generatedApiKey = `wa_${"a".repeat(64)}`;
+const rotatedApiKey = `wa_${"d".repeat(43)}`;
+const adminPassword = "correct-horse-battery-staple";
 
-vi.mock("./features/activity/api.js", () => ({ getActivity: vi.fn() }));
-vi.mock("./features/gateway/api.js", () => ({
-  getGatewayInfo: vi.fn(),
-  getHealth: vi.fn(),
-  getReadiness: vi.fn(),
-  rotateApiKey: vi.fn(),
-  setupGateway: vi.fn(),
+function appInfo(overrides: Partial<Awaited<ReturnType<typeof getAppInfo>>> = {}) {
+  return {
+    success: true as const,
+    appId: "wa-gateway-test",
+    apiKeyRequired: true,
+    apiKeyConfigured: true,
+    apiKeySource: "generated" as const,
+    authenticated: true,
+    adminPasswordConfigured: true,
+    dashboardAuthMode: "password" as const,
+    credentialSetupRequired: false,
+    setupRequired: false,
+    ...overrides,
+  };
+}
+
+vi.mock("./features/activity/api.js", () => ({
+  listActivity: vi.fn(async () => ({ success: true, events: [] })),
 }));
-vi.mock("./features/messages/api.js", async (importOriginal) => {
-  const original = await importOriginal<typeof import("./features/messages/api.js")>();
-  return { ...original, sendMessage: vi.fn() };
-});
+
+vi.mock("./features/gateway/api.js", () => ({
+  getAppInfo: vi.fn(async () => appInfo()),
+  generateApiKey: vi.fn(async () => ({
+    success: true,
+    appId: "wa-gateway-test",
+    apiKey: generatedApiKey,
+    recovered: false,
+    message: "App initialized",
+  })),
+  createAdminAccount: vi.fn(async () => ({
+    success: true,
+    authenticated: true,
+    expiresAt: "2026-09-12T00:00:00.000Z",
+    message: "Admin account created",
+  })),
+  createBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: true,
+    expiresAt: "2026-09-12T00:00:00.000Z",
+    message: "Browser session created",
+  })),
+  getHealth: vi.fn(async () => ({ status: "ok" })),
+  logoutBrowserSession: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "Browser session ended",
+  })),
+  logoutAllBrowserSessions: vi.fn(async () => ({
+    success: true,
+    authenticated: false,
+    message: "All browser sessions ended",
+  })),
+  rotateApiKey: vi.fn(async () => ({
+    success: true,
+    apiKey: rotatedApiKey,
+    generatedAt: "2026-08-14T00:00:00.000Z",
+    message: "API key rotated",
+  })),
+}));
+
 vi.mock("./features/recipients/api.js", () => ({
-  allowRecipient: vi.fn(),
-  listRecipients: vi.fn(),
+  allowRecipient: vi.fn(async (phone: string) => ({
+    success: true,
+    recipient: {
+      jid: `${phone}@s.whatsapp.net`,
+      allowed: true,
+      optedOut: false,
+      createdAt: "2026-08-10T00:00:00.000Z",
+      updatedAt: "2026-08-10T00:00:00.000Z",
+    },
+  })),
+  listRecipients: vi.fn(async () => ({ success: true, recipients: [] })),
   optOutRecipient: vi.fn(),
 }));
-vi.mock("./features/settings/api.js", () => ({
-  getWebhookSettings: vi.fn(),
-  updateWebhookSettings: vi.fn(),
-}));
-vi.mock("./features/whatsapp/api.js", () => ({
-  getWhatsAppQr: vi.fn(),
-  getWhatsAppStatus: vi.fn(),
-  pairWhatsApp: vi.fn(),
-  rebindWhatsApp: vi.fn(),
-}));
 
-const rawApiKey = "wa_test_generated_key_12345678901234567890123456789012";
-const rotatedApiKey = "wa_test_rotated_key_12345678901234567890123456789012";
-
-function authenticatedAccessState() {
-  return {
-    setup: true,
-    authenticated: true,
-    adminPasswordConfigured: true,
-    browserSessionConfigured: true,
-    apiKeyConfigured: true,
-    apiKeySource: "database" as const,
-  };
-}
-
-function unauthenticatedAccessState() {
-  return {
-    setup: true,
-    authenticated: false,
-    adminPasswordConfigured: true,
-    browserSessionConfigured: true,
-    apiKeyConfigured: true,
-    apiKeySource: "database" as const,
-  };
-}
-
-function freshAccessState() {
-  return {
-    setup: false,
-    authenticated: false,
-    adminPasswordConfigured: false,
-    browserSessionConfigured: false,
-    apiKeyConfigured: false,
-    apiKeySource: "none" as const,
-  };
-}
-
-function connectedWhatsAppStatus() {
-  return {
-    success: true as const,
-    status: "connected" as const,
-    binding: {
-      state: "bound" as const,
-      phone: "6281234567890",
-      jid: "6281234567890@s.whatsapp.net",
-      boundAt: "2026-08-30T01:00:00.000Z",
-    },
-    accountHealth: {
-      availability: "available" as const,
-      checkedAt: "2026-08-30T01:00:00.000Z",
-      reachoutTimeLock: { isActive: false },
-      newChatCap: { status: "NONE" },
-    },
-  };
-}
-
-function disconnectedWhatsAppStatus() {
-  return {
-    success: true as const,
-    status: "disconnected" as const,
-    binding: { state: "unbound" as const },
-    accountHealth: {
-      availability: "unavailable" as const,
-      unavailableReason: "not_connected" as const,
-    },
-  };
-}
-
-function defaultReadiness() {
-  return {
-    status: "ready" as const,
-    ready: true,
-    appId: "app-1",
-    apiKeyConfigured: true,
-    webhookConfigured: false,
-  };
-}
-
-function defaultGatewayInfo() {
-  return {
-    appId: "app-1",
-    setup: true,
-    authenticated: true,
-    apiKeyConfigured: true,
-    apiKeySource: "database" as const,
-    adminPasswordConfigured: true,
-  };
-}
-
-function mockControlBaseline() {
-  vi.mocked(getAccessState).mockResolvedValue(authenticatedAccessState());
-  vi.mocked(getGatewayInfo).mockResolvedValue(defaultGatewayInfo());
-  vi.mocked(getHealth).mockResolvedValue({ status: "ok" });
-  vi.mocked(getReadiness).mockResolvedValue(defaultReadiness());
-  vi.mocked(getWhatsAppStatus).mockResolvedValue(connectedWhatsAppStatus());
-  vi.mocked(getWhatsAppQr).mockResolvedValue({ qr: null, status: "connected" });
-  vi.mocked(getActivity).mockResolvedValue({ success: true, events: [] });
-  vi.mocked(listRecipients).mockResolvedValue({ success: true, recipients: [] });
-  vi.mocked(getWebhookSettings).mockResolvedValue({
+vi.mock("./features/messages/api.js", () => ({
+  getMessageStatus: vi.fn(async () => ({
     success: true,
-    enabled: false,
-    url: null,
-    hasSecret: false,
-    updatedAt: null,
-  });
-}
+    id: "message-1",
+    to: "6281234567890@s.whatsapp.net",
+    status: "pending",
+    updatedAt: "2026-08-10T00:00:00.000Z",
+  })),
+  sendMessage: vi.fn(),
+}));
+
+vi.mock("./features/whatsapp/api.js", () => ({
+  getCurrentQr: vi.fn(async () => ({ success: true, qr: null, status: "connected" })),
+  getQrImageSvg: vi.fn(async () => "<svg />"),
+  getWhatsAppStatus: vi.fn(async () => ({
+    success: true,
+    status: "connected",
+    binding: {
+      state: "bound",
+      jid: "6281234567890@s.whatsapp.net",
+      phone: "6281234567890",
+      boundAt: "2026-08-10T00:00:00.000Z",
+    },
+    accountHealth: { availability: "available" },
+  })),
+  pairWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
+  rebindWhatsApp: vi.fn(async () => ({ success: true, message: "Pairing started", status: "qr" })),
+}));
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
   window.history.replaceState({}, "", "/");
-  Object.defineProperty(document, "visibilityState", {
-    configurable: true,
-    value: "visible",
-  });
-  mockControlBaseline();
-  vi.mocked(pairWhatsApp).mockResolvedValue({ success: true, status: "connecting" });
-  vi.mocked(rebindWhatsApp).mockResolvedValue({ success: true, status: "connecting" });
-  vi.mocked(allowRecipient).mockResolvedValue({ success: true, recipient: { phone: "6281275584870" } });
-  vi.mocked(setupGateway).mockResolvedValue({ success: true, apiKey: rawApiKey });
-  vi.mocked(rotateApiKey).mockResolvedValue({ success: true, apiKey: rotatedApiKey });
-  vi.mocked(createAdminPassword).mockResolvedValue({ success: true });
-  vi.mocked(signIn).mockResolvedValue({ success: true });
-  vi.mocked(signOut).mockResolvedValue({ success: true });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+  vi.resetAllMocks();
 });
 
 describe("dashboard", () => {
@@ -179,10 +142,12 @@ describe("dashboard", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Control" })).toBeTruthy();
-    expect(await screen.findByText(/operational readiness/i)).toBeTruthy();
-    expect(screen.getByText(/connected to whatsapp/i)).toBeTruthy();
-    expect(screen.queryByText(/gateway access/i)).toBeNull();
-    expect(screen.queryByRole("heading", { name: /audit log/i })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Control" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Settings" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Audit Log" })).toHaveLength(1);
+    expect(screen.queryByRole("heading", { name: "Activity Log" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Machine access" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Recipient access" })).toBeNull();
   });
 
   it("renders Settings as the configuration workspace", async () => {
@@ -190,9 +155,11 @@ describe("dashboard", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
-    expect(await screen.findByText(/gateway access/i)).toBeTruthy();
-    expect(screen.getByText(/recipient policy/i)).toBeTruthy();
-    expect(screen.getByText(/webhook delivery/i)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("heading", { name: "Machine access" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Recipient access" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Webhook integration" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Dashboard session" })).toBeTruthy();
   });
 
   it("renders Audit Log as a dedicated investigation workspace route", async () => {
@@ -200,167 +167,221 @@ describe("dashboard", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Audit Log" })).toBeTruthy();
-    expect(await screen.findByText(/investigate sanitized operational evidence/i)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Audit Log" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Control" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("collapses and restores the global sidebar", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    const collapse = await screen.findByRole("button", { name: /collapse sidebar/i });
-    await user.click(collapse);
-    expect(screen.getByRole("button", { name: /expand sidebar/i })).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: /expand sidebar/i }));
-    expect(screen.getByRole("button", { name: /collapse sidebar/i })).toBeTruthy();
+    await user.click(await screen.findByRole("button", { name: "Collapse sidebar" }));
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Expand sidebar" }));
+    expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeTruthy();
   });
 
   it("handles malformed activity responses without crashing the dashboard", async () => {
-    vi.mocked(getActivity).mockResolvedValueOnce({ success: true, events: null as never });
+    vi.mocked(listActivity).mockResolvedValueOnce({ success: true, events: undefined } as never);
+
+    window.history.replaceState({}, "", "/audit");
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: "Control" })).toBeTruthy();
+    expect(await screen.findByText(/activity endpoint returned an invalid response/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Audit Log" })).toBeTruthy();
   });
 
   it("opens the change-account dialog for an existing binding", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /change account/i }));
-    expect(await screen.findByRole("dialog", { name: /change whatsapp account/i })).toBeTruthy();
+    const openButton = await screen.findByRole("button", { name: /change account/i });
+    expect((openButton as HTMLButtonElement).disabled).toBe(false);
+    await user.click(openButton);
+    expect(await screen.findByRole("dialog", { name: /start a new pairing session/i })).toBeTruthy();
   });
 
   it("confirms a new pairing session with one explicit click", async () => {
-    vi.mocked(getWhatsAppStatus).mockResolvedValue(disconnectedWhatsAppStatus());
-    vi.mocked(getWhatsAppQr).mockResolvedValue({ qr: null, status: "disconnected" });
     const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
-    await waitFor(() => expect(pairWhatsApp).toHaveBeenCalledTimes(1));
+    const onConfirm = vi.fn();
+    render(<RebindSessionDialog isOpen isRebinding={false} onCancel={vi.fn()} onConfirm={onConfirm} />);
+    await user.click(screen.getByRole("button", { name: /start new pairing/i }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it("does not poll the backend while the tab is hidden", async () => {
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "hidden",
-    });
+    vi.useFakeTimers();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
     render(<App />);
-    await screen.findByRole("heading", { name: "Control" });
-
-    const healthCalls = vi.mocked(getHealth).mock.calls.length;
-    act(() => {
-      document.dispatchEvent(new Event("visibilitychange"));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
     });
-    expect(vi.mocked(getHealth).mock.calls.length).toBe(healthCalls);
+    expect(getHealth).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000);
+    });
+    expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
   it("sets up the admin credential and pairs WhatsApp without generating a machine API key", async () => {
-    vi.mocked(getAccessState)
-      .mockResolvedValueOnce(freshAccessState())
-      .mockResolvedValue(authenticatedAccessState());
-    vi.mocked(getGatewayInfo)
-      .mockResolvedValueOnce({
-        ...defaultGatewayInfo(),
-        setup: false,
-        authenticated: false,
-        apiKeyConfigured: false,
-        apiKeySource: "none",
-        adminPasswordConfigured: false,
-      })
-      .mockResolvedValue(defaultGatewayInfo());
-    vi.mocked(getWhatsAppStatus).mockResolvedValue(disconnectedWhatsAppStatus());
+    const firstRunUnauthenticatedInfo = appInfo({
+      apiKeyConfigured: false,
+      apiKeySource: "unset",
+      authenticated: false,
+      adminPasswordConfigured: false,
+      dashboardAuthMode: "setup",
+      credentialSetupRequired: true,
+      setupRequired: true,
+    });
+    const firstRunAuthenticatedInfo = appInfo({
+      apiKeyConfigured: false,
+      apiKeySource: "unset",
+      authenticated: true,
+      adminPasswordConfigured: true,
+      dashboardAuthMode: "password",
+      credentialSetupRequired: true,
+      setupRequired: true,
+    });
+    vi.mocked(getAppInfo).mockResolvedValue(firstRunUnauthenticatedInfo);
+    vi.mocked(createAdminAccount).mockImplementationOnce(async () => {
+      vi.mocked(getAppInfo).mockResolvedValue(firstRunAuthenticatedInfo);
+      return {
+        success: true,
+        authenticated: true,
+        expiresAt: "2026-09-12T00:00:00.000Z",
+        message: "Admin account created",
+      };
+    });
+    vi.mocked(getWhatsAppStatus).mockResolvedValueOnce({
+      success: true,
+      status: "disconnected",
+      binding: { state: "unbound", jid: null, phone: null, boundAt: null },
+      accountHealth: { availability: "unavailable" },
+    });
+
     const user = userEvent.setup();
     render(<App />);
 
-    await user.type(await screen.findByLabelText("Admin password"), "correct-horse-battery-staple");
-    await user.type(screen.getByLabelText("Confirm admin password"), "correct-horse-battery-staple");
-    await user.click(screen.getByRole("button", { name: /create admin password/i }));
+    expect(await screen.findByRole("heading", { name: /set up your gateway/i })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Control" })).toBeNull();
+    const passwordInput = screen.getByLabelText("Admin password", { selector: "input" });
+    const confirmationInput = screen.getByLabelText("Confirm password", { selector: "input" });
+    await user.type(passwordInput, adminPassword);
+    await user.type(confirmationInput, adminPassword);
+    await user.click(screen.getByRole("button", { name: /set up wago/i }));
 
-    await waitFor(() => expect(createAdminPassword).toHaveBeenCalledTimes(1));
-    expect(setupGateway).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(createAdminAccount).toHaveBeenCalledWith(adminPassword);
+      expect(createBrowserSession).not.toHaveBeenCalled();
+    });
+
     await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
     await waitFor(() => expect(pairWhatsApp).toHaveBeenCalledTimes(1));
+
+    expect(generateApiKey).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Machine API key", { selector: "input" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
   });
 
   it("generates a machine API key only from Settings", async () => {
-    vi.mocked(getAccessState).mockResolvedValue({ ...authenticatedAccessState(), apiKeyConfigured: false });
-    vi.mocked(getGatewayInfo).mockResolvedValue({
-      ...defaultGatewayInfo(),
-      apiKeyConfigured: false,
-      apiKeySource: "none",
-    });
     window.history.replaceState({}, "", "/settings");
+    vi.mocked(getAppInfo).mockResolvedValue(
+      appInfo({
+        apiKeyConfigured: false,
+        apiKeySource: "unset",
+        credentialSetupRequired: true,
+        setupRequired: true,
+      }),
+    );
+
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: /generate api key/i }));
-    await waitFor(() => expect(setupGateway).toHaveBeenCalledTimes(1));
-    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(rawApiKey);
+    await waitFor(() => expect(generateApiKey).toHaveBeenCalledTimes(1));
+
+    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
+      generatedApiKey,
+    );
+    expect(pairWhatsApp).not.toHaveBeenCalled();
   });
 
   it("does not submit first-run setup when password confirmation differs", async () => {
-    vi.mocked(getAccessState).mockResolvedValue(freshAccessState());
-    vi.mocked(getGatewayInfo).mockResolvedValue({
-      ...defaultGatewayInfo(),
-      setup: false,
-      authenticated: false,
-      apiKeyConfigured: false,
-      apiKeySource: "none",
-      adminPasswordConfigured: false,
-    });
+    vi.mocked(getAppInfo).mockResolvedValue(
+      appInfo({
+        apiKeyConfigured: false,
+        apiKeySource: "unset",
+        authenticated: false,
+        adminPasswordConfigured: false,
+        dashboardAuthMode: "setup",
+        credentialSetupRequired: true,
+        setupRequired: true,
+      }),
+    );
+
     const user = userEvent.setup();
     render(<App />);
 
-    await user.type(await screen.findByLabelText("Admin password"), "correct-horse-battery-staple");
-    await user.type(screen.getByLabelText("Confirm admin password"), "different-password");
-    await user.click(screen.getByRole("button", { name: /create admin password/i }));
+    await user.type(await screen.findByLabelText("Admin password", { selector: "input" }), adminPassword);
+    await user.type(screen.getByLabelText("Confirm password", { selector: "input" }), `${adminPassword}-different`);
+    await user.click(screen.getByRole("button", { name: /set up wago/i }));
 
-    expect(createAdminPassword).not.toHaveBeenCalled();
-    expect(await screen.findByText(/password confirmation does not match/i)).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toContain("Passwords do not match.");
+    expect(createAdminAccount).not.toHaveBeenCalled();
   });
 
   it("signs a returning browser in and keeps the requested workspace", async () => {
-    vi.mocked(getAccessState)
-      .mockResolvedValueOnce(unauthenticatedAccessState())
-      .mockResolvedValue(authenticatedAccessState());
-    vi.mocked(getGatewayInfo)
-      .mockResolvedValueOnce({ ...defaultGatewayInfo(), authenticated: false })
-      .mockResolvedValue(defaultGatewayInfo());
-    window.history.replaceState({}, "", "/audit");
+    window.history.replaceState({}, "", "/settings");
+    vi.mocked(getAppInfo)
+      .mockResolvedValueOnce(appInfo({ authenticated: false }))
+      .mockResolvedValue(appInfo({ authenticated: true }));
+
     const user = userEvent.setup();
     render(<App />);
 
-    await user.type(await screen.findByLabelText("Admin password"), "correct-horse-battery-staple");
-    await user.click(screen.getByRole("button", { name: /sign in/i }));
-    await waitFor(() => expect(signIn).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole("heading", { name: "Audit Log" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
+    const input = screen.getByLabelText("Admin password", { selector: "input" });
+    await user.type(input, adminPassword);
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() => expect(createBrowserSession).toHaveBeenCalledWith(adminPassword));
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
+    expect(screen.queryByLabelText("Admin password", { selector: "input" })).toBeNull();
   });
 
   it("does not render protected workspaces or call WhatsApp endpoints before authentication", async () => {
-    vi.mocked(getAccessState).mockResolvedValue(unauthenticatedAccessState());
-    vi.mocked(getGatewayInfo).mockResolvedValue({ ...defaultGatewayInfo(), authenticated: false });
+    vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: false }));
     render(<App />);
 
-    expect(await screen.findByRole("button", { name: /sign in/i })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Control" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(getCurrentQr).not.toHaveBeenCalled();
     expect(getWhatsAppStatus).not.toHaveBeenCalled();
-    expect(getWhatsAppQr).not.toHaveBeenCalled();
   });
 
   it("returns to the sign-in surface after signing out from Settings", async () => {
-    vi.mocked(getAccessState)
-      .mockResolvedValueOnce(authenticatedAccessState())
-      .mockResolvedValue(unauthenticatedAccessState());
-    vi.mocked(getGatewayInfo)
-      .mockResolvedValueOnce(defaultGatewayInfo())
-      .mockResolvedValue({ ...defaultGatewayInfo(), authenticated: false });
     window.history.replaceState({}, "", "/settings");
     const user = userEvent.setup();
+    vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: true }));
+    vi.mocked(logoutBrowserSession).mockImplementationOnce(async () => {
+      vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: false }));
+      return {
+        success: true,
+        authenticated: false,
+        message: "Browser session ended",
+      };
+    });
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /sign out/i }));
-    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole("button", { name: /sign in/i })).toBeTruthy();
+    await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
+    await waitFor(() => expect(logoutBrowserSession).toHaveBeenCalledTimes(1));
+
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
   });
 
   it("requires confirmation and shows the replacement API key after rotation in Settings", async () => {
