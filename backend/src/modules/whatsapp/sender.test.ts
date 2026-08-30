@@ -70,9 +70,9 @@ describe("WhatsApp sender", () => {
         dispatchState: "submitting",
         providerMessageId: null,
       });
-      expect(
-        database.prepare("SELECT message_id FROM idempotency_keys WHERE key = ?").get("request-prepared"),
-      ).toEqual({ message_id: "trace-prepared" });
+      expect(database.prepare("SELECT message_id FROM idempotency_keys WHERE key = ?").get("request-prepared")).toEqual(
+        { message_id: "trace-prepared" },
+      );
       return { key: { id: "provider-prepared" } };
     });
     const socket = connectedSocket(sendMessage);
@@ -94,10 +94,45 @@ describe("WhatsApp sender", () => {
     });
   });
 
-  it("releases prepared state and idempotency when the transport rejects synchronously", async () => {
+  it("keeps an ambiguous transport failure indeterminate and suppresses retry", async () => {
+    const sendMessage = vi.fn().mockRejectedValueOnce(new Error("socket closed after write"));
+    const socket = connectedSocket(sendMessage);
+    const sender = createWhatsAppSender({
+      getSocket: () => socket,
+      getConnectionStatus: () => "connected",
+    });
+
+    await expect(
+      sender.sendText("6281234567890", "first", {
+        idempotencyKey: "ambiguous-request",
+        messageId: "trace-ambiguous",
+      }),
+    ).resolves.toEqual({ messageId: "trace-ambiguous", status: "pending" });
+
+    expect(getMessageStatus("trace-ambiguous")).toMatchObject({
+      status: "pending",
+      dispatchState: "indeterminate",
+      providerMessageId: null,
+    });
+    expect(database.prepare("SELECT message_id FROM idempotency_keys WHERE key = ?").get("ambiguous-request")).toEqual({
+      message_id: "trace-ambiguous",
+    });
+
+    await expect(
+      sender.sendText("6281234567890", "retry", {
+        idempotencyKey: "ambiguous-request",
+        messageId: "trace-retry",
+      }),
+    ).rejects.toMatchObject({ code: "DUPLICATE_MESSAGE" });
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases reservation for a definitive WhatsApp rejection", async () => {
+    const rejection = new Error("WhatsApp rejected the message");
+    rejection.name = "MESSAGE_REJECTED";
     const sendMessage = vi
       .fn()
-      .mockRejectedValueOnce(new Error("transport failed"))
+      .mockRejectedValueOnce(rejection)
       .mockResolvedValueOnce({ key: { id: "provider-retry" } });
     const socket = connectedSocket(sendMessage);
     const sender = createWhatsAppSender({
@@ -108,11 +143,11 @@ describe("WhatsApp sender", () => {
     await expect(
       sender.sendText("6281234567890", "first", {
         idempotencyKey: "retryable-request",
-        messageId: "trace-failed",
+        messageId: "trace-rejected",
       }),
-    ).rejects.toThrow("transport failed");
+    ).rejects.toMatchObject({ code: "MESSAGE_REJECTED" });
 
-    expect(getMessageStatus("trace-failed")).toBeNull();
+    expect(getMessageStatus("trace-rejected")).toBeNull();
     expect(database.prepare("SELECT 1 FROM idempotency_keys WHERE key = ?").get("retryable-request")).toBeUndefined();
 
     await expect(
