@@ -28,6 +28,13 @@ function statusClass(status: DeliveryDiagnostic["status"]): string {
   return "text-wago-warning";
 }
 
+function dispatchLabel(dispatchState: DeliveryDiagnostic["dispatchState"]): string {
+  if (dispatchState === "prepared") return "Prepared";
+  if (dispatchState === "submitting") return "Submitting";
+  if (dispatchState === "indeterminate") return "Indeterminate";
+  return "Submitted";
+}
+
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
@@ -40,6 +47,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
     success: true,
     id: messageId,
     status: initialStatus,
+    dispatchState: "submitted",
     createdAt: initialTimestamp,
     updatedAt: initialTimestamp,
     webhook: null,
@@ -54,6 +62,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
       success: true,
       id: messageId,
       status: initialStatus,
+      dispatchState: "submitted",
       createdAt: now,
       updatedAt: now,
       webhook: null,
@@ -63,7 +72,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
   }, [initialStatus, messageId]);
 
   useEffect(() => {
-    if (delivery.status !== "pending") {
+    if (delivery.status !== "pending" || delivery.dispatchState === "indeterminate") {
       return;
     }
 
@@ -101,7 +110,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
         window.clearTimeout(timer);
       }
     };
-  }, [delivery.status, messageId]);
+  }, [delivery.dispatchState, delivery.status, messageId]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -157,6 +166,10 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
           </dd>
         </div>
         <div>
+          <dt className="text-[#818b86]">Transport state</dt>
+          <dd className="mt-0.5 font-medium text-[#33413a]">{dispatchLabel(delivery.dispatchState)}</dd>
+        </div>
+        <div>
           <dt className="text-[#818b86]">Webhook</dt>
           <dd className="mt-0.5 font-medium text-[#33413a]">
             {delivery.webhook
@@ -165,7 +178,7 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
           </dd>
         </div>
         <div>
-          <dt className="text-[#818b86]">Submitted</dt>
+          <dt className="text-[#818b86]">Intent recorded</dt>
           <dd className="mt-0.5 text-[#33413a]">{formatTimestamp(delivery.createdAt)}</dd>
         </div>
         <div>
@@ -179,6 +192,12 @@ export function MessageStatusCard({ messageId, initialStatus }: MessageStatusCar
         <div className="mt-1 max-w-full truncate font-mono text-[10px] text-[#5f6b65]">{messageId}</div>
       </div>
 
+      {delivery.dispatchState === "indeterminate" ? (
+        <p className="mb-0 mt-2 text-xs text-wago-warning">
+          Wago restarted while submission was in progress. The WhatsApp outcome is unknown, so this message will not be
+          retried automatically.
+        </p>
+      ) : null}
       {delivery.message ? <p className="mb-0 mt-2 text-xs text-wago-danger">{delivery.message}</p> : null}
       {delivery.webhook?.lastErrorCode ? (
         <p className="mb-0 mt-2 text-xs text-wago-danger">Webhook: {delivery.webhook.lastErrorCode}</p>
