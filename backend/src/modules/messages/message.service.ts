@@ -77,7 +77,10 @@ function sanitizeMessageStatus(status: MessageStatus): MessageStatus {
   };
 }
 
-export function createMessageService(deps: MessageServiceDependencies, options: MessageServiceOptions = {}): MessageService {
+export function createMessageService(
+  deps: MessageServiceDependencies,
+  options: MessageServiceOptions = {},
+): MessageService {
   const createMessageId = options.createMessageId ?? randomUUID;
 
   return {
