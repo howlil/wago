@@ -100,7 +100,7 @@ describe("AuditPage", () => {
     expect(await screen.findByText("Gateway started")).toBeTruthy();
   });
 
-  it("labels event source and keeps technical metadata behind disclosure", async () => {
+  it("labels event source in gateway language and keeps technical metadata behind disclosure", async () => {
     const user = userEvent.setup();
     render(<AuditPage />);
 
@@ -108,7 +108,7 @@ describe("AuditPage", () => {
     const eventRow = eventTitle.closest("article");
     expect(eventRow).toBeTruthy();
     const eventScope = within(eventRow as HTMLElement);
-    expect(eventScope.getByText("Baileys")).toBeTruthy();
+    expect(eventScope.getByText("WhatsApp transport")).toBeTruthy();
     expect(eventScope.getByText("Warning")).toBeTruthy();
     expect(eventScope.getByText("WhatsApp")).toBeTruthy();
     const summary = eventScope.getByText("Technical details");
