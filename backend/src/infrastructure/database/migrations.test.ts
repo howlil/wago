@@ -21,6 +21,7 @@ describe("database migrations", () => {
       { version: 7 },
       { version: 8 },
       { version: 9 },
+      { version: 10 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -36,6 +37,23 @@ describe("database migrations", () => {
         "next_attempt_at",
         "expires_at",
         "redelivery_count",
+      ]),
+    );
+
+    const messageColumns = database.prepare("PRAGMA table_info(outbound_messages)").all() as Array<{ name: string }>;
+    expect(messageColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "provider_message_id",
+        "recipient_jid",
+        "resolved_jid",
+        "status",
+        "error_code",
+        "error_message",
+        "created_at",
+        "updated_at",
+        "accepted_at",
+        "rejected_at",
       ]),
     );
 
