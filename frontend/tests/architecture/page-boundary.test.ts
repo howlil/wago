@@ -26,18 +26,30 @@ describe("frontend page boundary", () => {
     expect(appSource).not.toContain("./features/settings/SettingsPage.js");
   });
 
-  it("keeps dashboard route composition at section level", () => {
+  it("keeps Control route composition focused on operations", () => {
     const pageSource = source("pages/dashboard/DashboardPage.tsx");
 
     expect(existsSync(join(sourceDirectory, "pages", "dashboard", "DashboardMainColumn.tsx"))).toBe(true);
-    expect(existsSync(join(sourceDirectory, "pages", "dashboard", "DashboardSideColumn.tsx"))).toBe(true);
+    expect(existsSync(join(sourceDirectory, "pages", "dashboard", "DashboardDiagnostics.tsx"))).toBe(true);
     expect(existsSync(join(sourceDirectory, "pages", "dashboard", "DashboardDialogs.tsx"))).toBe(true);
     expect(pageSource).toContain("./DashboardMainColumn.js");
-    expect(pageSource).toContain("./DashboardSideColumn.js");
+    expect(pageSource).toContain("./DashboardDiagnostics.js");
     expect(pageSource).toContain("./DashboardDialogs.js");
+    expect(pageSource).not.toContain("DashboardSideColumn");
     expect(pageSource).not.toContain("../../features/gateway/");
     expect(pageSource).not.toContain("../../features/messages/");
     expect(pageSource).not.toContain("../../features/recipients/");
-    expect(pageSource).not.toContain("../../features/whatsapp/");
+    expect(pageSource).not.toContain("../../features/settings/");
+  });
+
+  it("keeps configuration ownership in Settings", () => {
+    const pageSource = source("pages/settings/SettingsPage.tsx");
+
+    expect(pageSource).toContain("GatewayCredentialsCard");
+    expect(pageSource).toContain("RecipientAccessCard");
+    expect(pageSource).toContain("WebhookSettingsCard");
+    expect(pageSource).toContain("OperatorSessionCard");
+    expect(pageSource).not.toContain("WhatsAppBindingCard");
+    expect(pageSource).not.toContain("DashboardDiagnostics");
   });
 });
