@@ -28,12 +28,42 @@ single active WhatsApp account
 
 Core technology choices:
 
-- Express + TypeScript backend
-- React + Vite frontend
-- Baileys as the WhatsApp protocol client
-- SQLite as authoritative durable application storage
-- filesystem-backed Baileys authentication
-- Docker-first deployment
+- Express + TypeScript backend;
+- React + Vite frontend;
+- Baileys as the WhatsApp protocol client;
+- SQLite as authoritative durable application storage;
+- filesystem-backed Baileys authentication;
+- Docker-first deployment.
+
+## Product interaction model
+
+The dashboard is the human-facing control plane. External applications use the HTTP API as the data plane.
+
+```text
+Human operator
+  -> dashboard browser session
+  -> Control / Settings / Audit Log
+
+Application
+  -> Bearer API key
+  -> Wago HTTP API
+  -> WhatsApp
+```
+
+Frontend workspace ownership follows operator intent:
+
+```text
+Control   = observe + operate
+Settings  = configure
+Audit Log = investigate
+```
+
+This boundary is part of the product model, not only a layout preference.
+
+- Control owns gateway readiness, WhatsApp connection/account operation, account health, and diagnostics.
+- Settings owns machine API credentials, recipient policy, webhooks, and operator browser-session administration.
+- Audit Log owns operational evidence and investigation.
+- Machine API credentials and dashboard browser sessions remain separate security concepts.
 
 ## Project structure and ownership
 
@@ -56,7 +86,7 @@ backend/src/
 ├── app.ts
 ├── index.ts
 ├── app/             application composition and lifecycle
-├── modules/         capability ownership
+├── modules/
 │   ├── access/
 │   ├── activity/
 │   ├── gateway/
@@ -67,22 +97,22 @@ backend/src/
 ├── infrastructure/  application-level runtime/persistence mechanisms
 ├── http/            transport plumbing and HTTP-specific behavior
 ├── config/          environment/runtime configuration
-├── errors/          shared application error primitives where genuinely cross-cutting
+├── errors/          genuinely cross-cutting error primitives
 ├── architecture/    executable dependency/boundary regressions
-└── utils/           only genuinely ownerless low-level utilities; not a dumping ground
+└── utils/           only ownerless low-level utilities
 ```
 
 Ownership rules:
 
-- `index.ts` wires process startup/shutdown, the HTTP server, and top-level application lifecycle. It does not own business behavior.
-- `app/` owns application composition and lifecycle coordination that is broader than one feature.
-- `modules/<capability>/` is the default home for capability-owned routes, policies, services, state, persistence, and tests.
-- `http/` owns reusable transport mechanisms such as middleware/error mapping, not feature policy.
-- `infrastructure/` owns mechanisms shared at application level, such as database setup, mount/lease behavior, and logging. It is not a bucket for every technical concern.
-- `config/` reads and validates environment/runtime configuration. It must not become a persistence or feature owner.
-- Baileys-specific socket/protocol behavior stays inside `modules/whatsapp/`.
+- `index.ts` wires process startup/shutdown, HTTP server, and top-level lifecycle; it does not own business behavior.
+- `app/` owns application composition and coordination broader than one feature.
+- `modules/<capability>/` is the default owner for capability routes, policy, state, persistence, and tests.
+- `http/` owns reusable transport mechanisms, not feature policy.
+- `infrastructure/` owns application-level mechanisms such as database setup, mount/lease behavior, and logging.
+- `config/` reads and validates runtime configuration; it does not become persistence or feature ownership.
+- Baileys-specific protocol/socket behavior stays inside `modules/whatsapp/`.
 
-A module may remain flat while its files share one owner and reason to change. Create subfolders only when they improve ownership, navigation, dependency direction, independent changeability, or locality of reasoning.
+A module may remain flat while its files share one owner and reason to change. Create subfolders only when they materially improve ownership or locality of reasoning.
 
 ### Frontend
 
@@ -90,16 +120,17 @@ A module may remain flat while its files share one owner and reason to change. C
 frontend/src/
 ├── App.tsx           application composition
 ├── main.tsx          runtime bootstrap
-├── features/         product-capability behavior and owned state
-│   ├── activity/
-│   ├── dashboard/
-│   ├── gateway/
-│   ├── messages/
-│   ├── recipients/
-│   ├── settings/
-│   └── whatsapp/
-├── pages/            page/route composition
-└── shared/           proven cross-feature primitives and infrastructure
+├── features/
+│   ├── access/       operator/browser-session UI behavior
+│   ├── activity/     audit/event investigation
+│   ├── dashboard/    operational dashboard/readiness coordination
+│   ├── gateway/      gateway/API integration controls
+│   ├── messages/     message diagnostics/status
+│   ├── recipients/   recipient policy controls
+│   ├── settings/     delivery/webhook configuration
+│   └── whatsapp/     WhatsApp connection/account UI
+├── pages/            route/workspace composition
+└── shared/           proven cross-feature primitives/infrastructure
     ├── api/
     ├── components/
     ├── hooks/
@@ -111,10 +142,12 @@ frontend/src/
 Frontend rules:
 
 - behavior and state stay feature-local by default;
-- `pages/` composes features and page-level navigation, not feature business logic;
-- `shared/` is admitted only after a concern is genuinely cross-feature with one clear shared reason to change;
-- `App.tsx` and global shell code remain composition surfaces, not feature logic containers;
-- prefer React local state and focused hooks until current complexity proves a broader state mechanism is needed.
+- `pages/` compose features according to the Control/Settings/Audit workspace boundary;
+- `pages/` do not own feature networking or business state;
+- `shared/` is admitted only when a concern is genuinely cross-feature with one clear reason to change;
+- `App.tsx` and shell code remain composition surfaces, not feature logic containers;
+- prefer React local state and focused hooks until current complexity proves a broader state mechanism is needed;
+- UI vocabulary should expose Wago concepts rather than provider/library internals unless technical diagnosis requires them.
 
 ## Placement rule
 
@@ -125,7 +158,7 @@ What behavior changes?
   -> Who owns the invariant/state?
   -> Is there an existing module/feature owner?
   -> Which boundary contains the side effect?
-  -> What is the smallest coherent file/module change?
+  -> What is the smallest coherent change?
 ```
 
 Default placement:
@@ -136,7 +169,8 @@ Default placement:
 - SQLite statements for a capability -> capability-owned persistence/store code;
 - database migration/transaction/runtime mechanics -> infrastructure database boundary;
 - application-wide startup/shutdown/composition -> `app/` / `index.ts`;
-- genuinely cross-feature frontend primitive -> `shared/`.
+- genuinely cross-feature frontend primitive -> `shared/`;
+- workspace composition -> `pages/` without moving feature ownership into the page.
 
 Avoid generic global `services/`, `repositories/`, `controllers/`, `managers/`, `helpers/`, `common/`, or `types/` structures when ownership can remain feature-local.
 
@@ -159,8 +193,16 @@ Rules:
 - business policy does not choose HTTP status codes;
 - infrastructure does not depend on feature internals;
 - cross-module use goes through a narrow public capability API rather than private-file imports;
-- framework/provider details stay at their boundary when an existing owner can contain them without extra layering;
-- avoid dependency cycles; a cycle is usually an ownership problem, not a reason for a service locator.
+- framework/provider details stay at their boundary;
+- avoid dependency cycles; a cycle is usually an ownership problem.
+
+Frontend dependency direction:
+
+```text
+App -> pages -> features -> shared
+feature -> its own local modules
+shared -> shared
+```
 
 ## State rule
 
@@ -173,7 +215,7 @@ owner
 + invariant
 ```
 
-Keep state and the code that protects its invariant as close together as practical. Prefer one writable source of truth and derive secondary views when cheaper than synchronizing duplicate state.
+Keep state and the code that protects its invariant close together. Prefer one writable source of truth and derive secondary views when cheaper than synchronizing duplicate state.
 
 Durable state belongs to its persistence owner. Ephemeral socket/UI/cache state may remain in memory when durability is not required for correctness, safety, or diagnosis.
 
@@ -197,23 +239,26 @@ Unless explicitly changed by an approved requirement:
 - one active Wago instance owns a persistent `/app/data` volume;
 - SQLite remains authoritative application storage;
 - Baileys auth remains filesystem-backed under `/app/data/auth`;
-- Baileys internals do not leak outside the WhatsApp module;
+- Baileys internals do not leak outside the WhatsApp module or user-facing gateway vocabulary without a diagnostic reason;
 - public API behavior remains stable unless deliberately changed;
 - sensitive auth/session/message/protocol data is not persisted or logged unnecessarily;
+- browser-session authentication remains separate from machine Bearer API-key access;
 - outbound safeguards are defensive controls, never anti-detection mechanisms;
-- disconnected, unavailable, degraded, checking, and invalid-session states are represented truthfully.
+- disconnected, unavailable, degraded, checking, and invalid-session states are represented truthfully;
+- the dashboard remains a control plane, not a CRM or general WhatsApp client.
 
 ## Non-goals
 
 Do not introduce without a concrete approved requirement:
 
-- microservices or multi-service deployment
-- multi-session or multi-tenant architecture
-- Redis, Kafka, RabbitMQ, BullMQ, or queue infrastructure
-- PostgreSQL/MySQL as a mandatory runtime dependency
-- Kubernetes/service-mesh architecture
-- CQRS or event sourcing
-- dependency-injection frameworks
-- generic repository/service/controller hierarchies
-- speculative provider abstractions or plugin systems
-- fake typing, fingerprint/device spoofing, proxy rotation, bulk/campaign behavior, or restriction bypasses
+- microservices or multi-service deployment;
+- multi-session or multi-tenant architecture;
+- Redis, Kafka, RabbitMQ, BullMQ, or queue infrastructure;
+- PostgreSQL/MySQL as a mandatory runtime dependency;
+- Kubernetes/service-mesh architecture;
+- CQRS or event sourcing;
+- dependency-injection frameworks;
+- generic repository/service/controller hierarchies;
+- speculative provider abstractions or plugin systems;
+- CRM/contact-management behavior;
+- bulk/campaign behavior, scraping, fingerprint spoofing, proxy rotation, or restriction bypasses.
