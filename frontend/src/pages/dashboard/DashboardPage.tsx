@@ -1,7 +1,7 @@
+import { getGatewayHeaderStatus } from "../../features/dashboard/header-status.js";
 import { IntegrationNextStep } from "../../features/dashboard/IntegrationNextStep.js";
 import { OperationalReadinessBanner } from "../../features/dashboard/OperationalReadinessBanner.js";
 import { OverviewCards } from "../../features/dashboard/OverviewCards.js";
-import { getGatewayHeaderStatus } from "../../features/dashboard/header-status.js";
 import { useDashboardController } from "../../features/dashboard/useDashboardController.js";
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
