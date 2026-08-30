@@ -17,6 +17,7 @@ const statusLabel: Record<DashboardStatus, string> = {
   connected: "Connected",
   disconnected: "Disconnected",
 };
+
 function getHeaderStatus(health: BackendHealthState, status: DashboardStatus) {
   if (health === "error") return { label: "Backend offline", tone: "danger" as const };
   if (health === "checking") return { label: "Checking", tone: "neutral" as const };
@@ -34,10 +35,11 @@ function getHeaderStatus(health: BackendHealthState, status: DashboardStatus) {
 export function DashboardPage() {
   const dashboard = useDashboardController();
   const headerStatus = getHeaderStatus(dashboard.health, dashboard.status);
+
   return (
     <AppShell
       title="Control"
-      description="Monitor gateway readiness, connection and outbound access."
+      description="Operate the WhatsApp gateway and verify its delivery path."
       activePath="/"
       statusLabel={headerStatus.label}
       statusTone={headerStatus.tone}
@@ -45,13 +47,35 @@ export function DashboardPage() {
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
       refreshLabel="Refresh status"
     >
-      <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
-      <OperationalReadinessBanner readiness={dashboard.readiness} />
-      <NoticeBanner notice={dashboard.notice} />
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <DashboardMainColumn dashboard={dashboard} />
+      <section aria-labelledby="gateway-status-title">
+        <div className="mb-2">
+          <h2 id="gateway-status-title" className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">
+            Gateway status
+          </h2>
+          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
+            Runtime readiness, WhatsApp connection and account availability.
+          </p>
+        </div>
+        <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
+        <OperationalReadinessBanner readiness={dashboard.readiness} />
+        <NoticeBanner notice={dashboard.notice} />
+        <div className="mt-4">
+          <DashboardMainColumn dashboard={dashboard} />
+        </div>
+      </section>
+
+      <section className="mt-6 border-t border-wago-line pt-5" aria-labelledby="integration-policy-title">
+        <div className="mb-2">
+          <h2 id="integration-policy-title" className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">
+            Integration &amp; policy
+          </h2>
+          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
+            Machine access and outbound recipient controls used by applications calling Wago.
+          </p>
+        </div>
         <DashboardSideColumn dashboard={dashboard} />
-      </div>
+      </section>
+
       <DashboardDiagnostics dashboard={dashboard} />
       <DashboardDialogs dashboard={dashboard} />
     </AppShell>
