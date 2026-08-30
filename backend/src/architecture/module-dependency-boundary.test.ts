@@ -22,8 +22,8 @@ describe("feature module dependency boundary", () => {
     expect(violations).toEqual([]);
   });
 
-  it("keeps production WhatsApp independent from Messages internals except the documented outbound policy bridge", () => {
-    const allowedMessagesImports = new Set(["../messages/outbound-policy.js"]);
+  it("keeps production WhatsApp on documented public Messages boundaries", () => {
+    const allowedMessagesImports = new Set(["../messages/index.js", "../messages/outbound-policy.js"]);
     const violations: string[] = [];
 
     for (const file of typescriptFiles(whatsappDirectory, { includeTests: false })) {
