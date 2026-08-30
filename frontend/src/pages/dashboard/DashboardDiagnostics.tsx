@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import type { DashboardController } from "../../features/dashboard/useDashboardController.js";
 import { MessageStatusCard } from "../../features/messages/MessageStatusCard.js";
 import { SendMessageCard } from "../../features/messages/SendMessageCard.js";
@@ -8,16 +9,20 @@ type DashboardDiagnosticsProps = {
 
 export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
   return (
-    <section className="mt-4" aria-labelledby="gateway-diagnostics-title">
-      <div className="mb-2">
-        <h2 id="gateway-diagnostics-title" className="text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">
-          Gateway diagnostics
-        </h2>
-        <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
-          Send a controlled test message to verify the outbound path end to end.
-        </p>
-      </div>
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <details className="group mt-6 border-t border-wago-line pt-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md px-1 py-1.5 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          <h2 className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">Gateway diagnostics</h2>
+          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
+            Run an end-to-end outbound test when troubleshooting delivery.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-wago-muted">
+          <span>Test tools</span>
+          <ChevronDown className="group-open:rotate-180" size={14} aria-hidden="true" />
+        </div>
+      </summary>
+      <div className="mt-3 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <SendMessageCard
           status={dashboard.status}
           phone={dashboard.phone}
@@ -34,6 +39,6 @@ export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
           <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
         ) : null}
       </div>
-    </section>
+    </details>
   );
 }
