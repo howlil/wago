@@ -1,39 +1,17 @@
+import { IntegrationNextStep } from "../../features/dashboard/IntegrationNextStep.js";
 import { OperationalReadinessBanner } from "../../features/dashboard/OperationalReadinessBanner.js";
 import { OverviewCards } from "../../features/dashboard/OverviewCards.js";
+import { getGatewayHeaderStatus } from "../../features/dashboard/header-status.js";
 import { useDashboardController } from "../../features/dashboard/useDashboardController.js";
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
-import type { BackendHealthState } from "../../shared/types/status.js";
 import { DashboardDiagnostics } from "./DashboardDiagnostics.js";
 import { DashboardDialogs } from "./DashboardDialogs.js";
 import { DashboardMainColumn } from "./DashboardMainColumn.js";
 
-type DashboardStatus = ReturnType<typeof useDashboardController>["status"];
-
-const statusLabel: Record<DashboardStatus, string> = {
-  connecting: "Connecting",
-  qr: "Waiting for QR",
-  connected: "Connected",
-  disconnected: "Disconnected",
-};
-
-function getHeaderStatus(health: BackendHealthState, status: DashboardStatus) {
-  if (health === "error") return { label: "Backend offline", tone: "danger" as const };
-  if (health === "checking") return { label: "Checking", tone: "neutral" as const };
-  return {
-    label: statusLabel[status],
-    tone:
-      status === "connected"
-        ? ("positive" as const)
-        : status === "qr" || status === "connecting"
-          ? ("warning" as const)
-          : ("neutral" as const),
-  };
-}
-
 export function DashboardPage() {
   const dashboard = useDashboardController();
-  const headerStatus = getHeaderStatus(dashboard.health, dashboard.status);
+  const headerStatus = getGatewayHeaderStatus(dashboard.health, dashboard.readiness, dashboard.status);
 
   return (
     <AppShell
@@ -61,6 +39,7 @@ export function DashboardPage() {
         <div className="mt-4">
           <DashboardMainColumn dashboard={dashboard} />
         </div>
+        <IntegrationNextStep status={dashboard.status} apiKeyConfigured={dashboard.apiKeyConfigured} />
       </section>
 
       <DashboardDiagnostics dashboard={dashboard} />
