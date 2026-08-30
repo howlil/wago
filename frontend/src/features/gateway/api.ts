@@ -68,22 +68,15 @@ function isGatewayReadinessSnapshot(value: unknown): value is GatewayReadinessSn
   );
 }
 
-export function createApiKeyCandidate(): string {
-  const bytes = new Uint8Array(32);
-  globalThis.crypto.getRandomValues(bytes);
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `wa_${hex}`;
-}
-
 export function getAppInfo(): Promise<AppInfoResponse> {
   return requestJson<AppInfoResponse>("/app/info");
 }
 
-export function bootstrapApp(candidate: string): Promise<BootstrapAppResponse> {
+export function generateApiKey(): Promise<BootstrapAppResponse> {
   return requestJson<BootstrapAppResponse>("/app/bootstrap", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ apiKey: candidate }),
+    body: JSON.stringify({}),
   });
 }
 
