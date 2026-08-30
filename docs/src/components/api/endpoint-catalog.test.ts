@@ -17,6 +17,7 @@ const routes = [
   "POST /whatsapp/pair",
   "POST /whatsapp/rebind",
   "POST /messages/send",
+  "GET /messages/:id",
   "GET /messages/:id/status",
   "GET /webhooks/deliveries",
   "GET /webhooks/deliveries/:id",
