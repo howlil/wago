@@ -1,15 +1,19 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const messageMock = vi.hoisted(() => ({
+  getMessageStatus: vi.fn(),
+}));
+
 const whatsappMock = vi.hoisted(() => ({
   getCurrentQr: vi.fn(),
-  getMessageStatus: vi.fn(),
   getWhatsAppStatus: vi.fn(),
   pairWhatsApp: vi.fn(),
   rebindWhatsApp: vi.fn(),
   sendTextMessage: vi.fn(),
 }));
 
+vi.mock("./modules/messages/index.js", () => messageMock);
 vi.mock("./modules/whatsapp/index.js", () => whatsappMock);
 
 import { app } from "./app.js";
@@ -31,8 +35,8 @@ describe("HTTP message contracts", () => {
     config.nodeEnv = "test";
     config.requestLogging = false;
 
+    messageMock.getMessageStatus.mockReset();
     whatsappMock.getCurrentQr.mockReset();
-    whatsappMock.getMessageStatus.mockReset();
     whatsappMock.getWhatsAppStatus.mockReset();
     whatsappMock.pairWhatsApp.mockReset();
     whatsappMock.rebindWhatsApp.mockReset();
@@ -132,7 +136,7 @@ describe("HTTP message contracts", () => {
   });
 
   it("returns the stable not-found contract for expired or unknown message status", async () => {
-    whatsappMock.getMessageStatus.mockReturnValueOnce(undefined);
+    messageMock.getMessageStatus.mockReturnValueOnce(undefined);
     const response = await authenticated(request(app).get("/messages/expired-message/status"));
 
     expect(response.status).toBe(404);
@@ -143,12 +147,14 @@ describe("HTTP message contracts", () => {
     });
   });
 
-  it("returns the current message-status payload unchanged when it exists", async () => {
-    whatsappMock.getMessageStatus.mockReturnValueOnce({
+  it("returns the durable message-status payload when it exists", async () => {
+    messageMock.getMessageStatus.mockReturnValueOnce({
       id: "message-1",
       to: "6281234567890@s.whatsapp.net",
       status: "accepted",
+      createdAt: "2026-08-10T16:59:59.000Z",
       updatedAt: "2026-08-10T17:00:00.000Z",
+      acceptedAt: "2026-08-10T17:00:00.000Z",
     });
 
     const response = await authenticated(request(app).get("/messages/message-1/status"));
@@ -159,7 +165,9 @@ describe("HTTP message contracts", () => {
       id: "message-1",
       to: "6281234567890@s.whatsapp.net",
       status: "accepted",
+      createdAt: "2026-08-10T16:59:59.000Z",
       updatedAt: "2026-08-10T17:00:00.000Z",
+      acceptedAt: "2026-08-10T17:00:00.000Z",
     });
   });
 });

@@ -17,6 +17,7 @@ Wago is a production-grade, single-instance, self-hosted WhatsApp gateway with:
 - health/readiness semantics that distinguish degraded/unavailable state;
 - admin-password/HttpOnly browser-session dashboard access separated from machine Bearer API-key access;
 - recipient permission, concurrency-safe idempotency, and bounded outbound safeguards;
+- Wago-owned canonical outbound message IDs with durable bounded message diagnostics correlated to provider acknowledgement/rejection and webhook delivery;
 - outbound success aligned with WhatsApp server acknowledgement and asynchronous reach-out rejection feedback;
 - persisted webhook configuration/delivery with signed at-least-once semantics;
 - public documentation under `docs/`.
@@ -35,7 +36,7 @@ Current ownership:
 
 - Control shows gateway readiness, WhatsApp connection/account operation, account health, and collapsed end-to-end diagnostics;
 - Settings owns machine API credentials, recipient policy, webhook/delivery integration, and operator browser-session management;
-- Audit Log owns searchable operational evidence and progressively disclosed technical details;
+- Audit Log owns searchable operational evidence and progressively disclosed technical details, including canonical outbound message-ID correlation;
 - global Control status follows gateway readiness rather than reporting WhatsApp connectivity as overall gateway health;
 - degraded/not-ready readiness warnings can hand off directly to Audit with validated category/severity filters while keeping those filters editable;
 - after WhatsApp is operational, application integration is an optional next step rather than a pairing prerequisite;
@@ -88,7 +89,9 @@ Route/page composition lives under `frontend/src/pages/`. Architecture/dependenc
 - the semantic `.agent` project model is the active repository context model;
 - the control-plane UX baseline is integrated on `main` through PR #85 / merge commit `cdf2c63d62c23b0341db814f79e8bf6381a19bcc`;
 - CI, CodeQL, ARM64 Docker build, persistence/rollback smoke, and the container release for that UX baseline completed successfully;
-- outbound correctness is integrated: concurrent same-key sends are serialized through dispatch state, successful-recipient state follows WhatsApp acknowledgement, and asynchronous reach-out rejection feeds recipient cooldown state;
+- outbound correctness includes concurrency-safe same-key dispatch, successful-recipient state following WhatsApp acknowledgement, asynchronous reach-out rejection feeding recipient cooldown state, and durable canonical message diagnostics that survive restart within bounded retention;
+- outbound diagnostic metadata is retained for 30 days with a maximum of 2,000 records; message bodies are not persisted by that diagnostic store and provider message IDs remain an internal correlation detail;
+- audit search includes sanitized metadata so canonical message IDs can correlate request, transport outcome, and webhook delivery evidence;
 - obsolete runtime compatibility paths for `SETUP_TOKEN`, machine-API-key dashboard sign-in, legacy raw-key browser storage/cookies, legacy webhook environment import, and legacy JSON-state import are removed;
 - historical SQLite migration history is retained as applied-history compatibility and is not rewritten merely to remove dormant columns;
 - the older broad draft PR #67 remains superseded and none of its unmerged changes are implicitly authorized;

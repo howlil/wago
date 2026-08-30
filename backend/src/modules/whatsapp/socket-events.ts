@@ -1,5 +1,6 @@
 import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
+import { getMessageStatusByProviderId, updateMessageStatusByProviderId } from "../messages/index.js";
 import { markRecipientReachoutRestricted, recordOutboundAcknowledged } from "../messages/outbound-policy.js";
 import {
   invalidateAccountHealth,
@@ -11,7 +12,6 @@ import { bindWhatsAppAccount, clearWhatsAppBinding } from "./binding-store.js";
 import { markConnected, markDisconnected, markQr } from "./connection-state.js";
 import { classifyDisconnect } from "./disconnect-classifier.js";
 import { mapMessageRejection } from "./message-rejection.js";
-import { getMessageStatus, updateMessageStatus } from "./message-status-store.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
 import {
   getActiveSocket,
@@ -57,14 +57,15 @@ export function registerSocketEvents({
     if (!isCurrentGeneration(generation)) return;
 
     for (const entry of updates) {
-      const messageId = entry.key?.id;
-      if (!messageId || entry.update.status == null) continue;
+      const providerMessageId = entry.key?.id;
+      if (!providerMessageId || entry.update.status == null) continue;
 
-      const storedMessage = getMessageStatus(messageId);
+      const storedMessage = getMessageStatusByProviderId(providerMessageId);
+      const messageId = storedMessage?.id ?? null;
 
       if (entry.update.status === WAMessageStatus.ERROR) {
         const mapped = mapMessageRejection(entry.update.messageStubParameters);
-        logger.warn({ event: "wa.message.rejected", messageId, reason: mapped.code });
+        logger.warn({ event: "wa.message.rejected", messageId, providerMessageId, reason: mapped.code });
         auditBaileys({
           level: "warning",
           category: "messaging",
@@ -72,6 +73,7 @@ export function registerSocketEvents({
           title: "WhatsApp rejected a message",
           description: "Baileys reported an outbound message rejection.",
           metadata: {
+            messageId,
             socketGeneration: generation,
             status: entry.update.status,
             reason: mapped.code,
@@ -86,7 +88,7 @@ export function registerSocketEvents({
           }
         }
 
-        updateMessageStatus(messageId, {
+        updateMessageStatusByProviderId(providerMessageId, {
           status: "rejected",
           error: mapped.code,
           message: mapped.message,
@@ -110,7 +112,7 @@ export function registerSocketEvents({
           }
         }
 
-        updateMessageStatus(messageId, { status: "accepted" });
+        updateMessageStatusByProviderId(providerMessageId, { status: "accepted" });
         auditBaileys({
           level: "info",
           category: "messaging",
@@ -118,6 +120,7 @@ export function registerSocketEvents({
           title: "WhatsApp acknowledged a message",
           description: "Baileys reported a server acknowledgement for an outbound message.",
           metadata: {
+            messageId,
             socketGeneration: generation,
             status: entry.update.status,
           },

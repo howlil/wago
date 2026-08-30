@@ -108,11 +108,11 @@ export const apiEndpoints: ApiEndpoint[] = [
       {
         key: "q",
         location: "query",
-        placeholder: "connection",
+        placeholder: "message-id or connection",
         label: { en: "Search", id: "Pencarian" },
         description: {
-          en: "Search code, title, and description.",
-          id: "Cari pada code, title, dan description.",
+          en: "Search code, title, description, and sanitized metadata such as canonical message IDs.",
+          id: "Cari pada code, title, description, dan metadata tersanitasi seperti canonical message ID.",
         },
       },
       {
@@ -329,6 +329,32 @@ export const apiEndpoints: ApiEndpoint[] = [
     danger: "normal",
   },
   {
+    id: "message-diagnostic",
+    group: "messages",
+    method: "GET",
+    path: "/messages/:id",
+    auth: "api-key",
+    title: { en: "Message diagnostics", id: "Diagnostics pesan" },
+    description: {
+      en: "Read durable sanitized state, timestamps, and correlated webhook-delivery metadata for one canonical Wago message ID.",
+      id: "Membaca state durable yang disanitasi, timestamp, dan metadata delivery webhook terkait untuk satu canonical Wago message ID.",
+    },
+    fields: [
+      {
+        key: "id",
+        location: "path",
+        required: true,
+        placeholder: "<message-id>",
+        label: { en: "Message ID", id: "Message ID" },
+        description: {
+          en: "Canonical Wago message ID returned by POST /messages/send.",
+          id: "Canonical Wago message ID yang dikembalikan POST /messages/send.",
+        },
+      },
+    ],
+    liveMode: "safe",
+  },
+  {
     id: "message-status",
     group: "messages",
     method: "GET",
@@ -336,8 +362,8 @@ export const apiEndpoints: ApiEndpoint[] = [
     auth: "api-key",
     title: { en: "Message status", id: "Status pesan" },
     description: {
-      en: "Read the retained in-memory status for a recent message ID.",
-      id: "Membaca status in-memory yang masih disimpan untuk message ID terbaru.",
+      en: "Read the durable retained lifecycle status for a canonical Wago message ID. Kept for compatibility; use /messages/:id for end-to-end diagnostics.",
+      id: "Membaca lifecycle status durable untuk canonical Wago message ID. Dipertahankan untuk compatibility; gunakan /messages/:id untuk end-to-end diagnostics.",
     },
     fields: [
       {

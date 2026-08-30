@@ -17,13 +17,19 @@ import { webhookSettingsStore as settingsStore } from "./settings-runtime.js";
 
 const database = getDatabase();
 const store = createWebhookDeliveryStore(database);
+const selectLatestMessageDeliveryId = database.prepare(`
+  SELECT id
+  FROM webhook_deliveries
+  WHERE message_id = ? AND event_type <> 'wago.test'
+  ORDER BY created_at DESC
+  LIMIT 1
+`);
 
 function currentAttemptSender() {
   const settings = settingsStore.get();
   if (!settings?.enabled || !settings.url || !settings.secret) {
     return null;
   }
-
   const secrets = [settings.secret, settings.previousSecret].filter((secret): secret is string => Boolean(secret));
   return createWebhookAttemptSender({ url: settings.url, secrets });
 }
@@ -140,6 +146,11 @@ export function listWebhookDeliveries(options: {
 export function getWebhookDelivery(id: string): PublicWebhookDelivery | null {
   const delivery = store.get(id);
   return delivery ? serializeWebhookDelivery(delivery) : null;
+}
+
+export function getMessageWebhookDelivery(messageId: string): PublicWebhookDelivery | null {
+  const row = selectLatestMessageDeliveryId.get(messageId) as { id: string } | undefined;
+  return row ? getWebhookDelivery(row.id) : null;
 }
 
 export function redeliverWebhookDelivery(

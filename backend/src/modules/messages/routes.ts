@@ -7,6 +7,10 @@ import { recordActivity } from "../activity/store.js";
 import type { MessageService } from "./message.service.js";
 import { isOutboundPolicyError } from "./outbound-policy.js";
 
+function readMessageId(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 export function createMessageRouter(messageService: MessageService) {
   const messageRouter = Router();
 
@@ -104,9 +108,9 @@ export function createMessageRouter(messageService: MessageService) {
   );
 
   messageRouter.get("/:id/status", requireAuthenticatedRequest, (req, res) => {
-    const messageId = req.params.id;
+    const messageId = readMessageId(req.params.id);
 
-    if (typeof messageId !== "string" || !messageId.trim()) {
+    if (!messageId) {
       return res.status(400).json({
         success: false,
         error: "INVALID_MESSAGE_ID",
@@ -121,6 +125,32 @@ export function createMessageRouter(messageService: MessageService) {
         success: false,
         error: "MESSAGE_STATUS_NOT_FOUND",
         message: "Message status was not found or has expired",
+      });
+    }
+
+    return res.json({
+      success: true,
+      ...result,
+    });
+  });
+
+  messageRouter.get("/:id", requireAuthenticatedRequest, (req, res) => {
+    const messageId = readMessageId(req.params.id);
+
+    if (!messageId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_MESSAGE_ID",
+        message: "Message id is required",
+      });
+    }
+
+    const result = messageService.findDiagnostic(messageId);
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        error: "MESSAGE_NOT_FOUND",
+        message: "Message diagnostics were not found or are outside the retained diagnostics window",
       });
     }
 

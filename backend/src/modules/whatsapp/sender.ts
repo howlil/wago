@@ -2,6 +2,7 @@ import type { WASocket } from "@whiskeysockets/baileys";
 import { ApplicationError, isApplicationError } from "../../errors/application-error.js";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
 import { toWhatsAppJid } from "../../utils/phone.js";
+import { rememberPendingMessageStatus } from "../messages/index.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
@@ -11,7 +12,6 @@ import {
 } from "../messages/outbound-policy.js";
 import { checkAccountHealth, markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
 import { getConnectionStatus, type WhatsAppStatus } from "./connection-state.js";
-import { rememberPendingMessageStatus } from "./message-status-store.js";
 import { createAccountHealthFetcher } from "./observability.js";
 import { rememberRecentTextMessage } from "./recent-message-store.js";
 import { resolveRecipientJid } from "./recipient-cache.js";
@@ -19,10 +19,11 @@ import { getActiveSocket, getSocketGeneration } from "./runtime.js";
 
 export type SendTextMessageOptions = {
   idempotencyKey?: string;
+  messageId: string;
 };
 
 export type SendTextMessageResult = {
-  messageId: string | null;
+  messageId: string;
   status: "pending";
 };
 
@@ -66,7 +67,7 @@ function normalizeBaileysSendError(error: unknown): unknown {
 
 export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
   return {
-    async sendText(to: string, text: string, options: SendTextMessageOptions = {}): Promise<SendTextMessageResult> {
+    async sendText(to: string, text: string, options: SendTextMessageOptions): Promise<SendTextMessageResult> {
       const initialSocket = deps.getSocket();
 
       if (!initialSocket || deps.getConnectionStatus() !== "connected") {
@@ -113,32 +114,35 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
         try {
           const resolvedJid = await resolveRecipientJid(activeSocket, jid);
           const result = await activeSocket.sendMessage(resolvedJid, { text });
-          const messageId = result?.key?.id ?? null;
+          const providerMessageId = result?.key?.id ?? null;
 
-          if (messageId) {
+          if (providerMessageId) {
             rememberRecentTextMessage(
               {
-                id: messageId,
+                id: providerMessageId,
                 remoteJid: resolvedJid,
               },
               text,
             );
-            rememberPendingMessageStatus({
-              id: messageId,
-              to: resolvedJid,
-              recipientJid: jid,
-            });
           }
 
-          await recordOutboundDispatched(policyInput, messageId);
+          await recordOutboundDispatched(policyInput, options.messageId);
+          rememberPendingMessageStatus({
+            id: options.messageId,
+            providerMessageId,
+            to: resolvedJid,
+            recipientJid: jid,
+          });
+
           logger.info({
             event: "wa.outbound.submitted",
-            messageId,
+            messageId: options.messageId,
+            providerMessageId,
             to: maskIdentifier(resolvedJid),
           });
 
           return {
-            messageId,
+            messageId: options.messageId,
             status: "pending",
           };
         } catch (error) {
@@ -146,6 +150,7 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
           recordOutboundRejected(policyInput, normalizedError);
           logger.warn({
             event: "wa.outbound.rejected",
+            messageId: options.messageId,
             reason: isApplicationError(normalizedError)
               ? normalizedError.code
               : normalizedError instanceof Error
@@ -175,7 +180,7 @@ export const whatsappSender = createWhatsAppSender({
 export function sendTextMessage(
   to: string,
   text: string,
-  options?: SendTextMessageOptions,
+  options: SendTextMessageOptions,
 ): Promise<SendTextMessageResult> {
   return whatsappSender.sendText(to, text, options);
 }

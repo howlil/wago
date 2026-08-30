@@ -1,13 +1,13 @@
 import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { checkOutboundPolicy, resetOutboundPolicyState } from "../messages/outbound-policy.js";
-import { allowRecipientJid, getRecipientByJid, resetRecipientStoreForTest } from "../recipients/store.js";
-import { resetAccountHealthForTest } from "./account-health.js";
 import {
   getMessageStatus,
   rememberPendingMessageStatus,
   resetMessageStatusStoreForTest,
-} from "./message-status-store.js";
+} from "../messages/message-status-store.js";
+import { checkOutboundPolicy, resetOutboundPolicyState } from "../messages/outbound-policy.js";
+import { allowRecipientJid, getRecipientByJid, resetRecipientStoreForTest } from "../recipients/store.js";
+import { resetAccountHealthForTest } from "./account-health.js";
 import { registerSocketEvents } from "./socket-events.js";
 
 type Handler = (...args: unknown[]) => void;
@@ -108,28 +108,38 @@ describe("outbound message outcomes", () => {
 
   it("marks recipient success only when WhatsApp reports server acknowledgement", async () => {
     const { ev } = outcomeSocket();
-    rememberPendingMessageStatus({ id: "msg-ack", to: resolvedJid, recipientJid });
+    rememberPendingMessageStatus({
+      id: "trace-ack",
+      providerMessageId: "provider-ack",
+      to: resolvedJid,
+      recipientJid,
+    });
 
     expect((await getRecipientByJid(recipientJid))?.lastSuccessfulOutboundAt).toBeUndefined();
 
     ev.emit("messages.update", [
       {
-        key: { id: "msg-ack" },
+        key: { id: "provider-ack" },
         update: { status: WAMessageStatus.SERVER_ACK },
       },
     ]);
 
     expect((await getRecipientByJid(recipientJid))?.lastSuccessfulOutboundAt).toBeDefined();
-    expect(getMessageStatus("msg-ack")?.status).toBe("accepted");
+    expect(getMessageStatus("trace-ack")?.status).toBe("accepted");
   });
 
   it("applies recipient cooldown when WhatsApp asynchronously rejects a reach-out", async () => {
     const { ev } = outcomeSocket();
-    rememberPendingMessageStatus({ id: "msg-rejected", to: resolvedJid, recipientJid });
+    rememberPendingMessageStatus({
+      id: "trace-rejected",
+      providerMessageId: "provider-rejected",
+      to: resolvedJid,
+      recipientJid,
+    });
 
     ev.emit("messages.update", [
       {
-        key: { id: "msg-rejected" },
+        key: { id: "provider-rejected" },
         update: {
           status: WAMessageStatus.ERROR,
           messageStubParameters: ["463"],
@@ -148,6 +158,6 @@ describe("outbound message outcomes", () => {
       expect(decision.reason).toBe("WA_REACHOUT_RESTRICTED");
       expect(decision.retryAt).toBeInstanceOf(Date);
     }
-    expect(getMessageStatus("msg-rejected")?.status).toBe("rejected");
+    expect(getMessageStatus("trace-rejected")?.status).toBe("rejected");
   });
 });

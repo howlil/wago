@@ -432,6 +432,6 @@ describe("dashboard", () => {
       expect(sendMessage).toHaveBeenCalledTimes(2);
     });
 
-    expect(await screen.findByText(/last message status/i)).toBeTruthy();
+    expect(await screen.findByText(/message diagnostics/i)).toBeTruthy();
   });
 });
