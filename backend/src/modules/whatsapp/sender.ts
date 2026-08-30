@@ -72,9 +72,7 @@ function normalizeBaileysSendError(error: unknown): unknown {
 }
 
 function isDefinitiveTransportRejection(error: unknown): error is ApplicationError {
-  return (
-    isApplicationError(error) && (error.code === "REACHOUT_RESTRICTED" || error.code === "MESSAGE_REJECTED")
-  );
+  return isApplicationError(error) && (error.code === "REACHOUT_RESTRICTED" || error.code === "MESSAGE_REJECTED");
 }
 
 async function handleOutboundFailure(input: {
