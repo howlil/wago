@@ -4,10 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
 import { listActivity } from "./features/activity/api.js";
 import {
-  bootstrapApp,
   createAdminAccount,
-  createApiKeyCandidate,
   createBrowserSession,
+  generateApiKey,
   getAppInfo,
   getHealth,
   logoutBrowserSession,
@@ -45,10 +44,10 @@ vi.mock("./features/activity/api.js", () => ({
 
 vi.mock("./features/gateway/api.js", () => ({
   getAppInfo: vi.fn(async () => appInfo()),
-  bootstrapApp: vi.fn(async (candidate: string) => ({
+  generateApiKey: vi.fn(async () => ({
     success: true,
     appId: "wa-gateway-test",
-    apiKey: candidate,
+    apiKey: generatedApiKey,
     recovered: false,
     message: "App initialized",
   })),
@@ -58,7 +57,6 @@ vi.mock("./features/gateway/api.js", () => ({
     expiresAt: "2026-09-12T00:00:00.000Z",
     message: "Admin account created",
   })),
-  createApiKeyCandidate: vi.fn(() => generatedApiKey),
   createBrowserSession: vi.fn(async () => ({
     success: true,
     authenticated: true,
@@ -212,7 +210,7 @@ describe("dashboard", () => {
     expect(getHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("sets up the admin credential before generating the machine API key and pairing", async () => {
+  it("sets up the admin credential and pairs WhatsApp without generating a machine API key", async () => {
     const firstRunUnauthenticatedInfo = appInfo({
       apiKeyConfigured: false,
       apiKeySource: "unset",
@@ -265,15 +263,33 @@ describe("dashboard", () => {
     });
 
     await user.click(await screen.findByRole("button", { name: /pair whatsapp/i }));
-    await waitFor(() => {
-      expect(createApiKeyCandidate).toHaveBeenCalledTimes(1);
-      expect(bootstrapApp).toHaveBeenCalledWith(generatedApiKey);
-      expect(pairWhatsApp).toHaveBeenCalledTimes(1);
-    });
+    await waitFor(() => expect(pairWhatsApp).toHaveBeenCalledTimes(1));
+
+    expect(generateApiKey).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe("");
+    expect(screen.getByRole("button", { name: /generate api key/i })).toBeTruthy();
+  });
+
+  it("generates a machine API key only after the explicit gateway-access action", async () => {
+    vi.mocked(getAppInfo).mockResolvedValue(
+      appInfo({
+        apiKeyConfigured: false,
+        apiKeySource: "unset",
+        credentialSetupRequired: true,
+        setupRequired: true,
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /generate api key/i }));
+    await waitFor(() => expect(generateApiKey).toHaveBeenCalledTimes(1));
 
     expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
       generatedApiKey,
     );
+    expect(pairWhatsApp).not.toHaveBeenCalled();
   });
 
   it("does not submit first-run setup when password confirmation differs", async () => {
