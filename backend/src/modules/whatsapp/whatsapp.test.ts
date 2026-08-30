@@ -109,7 +109,9 @@ describe("whatsapp send semantics", () => {
     });
 
     const { resetActivityLogForTest } = await import("../activity/store.js");
+    const { resetMessageStatusStoreForTest } = await import("../messages/message-status-store.js");
     await resetActivityLogForTest();
+    resetMessageStatusStoreForTest();
   });
 
   afterEach(() => {
@@ -125,14 +127,15 @@ describe("whatsapp send semantics", () => {
     await initializeWhatsApp();
     baileysMock.ev.emit("connection.update", { connection: "open" });
 
-    await expect(sendTextMessage("6281234567890", "Hello")).resolves.toEqual({
-      messageId: "message-1",
+    await expect(sendTextMessage("6281234567890", "Hello", { messageId: "trace-1" })).resolves.toEqual({
+      messageId: "trace-1",
       status: "pending",
     });
   });
 
   it("keeps message status pending until a Baileys status update arrives", async () => {
-    const { getMessageStatus, initializeWhatsApp, sendTextMessage } = await import("./index.js");
+    const { initializeWhatsApp, sendTextMessage } = await import("./index.js");
+    const { getMessageStatus } = await import("../messages/index.js");
     const { allowRecipient, resetRecipientStoreForTest } = await import("../recipients/store.js");
 
     await resetRecipientStoreForTest();
@@ -140,12 +143,13 @@ describe("whatsapp send semantics", () => {
     await initializeWhatsApp();
     baileysMock.ev.emit("connection.update", { connection: "open" });
 
-    const result = await sendTextMessage("6281234567890", "Hello");
+    const result = await sendTextMessage("6281234567890", "Hello", { messageId: "trace-2" });
     const messageId = result.messageId;
 
-    expect(messageId).toBe("message-1");
-    expect(getMessageStatus(messageId ?? "")).toMatchObject({
-      id: "message-1",
+    expect(messageId).toBe("trace-2");
+    expect(getMessageStatus(messageId)).toMatchObject({
+      id: "trace-2",
+      providerMessageId: "message-1",
       status: "pending",
     });
 
@@ -160,8 +164,8 @@ describe("whatsapp send semantics", () => {
       },
     ]);
 
-    expect(getMessageStatus(messageId ?? "")).toMatchObject({
-      id: "message-1",
+    expect(getMessageStatus(messageId)).toMatchObject({
+      id: "trace-2",
       status: "accepted",
     });
   });
@@ -174,9 +178,12 @@ describe("whatsapp send semantics", () => {
     await allowRecipient("6281234567890");
     await initializeWhatsApp();
     baileysMock.ev.emit("connection.update", { connection: "open" });
+    baileysMock.sendMessage
+      .mockResolvedValueOnce({ key: { id: "message-cache-1" } })
+      .mockResolvedValueOnce({ key: { id: "message-cache-2" } });
 
-    await sendTextMessage("6281234567890", "Hello");
-    await sendTextMessage("6281234567890", "Hello again");
+    await sendTextMessage("6281234567890", "Hello", { messageId: "trace-cache-1" });
+    await sendTextMessage("6281234567890", "Hello again", { messageId: "trace-cache-2" });
 
     expect(baileysMock.onWhatsApp).toHaveBeenCalledTimes(1);
   });
