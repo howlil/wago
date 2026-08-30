@@ -141,9 +141,11 @@ assert_no_setup_secret_log() {
   ! grep -Eq '"setupCode":"setup_[A-Za-z0-9_-]+"' <<< "$logs"
 }
 
-setup_and_bootstrap() {
+setup_and_generate_machine_key() {
   local setup_headers
   local session_cookie
+  local whatsapp_status
+  local ready_before_machine_key
   local bootstrap_response
 
   setup_headers="$(curl -fsS -D - -o /tmp/wago-setup-body \
@@ -156,6 +158,16 @@ setup_and_bootstrap() {
   session_cookie="$(awk 'BEGIN { IGNORECASE=1 } /^set-cookie:/ { print $2; exit }' <<< "$setup_headers" | tr -d '\r' | cut -d';' -f1)"
   [[ "$session_cookie" == wago_session=* ]]
 
+  # Browser-session operations must work before any machine API key exists.
+  whatsapp_status="$(curl -fsS \
+    "http://127.0.0.1:${PORT}/whatsapp/status" \
+    -H "Cookie: $session_cookie")"
+  grep -q '"success":true' <<< "$whatsapp_status"
+  ready_before_machine_key="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
+  grep -q '"apiKeyConfigured":false' <<< "$ready_before_machine_key"
+  [[ -z "$(read_api_key_hash "$NAME")" ]]
+
+  # Machine credentials are generated only by an explicit integration action.
   bootstrap_response="$(curl -fsS \
     -X POST "http://127.0.0.1:${PORT}/app/bootstrap" \
     -H 'Host: wago.example.com' \
@@ -194,7 +206,7 @@ APP_ID_BEFORE="$(read_app_id "$NAME")"
 [[ -z "$(read_setup_code_hash "$NAME")" ]]
 assert_no_setup_secret_log "$NAME"
 
-setup_and_bootstrap
+setup_and_generate_machine_key
 READY_INITIALIZED="$(curl -fsS "http://127.0.0.1:${PORT}/ready")"
 grep -q '"apiKeyConfigured":true' <<< "$READY_INITIALIZED"
 API_KEY_HASH_BEFORE="$(read_api_key_hash "$NAME")"
@@ -250,4 +262,4 @@ if [[ -n "$ROLLBACK_IMAGE" ]]; then
   [[ "$(read_api_key_hash "$ROLLBACK_NAME")" == "$API_KEY_HASH_BEFORE" ]]
 fi
 
-echo "Container storage, zero-env admin setup, machine-key persistence, single-instance, replacement, and rollback checks passed."
+echo "Container storage, pairing-first browser auth, explicit machine-key persistence, single-instance, replacement, and rollback checks passed."
