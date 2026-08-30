@@ -126,11 +126,7 @@ function pruneMessageDiagnostics(nowMs: number): void {
   pruneOverflow.run(MAX_MESSAGE_DIAGNOSTICS);
 }
 
-export function prepareMessageStatus(input: {
-  id: string;
-  to: string;
-  recipientJid?: string;
-}): StoredMessageStatus {
+export function prepareMessageStatus(input: { id: string; to: string; recipientJid?: string }): StoredMessageStatus {
   const nowMs = Date.now();
   insertPrepared.run(input.id, input.recipientJid ?? null, input.to, nowMs, nowMs);
   pruneMessageDiagnostics(nowMs);
