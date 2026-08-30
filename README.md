@@ -25,7 +25,8 @@ Current capabilities include:
 - QR pairing, reconnect handling, terminal-session invalidation, and explicit rebind
 - recipient allow and opt-out controls
 - protected outbound text messaging with idempotency and local guardrails
-- retained recent message state: `pending`, `accepted`, or `rejected`
+- durable bounded outbound diagnostics for `pending`, `accepted`, and `rejected` message state plus transport state
+- crash-safe outbound intent/idempotency reservation with explicit `indeterminate` diagnostics for uncertain transport outcomes
 - durable signed delivery webhooks with retry, restart recovery, history, and manual redelivery
 - webhook configuration, test delivery, and signing-secret rotation from authenticated Settings
 - WhatsApp reach-out/new-chat account-health signals
@@ -181,16 +182,21 @@ curl -X POST "$WAGO_URL/messages/send" \
   -d '{"to":"6281234567890","text":"Your request has been processed."}'
 ```
 
-Successful submission returns HTTP `202` with `status: "pending"`. This means Wago accepted the outbound operation; it is not proof of recipient-device delivery or read state.
+Successful submission returns HTTP `202` with `status: "pending"`. This means Wago accepted a durable outbound operation and transport submission has started; it is not proof of recipient-device delivery or read state. If the transport outcome becomes uncertain, the operation remains `pending` with diagnostic transport state `indeterminate` and Wago suppresses automatic retry because WhatsApp may already have accepted it.
 
 ### 3. Check retained message state
 
 ```bash
+curl "$WAGO_URL/messages/<message-id>" \
+  -H "Authorization: Bearer $WAGO_API_KEY"
+
 curl "$WAGO_URL/messages/<message-id>/status" \
   -H "Authorization: Bearer $WAGO_API_KEY"
 ```
 
-The retained states are `pending`, `accepted`, and `rejected`. `accepted` means WhatsApp produced at least a server acknowledgement. Recent message-status state is transient and may disappear after restart.
+Delivery states are `pending`, `accepted`, and `rejected`. `accepted` means WhatsApp produced at least a server acknowledgement. `GET /messages/:id` also exposes the sanitized transport state (`prepared`, `submitting`, `submitted`, or `indeterminate`) and correlated webhook metadata. These outbound diagnostics are durable across restart within bounded retention of 30 days / at most 2,000 records; message bodies are not stored by the diagnostic record.
+
+An `indeterminate` transport state means Wago cannot prove whether WhatsApp accepted the submission, for example after a process restart or ambiguous transport failure while submission was in progress. Wago keeps the idempotency reservation and does not resend automatically. Known definitive WhatsApp rejections can release the reservation for a deliberate retry.
 
 ## Delivery webhooks
 
@@ -232,7 +238,8 @@ Wago deliberately excludes message text, API credentials, and recipient phone/JI
 | `POST` | `/whatsapp/pair` | API key/session | Start pairing for an unbound gateway |
 | `POST` | `/whatsapp/rebind` | API key/session | Replace the bound WhatsApp account |
 | `POST` | `/messages/send` | API key/session | Send protected outbound text |
-| `GET` | `/messages/:id/status` | API key/session | Read retained recent message state |
+| `GET` | `/messages/:id` | API key/session | Read durable sanitized message and transport diagnostics |
+| `GET` | `/messages/:id/status` | API key/session | Read retained delivery state |
 | `GET` | `/webhooks/settings` | API key/session | Read persisted webhook settings |
 | `PUT` | `/webhooks/settings` | API key/session | Update webhook URL/enabled state |
 | `POST` | `/webhooks/settings/rotate-secret` | API key/session | Start signing-secret rotation |
@@ -262,9 +269,9 @@ These are Wago defensive defaults, **not** official WhatsApp safe limits or anti
 
 ## Persistence, backup, and restore
 
-`wago.db` contains gateway settings, generated API-key hash, salted admin-password hash, browser sessions, WhatsApp binding metadata, recipient state, outbound policy state, webhook queue/settings, instance lease, migrations, and bounded structured audit events.
+`wago.db` contains gateway settings, generated API-key hash, salted admin-password hash, browser sessions, WhatsApp binding metadata, recipient state, outbound policy state, bounded outbound diagnostic metadata, webhook queue/settings, instance lease, migrations, and bounded structured audit events.
 
-Message bodies, raw admin passwords, current QR values, reconnect state, account-health cache, and recent message-status cache are not persisted as durable application history.
+Message bodies, raw admin passwords, current QR values, reconnect state, and account-health cache are not persisted as durable application history. Outbound diagnostic records persist sanitized metadata only and never store the message body.
 
 For filesystem backup, stop Wago cleanly and capture the entire `/app/data` volume as one secret-bearing snapshot. Do not copy only `wago.db` from a live WAL-mode database. Backups contain the admin-password hash, WhatsApp credentials, and webhook signing material; protect them accordingly.
 
