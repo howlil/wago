@@ -49,7 +49,7 @@ export type MessageDiagnostic = Omit<MessageStatus, "to"> & {
 
 export type MessageService = {
   send: (command: SendMessageCommand) => Promise<MessageSendResult>;
-  findStatus: (messageId: string) => MessageStatus | null | undefined;
+  findStatus: (messageId: string) => MessageStatus | null;
   findDiagnostic: (messageId: string) => MessageDiagnostic | null;
 };
 
@@ -63,6 +63,20 @@ type MessageServiceOptions = {
   createMessageId?: () => string;
 };
 
+function sanitizeMessageStatus(status: MessageStatus): MessageStatus {
+  return {
+    id: status.id,
+    to: status.to,
+    status: status.status,
+    error: status.error,
+    message: status.message,
+    createdAt: status.createdAt,
+    updatedAt: status.updatedAt,
+    acceptedAt: status.acceptedAt,
+    rejectedAt: status.rejectedAt,
+  };
+}
+
 export function createMessageService(deps: MessageServiceDependencies, options: MessageServiceOptions = {}): MessageService {
   const createMessageId = options.createMessageId ?? randomUUID;
 
@@ -73,14 +87,16 @@ export function createMessageService(deps: MessageServiceDependencies, options: 
         messageId: createMessageId(),
       });
     },
-    findStatus(messageId: string): MessageStatus | null | undefined {
-      return deps.getStatus(messageId);
+    findStatus(messageId: string): MessageStatus | null {
+      const status = deps.getStatus(messageId);
+      return status ? sanitizeMessageStatus(status) : null;
     },
     findDiagnostic(messageId: string): MessageDiagnostic | null {
-      const status = deps.getStatus(messageId);
-      if (!status) {
+      const rawStatus = deps.getStatus(messageId);
+      if (!rawStatus) {
         return null;
       }
+      const status = sanitizeMessageStatus(rawStatus);
 
       return {
         id: status.id,
