@@ -1,4 +1,4 @@
-import { Check, Copy, Eye, EyeOff, KeyRound, LogOut } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 import {
   cardBodyClass,
   fieldLabelClass,
@@ -20,15 +20,11 @@ type GatewayCredentialsCardProps = {
   copiedField: CopiedField;
   credentialHint: string;
   isGeneratingApiKey: boolean;
-  isSigningOut: boolean;
-  isSigningOutAll?: boolean;
   isRotatingApiKey: boolean;
   onToggleApiKey: () => void;
   onCopyAppId: () => void;
   onCopyApiKey: () => void;
   onGenerateApiKey: () => void;
-  onSignOut: () => void;
-  onSignOutAll?: () => void;
   onRotateApiKey: () => void;
 };
 
@@ -42,24 +38,20 @@ export function GatewayCredentialsCard({
   copiedField,
   credentialHint,
   isGeneratingApiKey,
-  isSigningOut,
-  isSigningOutAll = false,
   isRotatingApiKey,
   onToggleApiKey,
   onCopyAppId,
   onCopyApiKey,
   onGenerateApiKey,
-  onSignOut,
-  onSignOutAll,
   onRotateApiKey,
 }: GatewayCredentialsCardProps) {
   return (
     <section className={cardBodyClass}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className={sectionTitleClass}>Gateway access</h2>
+          <h2 className={sectionTitleClass}>Machine access</h2>
           <p className={sectionDescriptionClass}>
-            Machine API credentials are optional and separate from dashboard authentication.
+            Credentials used by external applications calling the Wago HTTP API.
           </p>
         </div>
         {apiKeyConfigured ? (
@@ -129,7 +121,7 @@ export function GatewayCredentialsCard({
           <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
         </div>
 
-        <div className="flex flex-col justify-end gap-2 sm:flex-row">
+        <div className="flex flex-col justify-end gap-2 border-t border-wago-line pt-3 sm:flex-row">
           {!apiKeyConfigured ? (
             <button
               className={`${secondaryButtonClass} w-full sm:w-auto`}
@@ -152,26 +144,6 @@ export function GatewayCredentialsCard({
               {isRotatingApiKey ? "Rotating" : "Rotate API key"}
             </button>
           ) : null}
-          {onSignOutAll ? (
-            <button
-              className={`${secondaryButtonClass} w-full sm:w-auto`}
-              type="button"
-              onClick={onSignOutAll}
-              disabled={isSigningOutAll || isRotatingApiKey || isGeneratingApiKey}
-            >
-              <LogOut size={14} />
-              {isSigningOutAll ? "Signing out all" : "Sign out all"}
-            </button>
-          ) : null}
-          <button
-            className={`${secondaryButtonClass} w-full sm:w-auto`}
-            type="button"
-            onClick={onSignOut}
-            disabled={isSigningOut || isSigningOutAll || isRotatingApiKey || isGeneratingApiKey}
-          >
-            <LogOut size={14} />
-            {isSigningOut ? "Signing out" : "Sign out"}
-          </button>
         </div>
       </div>
     </section>
