@@ -1,7 +1,6 @@
 import { type Dispatch, type SetStateAction, useState } from "react";
 import { ApiError } from "../../shared/api/client.js";
 import type { Notice } from "../../shared/ui/feedback.js";
-import { bootstrapApp, createApiKeyCandidate } from "../gateway/api.js";
 import { pairWhatsApp, rebindWhatsApp } from "../whatsapp/api.js";
 import type { useDashboardSnapshot } from "./useDashboardSnapshot.js";
 
@@ -10,14 +9,13 @@ type DashboardSnapshot = ReturnType<typeof useDashboardSnapshot>;
 type WhatsAppBindingActionsOptions = {
   snapshot: DashboardSnapshot;
   setNotice: Dispatch<SetStateAction<Notice>>;
-  setApiKeyInput: Dispatch<SetStateAction<string>>;
 };
 
 function apiErrorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError || error instanceof Error ? error.message : fallback;
 }
 
-export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput }: WhatsAppBindingActionsOptions) {
+export function useWhatsAppBindingActions({ snapshot, setNotice }: WhatsAppBindingActionsOptions) {
   const [isRebinding, setIsRebinding] = useState(false);
   const [isPairing, setIsPairing] = useState(false);
   const [isRebindDialogOpen, setIsRebindDialogOpen] = useState(false);
@@ -26,13 +24,11 @@ export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput 
     snapshot.isAuthenticated &&
     snapshot.binding.state === "unbound" &&
     (snapshot.status === "connecting" || snapshot.status === "qr");
-  const canStartPairing =
-    snapshot.isAuthenticated && (snapshot.credentialSetupRequired || snapshot.binding.state === "unbound");
+  const canStartPairing = snapshot.isAuthenticated && snapshot.binding.state === "unbound";
 
   async function startPairing(): Promise<boolean> {
     setIsPairing(true);
     setNotice(null);
-    let generatedApiKey = false;
 
     try {
       if (!snapshot.isAuthenticated) {
@@ -46,42 +42,11 @@ export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput 
         return false;
       }
 
-      if (snapshot.credentialSetupRequired) {
-        const candidate = createApiKeyCandidate();
-        try {
-          const result = await bootstrapApp(candidate);
-          setApiKeyInput(result.apiKey);
-          snapshot.applyBootstrap(result);
-          generatedApiKey = true;
-        } catch (error) {
-          if (error instanceof ApiError && error.code === "APP_ALREADY_INITIALIZED") {
-            const info = await snapshot.loadAppInfo().catch(() => null);
-            if (!info?.authenticated) {
-              setNotice({
-                type: "error",
-                message: "Gateway API credentials already exist. Sign in to the dashboard to continue.",
-              });
-              return false;
-            }
-          } else {
-            setNotice({
-              type: "error",
-              message: apiErrorMessage(error, "Gateway setup was interrupted. Retry Pair WhatsApp to recover safely."),
-            });
-            return false;
-          }
-        }
-      }
-
       const result = await pairWhatsApp();
       snapshot.updateStatus(result.status);
       setNotice({
         type: "success",
-        message: generatedApiKey
-          ? "Pairing started. Save the machine API key shown in Gateway credentials for external API clients."
-          : result.status === "qr"
-            ? "QR is ready. Scan it from WhatsApp Linked devices."
-            : result.message,
+        message: result.status === "qr" ? "QR is ready. Scan it from WhatsApp Linked devices." : result.message,
       });
       await snapshot.refresh({ showLoading: true });
       return true;
@@ -139,7 +104,7 @@ export function useWhatsAppBindingActions({ snapshot, setNotice, setApiKeyInput 
         ? "Checking backend before pairing."
         : !snapshot.isAuthenticated
           ? snapshot.dashboardAuthMode === "setup"
-            ? "Create the admin account in Gateway access, then pair WhatsApp."
+            ? "Create the admin account, then pair WhatsApp."
             : "Sign in with the admin password to manage this gateway."
           : snapshot.binding.state === "bound"
             ? snapshot.status === "connected"
