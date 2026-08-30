@@ -133,9 +133,9 @@ export async function listAudit(query: AuditQuery): Promise<AuditPage> {
   }
 
   if (search) {
-    conditions.push("(code LIKE ? OR title LIKE ? OR description LIKE ?)");
+    conditions.push("(code LIKE ? OR title LIKE ? OR description LIKE ? OR metadata_json LIKE ?)");
     const pattern = `%${search}%`;
-    params.push(pattern, pattern, pattern);
+    params.push(pattern, pattern, pattern, pattern);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
