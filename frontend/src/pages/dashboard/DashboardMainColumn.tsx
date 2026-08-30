@@ -1,7 +1,5 @@
 import type { DashboardController } from "../../features/dashboard/useDashboardController.js";
-import { MessageStatusCard } from "../../features/messages/MessageStatusCard.js";
-import { SendMessageCard } from "../../features/messages/SendMessageCard.js";
-import { RecipientAccessCard } from "../../features/recipients/RecipientAccessCard.js";
+import { AccountHealthCard } from "../../features/whatsapp/AccountHealthCard.js";
 import { WhatsAppBindingCard } from "../../features/whatsapp/WhatsAppBindingCard.js";
 
 type DashboardMainColumnProps = {
@@ -27,27 +25,7 @@ export function DashboardMainColumn({ dashboard }: DashboardMainColumnProps) {
         onPair={() => void dashboard.handlePair()}
         onChangeAccount={dashboard.openRebindDialog}
       />
-      <SendMessageCard
-        status={dashboard.status}
-        phone={dashboard.phone}
-        message={dashboard.message}
-        isSending={dashboard.isSending}
-        canSend={dashboard.canSend}
-        approvalRequired={dashboard.approvalRequired}
-        onPhoneChange={dashboard.handlePhoneChange}
-        onMessageChange={dashboard.setMessage}
-        onSubmit={dashboard.handleSubmit}
-        onAllowAndSend={dashboard.allowAndSend}
-      />
-      {dashboard.lastMessage ? (
-        <MessageStatusCard messageId={dashboard.lastMessage.id} initialStatus={dashboard.lastMessage.status} />
-      ) : null}
-      <RecipientAccessCard
-        enabled={dashboard.isAuthenticated}
-        refreshKey={dashboard.recipientRefreshKey}
-        suggestedPhone={dashboard.recipientApprovalPhone}
-        onAllowed={dashboard.handleRecipientAllowed}
-      />
+      <AccountHealthCard accountHealth={dashboard.accountHealth} />
     </div>
   );
 }

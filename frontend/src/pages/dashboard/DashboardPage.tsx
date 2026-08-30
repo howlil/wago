@@ -4,6 +4,7 @@ import { useDashboardController } from "../../features/dashboard/useDashboardCon
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 import type { BackendHealthState } from "../../shared/types/status.js";
+import { DashboardDiagnostics } from "./DashboardDiagnostics.js";
 import { DashboardDialogs } from "./DashboardDialogs.js";
 import { DashboardMainColumn } from "./DashboardMainColumn.js";
 import { DashboardSideColumn } from "./DashboardSideColumn.js";
@@ -36,7 +37,7 @@ export function DashboardPage() {
   return (
     <AppShell
       title="Control"
-      description="Manage connection, access and outbound messaging."
+      description="Monitor gateway readiness, connection and outbound access."
       activePath="/"
       statusLabel={headerStatus.label}
       statusTone={headerStatus.tone}
@@ -51,6 +52,7 @@ export function DashboardPage() {
         <DashboardMainColumn dashboard={dashboard} />
         <DashboardSideColumn dashboard={dashboard} />
       </div>
+      <DashboardDiagnostics dashboard={dashboard} />
       <DashboardDialogs dashboard={dashboard} />
     </AppShell>
   );
