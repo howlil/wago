@@ -17,6 +17,7 @@ export type MessageSendResult = {
 };
 
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
+export type MessageDispatchState = "prepared" | "submitting" | "submitted" | "indeterminate";
 
 export type MessageStatus = {
   id: string;
@@ -28,6 +29,10 @@ export type MessageStatus = {
   updatedAt: string;
   acceptedAt?: string;
   rejectedAt?: string;
+};
+
+type MessageStatusRecord = MessageStatus & {
+  dispatchState: MessageDispatchState;
 };
 
 export type MessageWebhookDiagnostic = {
@@ -44,6 +49,7 @@ export type MessageWebhookDiagnostic = {
 };
 
 export type MessageDiagnostic = Omit<MessageStatus, "to"> & {
+  dispatchState: MessageDispatchState;
   webhook: MessageWebhookDiagnostic | null;
 };
 
@@ -55,7 +61,7 @@ export type MessageService = {
 
 type MessageServiceDependencies = {
   sendText: (to: string, text: string, options: MessageSendOptions) => Promise<MessageSendResult>;
-  getStatus: (messageId: string) => MessageStatus | null | undefined;
+  getStatus: (messageId: string) => MessageStatusRecord | null | undefined;
   getWebhookDelivery?: (messageId: string) => MessageWebhookDiagnostic | null;
 };
 
@@ -63,7 +69,7 @@ type MessageServiceOptions = {
   createMessageId?: () => string;
 };
 
-function sanitizeMessageStatus(status: MessageStatus): MessageStatus {
+function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
   return {
     id: status.id,
     to: status.to,
@@ -104,6 +110,7 @@ export function createMessageService(
       return {
         id: status.id,
         status: status.status,
+        dispatchState: rawStatus.dispatchState,
         error: status.error,
         message: status.message,
         createdAt: status.createdAt,
