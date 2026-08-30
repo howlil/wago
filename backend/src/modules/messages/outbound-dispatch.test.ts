@@ -63,7 +63,7 @@ describe("crash-safe outbound dispatch", () => {
     expect(getMessageStatus("message-2")).toBeNull();
   });
 
-  it("releases the reservation when transport submission fails synchronously", () => {
+  it("releases the reservation when a dispatch is explicitly abandoned", () => {
     prepareOutboundDispatch({
       messageId: "message-1",
       to: "6281234567890@s.whatsapp.net",
@@ -102,7 +102,7 @@ describe("crash-safe outbound dispatch", () => {
     expect(mocks.recordActivity).toHaveBeenCalledWith(
       expect.objectContaining({
         code: "message.outcome_indeterminate",
-        metadata: { messageId: "message-1" },
+        metadata: expect.objectContaining({ messageId: "message-1", reason: "restart" }),
       }),
     );
     expect(recoverInterruptedOutboundDispatches()).toEqual({ abandoned: 0, indeterminate: 0 });
