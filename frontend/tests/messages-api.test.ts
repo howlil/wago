@@ -34,4 +34,35 @@ describe("messages feature API", () => {
       credentials: "include",
     });
   });
+
+  it("reads the sanitized durable message diagnostic endpoint", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              success: true,
+              id: "message-1",
+              status: "accepted",
+              createdAt: "2026-08-30T12:00:00.000Z",
+              updatedAt: "2026-08-30T12:00:01.000Z",
+              acceptedAt: "2026-08-30T12:00:01.000Z",
+              webhook: null,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const { getMessageDiagnostics } = await import("../src/features/messages/api.js");
+    await expect(getMessageDiagnostics("message/1")).resolves.toMatchObject({
+      id: "message-1",
+      status: "accepted",
+      webhook: null,
+    });
+    expect(fetch).toHaveBeenCalledWith("/messages/message%2F1", {
+      credentials: "include",
+    });
+  });
 });
