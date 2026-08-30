@@ -46,6 +46,10 @@ export function requestIsAuthenticated(req: Request): boolean {
 }
 
 export const requireAuthenticatedRequest: RequestHandler = (req, res, next) => {
+  if (requestHasValidBrowserSession(req)) {
+    return next();
+  }
+
   if (!isApiKeyConfigured()) {
     return res.status(403).json({
       success: false,
@@ -54,7 +58,7 @@ export const requireAuthenticatedRequest: RequestHandler = (req, res, next) => {
     });
   }
 
-  if (!requestIsAuthenticated(req)) {
+  if (!requestHasValidBearerApiKey(req)) {
     return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Invalid credentials" });
   }
 
