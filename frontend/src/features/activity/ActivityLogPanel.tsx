@@ -41,7 +41,7 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>{heading}</h2>
           <p className={sectionDescriptionClass}>
-            Sanitized gateway and Baileys lifecycle evidence. Message content and session secrets are not shown here.
+            Sanitized gateway and WhatsApp transport lifecycle evidence. Message content and session secrets are not shown here.
           </p>
         </div>
         <button
@@ -78,7 +78,7 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log" }: Activity
           >
             <option value="all">All sources</option>
             <option value="wago">Wago</option>
-            <option value="baileys">Baileys</option>
+            <option value="baileys">WhatsApp transport</option>
           </select>
           <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
         </label>
