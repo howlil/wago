@@ -7,7 +7,6 @@ import type { BackendHealthState } from "../../shared/types/status.js";
 import { DashboardDiagnostics } from "./DashboardDiagnostics.js";
 import { DashboardDialogs } from "./DashboardDialogs.js";
 import { DashboardMainColumn } from "./DashboardMainColumn.js";
-import { DashboardSideColumn } from "./DashboardSideColumn.js";
 
 type DashboardStatus = ReturnType<typeof useDashboardController>["status"];
 
@@ -39,7 +38,7 @@ export function DashboardPage() {
   return (
     <AppShell
       title="Control"
-      description="Operate the WhatsApp gateway and verify its delivery path."
+      description="Observe gateway health, operate the WhatsApp connection and troubleshoot delivery."
       activePath="/"
       statusLabel={headerStatus.label}
       statusTone={headerStatus.tone}
@@ -62,18 +61,6 @@ export function DashboardPage() {
         <div className="mt-4">
           <DashboardMainColumn dashboard={dashboard} />
         </div>
-      </section>
-
-      <section className="mt-6 border-t border-wago-line pt-5" aria-labelledby="integration-policy-title">
-        <div className="mb-2">
-          <h2 id="integration-policy-title" className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">
-            Integration &amp; policy
-          </h2>
-          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
-            Machine access and outbound recipient controls used by applications calling Wago.
-          </p>
-        </div>
-        <DashboardSideColumn dashboard={dashboard} />
       </section>
 
       <DashboardDiagnostics dashboard={dashboard} />
