@@ -14,6 +14,7 @@ export {
 } from "./message-status-store.js";
 export {
   abandonOutboundDispatch,
+  markOutboundDispatchIndeterminate,
   markOutboundDispatchSubmitted,
   markOutboundDispatchSubmitting,
   prepareOutboundDispatch,
