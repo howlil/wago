@@ -154,6 +154,13 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
 
   function claimDue(nowMs: number, limit = 10): StoredWebhookDelivery[] {
     return withTransaction(database, () => {
+      const expiringDeliveries = database
+        .prepare("SELECT id FROM webhook_deliveries WHERE status = 'delivering' AND expires_at <= ?")
+        .all(nowMs) as Array<{ id: string }>;
+      for (const delivery of expiringDeliveries) {
+        attemptStore.interrupt(delivery.id, nowMs, null);
+      }
+
       database
         .prepare(`
           UPDATE webhook_deliveries
