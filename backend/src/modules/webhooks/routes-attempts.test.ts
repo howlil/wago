@@ -22,9 +22,7 @@ describe("webhook attempt diagnostics routes", () => {
   it("returns bounded sanitized attempt history for a delivery detail", async () => {
     settingsStore.save({ enabled: true, url: "https://receiver.example.test/webhook" });
     const session = createBrowserSession();
-    const queued = await request(app)
-      .post("/webhooks/test")
-      .set("Cookie", `${config.authCookieName}=${session.token}`);
+    const queued = await request(app).post("/webhooks/test").set("Cookie", `${config.authCookieName}=${session.token}`);
 
     expect(queued.status).toBe(202);
     const deliveryId = queued.body.delivery.id as string;
