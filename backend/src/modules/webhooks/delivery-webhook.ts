@@ -1,6 +1,6 @@
 import { getDatabase } from "../../infrastructure/database.js";
 import { logger } from "../../infrastructure/logger.js";
-import { recordActivity } from "../activity/store.js";
+import { recordActivity, type ActivityMetadata } from "../activity/store.js";
 import type { StoredWebhookDeliveryAttempt, WebhookAttemptOutcome } from "./delivery-attempt-store.js";
 import {
   createWebhookDeliveryStore,
@@ -36,9 +36,16 @@ function currentAttemptSender() {
   return createWebhookAttemptSender({ url: settings.url, secrets });
 }
 
-function lifecycleMetadata(fields: Record<string, unknown>): Record<string, unknown> {
+function lifecycleMetadata(fields: Record<string, unknown>): ActivityMetadata {
   const keys = ["deliveryId", "messageId", "webhookEvent", "attemptCount", "statusCode", "errorCode", "recoveredCount"];
-  return Object.fromEntries(keys.filter((key) => fields[key] !== undefined).map((key) => [key, fields[key]]));
+  const metadata: ActivityMetadata = {};
+  for (const key of keys) {
+    const value = fields[key];
+    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      metadata[key] = value;
+    }
+  }
+  return metadata;
 }
 
 function recordWorkerLifecycle(fields: Record<string, unknown>): void {
