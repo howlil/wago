@@ -119,7 +119,7 @@ export function createWebhookDeliveryAttemptStore(database: DatabaseSync) {
         deliveryId,
       );
 
-    return Number(updated.changes) === 0 ? null : list(deliveryId, 1)[0] ?? null;
+    return Number(updated.changes) === 0 ? null : (list(deliveryId, 1)[0] ?? null);
   }
 
   function interrupt(deliveryId: string, nowMs: number): boolean {
@@ -144,9 +144,9 @@ export function createWebhookDeliveryAttemptStore(database: DatabaseSync) {
   }
 
   function recoverInterrupted(nowMs: number): number {
-    const rows = database
-      .prepare("SELECT id FROM webhook_deliveries WHERE status = 'delivering'")
-      .all() as Array<{ id: string }>;
+    const rows = database.prepare("SELECT id FROM webhook_deliveries WHERE status = 'delivering'").all() as Array<{
+      id: string;
+    }>;
 
     for (const row of rows) {
       interrupt(row.id, nowMs);
