@@ -61,10 +61,14 @@ export function renderOperationalMetrics(snapshot: OperationalMetricsSnapshot): 
     sample("wago_process_uptime_seconds", {}, snapshot.uptimeSeconds),
     "# HELP wago_gateway_readiness Current gateway readiness as a one-hot gauge.",
     "# TYPE wago_gateway_readiness gauge",
-    ...READINESS_STATUSES.map((status) => sample("wago_gateway_readiness", { status }, snapshot.readiness === status ? 1 : 0)),
+    ...READINESS_STATUSES.map((status) =>
+      sample("wago_gateway_readiness", { status }, snapshot.readiness === status ? 1 : 0),
+    ),
     "# HELP wago_whatsapp_connection Current WhatsApp connection state as a one-hot gauge.",
     "# TYPE wago_whatsapp_connection gauge",
-    ...WHATSAPP_STATUSES.map((status) => sample("wago_whatsapp_connection", { status }, snapshot.whatsapp === status ? 1 : 0)),
+    ...WHATSAPP_STATUSES.map((status) =>
+      sample("wago_whatsapp_connection", { status }, snapshot.whatsapp === status ? 1 : 0),
+    ),
     "# HELP wago_outbound_messages_retained Retained outbound diagnostic records by delivery status.",
     "# TYPE wago_outbound_messages_retained gauge",
     ...MESSAGE_STATUSES.map((status) =>
