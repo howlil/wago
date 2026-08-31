@@ -65,4 +65,34 @@ describe("settings feature API", () => {
       credentials: "include",
     });
   });
+
+  it("loads recent webhook deliveries for operator diagnostics", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ success: true, deliveries: [] }), { status: 200 })),
+    );
+
+    const { getWebhookDeliveries } = await import("../src/features/settings/api.js");
+    await getWebhookDeliveries(10);
+
+    expect(fetch).toHaveBeenCalledWith("/webhooks/deliveries?limit=10", { credentials: "include" });
+  });
+
+  it("loads one webhook delivery detail and requests explicit redelivery", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ success: true, delivery: {} }), { status: 200 })),
+    );
+
+    const { getWebhookDelivery, redeliverWebhookDelivery } = await import("../src/features/settings/api.js");
+    const id = "11111111-1111-4111-8111-111111111111";
+    await getWebhookDelivery(id);
+    await redeliverWebhookDelivery(id);
+
+    expect(fetch).toHaveBeenNthCalledWith(1, `/webhooks/deliveries/${id}`, { credentials: "include" });
+    expect(fetch).toHaveBeenNthCalledWith(2, `/webhooks/deliveries/${id}/redeliver`, {
+      method: "POST",
+      credentials: "include",
+    });
+  });
 });
