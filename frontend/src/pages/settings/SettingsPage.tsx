@@ -4,6 +4,7 @@ import { useDashboardController } from "../../features/dashboard/useDashboardCon
 import { GatewayCredentialsCard } from "../../features/gateway/GatewayCredentialsCard.js";
 import { RotateApiKeyDialog } from "../../features/gateway/RotateApiKeyDialog.js";
 import { RecipientAccessCard } from "../../features/recipients/RecipientAccessCard.js";
+import { WebhookDeliveryDiagnostics } from "../../features/settings/WebhookDeliveryDiagnostics.js";
 import { WebhookSettingsCard } from "../../features/settings/WebhookSettingsCard.js";
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
@@ -78,6 +79,7 @@ export function SettingsPage() {
           description="Configure how delivery lifecycle events are sent back to your application."
         >
           <WebhookSettingsCard />
+          <WebhookDeliveryDiagnostics />
         </SettingsSection>
 
         <SettingsSection
