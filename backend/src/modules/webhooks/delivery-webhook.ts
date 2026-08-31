@@ -1,6 +1,6 @@
 import { getDatabase } from "../../infrastructure/database.js";
 import { logger } from "../../infrastructure/logger.js";
-import { recordActivity, type ActivityMetadata } from "../activity/store.js";
+import { type ActivityMetadata, recordActivity } from "../activity/store.js";
 import type { StoredWebhookDeliveryAttempt, WebhookAttemptOutcome } from "./delivery-attempt-store.js";
 import {
   createWebhookDeliveryStore,
