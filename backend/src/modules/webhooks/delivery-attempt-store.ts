@@ -32,6 +32,11 @@ type AttemptRow = {
   next_attempt_at: number | null;
 };
 
+type RecoverableDeliveryRow = {
+  id: string;
+  expires_at: number;
+};
+
 function mapRow(row: AttemptRow): StoredWebhookDeliveryAttempt {
   return {
     sequence: row.sequence,
@@ -144,24 +149,24 @@ export function createWebhookDeliveryAttemptStore(database: DatabaseSync) {
   }
 
   function recoverInterrupted(nowMs: number): number {
-    const rows = database.prepare("SELECT id FROM webhook_deliveries WHERE status = 'delivering'").all() as Array<{
-      id: string;
-    }>;
+    const rows = database
+      .prepare("SELECT id, expires_at FROM webhook_deliveries WHERE status = 'delivering'")
+      .all() as RecoverableDeliveryRow[];
 
     for (const row of rows) {
-      interrupt(row.id, nowMs);
+      interrupt(row.id, nowMs, row.expires_at <= nowMs ? null : nowMs);
     }
 
     if (rows.length > 0) {
       database
         .prepare(`
           UPDATE webhook_deliveries
-          SET status = 'pending',
-              next_attempt_at = ?,
+          SET status = CASE WHEN expires_at <= ? THEN 'expired' ELSE 'pending' END,
+              next_attempt_at = CASE WHEN expires_at <= ? THEN NULL ELSE ? END,
               claimed_at = NULL
           WHERE status = 'delivering'
         `)
-        .run(nowMs);
+        .run(nowMs, nowMs, nowMs);
     }
 
     return rows.length;
