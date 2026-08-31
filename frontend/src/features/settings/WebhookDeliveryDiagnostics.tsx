@@ -193,12 +193,17 @@ export function WebhookDeliveryDiagnostics() {
             ) : (
               <ol className="mb-0 mt-2 grid list-none gap-2 p-0">
                 {selected.attempts.map((attempt) => (
-                  <li className="grid gap-0.5 border-t border-wago-line pt-2 first:border-0 first:pt-0" key={attempt.sequence}>
+                  <li
+                    className="grid gap-0.5 border-t border-wago-line pt-2 first:border-0 first:pt-0"
+                    key={attempt.sequence}
+                  >
                     <div className="flex flex-wrap items-center gap-x-2 text-xs">
                       <span className="font-mono text-[10px] text-wago-muted">#{attempt.sequence}</span>
                       <span className="font-medium text-wago-ink">{attemptLabel(attempt)}</span>
                       {attempt.statusCode ? <span className="text-wago-muted">HTTP {attempt.statusCode}</span> : null}
-                      {attempt.errorCode ? <span className="font-mono text-[10px] text-wago-muted">{attempt.errorCode}</span> : null}
+                      {attempt.errorCode ? (
+                        <span className="font-mono text-[10px] text-wago-muted">{attempt.errorCode}</span>
+                      ) : null}
                     </div>
                     <div className="text-[10px] text-wago-muted">
                       {formatTimestamp(attempt.startedAt)} · delivery cycle {attempt.redeliveryNumber}
