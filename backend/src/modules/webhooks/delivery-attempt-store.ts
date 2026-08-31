@@ -122,7 +122,7 @@ export function createWebhookDeliveryAttemptStore(database: DatabaseSync) {
     return Number(updated.changes) === 0 ? null : (list(deliveryId, 1)[0] ?? null);
   }
 
-  function interrupt(deliveryId: string, nowMs: number): boolean {
+  function interrupt(deliveryId: string, nowMs: number, nextAttemptAt: number | null = nowMs): boolean {
     const result = database
       .prepare(`
         UPDATE webhook_delivery_attempts
@@ -139,7 +139,7 @@ export function createWebhookDeliveryAttemptStore(database: DatabaseSync) {
           LIMIT 1
         )
       `)
-      .run(nowMs, nowMs, deliveryId);
+      .run(nowMs, nextAttemptAt, deliveryId);
     return Number(result.changes) > 0;
   }
 
