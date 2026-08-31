@@ -247,6 +247,30 @@ export const migrations: Migration[] = [
         ON outbound_messages(dispatch_state, updated_at DESC);
     `,
   },
+  {
+    version: 12,
+    sql: `
+      CREATE TABLE IF NOT EXISTS webhook_delivery_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        delivery_id TEXT NOT NULL REFERENCES webhook_deliveries(id) ON DELETE CASCADE,
+        sequence INTEGER NOT NULL CHECK (sequence > 0),
+        redelivery_number INTEGER NOT NULL DEFAULT 0 CHECK (redelivery_number >= 0),
+        outcome TEXT NOT NULL CHECK (outcome IN ('in_progress', 'succeeded', 'retryable_failure', 'permanent_failure', 'interrupted')),
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        status_code INTEGER,
+        error_code TEXT,
+        retryable INTEGER CHECK (retryable IN (0, 1)),
+        next_attempt_at INTEGER,
+        UNIQUE(delivery_id, sequence)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_webhook_attempts_delivery_sequence
+        ON webhook_delivery_attempts(delivery_id, sequence DESC);
+      CREATE INDEX IF NOT EXISTS idx_webhook_attempts_outcome_started
+        ON webhook_delivery_attempts(outcome, started_at DESC);
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
