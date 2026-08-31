@@ -14,13 +14,13 @@ Wago is a production-grade, single-instance, self-hosted WhatsApp gateway with:
 - filesystem-backed Baileys auth under `/app/data/auth`;
 - Docker-first deployment with persistent-state and rollback verification for runtime-relevant changes;
 - structured sanitized logging/audit behavior;
-- health/readiness semantics that distinguish degraded/unavailable state;
+- public health/readiness plus authenticated low-cardinality Prometheus-compatible operational metrics;
 - admin-password/HttpOnly browser-session dashboard access separated from machine Bearer API-key access;
 - recipient permission, concurrency-safe idempotency, and bounded outbound safeguards;
 - Wago-owned canonical outbound message IDs with durable bounded message diagnostics correlated to provider acknowledgement/rejection and webhook delivery;
 - crash-safe outbound intent and idempotency reservation written before WhatsApp transport submission, with explicit indeterminate diagnostics for uncertain transport outcomes;
 - outbound success aligned with WhatsApp server acknowledgement and asynchronous reach-out rejection feedback;
-- persisted webhook configuration/delivery with signed at-least-once semantics;
+- persisted webhook configuration/delivery with signed at-least-once semantics and append-only attempt diagnostics across retries, restart recovery, and manual redelivery;
 - public documentation under `docs/`.
 
 ## Current operator UX baseline
@@ -36,8 +36,8 @@ Audit Log = investigate
 Current ownership:
 
 - Control shows gateway readiness, WhatsApp connection/account operation, account health, and collapsed end-to-end diagnostics;
-- Settings owns machine API credentials, recipient policy, webhook/delivery integration, and operator browser-session management;
-- Audit Log owns searchable operational evidence and progressively disclosed technical details, including canonical outbound message-ID correlation;
+- Settings owns machine API credentials, recipient policy, webhook/delivery integration and diagnostics, and operator browser-session management;
+- Audit Log owns searchable operational evidence and progressively disclosed technical details, including canonical outbound message-ID and webhook lifecycle correlation;
 - global Control status follows gateway readiness rather than reporting WhatsApp connectivity as overall gateway health;
 - degraded/not-ready readiness warnings can hand off directly to Audit with validated category/severity filters while keeping those filters editable;
 - after WhatsApp is operational, application integration is an optional next step rather than a pairing prerequisite;
@@ -54,6 +54,7 @@ access
 activity
 gateway
 messages
+metrics
 recipients
 webhooks
 whatsapp
@@ -89,12 +90,14 @@ Route/page composition lives under `frontend/src/pages/`. Architecture/dependenc
 
 - the semantic `.agent` project model is the active repository context model;
 - the control-plane UX baseline is integrated on `main` through PR #85 / merge commit `cdf2c63d62c23b0341db814f79e8bf6381a19bcc`;
-- CI, CodeQL, ARM64 Docker build, persistence/rollback smoke, and the container release for that UX baseline completed successfully;
 - outbound correctness includes concurrency-safe same-key dispatch, write-before-send durable intent/idempotency reservation, successful-recipient state following WhatsApp acknowledgement, asynchronous reach-out rejection feeding recipient cooldown state, and durable canonical message diagnostics that survive restart within bounded retention;
 - outbound transport diagnostics distinguish `prepared`, `submitting`, `submitted`, and `indeterminate`; interrupted or ambiguously failed submissions become indeterminate and are never automatically resent because WhatsApp may already have accepted them;
 - known definitive WhatsApp rejections can release their idempotency reservation for a deliberate retry, while uncertain outcomes retain the reservation to suppress accidental duplicates;
 - outbound diagnostic metadata is retained for 30 days with a maximum of 2,000 records; message bodies are not persisted by that diagnostic store and provider message IDs remain an internal correlation detail;
-- audit search includes sanitized metadata so canonical message IDs can correlate request, transport outcome, and webhook delivery evidence;
+- authenticated `/metrics` exposes bounded operational gauges for readiness, WhatsApp connection, retained outbound/webhook state, pending dispatch state, idempotency reservations, and process uptime without recipient/message identifiers;
+- webhook delivery attempts are retained as bounded append-only diagnostic evidence with explicit `in_progress`, `succeeded`, `retryable_failure`, `permanent_failure`, and `interrupted` outcomes; prior attempts survive operator redelivery and process interruption is recovered before normal worker delivery resumes;
+- webhook attempt diagnostics do not persist payloads, callback URLs, signing secrets, recipient identifiers, or message bodies;
+- audit search includes sanitized metadata so canonical message IDs can correlate request, transport outcome, webhook failure/expiry, recovery, and operator redelivery evidence;
 - obsolete runtime compatibility paths for `SETUP_TOKEN`, machine-API-key dashboard sign-in, legacy raw-key browser storage/cookies, legacy webhook environment import, and legacy JSON-state import are removed;
 - historical SQLite migration history is retained as applied-history compatibility and is not rewritten merely to remove dormant columns;
 - the older broad draft PR #67 remains superseded and none of its unmerged changes are implicitly authorized;
