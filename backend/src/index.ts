@@ -4,6 +4,7 @@ import { checkpointDatabase, closeDatabase, getDatabase } from "./infrastructure
 import { createInstanceLeaseManager } from "./infrastructure/instance-lease.js";
 import { logger } from "./infrastructure/logger.js";
 import { recordActivity } from "./modules/activity/store.js";
+import { recoverInterruptedOutboundDispatches } from "./modules/messages/index.js";
 import { startWebhookDeliveryWorker, stopWebhookDeliveryWorker } from "./modules/webhooks/delivery-webhook.js";
 import { resumeWhatsAppSession, shutdownWhatsApp } from "./modules/whatsapp/index.js";
 
@@ -23,6 +24,7 @@ const lifecycle = createApplicationLifecycle({
   startInstanceLeaseHeartbeat: () => instanceLease.startHeartbeat(),
   stopInstanceLeaseHeartbeat: () => instanceLease.stopHeartbeat(),
   releaseInstanceLease: () => instanceLease.release(),
+  recoverInterruptedOutboundDispatches,
   startWebhookDeliveryWorker,
   stopWebhookDeliveryWorker,
   resumeWhatsAppSession,

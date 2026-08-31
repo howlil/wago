@@ -45,6 +45,7 @@ describe("messages feature API", () => {
               success: true,
               id: "message-1",
               status: "accepted",
+              dispatchState: "submitted",
               createdAt: "2026-08-30T12:00:00.000Z",
               updatedAt: "2026-08-30T12:00:01.000Z",
               acceptedAt: "2026-08-30T12:00:01.000Z",
@@ -59,6 +60,7 @@ describe("messages feature API", () => {
     await expect(getMessageDiagnostics("message/1")).resolves.toMatchObject({
       id: "message-1",
       status: "accepted",
+      dispatchState: "submitted",
       webhook: null,
     });
     expect(fetch).toHaveBeenCalledWith("/messages/message%2F1", {

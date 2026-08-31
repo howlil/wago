@@ -2,7 +2,13 @@ import type { WASocket } from "@whiskeysockets/baileys";
 import { ApplicationError, isApplicationError } from "../../errors/application-error.js";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
 import { toWhatsAppJid } from "../../utils/phone.js";
-import { rememberPendingMessageStatus } from "../messages/index.js";
+import {
+  abandonOutboundDispatch,
+  markOutboundDispatchIndeterminate,
+  markOutboundDispatchSubmitted,
+  markOutboundDispatchSubmitting,
+  prepareOutboundDispatch,
+} from "../messages/index.js";
 import {
   checkOutboundPolicy,
   createOutboundPolicyError,
@@ -65,6 +71,39 @@ function normalizeBaileysSendError(error: unknown): unknown {
   return error;
 }
 
+function isDefinitiveTransportRejection(error: unknown): error is ApplicationError {
+  return isApplicationError(error) && (error.code === "REACHOUT_RESTRICTED" || error.code === "MESSAGE_REJECTED");
+}
+
+async function handleOutboundFailure(input: {
+  error: unknown;
+  jid: string;
+  messageId: string;
+  policyInput: Parameters<typeof recordOutboundRejected>[0];
+  accountHealthFetcher: ReturnType<typeof createAccountHealthFetcher>;
+}): Promise<never> {
+  const normalizedError = normalizeBaileysSendError(input.error);
+  recordOutboundRejected(input.policyInput, normalizedError);
+  logger.warn({
+    event: "wa.outbound.rejected",
+    messageId: input.messageId,
+    reason: isApplicationError(normalizedError)
+      ? normalizedError.code
+      : normalizedError instanceof Error
+        ? normalizedError.name
+        : "UNKNOWN",
+    to: maskIdentifier(input.jid),
+  });
+
+  if (isApplicationError(normalizedError) && normalizedError.code === "REACHOUT_RESTRICTED") {
+    markReachoutRestricted();
+    await refreshAccountHealth(input.accountHealthFetcher, { force: true });
+    await markRecipientReachoutRestricted(input.jid);
+  }
+
+  throw normalizedError;
+}
+
 export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
   return {
     async sendText(to: string, text: string, options: SendTextMessageOptions): Promise<SendTextMessageResult> {
@@ -111,62 +150,92 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
           throw createOutboundPolicyError(policyDecision);
         }
 
+        let resolvedJid: string;
         try {
-          const resolvedJid = await resolveRecipientJid(activeSocket, jid);
-          const result = await activeSocket.sendMessage(resolvedJid, { text });
-          const providerMessageId = result?.key?.id ?? null;
+          resolvedJid = await resolveRecipientJid(activeSocket, jid);
+        } catch (error) {
+          return handleOutboundFailure({
+            error,
+            jid,
+            messageId: options.messageId,
+            policyInput,
+            accountHealthFetcher,
+          });
+        }
 
-          if (providerMessageId) {
-            rememberRecentTextMessage(
-              {
-                id: providerMessageId,
-                remoteJid: resolvedJid,
-              },
-              text,
-            );
+        prepareOutboundDispatch({
+          messageId: options.messageId,
+          to: resolvedJid,
+          recipientJid: jid,
+          idempotencyKey: options.idempotencyKey,
+        });
+
+        try {
+          markOutboundDispatchSubmitting(options.messageId);
+        } catch (error) {
+          abandonOutboundDispatch(options.messageId);
+          throw error;
+        }
+
+        let result: Awaited<ReturnType<WASocket["sendMessage"]>>;
+        try {
+          result = await activeSocket.sendMessage(resolvedJid, { text });
+        } catch (error) {
+          const normalizedError = normalizeBaileysSendError(error);
+          if (isDefinitiveTransportRejection(normalizedError)) {
+            abandonOutboundDispatch(options.messageId);
+            return handleOutboundFailure({
+              error: normalizedError,
+              jid,
+              messageId: options.messageId,
+              policyInput,
+              accountHealthFetcher,
+            });
           }
 
-          await recordOutboundDispatched(policyInput, options.messageId);
-          rememberPendingMessageStatus({
-            id: options.messageId,
-            providerMessageId,
-            to: resolvedJid,
-            recipientJid: jid,
-          });
-
-          logger.info({
-            event: "wa.outbound.submitted",
-            messageId: options.messageId,
-            providerMessageId,
-            to: maskIdentifier(resolvedJid),
-          });
+          markOutboundDispatchIndeterminate(options.messageId, "transport_failure");
+          logger.warn(
+            {
+              event: "wa.outbound.indeterminate",
+              messageId: options.messageId,
+              errorName: error instanceof Error ? error.name : "UNKNOWN",
+              to: maskIdentifier(resolvedJid),
+            },
+            "WhatsApp transport outcome is indeterminate; automatic retry is suppressed",
+          );
 
           return {
             messageId: options.messageId,
             status: "pending",
           };
-        } catch (error) {
-          const normalizedError = normalizeBaileysSendError(error);
-          recordOutboundRejected(policyInput, normalizedError);
-          logger.warn({
-            event: "wa.outbound.rejected",
-            messageId: options.messageId,
-            reason: isApplicationError(normalizedError)
-              ? normalizedError.code
-              : normalizedError instanceof Error
-                ? normalizedError.name
-                : "UNKNOWN",
-            to: maskIdentifier(jid),
-          });
-
-          if (isApplicationError(normalizedError) && normalizedError.code === "REACHOUT_RESTRICTED") {
-            markReachoutRestricted();
-            await refreshAccountHealth(accountHealthFetcher, { force: true });
-            await markRecipientReachoutRestricted(jid);
-          }
-
-          throw normalizedError;
         }
+
+        const providerMessageId = result?.key?.id ?? null;
+        markOutboundDispatchSubmitted(options.messageId, providerMessageId);
+
+        if (providerMessageId) {
+          rememberRecentTextMessage(
+            {
+              id: providerMessageId,
+              remoteJid: resolvedJid,
+            },
+            text,
+          );
+        }
+
+        await recordOutboundDispatched(policyInput, options.messageId);
+
+        logger.info({
+          event: "wa.outbound.submitted",
+          messageId: options.messageId,
+          providerMessageId,
+          to: maskIdentifier(resolvedJid),
+        });
+
+        return {
+          messageId: options.messageId,
+          status: "pending",
+        };
       });
     },
   };

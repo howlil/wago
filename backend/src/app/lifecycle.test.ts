@@ -12,7 +12,7 @@ function leaseDeps() {
 }
 
 describe("application lifecycle", () => {
-  it("acquires ownership before starting webhook recovery and WhatsApp exactly once", async () => {
+  it("acquires ownership and recovers outbound state before workers exactly once", async () => {
     const events: string[] = [];
     const lease = leaseDeps();
     lease.acquireInstanceLease.mockImplementation(() => {
@@ -20,12 +20,14 @@ describe("application lifecycle", () => {
       return { acquired: true };
     });
     lease.startInstanceLeaseHeartbeat.mockImplementation(() => events.push("lease.heartbeat.start"));
+    const recoverInterruptedOutboundDispatches = vi.fn(() => events.push("outbound.recover"));
     const startWebhookDeliveryWorker = vi.fn(() => events.push("webhook.start"));
     const resumeWhatsAppSession = vi.fn(async () => {
       events.push("whatsapp.resume");
     });
     const lifecycle = createApplicationLifecycle({
       ...lease,
+      recoverInterruptedOutboundDispatches,
       startWebhookDeliveryWorker,
       stopWebhookDeliveryWorker: async () => undefined,
       resumeWhatsAppSession,
@@ -35,18 +37,27 @@ describe("application lifecycle", () => {
     });
 
     await Promise.all([lifecycle.start(), lifecycle.start()]);
-    expect(events).toEqual(["lease.acquire", "lease.heartbeat.start", "webhook.start", "whatsapp.resume"]);
+    expect(events).toEqual([
+      "lease.acquire",
+      "lease.heartbeat.start",
+      "outbound.recover",
+      "webhook.start",
+      "whatsapp.resume",
+    ]);
+    expect(recoverInterruptedOutboundDispatches).toHaveBeenCalledTimes(1);
     expect(startWebhookDeliveryWorker).toHaveBeenCalledTimes(1);
     expect(resumeWhatsAppSession).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses startup before workers when another instance holds the lease", async () => {
+  it("refuses startup before recovery or workers when another instance holds the lease", async () => {
     const lease = leaseDeps();
     lease.acquireInstanceLease.mockReturnValue({ acquired: false, reason: "LEASE_HELD" });
+    const recoverInterruptedOutboundDispatches = vi.fn();
     const startWebhookDeliveryWorker = vi.fn();
     const resumeWhatsAppSession = vi.fn(async () => undefined);
     const lifecycle = createApplicationLifecycle({
       ...lease,
+      recoverInterruptedOutboundDispatches,
       startWebhookDeliveryWorker,
       stopWebhookDeliveryWorker: async () => undefined,
       resumeWhatsAppSession,
@@ -56,6 +67,7 @@ describe("application lifecycle", () => {
     });
 
     await expect(lifecycle.start()).rejects.toBeInstanceOf(WagoInstanceAlreadyActiveError);
+    expect(recoverInterruptedOutboundDispatches).not.toHaveBeenCalled();
     expect(startWebhookDeliveryWorker).not.toHaveBeenCalled();
     expect(resumeWhatsAppSession).not.toHaveBeenCalled();
   });
@@ -64,6 +76,7 @@ describe("application lifecycle", () => {
     const lease = leaseDeps();
     const lifecycle = createApplicationLifecycle({
       ...lease,
+      recoverInterruptedOutboundDispatches: () => undefined,
       startWebhookDeliveryWorker: () => {
         throw new Error("worker failed");
       },
@@ -79,6 +92,28 @@ describe("application lifecycle", () => {
     expect(lease.releaseInstanceLease).toHaveBeenCalledTimes(1);
   });
 
+  it("releases the lease when outbound recovery fails before workers start", async () => {
+    const lease = leaseDeps();
+    const startWebhookDeliveryWorker = vi.fn();
+    const lifecycle = createApplicationLifecycle({
+      ...lease,
+      recoverInterruptedOutboundDispatches: () => {
+        throw new Error("recovery failed");
+      },
+      startWebhookDeliveryWorker,
+      stopWebhookDeliveryWorker: async () => undefined,
+      resumeWhatsAppSession: async () => undefined,
+      shutdownWhatsApp: async () => undefined,
+      checkpointDatabase: () => undefined,
+      closeDatabase: () => undefined,
+    });
+
+    await expect(lifecycle.start()).rejects.toThrow("recovery failed");
+    expect(startWebhookDeliveryWorker).not.toHaveBeenCalled();
+    expect(lease.stopInstanceLeaseHeartbeat).toHaveBeenCalledTimes(1);
+    expect(lease.releaseInstanceLease).toHaveBeenCalledTimes(1);
+  });
+
   it("stops the webhook worker when WhatsApp resume fails during startup", async () => {
     const events: string[] = [];
     const lifecycle = createApplicationLifecycle({
@@ -89,6 +124,7 @@ describe("application lifecycle", () => {
         events.push("lease.release");
         return true;
       },
+      recoverInterruptedOutboundDispatches: () => events.push("outbound.recover"),
       startWebhookDeliveryWorker: () => events.push("webhook.start"),
       stopWebhookDeliveryWorker: async () => {
         events.push("webhook.stop");
@@ -105,6 +141,7 @@ describe("application lifecycle", () => {
     await expect(lifecycle.start()).rejects.toThrow("resume failed");
     expect(events).toEqual([
       "heartbeat.start",
+      "outbound.recover",
       "webhook.start",
       "whatsapp.resume",
       "webhook.stop",
@@ -123,6 +160,7 @@ describe("application lifecycle", () => {
         events.push("lease.release");
         return true;
       },
+      recoverInterruptedOutboundDispatches: () => undefined,
       startWebhookDeliveryWorker: () => undefined,
       stopWebhookDeliveryWorker: async () => {
         events.push("webhook.stop");

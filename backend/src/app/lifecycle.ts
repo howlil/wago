@@ -5,6 +5,7 @@ export type ApplicationLifecycleDeps = {
   startInstanceLeaseHeartbeat: () => void;
   stopInstanceLeaseHeartbeat: () => void;
   releaseInstanceLease: () => boolean;
+  recoverInterruptedOutboundDispatches: () => void;
   startWebhookDeliveryWorker: () => void;
   stopWebhookDeliveryWorker: () => Promise<void>;
   resumeWhatsAppSession: () => Promise<void>;
@@ -28,6 +29,7 @@ export function createApplicationLifecycle(deps: ApplicationLifecycleDeps): {
 
         try {
           deps.startInstanceLeaseHeartbeat();
+          deps.recoverInterruptedOutboundDispatches();
           deps.startWebhookDeliveryWorker();
           await deps.resumeWhatsAppSession();
         } catch (error) {

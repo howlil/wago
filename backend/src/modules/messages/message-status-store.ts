@@ -4,6 +4,7 @@ import { recordActivity } from "../activity/store.js";
 import { enqueueMessageDeliveryWebhook } from "../webhooks/index.js";
 
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
+export type MessageDispatchState = "prepared" | "submitting" | "submitted" | "indeterminate";
 
 export type StoredMessageStatus = {
   id: string;
@@ -11,6 +12,7 @@ export type StoredMessageStatus = {
   to: string;
   recipientJid?: string;
   status: MessageDeliveryStatus;
+  dispatchState: MessageDispatchState;
   error?: string;
   message?: string;
   createdAt: string;
@@ -25,6 +27,7 @@ type MessageStatusRow = {
   recipient_jid: string | null;
   resolved_jid: string;
   status: MessageDeliveryStatus;
+  dispatch_state: MessageDispatchState;
   error_code: string | null;
   error_message: string | null;
   created_at: number;
@@ -39,6 +42,9 @@ const database = getDatabase();
 
 const selectById = database.prepare("SELECT * FROM outbound_messages WHERE id = ?");
 const selectByProviderId = database.prepare("SELECT * FROM outbound_messages WHERE provider_message_id = ?");
+const selectByDispatchState = database.prepare(
+  "SELECT * FROM outbound_messages WHERE status = 'pending' AND dispatch_state = ? ORDER BY created_at ASC",
+);
 const insertPending = database.prepare(`
   INSERT OR IGNORE INTO outbound_messages (
     id,
@@ -50,6 +56,29 @@ const insertPending = database.prepare(`
     updated_at
   ) VALUES (?, ?, ?, ?, 'pending', ?, ?)
 `);
+const insertPrepared = database.prepare(`
+  INSERT INTO outbound_messages (
+    id,
+    provider_message_id,
+    recipient_jid,
+    resolved_jid,
+    status,
+    dispatch_state,
+    created_at,
+    updated_at
+  ) VALUES (?, NULL, ?, ?, 'pending', 'prepared', ?, ?)
+`);
+const transitionDispatchState = database.prepare(`
+  UPDATE outbound_messages
+  SET dispatch_state = ?, updated_at = ?
+  WHERE id = ? AND status = 'pending' AND dispatch_state = ?
+`);
+const markSubmitted = database.prepare(`
+  UPDATE outbound_messages
+  SET provider_message_id = ?, dispatch_state = 'submitted', updated_at = ?
+  WHERE id = ? AND status = 'pending' AND dispatch_state = 'submitting'
+`);
+const deletePending = database.prepare("DELETE FROM outbound_messages WHERE id = ? AND status = 'pending'");
 const updateTerminal = database.prepare(`
   UPDATE outbound_messages
   SET status = ?,
@@ -82,6 +111,7 @@ function mapRow(row: MessageStatusRow): StoredMessageStatus {
     to: row.resolved_jid,
     recipientJid: row.recipient_jid ?? undefined,
     status: row.status,
+    dispatchState: row.dispatch_state,
     error: row.error_code ?? undefined,
     message: row.error_message ?? undefined,
     createdAt: new Date(row.created_at).toISOString(),
@@ -94,6 +124,64 @@ function mapRow(row: MessageStatusRow): StoredMessageStatus {
 function pruneMessageDiagnostics(nowMs: number): void {
   deleteExpired.run(nowMs - MESSAGE_DIAGNOSTIC_RETENTION_MS);
   pruneOverflow.run(MAX_MESSAGE_DIAGNOSTICS);
+}
+
+export function prepareMessageStatus(input: { id: string; to: string; recipientJid?: string }): StoredMessageStatus {
+  const nowMs = Date.now();
+  insertPrepared.run(input.id, input.recipientJid ?? null, input.to, nowMs, nowMs);
+  pruneMessageDiagnostics(nowMs);
+
+  const stored = getMessageStatus(input.id);
+  if (!stored) {
+    throw new Error("Could not persist prepared outbound message diagnostics");
+  }
+  return stored;
+}
+
+export function markMessageSubmitting(messageId: string): StoredMessageStatus | null {
+  const nowMs = Date.now();
+  const result = transitionDispatchState.run("submitting", nowMs, messageId, "prepared");
+  if (Number(result.changes) === 0) {
+    return getMessageStatus(messageId);
+  }
+  return getMessageStatus(messageId);
+}
+
+export function markMessageSubmitted(messageId: string, providerMessageId: string | null): StoredMessageStatus | null {
+  const nowMs = Date.now();
+  const result = markSubmitted.run(providerMessageId, nowMs, messageId);
+  const current = getMessageStatus(messageId);
+  if (!current || Number(result.changes) === 0) {
+    return current;
+  }
+
+  void recordActivity({
+    level: "info",
+    category: "messaging",
+    code: "message.queued",
+    title: "Message queued",
+    description: "An outbound message was submitted to the WhatsApp transport.",
+    metadata: {
+      messageId: current.id,
+      targetJid: current.to,
+    },
+  });
+
+  return current;
+}
+
+export function markMessageIndeterminate(messageId: string): StoredMessageStatus | null {
+  const nowMs = Date.now();
+  transitionDispatchState.run("indeterminate", nowMs, messageId, "submitting");
+  return getMessageStatus(messageId);
+}
+
+export function deletePendingMessageStatus(messageId: string): boolean {
+  return Number(deletePending.run(messageId).changes) > 0;
+}
+
+export function listPendingMessagesByDispatchState(dispatchState: MessageDispatchState): StoredMessageStatus[] {
+  return (selectByDispatchState.all(dispatchState) as MessageStatusRow[]).map(mapRow);
 }
 
 export function rememberPendingMessageStatus(input: {
