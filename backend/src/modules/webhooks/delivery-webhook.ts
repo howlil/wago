@@ -67,7 +67,8 @@ function recordWorkerLifecycle(fields: Record<string, unknown>): void {
       category: "system",
       code: event,
       title: "Interrupted webhook delivery recovered",
-      description: "Webhook attempts left in progress by a previous process were marked interrupted and returned to retry.",
+      description:
+        "Webhook attempts left in progress by a previous process were marked interrupted and returned to retry.",
       metadata: lifecycleMetadata(fields),
     });
   }
@@ -109,10 +110,7 @@ export type PublicWebhookDelivery = Omit<
   claimedAt: string | null;
 };
 
-export type PublicWebhookAttempt = Omit<
-  StoredWebhookDeliveryAttempt,
-  "startedAt" | "completedAt" | "nextAttemptAt"
-> & {
+export type PublicWebhookAttempt = Omit<StoredWebhookDeliveryAttempt, "startedAt" | "completedAt" | "nextAttemptAt"> & {
   outcome: WebhookAttemptOutcome;
   startedAt: string;
   completedAt: string | null;
