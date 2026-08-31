@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { withTransaction } from "../../infrastructure/database/transaction.js";
+import { createWebhookDeliveryAttemptStore } from "./delivery-attempt-store.js";
 import type { WebhookAttemptResult, WebhookEnvelope, WebhookEvent } from "./delivery-webhook-core.js";
 import { serializeWebhookEnvelope } from "./delivery-webhook-core.js";
 
@@ -90,6 +91,7 @@ export function getWebhookRetryDelayMs(attemptCount: number, random: () => numbe
 }
 
 export function createWebhookDeliveryStore(database: DatabaseSync) {
+  const attemptStore = createWebhookDeliveryAttemptStore(database);
   const selectById = database.prepare("SELECT * FROM webhook_deliveries WHERE id = ?");
   const selectByMessageEvent = database.prepare(
     "SELECT * FROM webhook_deliveries WHERE message_id = ? AND event_type = ?",
@@ -177,9 +179,13 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
         .all(nowMs, nowMs, staleClaimBefore, Math.min(50, Math.max(1, limit))) as WebhookDeliveryRow[];
 
       for (const row of rows) {
+        if (row.status === "delivering") {
+          attemptStore.interrupt(row.id, nowMs);
+        }
         database
           .prepare("UPDATE webhook_deliveries SET status = 'delivering', claimed_at = ? WHERE id = ?")
           .run(nowMs, row.id);
+        attemptStore.start(row.id, row.redelivery_count, nowMs);
       }
 
       return rows.map((row) =>
@@ -206,32 +212,74 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
     const attemptCount = current.attemptCount + 1;
     const firstAttemptAt = current.firstAttemptAt ?? nowMs;
 
-    if (result.ok) {
-      database
-        .prepare(`
-          UPDATE webhook_deliveries
-          SET status = 'delivered',
-              attempt_count = ?,
-              next_attempt_at = NULL,
-              first_attempt_at = ?,
-              last_attempt_at = ?,
-              last_status_code = ?,
-              last_error_code = NULL,
-              delivered_at = ?,
-              claimed_at = NULL
-          WHERE id = ?
-        `)
-        .run(attemptCount, firstAttemptAt, nowMs, result.statusCode, nowMs, id);
-      return get(id);
-    }
+    return withTransaction(database, () => {
+      if (result.ok) {
+        attemptStore.complete(id, result, nowMs, null);
+        database
+          .prepare(`
+            UPDATE webhook_deliveries
+            SET status = 'delivered',
+                attempt_count = ?,
+                next_attempt_at = NULL,
+                first_attempt_at = ?,
+                last_attempt_at = ?,
+                last_status_code = ?,
+                last_error_code = NULL,
+                delivered_at = ?,
+                claimed_at = NULL
+            WHERE id = ?
+          `)
+          .run(attemptCount, firstAttemptAt, nowMs, result.statusCode, nowMs, id);
+        return get(id);
+      }
 
-    if (!result.retryable) {
+      if (!result.retryable) {
+        attemptStore.complete(id, result, nowMs, null);
+        database
+          .prepare(`
+            UPDATE webhook_deliveries
+            SET status = 'failed',
+                attempt_count = ?,
+                next_attempt_at = NULL,
+                first_attempt_at = ?,
+                last_attempt_at = ?,
+                last_status_code = ?,
+                last_error_code = ?,
+                claimed_at = NULL
+            WHERE id = ?
+          `)
+          .run(attemptCount, firstAttemptAt, nowMs, result.statusCode, result.errorCode, id);
+        return get(id);
+      }
+
+      const retryDelayMs = getWebhookRetryDelayMs(attemptCount, random);
+      const nextAttemptAt = nowMs + retryDelayMs;
+      if (nowMs >= current.expiresAt || nextAttemptAt >= current.expiresAt) {
+        attemptStore.complete(id, result, nowMs, null);
+        database
+          .prepare(`
+            UPDATE webhook_deliveries
+            SET status = 'expired',
+                attempt_count = ?,
+                next_attempt_at = NULL,
+                first_attempt_at = ?,
+                last_attempt_at = ?,
+                last_status_code = ?,
+                last_error_code = ?,
+                claimed_at = NULL
+            WHERE id = ?
+          `)
+          .run(attemptCount, firstAttemptAt, nowMs, result.statusCode, result.errorCode, id);
+        return get(id);
+      }
+
+      attemptStore.complete(id, result, nowMs, nextAttemptAt);
       database
         .prepare(`
           UPDATE webhook_deliveries
-          SET status = 'failed',
+          SET status = 'pending',
               attempt_count = ?,
-              next_attempt_at = NULL,
+              next_attempt_at = ?,
               first_attempt_at = ?,
               last_attempt_at = ?,
               last_status_code = ?,
@@ -239,45 +287,9 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
               claimed_at = NULL
           WHERE id = ?
         `)
-        .run(attemptCount, firstAttemptAt, nowMs, result.statusCode, result.errorCode, id);
+        .run(attemptCount, nextAttemptAt, firstAttemptAt, nowMs, result.statusCode, result.errorCode, id);
       return get(id);
-    }
-
-    const retryDelayMs = getWebhookRetryDelayMs(attemptCount, random);
-    const nextAttemptAt = nowMs + retryDelayMs;
-    if (nowMs >= current.expiresAt || nextAttemptAt >= current.expiresAt) {
-      database
-        .prepare(`
-          UPDATE webhook_deliveries
-          SET status = 'expired',
-              attempt_count = ?,
-              next_attempt_at = NULL,
-              first_attempt_at = ?,
-              last_attempt_at = ?,
-              last_status_code = ?,
-              last_error_code = ?,
-              claimed_at = NULL
-          WHERE id = ?
-        `)
-        .run(attemptCount, firstAttemptAt, nowMs, result.statusCode, result.errorCode, id);
-      return get(id);
-    }
-
-    database
-      .prepare(`
-        UPDATE webhook_deliveries
-        SET status = 'pending',
-            attempt_count = ?,
-            next_attempt_at = ?,
-            first_attempt_at = ?,
-            last_attempt_at = ?,
-            last_status_code = ?,
-            last_error_code = ?,
-            claimed_at = NULL
-        WHERE id = ?
-      `)
-      .run(attemptCount, nextAttemptAt, firstAttemptAt, nowMs, result.statusCode, result.errorCode, id);
-    return get(id);
+    });
   }
 
   function redeliver(id: string, nowMs: number): WebhookRedeliveryResult {
@@ -316,6 +328,10 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
     return { kind: "queued", delivery };
   }
 
+  function recoverInterrupted(nowMs: number): number {
+    return withTransaction(database, () => attemptStore.recoverInterrupted(nowMs));
+  }
+
   function pruneTerminal(nowMs: number): number {
     const cutoff = nowMs - WEBHOOK_DELIVERY_RETENTION_MS;
     const result = database
@@ -332,9 +348,11 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
     enqueue,
     get,
     list,
+    listAttempts: attemptStore.list,
     claimDue,
     completeAttempt,
     redeliver,
+    recoverInterrupted,
     pruneTerminal,
   };
 }
