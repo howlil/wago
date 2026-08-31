@@ -23,7 +23,9 @@ describe("SQLite persistence", () => {
       database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_deliveries'").get(),
     ).toBeDefined();
     expect(
-      database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_delivery_attempts'").get(),
+      database
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'webhook_delivery_attempts'")
+        .get(),
     ).toBeDefined();
     expect(
       database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'browser_sessions'").get(),
