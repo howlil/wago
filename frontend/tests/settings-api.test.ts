@@ -69,7 +69,13 @@ describe("settings feature API", () => {
   it("loads recent webhook deliveries for operator diagnostics", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(JSON.stringify({ success: true, deliveries: [] }), { status: 200 })),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ success: true, deliveries: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
     );
 
     const { getWebhookDeliveries } = await import("../src/features/settings/api.js");
@@ -81,7 +87,13 @@ describe("settings feature API", () => {
   it("loads one webhook delivery detail and requests explicit redelivery", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(JSON.stringify({ success: true, delivery: {} }), { status: 200 })),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ success: true, delivery: {} }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
     );
 
     const { getWebhookDelivery, redeliverWebhookDelivery } = await import("../src/features/settings/api.js");
