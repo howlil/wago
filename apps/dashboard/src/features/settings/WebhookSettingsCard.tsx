@@ -165,7 +165,7 @@ export function WebhookSettingsCard() {
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>Webhook integration</h2>
           <p className={sectionDescriptionClass}>
-            Send signed message-delivery events to another backend. Configuration is persisted by Wago.
+            Send signed incoming-message and outbound-delivery events to another backend. Configuration is persisted by Wago.
           </p>
         </div>
         <span className={`shrink-0 text-xs font-medium ${enabled ? "text-wago-brand" : "text-wago-muted"}`}>
@@ -201,10 +201,16 @@ export function WebhookSettingsCard() {
           <span className="min-w-0">
             <span className="block text-sm font-medium text-wago-ink">Enable webhook delivery</span>
             <span className="mt-0.5 block text-xs leading-5 text-wago-muted">
-              Wago will enqueue supported delivery events and retry transient failures automatically.
+              Wago will enqueue supported message and delivery events and retry transient failures automatically.
             </span>
           </span>
         </label>
+
+        <div className="rounded-md border border-wago-line bg-wago-surface-soft px-3 py-2 text-[11px] leading-5 text-wago-muted">
+          Events: <span className="font-mono text-wago-ink">message.received</span>,{" "}
+          <span className="font-mono text-wago-ink">message.server_accepted</span>, and{" "}
+          <span className="font-mono text-wago-ink">message.rejected</span>. Incoming text/sender data is retained only while active retry delivery needs it and is removed when that delivery becomes terminal.
+        </div>
 
         <label>
           <span className={fieldLabelClass}>Callback URL</span>
