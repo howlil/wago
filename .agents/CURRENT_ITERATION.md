@@ -4,9 +4,9 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Active product milestone:** Inbound Events / Incoming Message Webhooks.
+**Active product milestone:** none.
 
-Goal: deliver incoming private-chat text messages to the configured backend through Wago's existing signed, durable, at-least-once webhook path without turning Wago into a chat-history store or dashboard inbox.
+Wago is at an idle, resumable baseline. No new product milestone is authorized by this file.
 
 ## Current baseline
 
@@ -15,28 +15,23 @@ Goal: deliver incoming private-chat text messages to the configured backend thro
 - root `Taskfile.yml` is the canonical developer command surface;
 - gateway remains a single-instance Express/TypeScript + SQLite + Baileys application;
 - dashboard remains the Control / Settings / Audit Log operator control plane;
-- outbound message delivery webhooks already provide HMAC signing, durable retry, restart recovery, attempt diagnostics, and manual redelivery;
-- webhook deliveries are uniquely keyed by logical message/event and already persist retry payloads;
-- current WhatsApp event wiring handles outbound `messages.update` but not inbound `messages.upsert`;
-- repository feature-delivery contract requires backend/API/operator diagnostics/docs to remain coherent.
+- outbound message delivery webhooks provide HMAC signing, durable retry, restart recovery, attempt diagnostics, and manual redelivery;
+- live direct/private incoming text from Baileys `messages.upsert` notify events is normalized and emitted as signed `message.received` webhooks through the same durable delivery engine;
+- incoming `fromMe` echoes, history append events, groups, status/broadcast/newsletter traffic, and non-text/media payloads remain outside the inbound milestone scope;
+- stable Wago inbound message IDs and the existing logical message/event uniqueness boundary make duplicate incoming notifications idempotent;
+- inbound sender/text is retained only while active durable delivery needs it, for at most the 24-hour retry horizon, and is atomically redacted when the delivery becomes delivered, failed, or expired;
+- terminal incoming deliveries preserve sanitized delivery/attempt diagnostics but cannot be manually redelivered after payload redaction;
+- Settings and delivery diagnostics expose the inbound webhook capability without turning the dashboard into an inbox or chat client;
+- README, public Configuration docs, security guidance, product contracts, and durable decisions describe the inbound webhook behavior and privacy boundary;
+- PR #113 was squash-merged to `main` after CI, Docs CI, CodeQL, core build/tests, and Docker persistence/rollback smoke passed.
 
 ## Active slice
 
-Milestone: Inbound Events / Incoming Message Webhooks
-Goal: receive direct incoming text and emit `message.received` through the existing webhook engine.
-Current slice: inbound contract + privacy-safe durable delivery.
-Acceptance boundary:
-- direct private-chat text only; ignore `fromMe`, groups, status/broadcast/newsletter, non-text payloads, and history/append events;
-- stable Wago inbound message ID makes duplicate Baileys notifications idempotent;
-- same configured webhook URL/signing secret/retry worker is reused;
-- inbound text/sender data may be persisted only while an active delivery still needs its payload, for at most the existing 24-hour retry horizon; terminal inbound deliveries retain diagnostics but not message content or sender data;
-- terminal inbound deliveries cannot be manually redelivered after payload redaction;
-- Settings and delivery diagnostics explain incoming + delivery events without presenting an inbox or message body;
-- Audit Log records sanitized receive/queue/failure evidence only;
-- public docs describe payload, signature, at-least-once semantics, dedupe, and bounded temporary content retention.
-Evidence: branch `feat/inbound-message-webhooks` created from the clean main baseline.
+None.
+
 Blockers: none known.
-Next action: implement inbound normalization/envelope and genericize the existing webhook store/worker boundary.
+
+Next action: none until the user authorizes the next milestone.
 
 ## Completion rule
 
