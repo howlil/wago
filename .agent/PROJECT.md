@@ -1,8 +1,8 @@
-# Wago Project
+# Wago Project Model
 
-This file is the durable source of truth for Wago's product shape, architecture, ownership, engineering constraints, and operational boundaries. Keep it current and compact. Do not use it for task plans or history.
+This file owns Wago's durable product shape, architecture, source ownership, hard constraints, and non-goals. It does not own task workflow, implementation ceremony, operational procedures, or current-state history.
 
-## Product
+## Product shape
 
 Wago is a production-grade, self-hosted WhatsApp gateway for one WhatsApp account per deployed instance. It is intentionally small enough to operate and reason about as a single application.
 
@@ -47,7 +47,7 @@ one persistent /app/data volume
 one active WhatsApp account
 ```
 
-Core constraints:
+Core technology and ownership boundaries:
 
 - Express + TypeScript backend.
 - React + Vite frontend.
@@ -57,8 +57,6 @@ Core constraints:
 - Docker-first, single-container deployment.
 - One active Wago instance owns one persistent `/app/data` volume.
 - Public API behavior remains stable unless deliberately changed.
-
-Do not introduce microservices, multi-session/multi-tenant architecture, Redis/Kafka/RabbitMQ/BullMQ, mandatory PostgreSQL/MySQL, Kubernetes/service mesh, CQRS/event sourcing, dependency-injection frameworks, generic repository/service/controller hierarchies, plugin systems, or speculative provider abstractions without a concrete approved requirement.
 
 ## Repository ownership
 
@@ -86,7 +84,7 @@ backend/src/
 
 Current capability owners include `access`, `activity`, `gateway`, `messages`, `metrics`, `recipients`, `webhooks`, and `whatsapp`.
 
-Rules:
+Ownership rules:
 
 - `index.ts` owns process startup/shutdown and top-level lifecycle, not business behavior.
 - `app/` owns composition or coordination broader than one capability.
@@ -97,7 +95,6 @@ Rules:
 - Routes do not execute SQL or manipulate raw Baileys sockets.
 - Business policy does not choose HTTP status codes.
 - Cross-module use goes through narrow public capability boundaries rather than private-file imports.
-- Avoid dependency cycles; reconsider ownership before adding indirection to hide one.
 
 ### Frontend
 
@@ -120,7 +117,7 @@ feature -> its own local modules
 shared -> shared
 ```
 
-Rules:
+Frontend ownership rules:
 
 - Keep behavior/state feature-local by default.
 - `pages/` compose workspaces but do not own feature networking or business state.
@@ -130,74 +127,44 @@ Rules:
 - Use Wago product vocabulary in UI; expose provider internals only for justified diagnosis.
 - `frontend/DESIGN.md` owns detailed UI/interaction/layout rules.
 
-## State and dependency rules
+## State and dependency model
 
 Every meaningful mutable state needs a clear owner, mutation boundary, lifecycle, and invariant. Keep state close to the code that protects it.
 
 Prefer one writable source of truth and derive secondary views when cheaper than synchronizing duplicate state. Durable state belongs to its persistence owner. Ephemeral socket/UI/cache state may remain in memory when durability is not required for correctness, safety, or diagnosis.
 
-Keep dependencies pointing toward the owner of meaning. Framework/provider details stay at their boundary. Add an interface or abstraction only when there is a real current substitution, ownership, volatile-boundary, or repeated-behavior need.
+Dependencies point toward the owner of meaning. Framework/provider details stay at their boundary. Avoid dependency cycles; reconsider ownership before adding indirection to hide one.
 
-## Engineering constraints
+## Hard constraints
 
-Prefer the smallest correct change with the lowest justified blast radius.
+Unless a concrete approved requirement changes them:
 
-- Local before shared.
-- Explicit before clever.
-- Cohesive before arbitrarily small.
-- Lower coupling before speculative reuse.
-- No line-count or one-class-per-file rules.
-- No abstraction solely to make mocking easier.
-- Duplication can be cheaper than coupling when reasons to change differ.
-- Avoid vague global owners such as `manager`, `processor`, `helper`, `common`, or generic `services` when a capability owner exists.
-- Validate untrusted input at HTTP, persistence/import, and provider boundaries.
-- Keep expected application failures stable/typed where callers need to distinguish them.
-- Do not swallow unexpected failures; attach sanitized context at the owning boundary.
-- Remove dependencies and local compatibility paths when the current authorized change makes them obsolete.
+- one Wago process owns one WhatsApp account;
+- one active Wago instance owns one persistent `/app/data` volume;
+- SQLite remains authoritative application storage;
+- Baileys auth remains filesystem-backed under `/app/data/auth`;
+- Baileys internals do not leak outside the WhatsApp owner or user-facing gateway vocabulary without a diagnostic reason;
+- public API behavior remains stable;
+- browser-session authentication remains separate from machine Bearer API-key access;
+- sensitive auth/session/message/protocol data is not persisted or logged unnecessarily;
+- disconnected, unavailable, degraded, checking, and invalid-session states are represented truthfully;
+- outbound safeguards are defensive controls, never enforcement-evasion mechanisms;
+- the dashboard remains a control plane, not a CRM or general WhatsApp client.
 
-Verification is risk-based. Prioritize automated protection for business invariants, persistence/data integrity, migrations, concurrency/lifecycle transitions, security/privacy boundaries, and public/provider contracts. Use real SQLite behavior in persistence tests where practical. Test Wago's Baileys adapters/lifecycle rather than real WhatsApp connectivity in unit tests. Keep mocks isolated and deterministic.
+## Non-goals
 
-## Persistent state and operations
+Do not introduce without a concrete approved requirement:
 
-Durable state lives under `/app/data`:
+- microservices or multi-service deployment;
+- multi-session or multi-tenant architecture;
+- Redis, Kafka, RabbitMQ, BullMQ, or queue infrastructure;
+- PostgreSQL/MySQL as a mandatory runtime dependency;
+- Kubernetes/service-mesh architecture;
+- CQRS or event sourcing;
+- dependency-injection frameworks;
+- generic repository/service/controller hierarchies;
+- speculative provider abstractions or plugin systems;
+- CRM/contact-management behavior;
+- bulk/campaign behavior, scraping, fingerprint spoofing, proxy rotation, or restriction bypasses.
 
-```text
-/app/data/
-├── wago.db
-├── wago.db-wal      may exist while WAL is active
-├── wago.db-shm      may exist while WAL is active
-└── auth/            Baileys authentication state
-```
-
-Treat the whole directory and its backups as secret-bearing state.
-
-Operational constraints:
-
-- Released SQLite migrations are append-only; do not rewrite shipped migration versions.
-- Multi-write durable invariants use explicit transactions.
-- Never run multiple active Wago instances against the same SQLite/auth volume.
-- Production fails closed when durable storage cannot be trusted as persistent.
-- Startup/shutdown and WhatsApp socket ownership must be deterministic.
-- Terminal WhatsApp session invalidation requires explicit pairing/recovery rather than endless reconnect.
-- Recoverable disconnects may reconnect with bounded backoff.
-- Credential-write failures surface as degraded state.
-- Health/readiness and dashboard state must represent disconnected, unavailable, degraded, checking, and invalid-session states truthfully.
-- Do not make request-time readiness depend on expensive/unstable protocol or filesystem inspection when owned cached state safely represents the same invariant.
-
-Never log or commit API keys, setup tokens, cookies, authorization headers, QR payloads, Baileys credentials, message text, full phone numbers/JIDs, raw protocol payloads, or copied `/app/data` contents.
-
-Back up `/app/data` as one sensitive unit before risky durable-state changes. Restore only into a controlled stopped/replacement instance. Do not use `docker compose down -v` during normal upgrades unless destroying gateway state is explicitly intended. Preserve rollback compatibility for durable changes whenever reasonably possible.
-
-## Product safety boundaries
-
-Baileys is an unofficial WhatsApp Web client. Wago cannot guarantee unrestricted deliverability or ban prevention.
-
-Outbound safeguards such as idempotency, recipient permission, account/recipient/new-chat limits, cooldown/circuit behavior, and health checks are defensive product controls. Do not implement bulk/campaign machinery, scraping, fake typing for evasion, fingerprint/device spoofing, proxy rotation, or restriction-bypass behavior.
-
-Persist normalized operational/audit facts, not raw protocol packets or secret-bearing payloads.
-
-Webhook delivery is at-least-once. Retries/manual redelivery preserve stable delivery identity where the contract depends on it. HMAC/signature behavior and delivery-attempt state are compatibility/security boundaries and must change deliberately.
-
-## Context discipline
-
-This file owns durable constraints and decisions directly. Do not create separate committed engineering rulebooks, operations rulebooks, decision diaries, skills, plan/spec files, sprint artifacts, checkpoints, or status documents for information that belongs here.
+Use `.agent/ENGINEERING.md` for implementation rules, `.agent/OPERATIONS.md` for production/persistence rules, `.agent/DECISIONS.md` for durable rationale, and `.agent/STATE.md` for what is currently true.

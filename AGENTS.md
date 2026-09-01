@@ -2,24 +2,28 @@
 
 Use the user's current request as the source of scope. Execute the smallest complete change that satisfies it.
 
-## Context
+## Context routing
 
-Read only what the task needs:
+Read only the context relevant to the task:
 
-- `.agent/PROJECT.md` — durable product, architecture, engineering, operational, and repository constraints.
-- `.agent/STATE.md` — concise current baseline/direction when current state matters.
-- `frontend/DESIGN.md` — frontend information architecture, interaction, layout, and visual rules for UI work.
+- `.agent/PROJECT.md` — product shape, architecture, ownership, hard constraints, and non-goals.
+- `.agent/STATE.md` — concise durable current baseline/direction when current state matters.
+- `.agent/ENGINEERING.md` — implementation quality, testing/verification, dependency discipline, and Git rules.
+- `.agent/OPERATIONS.md` — persistence, deployment, readiness, backup/restore, rollback, and release safety.
+- `.agent/DECISIONS.md` — rationale for durable product/architecture decisions when that rationale is material.
+- `frontend/DESIGN.md` — frontend information architecture, interaction, responsive layout, and visual rules for UI work.
 
-Do not preload the whole repository or recursively audit it unless the task requires that breadth.
+Do not preload all files or recursively audit the repository by default. Expand context only when the requested change or a discovered dependency requires it.
 
 ## Working preferences
 
 - Prefer execution over process artifacts.
 - Do not create committed plan/spec/checkpoint/status/skill files.
-- Do not turn `STATE.md` into a sprint log, iteration tracker, roadmap, or authorization record.
+- Do not use `.agent/` as task history, sprint machinery, or an agent scratchpad.
 - Keep plans, acceptance criteria, temporary notes, command transcripts, and routine verification evidence in the active task conversation or substantive PR when useful.
-- Do not add engineering ceremony, metrics, abstractions, tests, docs, infrastructure, or refactors merely because they are considered best practice.
+- Do not add engineering ceremony, abstractions, tests, docs, metrics, infrastructure, or refactors merely because they are considered best practice.
 - Do not invent features or expand product scope beyond the user's request.
+- Preserve durable project knowledge in the semantic file that owns it instead of creating another overlapping context file.
 
 ## Implementation
 
@@ -44,12 +48,14 @@ Surface a decision only when continuing would require an unapproved material cha
 Verification is proportional to realistic regression risk.
 
 - Run the smallest high-signal checks first.
-- Add or keep tests when they protect a meaningful invariant or regression.
+- Add or retain tests when they protect a meaningful invariant or regression.
 - TDD is optional, not a workflow requirement.
 - Do not add tests for coverage/count alone.
 - Do not weaken valid tests to make CI pass.
 - Diagnose deterministic failures; retry only when a transient failure is plausible.
 - Run broader build/CI/container/release checks only when they apply to the affected scope or repository gates require them.
+
+Detailed rules live in `.agent/ENGINEERING.md`.
 
 ## Git
 
@@ -68,13 +74,16 @@ Stop when the requested scope is complete, relevant verification passes, and no 
 
 ## Repository context model
 
-The committed agent context is intentionally small:
+The committed agent context is semantic and intentionally separated by concern:
 
 ```text
 AGENTS.md
 .agent/
   PROJECT.md
   STATE.md
+  ENGINEERING.md
+  OPERATIONS.md
+  DECISIONS.md
 ```
 
-`PROJECT.md` owns durable constraints. `STATE.md` owns only what is currently true. Historical task machinery and separate skill/plan/spec/engineering-ceremony documents do not belong in the repository context model.
+These are durable project-context files, not task artifacts. `plan`, `spec`, `skills`, sprint/iteration logs, checkpoints, and status-history files do not belong in this model.
