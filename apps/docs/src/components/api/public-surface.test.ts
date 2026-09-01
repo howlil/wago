@@ -32,7 +32,7 @@ describe("public product surface", () => {
 
   it("does not document removed production env configuration", async () => {
     const [readme, configuration, deployment, api] = await Promise.all([
-      read("../../../../README.md"),
+      read("../../../../../README.md"),
       read("../docs/ConfigurationDoc.astro"),
       read("../docs/DeploymentDoc.astro"),
       read("../docs/ApiDoc.astro"),
