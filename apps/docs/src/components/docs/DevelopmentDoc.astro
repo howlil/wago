@@ -13,44 +13,45 @@ const id = lang === 'id';
   <PageHeader
     eyebrow="Contributors"
     title="Development workflow"
-    description={id ? 'Workflow lokal untuk core backend/frontend, public Astro docs, dan batas yang jelas untuk artefak kerja agent.' : 'Local workflow for the backend/frontend core, public Astro docs, and the explicit boundary for agent work artifacts.'}
+    description={id ? 'Workflow monorepo untuk gateway, dashboard, public Astro docs, dan batas yang jelas untuk artefak kerja agent.' : 'Monorepo workflow for the gateway, dashboard, public Astro docs, and the explicit boundary for agent work artifacts.'}
   />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Toolchain</h2>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
     <li>Node.js 26</li>
     <li>pnpm 11.21.0</li>
-    <li>Backend: TypeScript, Express, Baileys, SQLite, Vitest</li>
-    <li>Frontend: React, Vite, Tailwind CSS, Vitest</li>
+    <li>Task</li>
+    <li>Gateway: TypeScript, Express, Baileys, SQLite, Vitest</li>
+    <li>Dashboard: React, Vite, Tailwind CSS, Vitest</li>
     <li>Docs: Astro + React islands + Tailwind CSS + Node test runner</li>
     <li>Biome</li>
   </ul>
 
-  <Callout title={id ? 'docs/ adalah dokumentasi publik' : 'docs/ is public documentation'} tone="warning">
-    {id ? 'Jangan simpan implementation plan, scratchpad, checkpoint internal, atau instruksi agent di docs/. Gunakan .agent/specs/, .agent/plans/, atau .agent/checkpoints/. Public Astro docs tetap dapat dibaca user tanpa noise proses internal.' : 'Do not store implementation plans, scratchpads, internal checkpoints, or agent instructions under docs/. Use .agent/specs/, .agent/plans/, or .agent/checkpoints/. The public Astro docs should stay readable without internal process noise.'}
+  <Callout title={id ? 'apps/docs/ adalah dokumentasi publik' : 'apps/docs/ is public documentation'} tone="warning">
+    {id ? 'Jangan simpan implementation plan, scratchpad, checkpoint internal, atau instruksi agent di apps/docs/. Gunakan .agent/ untuk konteks engineering internal. Public Astro docs harus tetap dapat dibaca user tanpa noise proses internal.' : 'Do not store implementation plans, scratchpads, internal checkpoints, or agent instructions under apps/docs/. Use .agent/ for internal engineering context. The public Astro docs should stay readable without internal process noise.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Struktur repo' : 'Repository layout'}</h2>
-  <CodeBlock label="tree" code={`backend/        Express API, policy, SQLite, Baileys integration, tests\nfrontend/       Gateway control and audit workspaces\ndocs/           Public Astro documentation site\n.agent/         Internal agent specs, plans, and checkpoints\n.github/        CI, Docs CI, CodeQL, release, issue/PR templates\nDockerfile      Production core image\ndocker-compose.yml\nplan.md         Concise engineering roadmap\nREADME.md\nCONTRIBUTING.md\nSECURITY.md\nCODE_OF_CONDUCT.md\nCHANGELOG.md\nLICENSE`} />
+  <CodeBlock label="tree" code={`apps/\n  gateway/       Express API, policy, SQLite, Baileys integration, tests\n  dashboard/     Gateway control and audit workspaces\n  docs/          Public Astro documentation site\npackages/        Shared packages only when a concrete cross-app contract exists\n.agent/          Internal durable project context\n.github/         CI, Docs CI, CodeQL, release, issue/PR templates\nscripts/         Repository automation helpers\nTaskfile.yml     Canonical developer command surface\npnpm-workspace.yaml\npnpm-lock.yaml\nDockerfile\ndocker-compose.yml\nREADME.md\nCONTRIBUTING.md\nSECURITY.md\nCODE_OF_CONDUCT.md\nCHANGELOG.md\nLICENSE`} />
 
-  <Callout title={id ? 'Docs bukan runtime artifact' : 'Docs are not a runtime artifact'}>
-    {id ? 'Production Docker/GHCR hanya membawa backend + frontend core. Astro docs dibangun dan di-host sebagai artifact publik terpisah.' : 'Production Docker/GHCR contains only the backend + frontend core. Astro docs are built and hosted as a separate public artifact.'}
+  <Callout title={id ? 'Satu workspace, satu lockfile' : 'One workspace, one lockfile'}>
+    {id ? 'Root pnpm-workspace.yaml adalah satu-satunya workspace boundary dan root pnpm-lock.yaml adalah satu-satunya lockfile. App tetap menyimpan package.json dan command spesifiknya masing-masing.' : 'The root pnpm-workspace.yaml is the only workspace boundary and the root pnpm-lock.yaml is the only lockfile. Each app still owns its package.json and app-specific commands.'}
   </Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Install dan quality gates core' : 'Install and core quality gates'}</h2>
-  <CodeBlock label="shell" code={`pnpm install\npnpm check\npnpm test\npnpm build`} />
-  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'pnpm build membangun backend dan frontend saja. Ini adalah boundary distributable core.' : 'pnpm build builds backend and frontend only. This is the distributable core boundary.'}</p>
-
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Validasi public docs' : 'Validate public docs'}</h2>
-  <CodeBlock label="shell" code={`pnpm --dir docs test\npnpm build:docs\npnpm --dir docs dev`} />
-  <p class="text-sm text-[#71717a] mb-8">{id ? 'Docs tests memverifikasi endpoint catalog/request builder/response formatter. Astro build memverifikasi integrasi page dan React island.' : 'Docs tests verify the endpoint catalog, request builder, and response formatter. The Astro build verifies page and React-island integration.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Install dan quality gates' : 'Install and quality gates'}</h2>
+  <CodeBlock label="shell" code={`pnpm install\ntask check`} />
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Taskfile adalah interface developer canonical. task check menjalankan lint, seluruh test, dan seluruh build workspace.' : 'Taskfile is the canonical developer interface. task check runs linting, all workspace tests, and all workspace builds.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Menjalankan core' : 'Running the core locally'}</h2>
-  <CodeBlock label="terminals" code={`pnpm --dir backend dev\npnpm --dir frontend dev`} />
-  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'Jika frontend memakai backend non-default, set VITE_API_BASE_URL sebelum dev/build frontend.' : 'If the frontend targets a non-default backend origin, set VITE_API_BASE_URL before frontend dev/build.'}</p>
+  <CodeBlock label="shell" code={`task dev`} />
+  <p class="text-sm text-[#a1a1aa] mb-8">{id ? 'task dev menjalankan gateway dan dashboard secara paralel. Jika dashboard memakai gateway non-default, set VITE_API_BASE_URL sebelum dev/build dashboard.' : 'task dev runs the gateway and dashboard in parallel. If the dashboard targets a non-default gateway origin, set VITE_API_BASE_URL before dashboard dev/build.'}</p>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Targeted commands' : 'Targeted commands'}</h2>
-  <CodeBlock label="shell" code={`pnpm --dir backend test\npnpm --dir frontend test\npnpm --dir docs test\npnpm --dir backend build\npnpm --dir frontend build\npnpm build:docs\npnpm check:fix`} />
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Command terarah' : 'Targeted commands'}</h2>
+  <CodeBlock label="shell" code={`task gateway:dev\ntask gateway:test\ntask gateway:build\n\ntask dashboard:dev\ntask dashboard:test\ntask dashboard:build\n\ntask docs:dev\ntask docs:test\ntask docs:build\n\ntask core:check\ntask lint:fix`} />
+
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">Docker</h2>
+  <CodeBlock label="shell" code={`task docker:build\ntask docker:up\ntask docker:down`} />
+  <p class="text-sm text-[#71717a] mb-8">{id ? 'Production Docker/GHCR hanya membawa gateway + dashboard core. Astro docs dibangun dan di-host sebagai artifact publik terpisah.' : 'Production Docker/GHCR contains only the gateway + dashboard core. Astro docs are built and hosted as a separate public artifact.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Testing philosophy</h2>
   <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Test behavior Wago, bukan internals Baileys. Fokus pada wrapper, policy decisions, validation, routes, cache/store, lifecycle behavior, dan kontrak dokumentasi yang dapat drift dari source code.' : 'Test Wago behavior rather than Baileys internals. Focus on wrappers, policy decisions, validation, routes, caches/stores, lifecycle behavior, and documentation contracts that can drift from source code.'}</p>
