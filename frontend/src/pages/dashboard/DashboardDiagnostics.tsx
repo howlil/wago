@@ -8,6 +8,10 @@ type DashboardDiagnosticsProps = {
 };
 
 export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
+  const diagnosticsLayout = dashboard.lastMessage
+    ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]"
+    : "max-w-[780px]";
+
   return (
     <details className="group mt-6 border-t border-wago-line pt-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md px-1 py-1.5 [&::-webkit-details-marker]:hidden">
@@ -22,7 +26,7 @@ export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
           <ChevronDown className="group-open:rotate-180" size={14} aria-hidden="true" />
         </div>
       </summary>
-      <div className="mt-3 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className={`mt-3 ${diagnosticsLayout}`}>
         <SendMessageCard
           status={dashboard.status}
           phone={dashboard.phone}
