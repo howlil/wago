@@ -27,7 +27,14 @@ function AuthenticatedApp() {
   useEffect(() => {
     const syncLocation = () => setLocationKey(currentLocationKey());
     const handleDocumentClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
         return;
       }
 
@@ -38,7 +45,8 @@ function AuthenticatedApp() {
       if (!(anchor instanceof HTMLAnchorElement) || anchor.target || anchor.hasAttribute("download")) return;
 
       const destination = new URL(anchor.href, window.location.href);
-      if (destination.origin !== window.location.origin || !workspacePaths.has(destination.pathname as WorkspacePath)) return;
+      if (destination.origin !== window.location.origin || !workspacePaths.has(destination.pathname as WorkspacePath))
+        return;
 
       const nextLocation = `${destination.pathname}${destination.search}`;
       if (nextLocation === currentLocationKey()) return;
