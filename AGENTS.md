@@ -1,204 +1,80 @@
-# Wago Agent Adapter
+# Wago Agent Instructions
 
-This file is the canonical execution adapter for Wago. It owns the lifecycle, authority model, scope discipline, release-ready boundary, and stop conditions. Detailed project knowledge lives under `.agent/`; those files refine concerns but must not create a competing workflow.
+Use the user's current request as the source of scope. Execute the smallest complete change that satisfies it.
 
-## Read progressively
+## Context
 
-Start from the user request, not from a fixed documentation-reading sequence. Read only the context needed for the task:
+Read only what the task needs:
 
-- `.agent/STATE.md` — current durable project state when current work/direction matters.
-- `.agent/PROJECT.md` — product/system shape, source structure, ownership, constraints, and non-goals when implementation placement or architecture matters.
-- `.agent/ENGINEERING.md` — detailed code quality, design, testing/verification, and Git rules for code changes.
-- `.agent/OPERATIONS.md` — persistence, deployment, readiness, backup/restore, rollback, or release work.
-- `.agent/DECISIONS.md` — durable rationale when a task touches an established material boundary.
+- `.agent/PROJECT.md` — durable product, architecture, engineering, operational, and repository constraints.
+- `.agent/STATE.md` — concise current baseline/direction when current state matters.
+- `frontend/DESIGN.md` — frontend information architecture, interaction, layout, and visual rules for UI work.
 
-Do not require `STATE.md` or preload the whole `.agent/` model for every task. Do not recursively audit the repository by default. Expand context only when the requested change or a discovered dependency materially requires it.
+Do not preload the whole repository or recursively audit it unless the task requires that breadth.
 
-## Authority model
+## Working preferences
 
-The user owns:
+- Prefer execution over process artifacts.
+- Do not create committed plan/spec/checkpoint/status/skill files.
+- Do not turn `STATE.md` into a sprint log, iteration tracker, roadmap, or authorization record.
+- Keep plans, acceptance criteria, temporary notes, command transcripts, and routine verification evidence in the active task conversation or substantive PR when useful.
+- Do not add engineering ceremony, metrics, abstractions, tests, docs, infrastructure, or refactors merely because they are considered best practice.
+- Do not invent features or expand product scope beyond the user's request.
 
-- WHY and desired product outcome;
-- WHAT behavior/capability is in scope;
-- product semantics and scope boundaries;
-- priorities/product trade-offs;
-- material architecture decisions;
-- final approve/reject/release/revert/change-of-direction decisions.
+## Implementation
 
-The agent has high autonomy for ordinary local engineering execution inside approved scope. It may inspect relevant code/tests/docs, derive concise acceptance criteria from approved intent, choose reversible local implementation details, reuse/extend current patterns, add justified verification, fix defects created by the change, and remove code made dead by the change.
-
-The agent must not invent features or product behavior, expand scope because of best practice, silently resolve material product ambiguity, introduce speculative architecture/infrastructure, or refactor unrelated code.
-
-Do not ask for approval for ordinary local implementation choices that preserve approved product and architecture boundaries.
-
-## Canonical execution loop
+Start from observable behavior, then find the existing owner. Prefer, in order:
 
 ```text
-USER INTENT
-  -> UNDERSTAND
-  -> BOUND
-  -> SPECIFY
-  -> DESIGN
-  -> IMPLEMENT
-  -> VERIFY
-  -> QUALITY GATES
-  -> RELEASE READY
-  -> STOP
+reuse existing behavior/pattern
+  -> extend the current owner
+  -> add a small local abstraction only when current pressure justifies it
+  -> add a new owner only when responsibility is genuinely distinct
+  -> change architecture only when the requested behavior cannot reasonably fit the current model
 ```
 
-This is a reasoning model, not a rigid SOP. Stages may overlap or collapse for small work, and verification may happen throughout.
+Keep changes cohesive, local, reversible, and easy to review. Preserve existing contracts unless the user explicitly authorizes a change. Remove obsolete local code made dead by the requested change, but do not continue into unrelated cleanup or speculative future-proofing.
 
-Operationally:
+The user owns product behavior, scope, priorities, and material architecture decisions. The agent may choose ordinary local implementation details without asking for approval again.
+
+Surface a decision only when continuing would require an unapproved material change such as a destructive migration, breaking public/persisted contract, security/privacy boundary change, service/deployment topology change, data-ownership change, or major consistency/infrastructure change. If the user's request already authorizes that change, execute it.
+
+## Verification
+
+Verification is proportional to realistic regression risk.
+
+- Run the smallest high-signal checks first.
+- Add or keep tests when they protect a meaningful invariant or regression.
+- TDD is optional, not a workflow requirement.
+- Do not add tests for coverage/count alone.
+- Do not weaken valid tests to make CI pass.
+- Diagnose deterministic failures; retry only when a transient failure is plausible.
+- Run broader build/CI/container/release checks only when they apply to the affected scope or repository gates require them.
+
+## Git
+
+Use Git as an integration mechanism, not a planning system.
+
+- Reuse an existing task branch/PR when one already represents the work.
+- For substantive isolated work, prefer one short-lived branch and one PR when repository integration needs it.
+- Do not create branches/PRs for planning, iteration announcements, checkpoints, status updates, or evidence-only changes.
+- Keep follow-up fixes for the same task on the same branch/PR.
+- Prefer squash merge unless there is a concrete reason not to.
+- Do not create extra process state after the requested change is complete.
+
+## Stop
+
+Stop when the requested scope is complete, relevant verification passes, and no material in-scope blocker remains. Do not automatically continue into adjacent features, broad audits, aesthetic refactors, extra documentation, extra tests, instrumentation, or infrastructure work.
+
+## Repository context model
+
+The committed agent context is intentionally small:
 
 ```text
-understand explicit request/problem
-  -> inspect only relevant existing implementation/contracts
-  -> bound smallest coherent change
-  -> derive only acceptance criteria needed to remove ambiguity
-  -> choose smallest design using existing owner/pattern
-  -> implement minimum complete change
-  -> identify realistic regression risk
-  -> choose cheapest high-signal verification
-  -> satisfy repository gates that apply to the affected scope
-  -> release/merge when evidence supports readiness
-  -> stop
+AGENTS.md
+.agent/
+  PROJECT.md
+  STATE.md
 ```
 
-## Understand and bound
-
-For each task:
-
-1. separate the problem, any proposed solution, and the explicit requirement;
-2. identify the expected observable product/engineering outcome;
-3. inspect only affected code, contracts, tests, and relevant project context;
-4. identify material risks/dependencies;
-5. keep acceptance criteria concise and sufficient to verify the authorized intent.
-
-Do not require repo-wide reconnaissance, bottleneck analysis, DORA/flow metrics, broad inventories, instrumentation, plans, specs, checkpoints, or mini-PRDs for ordinary bounded work.
-
-## Design rule
-
-Before introducing design, answer:
-
-1. What behavior must change?
-2. Which existing component/module/feature owns it?
-3. Can current architecture/patterns satisfy the requirement?
-4. What is the smallest design with the lowest justified blast radius?
-
-Prefer:
-
-```text
-reuse current pattern
-  -> extend current owner
-  -> small local abstraction when current pressure justifies it
-  -> new owner/component when responsibility is genuinely distinct
-  -> material architecture change only when necessary
-```
-
-Use `.agent/PROJECT.md` for placement, state ownership, dependency, and hard architecture constraints. Use `.agent/ENGINEERING.md` for detailed code/abstraction/testing rules.
-
-Explicit user approval is required before an otherwise-unauthorized material change to:
-
-- service/deployment boundaries;
-- durable data ownership/persistence model;
-- materially breaking public or persisted contracts;
-- major inter-component communication patterns;
-- consistency model;
-- security/privacy/trust boundaries;
-- infrastructure topology;
-- destructive or irreversible data behavior.
-
-If the user's explicit request already authorizes the material decision, execute it within that scope instead of asking again.
-
-## Implementation rule
-
-Prefer the smallest coherent vertical slice that produces the required observable behavior or protects the required invariant.
-
-- preserve current contracts unless change is explicitly authorized;
-- keep frontend/backend aligned to one product contract when both are affected;
-- avoid speculative future-proofing and unrelated cleanup;
-- remove superseded local paths made obsolete by the current change;
-- keep changes reviewable and reversible;
-- if implementation reveals an unauthorized material requirement/architecture decision, surface that decision rather than silently widening scope.
-
-## Testing and verification
-
-Tests reduce meaningful delivery risk; they do not exist to maximize coverage/test count or enforce TDD ceremony.
-
-For each change:
-
-1. identify realistic failure modes;
-2. estimate impact/likelihood;
-3. choose the cheapest high-signal verification;
-4. deepen only when risk justifies it.
-
-TDD is optional. Use it when a deterministic automated test is the cheapest useful way to define/protect behavior. Do not require it for presentation-only changes, styling/layout, static markup, copy/docs, trivial wiring, or exploratory work.
-
-Before adding or retaining a test ask:
-
-> What realistic regression does this prevent?
-
-Do not weaken/delete/skip a valid test merely to make CI green.
-
-When a test/CI check fails, classify from evidence before calling it flaky/transient. Retry only when a transient runner/infrastructure/external-dependency failure is plausible; deterministic code/test failures require diagnosis or a fix.
-
-Detailed verification and mock-isolation rules live in `.agent/ENGINEERING.md`.
-
-## Quality gates and release readiness
-
-A change is release-ready when:
-
-- approved scope and acceptance criteria are satisfied;
-- relevant risk-based verification has passed;
-- repository/CI/build/security/migration/release checks that apply to the affected scope have passed;
-- no known material in-scope blocker remains;
-- compatibility and rollback risk are acceptable for the change.
-
-Instrumentation is conditional, not a default deliverable. Add it only when needed to evaluate an expected outcome, diagnose a meaningful new failure mode, or operate changed behavior safely.
-
-Release the smallest complete useful increment.
-
-## Git integration
-
-Use the repository's short-lived trunk-oriented flow described in `.agent/ENGINEERING.md` when a repository change is actually being made.
-
-Default shape for substantive repository work:
-
-```text
-main
-  -> one short-lived task branch
-  -> implement / verify / review / fix
-  -> one PR
-  -> applicable gates
-  -> squash merge
-  -> cleanup
-```
-
-Branches/PRs are integration tools, not planning artifacts. Do not create a branch or PR solely to announce an iteration, record a plan/status update, produce evidence, or create process checkpoints. Do not create iteration/retry/staging/personal branch machinery for routine work.
-
-## Stop conditions
-
-Stop normal implementation and surface the decision when continuing requires an unauthorized material choice, especially:
-
-- conflicting/missing product semantics that change observable behavior;
-- destructive/irreversible migration or data behavior;
-- materially breaking public/persisted contract change;
-- security/privacy/trust-boundary change;
-- major architecture/service/consistency/infrastructure change.
-
-Stop the task when approved scope is satisfied, justified verification and applicable required gates pass, and no material in-scope issue remains.
-
-After that point, do not continue into adjacent features, aesthetic refactors, speculative cleanup, future-proofing, broad audits, extra tests/docs, metrics, or infrastructure without a concrete authorized need.
-
-## Documentation model
-
-- `AGENTS.md` — canonical execution adapter.
-- `.agent/README.md` — project-context router and artifact discipline.
-- `.agent/PROJECT.md` — product/system/source-structure truth.
-- `.agent/ENGINEERING.md` — detailed engineering rules.
-- `.agent/OPERATIONS.md` — operational/release constraints.
-- `.agent/DECISIONS.md` — durable rationale.
-- `.agent/STATE.md` — concise durable current state, not a sprint plan or task tracker.
-- `docs/` — public product documentation.
-
-Do not commit permanent task plans/spec snapshots/checkpoints/skills as project-model artifacts. Acceptance criteria, iteration plans, command transcripts, and routine evidence belong in the task conversation or substantive PR when useful. Update `STATE.md` only when durable current project state materially changes; do not create a standalone state/status PR merely to announce work.
+`PROJECT.md` owns durable constraints. `STATE.md` owns only what is currently true. Historical task machinery and separate skill/plan/spec/engineering-ceremony documents do not belong in the repository context model.

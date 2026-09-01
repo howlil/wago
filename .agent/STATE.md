@@ -1,31 +1,29 @@
 # Wago Current State
 
-This file is the short committed snapshot of durable current Wago state. It is not a roadmap, sprint plan, task tracker, or authorization mechanism by itself.
+This file records only durable current Wago state that is useful to future work. It is not a roadmap, sprint plan, iteration log, task tracker, change history, or authorization mechanism.
 
-## Current baseline
+## Baseline
 
 Wago is a production-grade, single-instance, self-hosted WhatsApp gateway with:
 
 - one WhatsApp account per deployed instance;
 - Express + TypeScript backend;
 - React + Vite operator dashboard;
-- Baileys protocol integration contained by the WhatsApp module;
-- SQLite durable application state under `/app/data/wago.db`;
-- filesystem-backed Baileys auth under `/app/data/auth`;
-- Docker-first deployment with persistent-state and rollback verification for runtime-relevant changes;
-- structured sanitized logging/audit behavior;
-- public health/readiness plus authenticated low-cardinality Prometheus-compatible operational metrics;
+- Baileys contained behind the WhatsApp module;
+- SQLite application state at `/app/data/wago.db`;
+- filesystem-backed Baileys auth at `/app/data/auth`;
+- Docker-first deployment using one persistent `/app/data` volume;
+- structured sanitized logging and audit evidence;
+- public liveness/readiness plus authenticated low-cardinality operational metrics;
 - admin-password/HttpOnly browser-session dashboard access separated from machine Bearer API-key access;
 - recipient permission, concurrency-safe idempotency, and bounded outbound safeguards;
-- Wago-owned canonical outbound message IDs with durable bounded message diagnostics correlated to provider acknowledgement/rejection and webhook delivery;
-- crash-safe outbound intent and idempotency reservation written before WhatsApp transport submission, with explicit indeterminate diagnostics for uncertain transport outcomes;
-- outbound success aligned with WhatsApp server acknowledgement and asynchronous reach-out rejection feedback;
-- persisted webhook configuration/delivery with signed at-least-once semantics and append-only attempt diagnostics across retries, restart recovery, and manual redelivery;
+- durable bounded outbound diagnostics using Wago-owned canonical message IDs;
+- signed at-least-once webhook delivery with durable bounded attempt diagnostics and manual redelivery support;
 - public documentation under `docs/`.
 
-## Current operator UX baseline
+## Operator UX
 
-The dashboard is now organized as a control plane around operator intent:
+The dashboard is organized around operator intent:
 
 ```text
 Control   = observe + operate
@@ -33,19 +31,19 @@ Settings  = configure
 Audit Log = investigate
 ```
 
-Current ownership:
+Current behavior:
 
-- Control shows gateway readiness, WhatsApp connection/account operation, account health, and collapsed end-to-end diagnostics;
-- Settings owns machine API credentials, recipient policy, webhook/delivery integration and diagnostics, and operator browser-session management;
-- Audit Log owns searchable operational evidence and progressively disclosed technical details, including canonical outbound message-ID and webhook lifecycle correlation;
-- global Control status follows gateway readiness rather than reporting WhatsApp connectivity as overall gateway health;
-- degraded/not-ready readiness warnings can hand off directly to Audit with validated category/severity filters while keeping those filters editable;
-- after WhatsApp is operational, application integration is an optional next step rather than a pairing prerequisite;
-- user-facing audit vocabulary prefers gateway/WhatsApp transport concepts instead of exposing Baileys as the primary operator abstraction.
+- Control represents gateway readiness, WhatsApp connection/account operation, health, and compact diagnostics.
+- Settings owns machine API credentials, recipient policy, webhook configuration/delivery diagnostics, and operator browser-session management.
+- Audit Log owns searchable operational evidence and technical detail disclosure.
+- Global Control status follows gateway readiness rather than treating WhatsApp connectivity alone as overall gateway health.
+- Degraded/not-ready states can hand off into Audit investigation with editable filters.
+- Application integration is optional after WhatsApp becomes operational; it is not a pairing prerequisite.
+- User-facing terminology prefers gateway/WhatsApp transport concepts over Baileys internals unless diagnosis requires provider detail.
+- Workspace navigation is client-side and should remain smooth without full-page loading behavior.
+- The visual language remains compact, border-led, information-dense, and consistent with `frontend/DESIGN.md`.
 
-The visual language remains compact, border-led, information-dense, and intentionally consistent with the existing Wago design system.
-
-## Current code organization
+## Current architecture ownership
 
 Backend capability owners:
 
@@ -73,40 +71,38 @@ settings
 whatsapp
 ```
 
-Route/page composition lives under `frontend/src/pages/`. Architecture/dependency regression tests protect boundaries worth preserving.
+Frontend route/workspace composition lives under `frontend/src/pages/`. Architecture/dependency regression tests protect boundaries that are intentionally stable.
 
-## Current engineering model
+## Current reliability model
 
-- `AGENTS.md` is the canonical execution adapter and lifecycle;
-- `.agent/PROJECT.md` owns product/system shape, source structure, ownership, and hard constraints;
-- `frontend/DESIGN.md` owns frontend information architecture, interaction model, responsive layout, and visual rules;
-- `.agent/ENGINEERING.md` owns detailed implementation, testing/verification, and Git rules;
-- `.agent/OPERATIONS.md` owns persistence/deployment/readiness/backup/release constraints;
-- `.agent/DECISIONS.md` owns durable rationale;
-- this file owns only concise durable current state;
-- historical task plans/specs/checkpoints are not part of the current project model.
+Outbound behavior currently provides:
 
-## Integration state
+- concurrency-safe same-key dispatch;
+- durable intent/idempotency reservation before WhatsApp transport submission;
+- explicit `prepared`, `submitting`, `submitted`, and `indeterminate` transport diagnostics;
+- no automatic resend for indeterminate outcomes because WhatsApp may already have accepted the message;
+- deliberate retry support for known definitive rejections by releasing the relevant reservation;
+- WhatsApp acknowledgement-aligned success plus asynchronous reach-out rejection feedback;
+- bounded outbound diagnostic retention without persisting message bodies;
+- canonical Wago message IDs for correlation across request, transport, audit, and webhook evidence.
 
-- the semantic `.agent` project model is the active repository context model;
-- the control-plane UX baseline is integrated on `main` through PR #85 / merge commit `cdf2c63d62c23b0341db814f79e8bf6381a19bcc`;
-- outbound correctness includes concurrency-safe same-key dispatch, write-before-send durable intent/idempotency reservation, successful-recipient state following WhatsApp acknowledgement, asynchronous reach-out rejection feeding recipient cooldown state, and durable canonical message diagnostics that survive restart within bounded retention;
-- outbound transport diagnostics distinguish `prepared`, `submitting`, `submitted`, and `indeterminate`; interrupted or ambiguously failed submissions become indeterminate and are never automatically resent because WhatsApp may already have accepted them;
-- known definitive WhatsApp rejections can release their idempotency reservation for a deliberate retry, while uncertain outcomes retain the reservation to suppress accidental duplicates;
-- outbound diagnostic metadata is retained for 30 days with a maximum of 2,000 records; message bodies are not persisted by that diagnostic store and provider message IDs remain an internal correlation detail;
-- authenticated `/metrics` exposes bounded operational gauges for readiness, WhatsApp connection, retained outbound/webhook state, pending dispatch state, idempotency reservations, and process uptime without recipient/message identifiers;
-- webhook delivery attempts are retained as bounded append-only diagnostic evidence with explicit `in_progress`, `succeeded`, `retryable_failure`, `permanent_failure`, and `interrupted` outcomes; prior attempts survive operator redelivery and process interruption is recovered before normal worker delivery resumes;
-- webhook attempt diagnostics do not persist payloads, callback URLs, signing secrets, recipient identifiers, or message bodies;
-- audit search includes sanitized metadata so canonical message IDs can correlate request, transport outcome, webhook failure/expiry, recovery, and operator redelivery evidence;
-- obsolete runtime compatibility paths for `SETUP_TOKEN`, machine-API-key dashboard sign-in, legacy raw-key browser storage/cookies, legacy webhook environment import, and legacy JSON-state import are removed;
-- historical SQLite migration history is retained as applied-history compatibility and is not rewritten merely to remove dormant columns;
-- the older broad draft PR #67 remains superseded and none of its unmerged changes are implicitly authorized;
-- there is no known current blocker.
+Webhook behavior currently provides:
 
-## Current authorized direction
+- persisted configuration and signed at-least-once delivery;
+- append-only bounded attempt evidence;
+- explicit `in_progress`, `succeeded`, `retryable_failure`, `permanent_failure`, and `interrupted` outcomes;
+- restart recovery before normal worker delivery resumes;
+- operator redelivery without deleting prior attempts;
+- no persisted callback payloads, signing secrets, recipient identifiers, or message bodies in attempt diagnostics.
 
-Preserve the current control-plane UX boundary and existing single-process/SQLite/Baileys architecture until a concrete next product or maintenance requirement is selected.
+Operational metrics expose bounded gauges for readiness, WhatsApp connection, retained outbound/webhook state, pending dispatch state, idempotency reservations, and process uptime without recipient/message identifiers.
 
-Do not move configuration back into Control, do not turn the dashboard into a CRM/WhatsApp client, and do not expose provider internals as primary product vocabulary without a concrete diagnostic reason.
+## Current direction
 
-Detailed sprint plans, acceptance criteria, verification evidence, and task status belong in the active task conversation or substantive PR rather than this file.
+Preserve the single-process/SQLite/Baileys architecture and the Control/Settings/Audit control-plane boundary until a concrete requirement changes them.
+
+Do not move configuration back into Control, turn the dashboard into a CRM/general WhatsApp client, expose provider internals as primary product vocabulary, or add distributed/multi-session infrastructure without an explicit requirement.
+
+There is no known current blocker.
+
+Update this file only when one of these durable current facts materially changes. Task plans, acceptance criteria, sprint/iteration status, PR references, verification transcripts, and historical implementation notes do not belong here.
