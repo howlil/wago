@@ -106,7 +106,7 @@ describe("WebhookDeliveryDiagnostics", () => {
     await user.click(screen.getByRole("button", { name: "Inspect" }));
 
     expect(await screen.findByText(/Incoming payload was removed after terminal delivery/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Redeliver" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Redeliver" }).hasAttribute("disabled")).toBe(true);
     expect(redeliverWebhookDelivery).not.toHaveBeenCalled();
   });
 });
