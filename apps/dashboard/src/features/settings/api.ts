@@ -34,6 +34,7 @@ export type WebhookDelivery = {
   deliveredAt: string | null;
   expiresAt: string;
   claimedAt: string | null;
+  redeliveryAvailable: boolean;
 };
 
 export type WebhookDeliveryAttempt = {
