@@ -81,3 +81,11 @@ This file records material decisions whose rationale is expensive to rediscover.
 **Why:** this matches the user's canonical agent-SWE flow: project knowledge, active iteration state, implementation conventions, quality gates, and durable rationale each have one owner without duplicating global workflow rules.
 
 **Implication:** `.agent/` singular is legacy. Do not create extra workflow mirrors, sprint diaries, generic skill files, temporary plan/checkpoint files, or duplicate state under `.agents/`.
+
+## D11 — Incoming messages are integration events, not retained chat history
+
+**Decision:** live direct incoming text is normalized by the WhatsApp capability and delivered as signed `message.received` through the existing durable webhook engine. Wago does not create a second inbound queue, chat-history store, or dashboard inbox.
+
+**Why:** external applications need inbound events with the same restart-safe at-least-once guarantees as existing callbacks, but permanently retaining sender/message content would change Wago into a message store and weaken its privacy boundary.
+
+**Implication:** the stable Wago inbound message ID is derived deterministically so duplicate Baileys notifications converge on the existing unique webhook message/event key. Sender and text may be persisted only inside an active retry payload for at most the webhook retry horizon. SQLite atomically redacts that payload when the delivery becomes delivered, failed, or expired; terminal diagnostics keep IDs/status/attempt evidence only, and manual redelivery is unavailable once the inbound payload is redacted.
