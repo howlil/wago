@@ -1,6 +1,7 @@
 import { Gauge, PanelLeftClose, PanelLeftOpen, ScrollText, Settings2, X } from "lucide-react";
-import type { ComponentType } from "react";
+import { type ComponentType, Fragment } from "react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet.js";
+import { Tooltip } from "../ui/tooltip.js";
 import { AppBrand } from "./AppBrand.js";
 
 export type WorkspacePath = "/" | "/audit" | "/settings";
@@ -39,14 +40,11 @@ function WorkspaceNavigation({
       {navigationItems.map((item) => {
         const Icon = item.icon;
         const active = activePath === item.href;
-
-        return (
+        const navigationLink = (
           <a
-            key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
             aria-label={collapsed ? item.label : undefined}
-            title={collapsed ? item.label : undefined}
             onClick={onNavigate}
             className={`flex h-10 items-center rounded-md border text-[13px] font-medium transition-colors ${
               active
@@ -57,6 +55,12 @@ function WorkspaceNavigation({
             <Icon className="shrink-0" size={17} />
             {!collapsed ? <span>{item.label}</span> : null}
           </a>
+        );
+
+        return (
+          <Fragment key={item.href}>
+            {collapsed ? <Tooltip content={item.label}>{navigationLink}</Tooltip> : navigationLink}
+          </Fragment>
         );
       })}
     </div>
@@ -78,15 +82,16 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
         >
           <AppBrand collapsed={collapsed} />
           {!collapsed ? (
-            <button
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
-              type="button"
-              onClick={onToggleCollapsed}
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
-            >
-              <PanelLeftClose size={16} />
-            </button>
+            <Tooltip content="Collapse sidebar">
+              <button
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
+                type="button"
+                onClick={onToggleCollapsed}
+                aria-label="Collapse sidebar"
+              >
+                <PanelLeftClose size={16} />
+              </button>
+            </Tooltip>
           ) : null}
         </div>
 
@@ -102,15 +107,16 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
 
         {collapsed ? (
           <div className="mt-auto border-t border-wago-line p-2">
-            <button
-              className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
-              type="button"
-              onClick={onToggleCollapsed}
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-            >
-              <PanelLeftOpen size={16} />
-            </button>
+            <Tooltip content="Expand sidebar">
+              <button
+                className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
+                type="button"
+                onClick={onToggleCollapsed}
+                aria-label="Expand sidebar"
+              >
+                <PanelLeftOpen size={16} />
+              </button>
+            </Tooltip>
           </div>
         ) : null}
       </aside>
