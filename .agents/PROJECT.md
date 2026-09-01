@@ -27,6 +27,32 @@ Browser-session authentication and machine Bearer API-key access are separate se
 
 The dashboard is not a CRM, inbox, campaign manager, or general WhatsApp client.
 
+## Feature delivery contract
+
+Wago delivers product behavior as coherent vertical feature slices across every surface that is actually part of that behavior.
+
+A feature is complete only when the affected surfaces agree on the same behavior, vocabulary, state semantics, and failure model. Depending on the feature, those surfaces may include:
+
+```text
+product behavior
+  -> gateway capability
+  -> HTTP/application contract when externally exposed
+  -> dashboard operator surface when operator-visible
+  -> audit/diagnostics when operationally relevant
+  -> verification and public documentation when contracts or user workflows change
+```
+
+Rules:
+
+- if a backend capability is operator-visible, operator-configurable, or requires operator diagnosis, deliver the corresponding dashboard behavior in the same coherent milestone/slice unless the user explicitly scopes the work otherwise;
+- do not consider an operator-facing feature complete with a backend-only implementation when the required operator workflow is still missing;
+- do not ship UI controls, status, or workflows that imply backend behavior or state semantics the gateway does not actually provide;
+- machine-only API behavior and internal runtime mechanisms may remain backend-only when there is no operator workflow to expose;
+- do not create dashboard UI merely because an internal endpoint or mechanism exists;
+- keep API, dashboard, audit, diagnostics, and documentation terminology/status semantics aligned where they describe the same product behavior.
+
+Vertical delivery is about product completeness, not forcing every implementation detail through every layer.
+
 ## Core product behavior
 
 Wago currently provides:

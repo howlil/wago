@@ -38,6 +38,34 @@ For meaningful mutable state, identify its owner, mutation boundary, lifecycle, 
 - testability may reinforce an abstraction decision but is not enough justification by itself;
 - remove obsolete dependencies and compatibility paths only when the authorized change actually makes them unused.
 
+## Vertical feature delivery
+
+Implement product features end to end across the surfaces required by the approved behavior rather than treating gateway and dashboard work as unrelated deliverables.
+
+Before calling a feature complete, determine which of these surfaces are actually affected:
+
+```text
+gateway capability
+HTTP/application contract
+dashboard operator workflow
+operational audit/diagnostics
+verification
+public documentation
+```
+
+Then keep those surfaces coherent in the same milestone/slice.
+
+- An operator-visible/configurable/diagnosable gateway capability should normally include its dashboard state, action, configuration, or investigation path in the same feature slice.
+- A dashboard action must be backed by a real gateway capability and must represent backend readiness/error/state semantics truthfully.
+- When API and dashboard describe the same state or operation, reuse the same product vocabulary and semantic distinctions rather than creating frontend-only interpretations.
+- Include audit/diagnostic evidence when the new behavior creates an operational state or failure operators must investigate.
+- Update public contracts/docs when the externally observable API or operator workflow changes.
+- Backend-only delivery is valid for explicitly machine-only API behavior or internal runtime mechanisms with no operator-facing concern.
+- UI is not required for every internal endpoint, persistence mechanism, or provider detail.
+- Do not add placeholder UI for a future backend capability or a backend capability solely to satisfy a visual mock.
+
+The goal is the smallest complete vertical slice, not mandatory changes in every app for every task.
+
 ## Gateway conventions
 
 - capability behavior belongs under `apps/gateway/src/modules/<capability>/` by default;
