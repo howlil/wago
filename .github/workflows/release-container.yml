@@ -7,8 +7,12 @@ on:
     tags:
       - "v*"
     paths:
-      - "backend/**"
-      - "frontend/**"
+      - "apps/gateway/**"
+      - "apps/dashboard/**"
+      - "Taskfile.yml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
       - "Dockerfile"
       - ".dockerignore"
       - ".github/workflows/release-container.yml"
@@ -43,17 +47,22 @@ jobs:
           runtime: node@26
           cache: true
 
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting and lint
-        run: pnpm check
+        run: task lint
 
       - name: Run core tests
-        run: pnpm test:core
+        run: task core:test
 
       - name: Build core apps
-        run: pnpm build:core
+        run: task core:build
 
   build:
     name: Build ${{ matrix.platform }}

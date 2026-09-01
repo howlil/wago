@@ -1,0 +1,38 @@
+name: Monorepo Lockfile Migration
+
+on:
+  push:
+    branches:
+      - refactor/monorepo-taskfile
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11.21.0
+          runtime: node@26
+          cache: false
+          install: false
+
+      - name: Regenerate root lockfile
+        run: pnpm install --lockfile-only --no-frozen-lockfile
+
+      - name: Commit lockfile when changed
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "chore: regenerate monorepo lockfile"
+          git push

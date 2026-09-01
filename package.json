@@ -5,14 +5,8 @@
   "packageManager": "pnpm@11.21.0",
   "type": "module",
   "scripts": {
-    "check": "biome check",
-    "check:fix": "biome check --write",
-    "test": "pnpm run test:core",
-    "test:core": "pnpm --dir backend test && pnpm --dir frontend test",
-    "test:docs": "pnpm --dir docs test",
-    "build": "pnpm run build:core",
-    "build:core": "pnpm --dir backend run build && pnpm --dir frontend run build",
-    "build:docs": "pnpm --dir docs run build"
+    "check": "biome check .",
+    "check:fix": "biome check --write ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.9"

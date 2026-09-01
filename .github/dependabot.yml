@@ -17,7 +17,7 @@ updates:
       prefix: deps
 
   - package-ecosystem: npm
-    directory: /backend
+    directory: /apps/gateway
     schedule:
       interval: weekly
       day: monday
@@ -27,14 +27,14 @@ updates:
       prefix: deps
 
   - package-ecosystem: npm
-    directory: /frontend
+    directory: /apps/dashboard
     schedule:
       interval: weekly
       day: monday
       time: "09:30"
       timezone: Asia/Jakarta
     groups:
-      frontend-react:
+      dashboard-react:
         patterns:
           - react
           - react-dom
@@ -43,7 +43,7 @@ updates:
       prefix: deps
 
   - package-ecosystem: npm
-    directory: /docs
+    directory: /apps/docs
     schedule:
       interval: weekly
       day: monday

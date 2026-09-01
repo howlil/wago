@@ -6,13 +6,13 @@ on:
     paths-ignore:
       - ".agent/**"
       - "*.md"
-      - "docs/**"
+      - "apps/docs/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - ".agent/**"
       - "*.md"
-      - "docs/**"
+      - "apps/docs/**"
 
 permissions:
   contents: read
@@ -37,17 +37,22 @@ jobs:
           runtime: node@26
           cache: true
 
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting and lint
-        run: pnpm check
+        run: task lint
 
       - name: Run core tests
-        run: pnpm test:core
+        run: task core:test
 
       - name: Build core
-        run: pnpm build:core
+        run: task core:build
 
   docker-smoke:
     name: Docker Build and Persistence Smoke

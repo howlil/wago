@@ -1,11 +1,12 @@
 .git
 .github
-docs
 .env
 .env.*
 node_modules
 **/node_modules
 **/dist
-backend/data
+apps/docs/**
+!apps/docs/package.json
+apps/gateway/data
 *.log
 *.tgz

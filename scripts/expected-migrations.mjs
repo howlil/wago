@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 
-const source = await readFile(new URL("../backend/src/infrastructure/database/migrations.ts", import.meta.url), "utf8");
+const source = await readFile(
+  new URL("../apps/gateway/src/infrastructure/database/migrations.ts", import.meta.url),
+  "utf8",
+);
 const versions = Array.from(source.matchAll(/\bversion:\s*(\d+),/g), (match) => Number(match[1]));
 
 if (versions.length === 0) {

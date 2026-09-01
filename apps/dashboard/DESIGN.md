@@ -1,6 +1,6 @@
 # Wago Frontend Design & Engineering Guide
 
-This document is the source of truth for frontend information architecture, responsive layout, visual density, and UI engineering decisions in `frontend/`.
+This document is the source of truth for frontend information architecture, responsive layout, visual density, and UI engineering decisions in `apps/dashboard/`.
 
 Wago is a small self-hosted operator console, not a generic SaaS dashboard. The interface should feel like focused infrastructure tooling: compact, calm, technical, predictable, and efficient.
 
