@@ -167,4 +167,4 @@ Do not introduce without a concrete approved requirement:
 - CRM/contact-management behavior;
 - bulk/campaign behavior, scraping, fingerprint spoofing, proxy rotation, or restriction bypasses.
 
-Use `.agent/ENGINEERING.md` for implementation rules, `.agent/OPERATIONS.md` for production/persistence rules, `.agent/DECISIONS.md` for durable rationale, and `.agent/STATE.md` for what is currently true.
+Use `.agent/OPERATIONS.md` for production/persistence rules and `.agent/STATE.md` for what is currently true.
