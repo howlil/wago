@@ -56,4 +56,23 @@ describe("API key rotation dashboard controls", () => {
     await user.click(screen.getByRole("button", { name: /rotate and revoke other sessions/i }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
+
+  it("routes dialog dismissal through the cancellation boundary", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<RotateApiKeyDialog isOpen isRotating={false} onCancel={onCancel} onConfirm={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("prevents dismissal while API key rotation is in progress", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<RotateApiKeyDialog isOpen isRotating onCancel={onCancel} onConfirm={vi.fn()} />);
+
+    await user.keyboard("{Escape}");
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: /rotate api key/i })).toBeTruthy();
+  });
 });
