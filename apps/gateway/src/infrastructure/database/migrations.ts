@@ -271,6 +271,21 @@ export const migrations: Migration[] = [
         ON webhook_delivery_attempts(outcome, started_at DESC);
     `,
   },
+  {
+    version: 13,
+    sql: `
+      CREATE TRIGGER IF NOT EXISTS redact_terminal_inbound_webhook_payload
+      AFTER UPDATE OF status ON webhook_deliveries
+      WHEN NEW.event_type = 'message.received'
+        AND NEW.status IN ('delivered', 'failed', 'expired')
+        AND NEW.payload_json <> '{}'
+      BEGIN
+        UPDATE webhook_deliveries
+        SET payload_json = '{}'
+        WHERE id = NEW.id;
+      END;
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
