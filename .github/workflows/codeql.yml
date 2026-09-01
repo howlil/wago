@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths-ignore:
-      - ".agent/**"
+      - ".agents/**"
       - "*.md"
       - "apps/docs/**"
   push:
     branches:
       - main
     paths-ignore:
-      - ".agent/**"
+      - ".agents/**"
       - "*.md"
       - "apps/docs/**"
   schedule:
