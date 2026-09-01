@@ -24,6 +24,7 @@ describe("database migrations", () => {
       { version: 10 },
       { version: 11 },
       { version: 12 },
+      { version: 13 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -117,6 +118,29 @@ describe("database migrations", () => {
     expect(instanceLeaseColumns.map((column) => column.name)).toEqual(
       expect.arrayContaining(["id", "owner_id", "acquired_at", "heartbeat_at", "expires_at"]),
     );
+
+    database.close();
+  });
+
+  it("redacts message.received payloads atomically when a delivery becomes terminal", () => {
+    const database = new DatabaseSync(":memory:");
+    runMigrations(database, migrations);
+
+    database
+      .prepare(`
+        INSERT INTO webhook_deliveries (
+          id, schema_version, event_type, message_id, payload_json, status,
+          attempt_count, redelivery_count, next_attempt_at, created_at, expires_at
+        ) VALUES (?, 1, 'message.received', ?, ?, 'pending', 0, 0, ?, ?, ?)
+      `)
+      .run("delivery-inbound", "in_message", '{"data":{"from":"6281","text":"secret"}}', 1, 1, 1000);
+
+    database.prepare("UPDATE webhook_deliveries SET status = 'delivered' WHERE id = ?").run("delivery-inbound");
+
+    const row = database.prepare("SELECT payload_json FROM webhook_deliveries WHERE id = ?").get("delivery-inbound") as {
+      payload_json: string;
+    };
+    expect(row.payload_json).toBe("{}");
 
     database.close();
   });
