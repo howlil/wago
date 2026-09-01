@@ -12,7 +12,7 @@ import {
 import { bindWhatsAppAccount, clearWhatsAppBinding } from "./binding-store.js";
 import { markConnected, markDisconnected, markQr } from "./connection-state.js";
 import { classifyDisconnect } from "./disconnect-classifier.js";
-import { normalizeInboundTextMessage, type InboundTextMessage } from "./inbound-message.js";
+import { type InboundTextMessage, normalizeInboundTextMessage } from "./inbound-message.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
 import {
