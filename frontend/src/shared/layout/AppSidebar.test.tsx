@@ -1,4 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./AppSidebar.js";
 
@@ -33,6 +34,51 @@ describe("AppSidebar", () => {
     expect(control.className).toContain("h-10");
     expect(control.className).toContain("w-10");
     expect(control.className).toContain("mx-auto");
+  });
+
+  it("exposes mobile navigation as a labeled dialog", () => {
+    render(
+      <AppSidebar activePath="/" collapsed={false} mobileOpen onToggleCollapsed={vi.fn()} onCloseMobile={vi.fn()} />,
+    );
+
+    const navigationSheet = screen.getByRole("dialog", { name: "Navigation" });
+    expect(within(navigationSheet).getByRole("navigation", { name: "Mobile application navigation" })).toBeTruthy();
+    expect(within(navigationSheet).getByRole("link", { name: "Settings" })).toBeTruthy();
+  });
+
+  it("routes Escape dismissal through the mobile navigation boundary", async () => {
+    const user = userEvent.setup();
+    const onCloseMobile = vi.fn();
+    render(
+      <AppSidebar
+        activePath="/"
+        collapsed={false}
+        mobileOpen
+        onToggleCollapsed={vi.fn()}
+        onCloseMobile={onCloseMobile}
+      />,
+    );
+
+    await user.keyboard("{Escape}");
+    expect(onCloseMobile).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes the close control through the mobile navigation boundary", async () => {
+    const user = userEvent.setup();
+    const onCloseMobile = vi.fn();
+    render(
+      <AppSidebar
+        activePath="/"
+        collapsed={false}
+        mobileOpen
+        onToggleCollapsed={vi.fn()}
+        onCloseMobile={onCloseMobile}
+      />,
+    );
+
+    const navigationSheet = screen.getByRole("dialog", { name: "Navigation" });
+    await user.click(within(navigationSheet).getByRole("button", { name: "Close sidebar" }));
+    expect(onCloseMobile).toHaveBeenCalledTimes(1);
   });
 
   it("does not render promotional self-hosted copy in the operator navigation", () => {
