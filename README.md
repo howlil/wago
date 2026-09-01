@@ -27,7 +27,8 @@ Current capabilities include:
 - protected outbound text messaging with idempotency and local guardrails
 - durable bounded outbound diagnostics for `pending`, `accepted`, and `rejected` message state plus transport state
 - crash-safe outbound intent/idempotency reservation with explicit `indeterminate` diagnostics for uncertain transport outcomes
-- durable signed delivery webhooks with retry, restart recovery, history, and manual redelivery
+- signed `message.received` webhooks for live direct/private incoming text
+- durable signed outbound-delivery webhooks with retry, restart recovery, history, and manual redelivery where retained payload permits it
 - webhook configuration, test delivery, and signing-secret rotation from authenticated Settings
 - WhatsApp reach-out/new-chat account-health signals
 - structured sanitized Wago/Baileys audit events
@@ -35,7 +36,7 @@ Current capabilities include:
 - separate liveness (`/health`) and operational readiness (`/ready`)
 - Docker/GHCR distribution, CI, CodeQL, and multi-architecture images
 
-Wago intentionally does **not** provide bulk campaigns, scraping, multi-session/multi-tenant behavior, anti-detection features, restriction bypassing, message-history persistence, inbound messaging APIs, media, or groups.
+Wago intentionally does **not** provide bulk campaigns, scraping, multi-session/multi-tenant behavior, anti-detection features, restriction bypassing, message-history persistence, a dashboard inbox/chat client, media, or groups.
 
 ## Authentication model
 
@@ -198,9 +199,35 @@ Delivery states are `pending`, `accepted`, and `rejected`. `accepted` means What
 
 An `indeterminate` transport state means Wago cannot prove whether WhatsApp accepted the submission, for example after a process restart or ambiguous transport failure while submission was in progress. Wago keeps the idempotency reservation and does not resend automatically. Known definitive WhatsApp rejections can release the reservation for a deliberate retry.
 
-## Delivery webhooks
+## Webhook events
 
 Webhook configuration is managed from **Settings → Webhook integration**. Wago persists the callback URL and signing secret in private SQLite state because the raw signing secret is required to produce HMAC signatures.
+
+Supported production events are:
+
+- `message.received` — live direct/private incoming text
+- `message.server_accepted` — outbound message reached at least WhatsApp server acknowledgement
+- `message.rejected` — outbound message was rejected
+- `wago.test` — dashboard-triggered configuration test
+
+A `message.received` callback has this shape:
+
+```json
+{
+  "version": "1",
+  "id": "<webhook-delivery-id>",
+  "event": "message.received",
+  "createdAt": "2026-09-02T00:00:01.000Z",
+  "data": {
+    "messageId": "in_<stable-wago-id>",
+    "from": "6281234567890",
+    "text": "hello",
+    "receivedAt": "2026-09-02T00:00:00.000Z"
+  }
+}
+```
+
+Incoming support is intentionally narrow: Wago emits this event only for live Baileys `notify` events from direct/private chats. `fromMe` echoes, history `append` events, groups, status/broadcast/newsletter traffic, and non-text payloads are ignored. The Wago `data.messageId` is deterministic so duplicate provider notifications converge on one logical incoming event.
 
 After saving an enabled webhook configuration, **Send test webhook** queues a `wago.test` callback through the same production signing, timeout, durable queue, retry, and delivery-history path. The test body contains no message content or recipient data. `POST /webhooks/test` is a dashboard-only action: it requires a valid browser session, enforces same-origin in production, and does not accept Bearer-only API authentication.
 
@@ -208,12 +235,13 @@ Webhook requests include a stable delivery ID, timestamp, event type, and HMAC-S
 
 - verify the signature against the raw request body
 - enforce a reasonable timestamp age
-- deduplicate by `Webhook-Id`
+- deduplicate callbacks by `Webhook-Id`
+- for incoming business-message dedupe, also use `data.messageId`
 - handle callbacks idempotently
 
-Delivery semantics are **at least once**. Retry and manual redelivery preserve the same delivery ID. Network errors, timeouts, `408`, `429`, and `5xx` responses are retried durably for up to 24 hours.
+Delivery semantics are **at least once**. Network errors, timeouts, `408`, `429`, and `5xx` responses are retried durably for up to 24 hours. Automatic retries preserve the same delivery ID.
 
-Wago deliberately excludes message text, API credentials, and recipient phone/JID data from webhook payloads.
+Incoming sender/text is not retained as chat history. It exists in SQLite only inside the active durable retry payload while `message.received` is `pending` or `delivering`, for at most the 24-hour retry horizon. When that delivery becomes `delivered`, `failed`, or `expired`, SQLite atomically redacts the payload to `{}` while retaining sanitized delivery and attempt metadata. Because the payload has been destroyed, terminal `message.received` deliveries cannot be manually redelivered. Message content and full sender identifiers are never exposed in webhook diagnostics or audit logs.
 
 ## API summary
 
@@ -247,9 +275,9 @@ Wago deliberately excludes message text, API credentials, and recipient phone/JI
 | `POST` | `/webhooks/test` | Browser session | Queue a signed test callback through the durable production webhook path |
 | `GET` | `/webhooks/deliveries` | API key/session | List durable delivery metadata |
 | `GET` | `/webhooks/deliveries/:id` | API key/session | Inspect one delivery |
-| `POST` | `/webhooks/deliveries/:id/redeliver` | API key/session | Queue manual redelivery |
+| `POST` | `/webhooks/deliveries/:id/redeliver` | API key/session | Queue manual redelivery when the retained payload permits it |
 
-See the Astro API reference for complete request fields, response contracts, errors, and the Hybrid API Explorer. Dashboard-only operator actions such as `/app/admin/setup` and `/webhooks/test` are documented here and in Configuration rather than exposed through the machine-oriented API Explorer.
+Incoming messages arrive asynchronously through the configured webhook rather than an inbound HTTP polling endpoint. See the Astro API/configuration reference for complete request fields, response contracts, errors, signing details, and the Hybrid API Explorer. Dashboard-only operator actions such as `/app/admin/setup` and `/webhooks/test` are documented here and in Configuration rather than exposed through the machine-oriented API Explorer.
 
 ## Outbound safety
 
@@ -261,7 +289,7 @@ Current local defaults include:
 - recipient: 5 accepted sends per recipient per 60 seconds
 - new chats: 10 new recipients per hour
 - `/messages/send`: 30 HTTP requests/minute
-- `/whatsapp/pair` and `/whatsapp/rebind`: 5 HTTP requests/minute each
+- `/whatsapp/pair` and `/whatsapp/rebind`: 5 requests/minute each
 - `/webhooks/test`: 5 requests/minute for authenticated dashboard sessions
 - webhook manual redelivery: 20 requests/minute per source IP
 
@@ -271,9 +299,9 @@ These are Wago defensive defaults, **not** official WhatsApp safe limits or anti
 
 `wago.db` contains gateway settings, generated API-key hash, salted admin-password hash, browser sessions, WhatsApp binding metadata, recipient state, outbound policy state, bounded outbound diagnostic metadata, webhook queue/settings, instance lease, migrations, and bounded structured audit events.
 
-Message bodies, raw admin passwords, current QR values, reconnect state, and account-health cache are not persisted as durable application history. Outbound diagnostic records persist sanitized metadata only and never store the message body.
+Wago does not retain incoming or outgoing message bodies as application/chat history. Outbound diagnostic records persist sanitized metadata only and never store the outbound message body. A `message.received` sender/text payload is the narrow exception required for restart-safe delivery: it is durable only while that webhook is active, for at most 24 hours, and is atomically removed when the delivery becomes terminal. Current QR values, reconnect state, and account-health cache are also not persisted as durable application history.
 
-For filesystem backup, stop Wago cleanly and capture the entire `/app/data` volume as one secret-bearing snapshot. Do not copy only `wago.db` from a live WAL-mode database. Backups contain the admin-password hash, WhatsApp credentials, and webhook signing material; protect them accordingly.
+For filesystem backup, stop Wago cleanly and capture the entire `/app/data` volume as one secret-bearing snapshot. Do not copy only `wago.db` from a live WAL-mode database. Backups contain the admin-password hash, WhatsApp credentials, webhook signing material, and may contain active incoming-message retry payloads; protect them accordingly.
 
 ## Container image
 
