@@ -285,7 +285,7 @@ The repository name is `wago`; `wago-simple` remains the existing GHCR distribut
 
 ## Documentation
 
-The bilingual public Astro documentation lives in [`apps/docs/`](apps/docs/). Internal implementation specs and historical execution notes live under [`.agent/`](.agent/) and are not product documentation.
+The bilingual public Astro documentation lives in [`apps/docs/`](apps/docs/). Canonical project knowledge and active engineering state live under [`.agents/`](.agents/) and are not product documentation.
 
 ## Development
 
