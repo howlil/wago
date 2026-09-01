@@ -223,5 +223,13 @@ webhookRouter.post("/deliveries/:id/redeliver", requireAuthenticatedRequest, red
     });
   }
 
+  if (result.kind === "payload_unavailable") {
+    return res.status(409).json({
+      success: false,
+      error: "WEBHOOK_PAYLOAD_REDACTED",
+      message: "Incoming message payload was redacted after terminal delivery and cannot be manually redelivered",
+    });
+  }
+
   return res.status(202).json({ success: true, delivery: result.delivery });
 });
