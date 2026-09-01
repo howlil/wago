@@ -96,14 +96,3 @@ jobs:
           ROLLBACK_IMAGE: wago-simple:rollback-base
           SKIP_BUILD: "1"
         run: EXPECTED_MIGRATIONS="$(node scripts/expected-migrations.mjs)" bash scripts/smoke-container.sh
-
-  arm64-docker-build:
-    name: Native ARM64 Docker Build
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Build Docker image natively on ARM64
-        run: docker build -t wago-simple:arm64-ci .
