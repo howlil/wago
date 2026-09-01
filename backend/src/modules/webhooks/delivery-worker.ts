@@ -9,6 +9,7 @@ export type WebhookDeliveryWorkerStore = {
     nowMs: number,
     random?: () => number,
   ): StoredWebhookDelivery | null;
+  recoverInterrupted?(nowMs: number): number;
   pruneTerminal(nowMs: number): number;
 };
 
@@ -101,6 +102,7 @@ export function createWebhookDeliveryWorker(deps: WebhookDeliveryWorkerDependenc
 
       const fields = {
         deliveryId: updated.id,
+        messageId: updated.messageId,
         webhookEvent: updated.event,
         attemptCount: updated.attemptCount,
         statusCode: updated.lastStatusCode,
@@ -140,6 +142,14 @@ export function createWebhookDeliveryWorker(deps: WebhookDeliveryWorkerDependenc
   function start(): void {
     if (timer) {
       return;
+    }
+
+    const recoveredCount = deps.store.recoverInterrupted?.(now()) ?? 0;
+    if (recoveredCount > 0) {
+      deps.logger.warn(
+        { event: "webhook.delivery.recovered", recoveredCount },
+        "Interrupted webhook attempts were recovered for retry",
+      );
     }
 
     void tick();

@@ -23,6 +23,7 @@ describe("database migrations", () => {
       { version: 9 },
       { version: 10 },
       { version: 11 },
+      { version: 12 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -38,6 +39,25 @@ describe("database migrations", () => {
         "next_attempt_at",
         "expires_at",
         "redelivery_count",
+      ]),
+    );
+
+    const webhookAttemptColumns = database.prepare("PRAGMA table_info(webhook_delivery_attempts)").all() as Array<{
+      name: string;
+    }>;
+    expect(webhookAttemptColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "delivery_id",
+        "sequence",
+        "redelivery_number",
+        "outcome",
+        "started_at",
+        "completed_at",
+        "status_code",
+        "error_code",
+        "retryable",
+        "next_attempt_at",
       ]),
     );
 
