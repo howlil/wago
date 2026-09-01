@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { AppHeader } from "../layout/AppHeader.js";
 import { AppSidebar, type WorkspacePath } from "../layout/AppSidebar.js";
-import { TooltipProvider } from "../ui/tooltip.js";
 
 type AppShellProps = {
   children: ReactNode;
@@ -76,30 +75,28 @@ export function AppShell({
   }
 
   return (
-    <TooltipProvider delayDuration={350} skipDelayDuration={150}>
-      <div className="min-h-screen text-wago-ink">
-        <AppSidebar
-          activePath={activePath}
-          collapsed={sidebarCollapsed}
-          mobileOpen={mobileNavOpen}
-          onToggleCollapsed={toggleSidebar}
-          onCloseMobile={() => setMobileNavOpen(false)}
-        />
+    <div className="min-h-screen text-wago-ink">
+      <AppSidebar
+        activePath={activePath}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileNavOpen}
+        onToggleCollapsed={toggleSidebar}
+        onCloseMobile={() => setMobileNavOpen(false)}
+      />
 
-        <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-14" : "lg:pl-[196px]"}`}>
-          <AppHeader
-            title={title}
-            description={description}
-            statusLabel={statusLabel}
-            statusTone={statusTone}
-            isRefreshing={isRefreshing}
-            onRefresh={onRefresh}
-            refreshLabel={refreshLabel}
-            onOpenMobileNav={() => setMobileNavOpen(true)}
-          />
-          <main className="px-4 pb-8 pt-4 md:px-5 lg:px-6 lg:pb-10">{children}</main>
-        </div>
+      <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-14" : "lg:pl-[196px]"}`}>
+        <AppHeader
+          title={title}
+          description={description}
+          statusLabel={statusLabel}
+          statusTone={statusTone}
+          isRefreshing={isRefreshing}
+          onRefresh={onRefresh}
+          refreshLabel={refreshLabel}
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+        />
+        <main className="px-4 pb-8 pt-4 md:px-5 lg:px-6 lg:pb-10">{children}</main>
       </div>
-    </TooltipProvider>
+    </div>
   );
 }
