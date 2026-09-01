@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { AppHeader } from "../layout/AppHeader.js";
 import { AppSidebar, type WorkspacePath } from "../layout/AppSidebar.js";
 
@@ -45,6 +45,26 @@ export function AppShell({
 }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const desktopViewport = window.matchMedia("(min-width: 1024px)");
+    const closeMobileNavigation = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        setMobileNavOpen(false);
+      }
+    };
+
+    if (desktopViewport.matches) {
+      setMobileNavOpen(false);
+    }
+
+    desktopViewport.addEventListener("change", closeMobileNavigation);
+    return () => desktopViewport.removeEventListener("change", closeMobileNavigation);
+  }, []);
 
   function toggleSidebar(): void {
     setSidebarCollapsed((current) => {

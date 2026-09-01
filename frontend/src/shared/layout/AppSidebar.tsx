@@ -1,5 +1,6 @@
 import { Gauge, PanelLeftClose, PanelLeftOpen, ScrollText, Settings2, X } from "lucide-react";
 import type { ComponentType } from "react";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet.js";
 import { AppBrand } from "./AppBrand.js";
 
 export type WorkspacePath = "/" | "/audit" | "/settings";
@@ -114,35 +115,35 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
         ) : null}
       </aside>
 
-      {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            className="absolute inset-0 bg-[#10251d]/35"
-            type="button"
-            onClick={onCloseMobile}
-            aria-label="Close navigation"
-          />
-          <aside className="relative flex h-full w-[248px] flex-col border-r border-wago-line bg-white shadow-2xl">
-            <div className="flex min-h-14 items-center justify-between border-b border-wago-line px-3">
-              <AppBrand />
+      <Sheet
+        open={mobileOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            onCloseMobile();
+          }
+        }}
+      >
+        <SheetContent>
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetDescription className="sr-only">Application navigation</SheetDescription>
+          <div className="flex min-h-14 items-center justify-between border-b border-wago-line px-3">
+            <AppBrand />
+            <SheetClose asChild>
               <button
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
                 type="button"
-                onClick={onCloseMobile}
                 aria-label="Close sidebar"
               >
                 <X size={17} />
               </button>
-            </div>
-            <div className="px-3 pt-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">
-              Workspace
-            </div>
-            <nav className="px-2 py-2" aria-label="Mobile application navigation">
-              <WorkspaceNavigation activePath={activePath} onNavigate={onCloseMobile} />
-            </nav>
-          </aside>
-        </div>
-      ) : null}
+            </SheetClose>
+          </div>
+          <div className="px-3 pt-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">Workspace</div>
+          <nav className="px-2 py-2" aria-label="Mobile application navigation">
+            <WorkspaceNavigation activePath={activePath} onNavigate={onCloseMobile} />
+          </nav>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
