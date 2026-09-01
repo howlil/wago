@@ -18,8 +18,8 @@ function senderFromPhoneJid(jid: string): string | null {
   return local || null;
 }
 
-function inboundMessageId(phoneJid: string, providerMessageId: string): string {
-  const digest = createHash("sha256").update(`${phoneJid}:${providerMessageId}`).digest("hex").slice(0, 32);
+function inboundMessageId(from: string, providerMessageId: string): string {
+  const digest = createHash("sha256").update(`${from}:${providerMessageId}`).digest("hex").slice(0, 32);
   return `in_${digest}`;
 }
 
@@ -43,7 +43,7 @@ export function normalizeInboundTextMessage(
   if (typeof text !== "string" || text.trim().length === 0) return null;
 
   return {
-    messageId: inboundMessageId(phoneJid, providerMessageId),
+    messageId: inboundMessageId(from, providerMessageId),
     from,
     text,
     receivedAt: now().toISOString(),
