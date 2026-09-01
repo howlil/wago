@@ -77,9 +77,7 @@ describe("socket event wiring", () => {
 
     ev.emit("messages.upsert", { type: "notify", messages: [inbound] });
     expect(onIncomingMessage).toHaveBeenCalledTimes(1);
-    expect(onIncomingMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ from: "6281234567890", text: "hello" }),
-    );
+    expect(onIncomingMessage).toHaveBeenCalledWith(expect.objectContaining({ from: "6281234567890", text: "hello" }));
   });
 
   it("does not persist credential events from a stale socket generation", () => {
