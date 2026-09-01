@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "docs/**"
+      - "apps/docs/**"
+      - "Taskfile.yml"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -12,7 +13,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "docs/**"
+      - "apps/docs/**"
+      - "Taskfile.yml"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -41,11 +43,16 @@ jobs:
           runtime: node@26
           cache: true
 
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run docs tests
-        run: pnpm test:docs
+        run: task docs:test
 
       - name: Build docs
-        run: pnpm build:docs
+        run: task docs:build

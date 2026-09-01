@@ -1,0 +1,136 @@
+version: "3"
+
+silent: true
+
+tasks:
+  default:
+    desc: List available Wago tasks
+    cmds:
+      - task --list
+
+  install:
+    desc: Install all workspace dependencies
+    cmds:
+      - pnpm install
+
+  lint:
+    desc: Check formatting and lint rules
+    cmds:
+      - pnpm check
+
+  lint:fix:
+    desc: Apply Biome formatting and safe fixes
+    cmds:
+      - pnpm check:fix
+
+  dev:
+    desc: Run gateway and dashboard development servers
+    deps:
+      - gateway:dev
+      - dashboard:dev
+
+  gateway:dev:
+    desc: Run the WhatsApp gateway in development mode
+    cmds:
+      - pnpm --filter @wago/gateway dev
+
+  gateway:test:
+    desc: Run gateway tests
+    cmds:
+      - pnpm --filter @wago/gateway test
+
+  gateway:build:
+    desc: Build the gateway
+    cmds:
+      - pnpm --filter @wago/gateway build
+
+  dashboard:dev:
+    desc: Run the dashboard development server
+    cmds:
+      - pnpm --filter @wago/dashboard dev
+
+  dashboard:test:
+    desc: Run dashboard tests
+    cmds:
+      - pnpm --filter @wago/dashboard test
+
+  dashboard:build:
+    desc: Build the dashboard
+    cmds:
+      - pnpm --filter @wago/dashboard build
+
+  docs:dev:
+    desc: Run the public documentation site
+    cmds:
+      - pnpm --filter @wago/docs dev
+
+  docs:test:
+    desc: Run documentation tests
+    cmds:
+      - pnpm --filter @wago/docs test
+
+  docs:build:
+    desc: Build the documentation site
+    cmds:
+      - pnpm --filter @wago/docs build
+
+  core:test:
+    desc: Run gateway and dashboard tests
+    deps:
+      - gateway:test
+      - dashboard:test
+
+  core:build:
+    desc: Build gateway and dashboard
+    deps:
+      - gateway:build
+      - dashboard:build
+
+  core:check:
+    desc: Run all distributable-core quality gates
+    cmds:
+      - task: lint
+      - task: core:test
+      - task: core:build
+
+  test:
+    desc: Run all workspace tests
+    deps:
+      - gateway:test
+      - dashboard:test
+      - docs:test
+
+  build:
+    desc: Build all workspace applications
+    deps:
+      - gateway:build
+      - dashboard:build
+      - docs:build
+
+  check:
+    desc: Run repository-wide quality gates
+    cmds:
+      - task: lint
+      - task: test
+      - task: build
+
+  docs:check:
+    desc: Run documentation tests and build
+    cmds:
+      - task: docs:test
+      - task: docs:build
+
+  docker:build:
+    desc: Build the local production container image
+    cmds:
+      - docker build -t wago-simple:local .
+
+  docker:up:
+    desc: Start Wago with Docker Compose
+    cmds:
+      - docker compose up -d
+
+  docker:down:
+    desc: Stop Wago Docker Compose services
+    cmds:
+      - docker compose down

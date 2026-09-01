@@ -69,7 +69,7 @@ behavior -> owner -> boundary -> module/feature -> file
 ### Backend
 
 ```text
-backend/src/
+apps/gateway/src/
 ├── app.ts
 ├── index.ts
 ├── app/             application composition/lifecycle
@@ -99,7 +99,7 @@ Ownership rules:
 ### Frontend
 
 ```text
-frontend/src/
+apps/dashboard/src/
 ├── App.tsx           application composition
 ├── main.tsx          runtime bootstrap
 ├── features/         feature-owned behavior/state
@@ -125,7 +125,7 @@ Frontend ownership rules:
 - Keep `App.tsx` and shell code as composition surfaces.
 - Prefer local React state and focused hooks until current complexity proves a broader mechanism is needed.
 - Use Wago product vocabulary in UI; expose provider internals only for justified diagnosis.
-- `frontend/DESIGN.md` owns detailed UI/interaction/layout rules.
+- `apps/dashboard/DESIGN.md` owns detailed UI/interaction/layout rules.
 
 ## State and dependency model
 

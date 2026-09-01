@@ -4,9 +4,9 @@ Describe the behavior change and why it is needed.
 
 ## Verification
 
-- [ ] `pnpm check`
-- [ ] `pnpm test`
-- [ ] `pnpm build`
+- [ ] `task lint`
+- [ ] `task test`
+- [ ] `task build`
 - [ ] Docker or manual smoke test, if relevant
 
 ## Safety

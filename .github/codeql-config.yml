@@ -1,4 +1,4 @@
 name: Core CodeQL configuration
 
 paths-ignore:
-  - docs/**
+  - apps/docs/**

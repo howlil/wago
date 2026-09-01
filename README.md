@@ -285,25 +285,25 @@ The repository name is `wago`; `wago-simple` remains the existing GHCR distribut
 
 ## Documentation
 
-The bilingual public Astro documentation lives in [`docs/`](docs/). Internal implementation specs and historical execution notes live under [`.agent/`](.agent/) and are not product documentation.
+The bilingual public Astro documentation lives in [`apps/docs/`](apps/docs/). Internal implementation specs and historical execution notes live under [`.agent/`](.agent/) and are not product documentation.
 
 ## Development
 
-Requirements: Node.js 26 and pnpm 11.21.0.
+Requirements: Node.js 26, pnpm 11.21.0, and Task.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm check
-pnpm test
-pnpm build
+task lint
+task test
+task build
 ```
 
 Useful local commands:
 
 ```bash
-pnpm --dir backend dev
-pnpm --dir frontend dev
-pnpm --dir docs dev
+task gateway:dev
+task dashboard:dev
+task docs:dev
 ```
 
 ## Security and contributing

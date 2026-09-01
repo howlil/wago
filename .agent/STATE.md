@@ -19,7 +19,7 @@ Wago is a production-grade, single-instance, self-hosted WhatsApp gateway with:
 - recipient permission, concurrency-safe idempotency, and bounded outbound safeguards;
 - durable bounded outbound diagnostics using Wago-owned canonical message IDs;
 - signed at-least-once webhook delivery with durable bounded attempt diagnostics and manual redelivery support;
-- public documentation under `docs/`.
+- public documentation under `apps/docs/`.
 
 ## Operator UX
 
@@ -41,7 +41,7 @@ Current behavior:
 - Application integration is optional after WhatsApp becomes operational; it is not a pairing prerequisite.
 - User-facing terminology prefers gateway/WhatsApp transport concepts over Baileys internals unless diagnosis requires provider detail.
 - Workspace navigation is client-side and should remain smooth without full-page loading behavior.
-- The visual language remains compact, border-led, information-dense, and consistent with `frontend/DESIGN.md`.
+- The visual language remains compact, border-led, information-dense, and consistent with `apps/dashboard/DESIGN.md`.
 
 ## Current architecture ownership
 
@@ -71,7 +71,7 @@ settings
 whatsapp
 ```
 
-Frontend route/workspace composition lives under `frontend/src/pages/`. Architecture/dependency regression tests protect boundaries that are intentionally stable.
+Frontend route/workspace composition lives under `apps/dashboard/src/pages/`. Architecture/dependency regression tests protect boundaries that are intentionally stable.
 
 ## Current reliability model
 

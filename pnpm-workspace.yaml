@@ -1,9 +1,6 @@
 packages:
-  - backend
-  - frontend
-  - docs
-
-sharedWorkspaceLockfile: false
+  - apps/*
+  - packages/*
 
 allowBuilds:
   "@whiskeysockets/baileys": true
