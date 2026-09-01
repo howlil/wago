@@ -24,25 +24,27 @@ export function DashboardPage() {
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
       refreshLabel="Refresh status"
     >
-      <section aria-labelledby="gateway-status-title">
-        <div className="mb-2">
-          <h2 id="gateway-status-title" className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">
-            Gateway status
-          </h2>
-          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
-            Runtime readiness, WhatsApp connection and account availability.
-          </p>
-        </div>
-        <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
-        <OperationalReadinessBanner readiness={dashboard.readiness} />
-        <NoticeBanner notice={dashboard.notice} />
-        <div className="mt-4">
-          <DashboardMainColumn dashboard={dashboard} />
-        </div>
-        <IntegrationNextStep status={dashboard.status} apiKeyConfigured={dashboard.apiKeyConfigured} />
-      </section>
+      <div className="w-full max-w-[1180px]">
+        <section aria-labelledby="gateway-status-title">
+          <div className="mb-2">
+            <h2 id="gateway-status-title" className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">
+              Gateway status
+            </h2>
+            <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
+              Runtime readiness, WhatsApp connection and account availability.
+            </p>
+          </div>
+          <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
+          <OperationalReadinessBanner readiness={dashboard.readiness} />
+          <NoticeBanner notice={dashboard.notice} />
+          <div className="mt-4">
+            <DashboardMainColumn dashboard={dashboard} />
+          </div>
+          <IntegrationNextStep status={dashboard.status} apiKeyConfigured={dashboard.apiKeyConfigured} />
+        </section>
 
-      <DashboardDiagnostics dashboard={dashboard} />
+        <DashboardDiagnostics dashboard={dashboard} />
+      </div>
       <DashboardDialogs dashboard={dashboard} />
     </AppShell>
   );
