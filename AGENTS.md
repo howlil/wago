@@ -11,7 +11,7 @@ Read only the context relevant to the task:
 - `.agent/ENGINEERING.md` — implementation quality, testing/verification, dependency discipline, and Git rules.
 - `.agent/OPERATIONS.md` — persistence, deployment, readiness, backup/restore, rollback, and release safety.
 - `.agent/DECISIONS.md` — rationale for durable product/architecture decisions when that rationale is material.
-- `frontend/DESIGN.md` — frontend information architecture, interaction, responsive layout, and visual rules for UI work.
+- `apps/dashboard/DESIGN.md` — frontend information architecture, interaction, responsive layout, and visual rules for UI work.
 
 Do not preload all files or recursively audit the repository by default. Expand context only when the requested change or a discovered dependency requires it.
 

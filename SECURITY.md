@@ -21,7 +21,7 @@ Report vulnerabilities through GitHub private security advisories when available
 Do not include these values in public issues, discussions, screenshots, logs, pull requests, or CI artifacts:
 
 - `wago.db`, WAL/SHM files, or `/app/data` backups
-- `backend/data/auth`, `creds.json`, or any Baileys auth file
+- `apps/gateway/data/auth`, `creds.json`, or any Baileys auth file
 - QR payloads or QR screenshots from a live session
 - admin passwords, API keys, webhook signing secrets, browser-session cookies, or bearer tokens
 - full phone numbers, full JIDs, or message text
@@ -87,7 +87,7 @@ Rotating a generated API key from the authenticated dashboard immediately invali
 
 `POST /app/session/logout-all` revokes every browser session without changing the machine API key or WhatsApp auth. Use it when dashboard-session compromise is suspected. If the machine API key may also be exposed, rotate that credential as well.
 
-External integrations should continue to use `Authorization: Bearer <API_KEY>` from a backend/server process rather than exposing the API key in a public frontend bundle.
+External integrations should continue to use `Authorization: Bearer <API_KEY>` from a apps/gateway/server process rather than exposing the API key in a public frontend bundle.
 
 ## Transport Boundary
 
