@@ -2,6 +2,7 @@ import type { StoredWebhookDelivery } from "./delivery-store.js";
 import type { WebhookAttemptResult } from "./delivery-webhook-core.js";
 
 export type WebhookDeliveryWorkerStore = {
+  expireDue?(nowMs: number): number;
   claimDue(nowMs: number, limit?: number): StoredWebhookDelivery[];
   completeAttempt(
     id: string,
@@ -55,6 +56,8 @@ export function createWebhookDeliveryWorker(deps: WebhookDeliveryWorkerDependenc
 
   async function processBatch(): Promise<void> {
     const batchNow = now();
+    deps.store.expireDue?.(batchNow);
+
     if (batchNow >= nextPruneAt) {
       const deletedCount = deps.store.pruneTerminal(batchNow);
       nextPruneAt = batchNow + pruneIntervalMs;
