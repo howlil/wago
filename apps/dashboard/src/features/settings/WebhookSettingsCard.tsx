@@ -165,7 +165,8 @@ export function WebhookSettingsCard() {
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>Webhook integration</h2>
           <p className={sectionDescriptionClass}>
-            Send signed incoming-message and outbound-delivery events to another backend. Configuration is persisted by Wago.
+            Send signed incoming-message and outbound-delivery events to another backend. Configuration is persisted by
+            Wago.
           </p>
         </div>
         <span className={`shrink-0 text-xs font-medium ${enabled ? "text-wago-brand" : "text-wago-muted"}`}>
@@ -209,7 +210,8 @@ export function WebhookSettingsCard() {
         <div className="rounded-md border border-wago-line bg-wago-surface-soft px-3 py-2 text-[11px] leading-5 text-wago-muted">
           Events: <span className="font-mono text-wago-ink">message.received</span>,{" "}
           <span className="font-mono text-wago-ink">message.server_accepted</span>, and{" "}
-          <span className="font-mono text-wago-ink">message.rejected</span>. Incoming text/sender data is retained only while active retry delivery needs it and is removed when that delivery becomes terminal.
+          <span className="font-mono text-wago-ink">message.rejected</span>. Incoming text/sender data is retained only
+          while active retry delivery needs it and is removed when that delivery becomes terminal.
         </div>
 
         <label>
