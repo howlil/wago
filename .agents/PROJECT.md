@@ -64,7 +64,8 @@ Wago currently provides:
 - recipient allow/opt-out policy;
 - protected outbound text messaging with concurrency-safe idempotency and bounded defensive safeguards;
 - durable sanitized outbound diagnostics using Wago-owned message IDs;
-- signed at-least-once webhooks with retry, restart recovery, bounded attempt evidence, and manual redelivery;
+- signed at-least-once webhooks with retry, restart recovery, bounded attempt evidence, and manual redelivery where the retained payload permits it;
+- signed `message.received` webhooks for live incoming direct-chat text messages, with stable Wago message IDs and idempotent enqueueing;
 - sanitized audit logging and low-cardinality operational metrics;
 - separate liveness and readiness semantics;
 - Docker-first self-hosted distribution;
@@ -78,7 +79,10 @@ Unless the user explicitly authorizes a breaking change:
 - persisted SQLite state and released migrations remain compatible with supported upgrade/rollback expectations;
 - browser-session authentication remains separate from machine Bearer API-key access;
 - webhook delivery identity/signature semantics remain deliberate compatibility boundaries;
-- message bodies, raw auth secrets, raw protocol frames, and unnecessary recipient identifiers are not persisted or logged as diagnostics;
+- Wago does not persist chat/message history as a product record;
+- incoming `message.received` text and sender data may exist only inside the durable webhook retry payload while that delivery is active, for at most the bounded retry horizon, and must be redacted when the delivery becomes `delivered`, `failed`, or `expired`;
+- terminal incoming-message delivery diagnostics retain IDs/status/attempt evidence but not sender or message text, so manual redelivery is unavailable after redaction;
+- raw auth secrets, raw protocol frames, message content, and unnecessary recipient identifiers are not logged as diagnostics;
 - disconnected, checking, unavailable, degraded, and invalid-session states remain distinguishable where observable;
 - public compatibility routes such as `GET /messages/:id/status` are not removed merely because a newer route exists.
 
@@ -92,11 +96,12 @@ Unless a concrete approved requirement changes them:
 - Baileys authentication remains filesystem-backed under `/app/data/auth`;
 - Baileys/provider internals do not leak into unrelated capabilities or primary user-facing vocabulary without a diagnostic reason;
 - outbound safeguards are defensive controls, never enforcement-evasion mechanisms;
+- inbound support remains an integration event surface rather than message-history persistence or a dashboard inbox;
 - the dashboard remains a control plane rather than a CRM/general WhatsApp client.
 
 ## Product vocabulary
 
-Prefer Wago-owned concepts such as gateway readiness, WhatsApp connection, message operation, delivery diagnostics, recipient policy, webhook delivery, and audit evidence.
+Prefer Wago-owned concepts such as gateway readiness, WhatsApp connection, message operation, incoming message event, delivery diagnostics, recipient policy, webhook delivery, and audit evidence.
 
 Expose Baileys-specific concepts only where protocol diagnosis materially requires them.
 
@@ -113,5 +118,6 @@ Do not introduce without a concrete approved requirement:
 - dependency-injection frameworks;
 - generic repository/service/controller hierarchies;
 - speculative provider abstractions or plugin systems;
-- CRM/contact-management behavior;
+- CRM/contact-management behavior or a dashboard inbox/chat client;
+- full incoming/outgoing message-history persistence;
 - bulk/campaign behavior, scraping, fingerprint spoofing, proxy rotation, device spoofing, or restriction bypasses.
