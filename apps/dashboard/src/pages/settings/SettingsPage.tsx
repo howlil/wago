@@ -75,7 +75,7 @@ export function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          title="Webhook integration"
+          title="Delivery integration"
           description="Configure signed incoming-message and outbound-delivery events sent to your application."
         >
           <WebhookSettingsCard />
