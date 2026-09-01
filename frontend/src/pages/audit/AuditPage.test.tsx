@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listActivity } from "../../features/activity/api.js";
+import { TooltipProvider } from "../../shared/ui/tooltip.js";
 import { AuditPage } from "./AuditPage.js";
 
 vi.mock("../../features/activity/api.js", () => ({
@@ -34,6 +35,14 @@ const secondEvent = {
   description: "Wago is ready.",
 };
 
+function renderAuditPage() {
+  return render(
+    <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+      <AuditPage />
+    </TooltipProvider>,
+  );
+}
+
 beforeEach(() => {
   window.history.replaceState({}, "", "/audit");
   vi.mocked(listActivity).mockResolvedValue({
@@ -52,7 +61,7 @@ describe("AuditPage", () => {
   it("uses troubleshooting query params as initial filters", async () => {
     window.history.replaceState({}, "", "/audit?category=connection&level=warning");
 
-    render(<AuditPage />);
+    renderAuditPage();
 
     await waitFor(() => {
       expect(listActivity).toHaveBeenCalledWith({
@@ -68,7 +77,7 @@ describe("AuditPage", () => {
   it("ignores unsupported troubleshooting query params", async () => {
     window.history.replaceState({}, "", "/audit?category=internal&level=critical");
 
-    render(<AuditPage />);
+    renderAuditPage();
 
     await waitFor(() => {
       expect(listActivity).toHaveBeenCalledWith({ limit: 50 });
@@ -79,7 +88,7 @@ describe("AuditPage", () => {
 
   it("applies source, category, level, and bounded search filters automatically", async () => {
     const user = userEvent.setup();
-    render(<AuditPage />);
+    renderAuditPage();
 
     await screen.findByText("WhatsApp connection closed");
     expect(screen.queryByRole("button", { name: "Apply filters" })).toBeNull();
@@ -113,7 +122,7 @@ describe("AuditPage", () => {
       } as never);
 
     const user = userEvent.setup();
-    render(<AuditPage />);
+    renderAuditPage();
 
     expect(await screen.findByText("WhatsApp connection closed")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Load more audit events" }));
@@ -130,7 +139,7 @@ describe("AuditPage", () => {
 
   it("labels event source in gateway language and keeps technical metadata behind disclosure", async () => {
     const user = userEvent.setup();
-    render(<AuditPage />);
+    renderAuditPage();
 
     const eventTitle = await screen.findByText("WhatsApp connection closed");
     const eventRow = eventTitle.closest("article");

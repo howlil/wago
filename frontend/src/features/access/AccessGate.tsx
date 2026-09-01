@@ -2,6 +2,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { createContext, type FormEvent, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { ApiError } from "../../shared/api/client.js";
 import { fieldLabelClass, inputClass, primaryButtonClass, secondaryButtonClass } from "../../shared/ui/classes.js";
+import { Tooltip } from "../../shared/ui/tooltip.js";
 import { type AppInfoResponse, createAdminAccount, createBrowserSession, getAppInfo } from "../gateway/api.js";
 
 type AccessGateProps = {
@@ -75,6 +76,8 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
     }
   }
 
+  const passwordVisibilityLabel = showPassword ? "Hide admin password" : "Show admin password";
+
   return (
     <section className="rounded-xl border border-wago-line bg-wago-surface p-6 shadow-sm">
       <h1 className="text-xl font-semibold tracking-[-0.02em] text-wago-ink">
@@ -102,14 +105,16 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
               autoComplete={creatingAccount ? "new-password" : "current-password"}
             />
             {password ? (
-              <button
-                className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-[#758079]"
-                type="button"
-                onClick={() => setShowPassword((value) => !value)}
-                aria-label={showPassword ? "Hide admin password" : "Show admin password"}
-              >
-                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
+              <Tooltip content={passwordVisibilityLabel} side="top">
+                <button
+                  className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-[#758079]"
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={passwordVisibilityLabel}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </Tooltip>
             ) : null}
           </div>
         </div>

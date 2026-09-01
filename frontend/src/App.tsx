@@ -2,6 +2,7 @@ import { AccessGate } from "./features/access/AccessGate.js";
 import { AuditPage } from "./pages/audit/AuditPage.js";
 import { DashboardPage } from "./pages/dashboard/DashboardPage.js";
 import { SettingsPage } from "./pages/settings/SettingsPage.js";
+import { TooltipProvider } from "./shared/ui/tooltip.js";
 
 function currentPath(): string {
   return typeof window === "undefined" ? "/" : window.location.pathname;
@@ -20,8 +21,10 @@ function AuthenticatedApp() {
 
 export function App() {
   return (
-    <AccessGate>
-      <AuthenticatedApp />
-    </AccessGate>
+    <TooltipProvider delayDuration={350} skipDelayDuration={150}>
+      <AccessGate>
+        <AuthenticatedApp />
+      </AccessGate>
+    </TooltipProvider>
   );
 }
