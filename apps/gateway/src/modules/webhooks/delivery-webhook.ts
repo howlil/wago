@@ -9,9 +9,11 @@ import {
   type WebhookDeliveryStatus,
 } from "./delivery-store.js";
 import {
+  createIncomingMessageWebhookEnvelope,
   createMessageDeliveryWebhookEnvelope,
   createTestWebhookEnvelope,
   createWebhookAttemptSender,
+  type IncomingMessageWebhookInput,
   type MessageDeliveryWebhookInput,
 } from "./delivery-webhook-core.js";
 import { createWebhookDeliveryWorker } from "./delivery-worker.js";
@@ -56,7 +58,7 @@ function recordWorkerLifecycle(fields: Record<string, unknown>): void {
       category: "system",
       code: event,
       title: "Webhook delivery failed permanently",
-      description: "Webhook delivery reached a non-retryable failure and requires operator review before redelivery.",
+      description: "Webhook delivery reached a non-retryable failure and requires operator review.",
       metadata: lifecycleMetadata(fields),
     });
   } else if (event === "webhook.delivery.expired") {
@@ -115,6 +117,7 @@ export type PublicWebhookDelivery = Omit<
   deliveredAt: string | null;
   expiresAt: string;
   claimedAt: string | null;
+  redeliveryAvailable: boolean;
 };
 
 export type PublicWebhookAttempt = Omit<StoredWebhookDeliveryAttempt, "startedAt" | "completedAt" | "nextAttemptAt"> & {
@@ -152,6 +155,7 @@ export function serializeWebhookDelivery(delivery: StoredWebhookDelivery): Publi
     deliveredAt: iso(delivery.deliveredAt),
     expiresAt: new Date(delivery.expiresAt).toISOString(),
     claimedAt: iso(delivery.claimedAt),
+    redeliveryAvailable: delivery.event !== "message.received",
   };
 }
 
@@ -175,6 +179,40 @@ export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput
         errorType: error instanceof Error ? error.name : typeof error,
       },
       "Could not persist webhook delivery",
+    );
+  }
+}
+
+export function enqueueIncomingMessageWebhook(input: IncomingMessageWebhookInput): void {
+  const settings = settingsStore.get();
+  if (!settings?.enabled || !settings.url || !settings.secret) {
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const envelope = createIncomingMessageWebhookEnvelope(input, { now: () => now });
+    const queued = store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
+    if (queued.id === envelope.id) {
+      void recordActivity({
+        level: "info",
+        category: "messaging",
+        code: "webhook.inbound.queued",
+        title: "Incoming message webhook queued",
+        description: "A direct incoming text message was queued for signed webhook delivery.",
+        metadata: { messageId: input.messageId, deliveryId: queued.id, webhookEvent: envelope.event },
+      });
+    }
+    void worker.tick();
+  } catch (error) {
+    logger.error(
+      {
+        event: "webhook.enqueue_failed",
+        messageId: input.messageId,
+        webhookEvent: "message.received",
+        errorType: error instanceof Error ? error.name : typeof error,
+      },
+      "Could not persist incoming message webhook delivery",
     );
   }
 }
@@ -242,10 +280,22 @@ export function redeliverWebhookDelivery(
   | { kind: "disabled" }
   | { kind: "not_found" }
   | { kind: "in_progress"; delivery: PublicWebhookDelivery }
+  | { kind: "payload_unavailable"; delivery: PublicWebhookDelivery }
   | { kind: "queued"; delivery: PublicWebhookDelivery } {
   const settings = settingsStore.get();
   if (!settings?.enabled || !settings.url || !settings.secret) {
     return { kind: "disabled" };
+  }
+
+  const existing = store.get(id);
+  if (!existing) {
+    return { kind: "not_found" };
+  }
+  if (existing.status === "delivering") {
+    return { kind: "in_progress", delivery: serializeWebhookDelivery(existing) };
+  }
+  if (existing.event === "message.received") {
+    return { kind: "payload_unavailable", delivery: serializeWebhookDelivery(existing) };
   }
 
   const result = store.redeliver(id, Date.now());
