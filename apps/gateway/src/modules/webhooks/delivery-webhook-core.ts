@@ -4,12 +4,20 @@ export const WEBHOOK_SCHEMA_VERSION = "1" as const;
 
 export type MessageDeliveryWebhookStatus = "accepted" | "rejected";
 export type MessageDeliveryWebhookEvent = "message.server_accepted" | "message.rejected";
-export type WebhookEvent = MessageDeliveryWebhookEvent | "wago.test";
+export type IncomingMessageWebhookEvent = "message.received";
+export type WebhookEvent = MessageDeliveryWebhookEvent | IncomingMessageWebhookEvent | "wago.test";
 
 export type MessageDeliveryWebhookInput = {
   messageId: string;
   status: MessageDeliveryWebhookStatus;
   error?: string;
+};
+
+export type IncomingMessageWebhookInput = {
+  messageId: string;
+  from: string;
+  text: string;
+  receivedAt: string;
 };
 
 export type MessageDeliveryWebhookEnvelope = {
@@ -24,6 +32,19 @@ export type MessageDeliveryWebhookEnvelope = {
   };
 };
 
+export type IncomingMessageWebhookEnvelope = {
+  version: typeof WEBHOOK_SCHEMA_VERSION;
+  id: string;
+  event: IncomingMessageWebhookEvent;
+  createdAt: string;
+  data: {
+    messageId: string;
+    from: string;
+    text: string;
+    receivedAt: string;
+  };
+};
+
 export type TestWebhookEnvelope = {
   version: typeof WEBHOOK_SCHEMA_VERSION;
   id: string;
@@ -32,7 +53,7 @@ export type TestWebhookEnvelope = {
   data: Record<string, never>;
 };
 
-export type WebhookEnvelope = MessageDeliveryWebhookEnvelope | TestWebhookEnvelope;
+export type WebhookEnvelope = MessageDeliveryWebhookEnvelope | IncomingMessageWebhookEnvelope | TestWebhookEnvelope;
 
 export type WebhookAttemptTarget = {
   id: string;
@@ -101,6 +122,27 @@ export function createMessageDeliveryWebhookEnvelope(
     event: eventForStatus(input.status),
     createdAt: now().toISOString(),
     data,
+  };
+}
+
+export function createIncomingMessageWebhookEnvelope(
+  input: IncomingMessageWebhookInput,
+  deps: EnvelopeDependencies = {},
+): IncomingMessageWebhookEnvelope {
+  const createDeliveryId = deps.createDeliveryId ?? randomUUID;
+  const now = deps.now ?? (() => new Date());
+
+  return {
+    version: WEBHOOK_SCHEMA_VERSION,
+    id: createDeliveryId(),
+    event: "message.received",
+    createdAt: now().toISOString(),
+    data: {
+      messageId: input.messageId,
+      from: input.from,
+      text: input.text,
+      receivedAt: input.receivedAt,
+    },
   };
 }
 
