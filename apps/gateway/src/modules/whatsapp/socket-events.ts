@@ -2,6 +2,7 @@ import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
 import { getMessageStatusByProviderId, updateMessageStatusByProviderId } from "../messages/index.js";
 import { markRecipientReachoutRestricted, recordOutboundAcknowledged } from "../messages/outbound-policy.js";
+import { enqueueIncomingMessageWebhook } from "../webhooks/index.js";
 import {
   invalidateAccountHealth,
   markReachoutRestricted,
@@ -11,6 +12,7 @@ import {
 import { bindWhatsAppAccount, clearWhatsAppBinding } from "./binding-store.js";
 import { markConnected, markDisconnected, markQr } from "./connection-state.js";
 import { classifyDisconnect } from "./disconnect-classifier.js";
+import { type InboundTextMessage, normalizeInboundTextMessage } from "./inbound-message.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
 import {
@@ -35,6 +37,7 @@ type RegisterSocketEventsOptions = {
   resetReconnectAttempt: () => void;
   scheduleReconnect: (generation: number) => void;
   clearReconnectTimer?: () => void;
+  onIncomingMessage?: (message: InboundTextMessage) => void;
 };
 
 export function registerSocketEvents({
@@ -47,10 +50,33 @@ export function registerSocketEvents({
   resetReconnectAttempt,
   scheduleReconnect,
   clearReconnectTimer,
+  onIncomingMessage = enqueueIncomingMessageWebhook,
 }: RegisterSocketEventsOptions): void {
   socket.ev.on("creds.update", () => {
     if (!isCurrentGeneration(generation)) return;
     credentialWriter.enqueue(saveCreds, generation);
+  });
+
+  socket.ev.on("messages.upsert", (event) => {
+    if (!isCurrentGeneration(generation) || event.type !== "notify") return;
+
+    for (const message of event.messages) {
+      const incoming = normalizeInboundTextMessage(message);
+      if (!incoming) continue;
+
+      auditBaileys({
+        level: "info",
+        category: "messaging",
+        code: "baileys.message.received",
+        title: "Incoming WhatsApp message received",
+        description: "A direct incoming text message was accepted for Wago webhook processing.",
+        metadata: {
+          messageId: incoming.messageId,
+          socketGeneration: generation,
+        },
+      });
+      onIncomingMessage(incoming);
+    }
   });
 
   socket.ev.on("messages.update", (updates) => {

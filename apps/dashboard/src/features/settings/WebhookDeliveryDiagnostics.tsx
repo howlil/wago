@@ -94,7 +94,7 @@ export function WebhookDeliveryDiagnostics() {
   }
 
   async function redeliver(): Promise<void> {
-    if (!selected) return;
+    if (!selected?.redeliveryAvailable) return;
     setRedelivering(true);
     setError("");
     try {
@@ -115,7 +115,8 @@ export function WebhookDeliveryDiagnostics() {
         <div>
           <h3 className="m-0 text-xs font-semibold text-wago-ink">Delivery diagnostics</h3>
           <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
-            Recent callback state and append-only attempt evidence. Payloads and signing secrets are not shown here.
+            Recent callback state and append-only attempt evidence. Incoming message text and sender data are never
+            shown here.
           </p>
         </div>
         <button className={secondaryButtonClass} type="button" onClick={() => void refresh()} disabled={refreshing}>
@@ -174,12 +175,19 @@ export function WebhookDeliveryDiagnostics() {
               <div className="mt-1 text-[11px] text-wago-muted">
                 {selected.event} · {selected.status} · redeliveries {selected.redeliveryCount}
               </div>
+              {!selected.redeliveryAvailable ? (
+                <div className="mt-1 text-[10px] leading-4 text-wago-muted">
+                  Incoming payload was removed after terminal delivery; diagnostics remain, but manual redelivery is
+                  unavailable.
+                </div>
+              ) : null}
             </div>
             <button
               className={secondaryButtonClass}
               type="button"
               onClick={() => void redeliver()}
-              disabled={redelivering || selected.status === "delivering"}
+              disabled={redelivering || selected.status === "delivering" || !selected.redeliveryAvailable}
+              title={selected.redeliveryAvailable ? undefined : "Incoming payload was removed after terminal delivery"}
             >
               <RotateCcw size={13} />
               {redelivering ? "Redelivering" : "Redeliver"}

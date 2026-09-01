@@ -26,6 +26,7 @@ const delivery = {
   deliveredAt: null,
   expiresAt: "2026-09-01T06:59:00.000Z",
   claimedAt: null,
+  redeliveryAvailable: true,
 };
 
 const detail = {
@@ -83,5 +84,29 @@ describe("WebhookDeliveryDiagnostics", () => {
     await user.click(screen.getByRole("button", { name: "Redeliver" }));
     await waitFor(() => expect(redeliverWebhookDelivery).toHaveBeenCalledWith(delivery.id));
     expect(getWebhookDelivery).toHaveBeenCalledTimes(2);
+  });
+
+  it("explains why terminal incoming message deliveries cannot be manually redelivered", async () => {
+    const incoming = {
+      ...delivery,
+      id: "22222222-2222-4222-8222-222222222222",
+      event: "message.received",
+      messageId: "in_1234",
+      status: "delivered" as const,
+      lastStatusCode: 204,
+      redeliveryAvailable: false,
+    };
+    vi.mocked(getWebhookDeliveries).mockResolvedValue({ success: true, deliveries: [incoming] });
+    vi.mocked(getWebhookDelivery).mockResolvedValue({ success: true, delivery: { ...incoming, attempts: [] } });
+
+    const user = userEvent.setup();
+    render(<WebhookDeliveryDiagnostics />);
+
+    expect(await screen.findByText("message.received")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Inspect" }));
+
+    expect(await screen.findByText(/Incoming payload was removed after terminal delivery/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Redeliver" }).hasAttribute("disabled")).toBe(true);
+    expect(redeliverWebhookDelivery).not.toHaveBeenCalled();
   });
 });

@@ -28,6 +28,7 @@ describe("webhook delivery worker", () => {
   it("processes claimed deliveries and records the attempt result", async () => {
     const claimed = delivery();
     const completed = { ...claimed, status: "delivered" as const, attemptCount: 1, lastStatusCode: 204 };
+    const expireDue = vi.fn(() => 0);
     const claimDue = vi.fn(() => [claimed]);
     const completeAttempt = vi.fn(() => completed);
     const pruneTerminal = vi.fn(() => 0);
@@ -38,7 +39,7 @@ describe("webhook delivery worker", () => {
       error: vi.fn(),
     };
     const worker = createWebhookDeliveryWorker({
-      store: { claimDue, completeAttempt, pruneTerminal },
+      store: { expireDue, claimDue, completeAttempt, pruneTerminal },
       sender: { send },
       logger,
       now: () => 10_000,
@@ -47,6 +48,7 @@ describe("webhook delivery worker", () => {
 
     await worker.tick();
 
+    expect(expireDue).toHaveBeenCalledWith(10_000);
     expect(pruneTerminal).toHaveBeenCalledWith(10_000);
     expect(claimDue).toHaveBeenCalledWith(10_000, 10);
     expect(send).toHaveBeenCalledWith(claimed);
@@ -93,10 +95,12 @@ describe("webhook delivery worker", () => {
     expect(secondSend).toHaveBeenCalledWith(secondDelivery);
   });
 
-  it("does not claim due deliveries while runtime webhook delivery is disabled", async () => {
+  it("expires due deliveries without claiming them while runtime webhook delivery is disabled", async () => {
+    const expireDue = vi.fn(() => 1);
     const claimDue = vi.fn(() => [delivery()]);
     const worker = createWebhookDeliveryWorker({
       store: {
+        expireDue,
         claimDue,
         completeAttempt: () => null,
         pruneTerminal: () => 0,
@@ -108,6 +112,7 @@ describe("webhook delivery worker", () => {
 
     await worker.tick();
 
+    expect(expireDue).toHaveBeenCalledWith(10_000);
     expect(claimDue).not.toHaveBeenCalled();
   });
 

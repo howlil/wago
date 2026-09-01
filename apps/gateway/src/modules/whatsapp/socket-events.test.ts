@@ -38,15 +38,46 @@ function register(socket: WASocket): void {
 }
 
 describe("socket event wiring", () => {
-  it("registers the three Baileys event boundaries", () => {
+  it("registers the four Baileys event boundaries", () => {
     const ev = fakeSocketEvents();
     const socket = { ev } as unknown as WASocket;
 
     register(socket);
 
     expect(ev.on).toHaveBeenCalledWith("creds.update", expect.any(Function));
+    expect(ev.on).toHaveBeenCalledWith("messages.upsert", expect.any(Function));
     expect(ev.on).toHaveBeenCalledWith("messages.update", expect.any(Function));
     expect(ev.on).toHaveBeenCalledWith("connection.update", expect.any(Function));
+  });
+
+  it("routes only live direct incoming text notifications", () => {
+    const ev = fakeSocketEvents();
+    const socket = { ev } as unknown as WASocket;
+    const onIncomingMessage = vi.fn();
+
+    registerSocketEvents({
+      socket,
+      generation: 7,
+      saveCreds: vi.fn(async () => undefined),
+      credentialWriter: { enqueue: vi.fn() },
+      isCurrentGeneration: vi.fn(() => true),
+      getReconnectAttempt: vi.fn(() => 0),
+      resetReconnectAttempt: vi.fn(),
+      scheduleReconnect: vi.fn(),
+      onIncomingMessage,
+    });
+
+    const inbound = {
+      key: { id: "provider-inbound", remoteJid: "6281234567890@s.whatsapp.net", fromMe: false },
+      message: { conversation: "hello" },
+    };
+
+    ev.emit("messages.upsert", { type: "append", messages: [inbound] });
+    expect(onIncomingMessage).not.toHaveBeenCalled();
+
+    ev.emit("messages.upsert", { type: "notify", messages: [inbound] });
+    expect(onIncomingMessage).toHaveBeenCalledTimes(1);
+    expect(onIncomingMessage).toHaveBeenCalledWith(expect.objectContaining({ from: "6281234567890", text: "hello" }));
   });
 
   it("does not persist credential events from a stale socket generation", () => {

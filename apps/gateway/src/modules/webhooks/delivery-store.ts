@@ -139,6 +139,28 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
     return mapRow(row);
   }
 
+  function expireDueInsideTransaction(nowMs: number): number {
+    const expiringDeliveries = database
+      .prepare("SELECT id FROM webhook_deliveries WHERE status = 'delivering' AND expires_at <= ?")
+      .all(nowMs) as Array<{ id: string }>;
+    for (const delivery of expiringDeliveries) {
+      attemptStore.interrupt(delivery.id, nowMs, null);
+    }
+
+    const result = database
+      .prepare(`
+        UPDATE webhook_deliveries
+        SET status = 'expired', next_attempt_at = NULL, claimed_at = NULL
+        WHERE status IN ('pending', 'delivering') AND expires_at <= ?
+      `)
+      .run(nowMs);
+    return Number(result.changes);
+  }
+
+  function expireDue(nowMs: number): number {
+    return withTransaction(database, () => expireDueInsideTransaction(nowMs));
+  }
+
   function list(options: { status?: WebhookDeliveryStatus; limit?: number } = {}): StoredWebhookDelivery[] {
     const limit = Math.min(100, Math.max(1, options.limit ?? 50));
     const rows = options.status
@@ -154,20 +176,7 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
 
   function claimDue(nowMs: number, limit = 10): StoredWebhookDelivery[] {
     return withTransaction(database, () => {
-      const expiringDeliveries = database
-        .prepare("SELECT id FROM webhook_deliveries WHERE status = 'delivering' AND expires_at <= ?")
-        .all(nowMs) as Array<{ id: string }>;
-      for (const delivery of expiringDeliveries) {
-        attemptStore.interrupt(delivery.id, nowMs, null);
-      }
-
-      database
-        .prepare(`
-          UPDATE webhook_deliveries
-          SET status = 'expired', next_attempt_at = NULL, claimed_at = NULL
-          WHERE status IN ('pending', 'delivering') AND expires_at <= ?
-        `)
-        .run(nowMs);
+      expireDueInsideTransaction(nowMs);
 
       const staleClaimBefore = nowMs - WEBHOOK_CLAIM_TIMEOUT_MS;
       const rows = database
@@ -356,6 +365,7 @@ export function createWebhookDeliveryStore(database: DatabaseSync) {
     get,
     list,
     listAttempts: attemptStore.list,
+    expireDue,
     claimDue,
     completeAttempt,
     redeliver,

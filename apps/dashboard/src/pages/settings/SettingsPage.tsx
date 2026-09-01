@@ -76,7 +76,7 @@ export function SettingsPage() {
 
         <SettingsSection
           title="Delivery integration"
-          description="Configure how delivery lifecycle events are sent back to your application."
+          description="Configure signed incoming-message and outbound-delivery events sent to your application."
         >
           <WebhookSettingsCard />
           <WebhookDeliveryDiagnostics />
