@@ -8,7 +8,7 @@ Wago stores durable application state and WhatsApp authentication material under
 
 Sensitive runtime files include:
 
-- `/app/data/wago.db` — gateway settings, salted admin-password hash, generated API-key hash, browser-session hashes, webhook callback URL and signing secret, binding metadata, recipient consent state, outbound safety history, webhook delivery state, instance-lease state, and operator audit events
+- `/app/data/wago.db` — gateway settings, salted admin-password hash, generated API-key hash, browser-session hashes, webhook callback URL and signing secret, binding metadata, recipient consent state, outbound safety history, webhook delivery state, instance-lease state, operator audit events, and any active incoming-message webhook retry payload that has not yet reached a terminal delivery state
 - `/app/data/wago.db-wal` and `/app/data/wago.db-shm` while SQLite WAL mode is active
 - `/app/data/auth/` — long-lived Baileys/WhatsApp session credentials
 
@@ -33,7 +33,22 @@ If logs are needed, redact secrets and mask identifiers first.
 
 The `/audit` workspace and `GET /activity` endpoint expose structured operational evidence, not raw WhatsApp protocol capture. Baileys audit metadata is sanitized before persistence: only safe primitive values are retained, phone/JID-shaped identifiers are masked, and secret/protocol fields such as QR data, credential/key material, tokens, cookies, authorization values, password fields, message/text fields, and nested raw payloads are dropped.
 
+Incoming `message.received` processing follows the same audit boundary. Audit rows may record the stable Wago message ID, webhook delivery ID, event name, and lifecycle state, but must not retain sender phone/JID or message text.
+
 Audit rows still belong to the private gateway state. They can reveal timing, lifecycle state, restriction status, and operational behavior, so protect `wago.db` and authenticated audit access even though the low-level adapter removes message content and session secrets.
+
+## Incoming Webhook Payload Boundary
+
+Wago supports live direct/private incoming text as signed `message.received` callbacks. It does not persist chat history or expose a dashboard inbox.
+
+To provide restart-safe at-least-once delivery, the sender identifier and text may be stored inside the durable webhook retry payload only while that delivery is `pending` or `delivering`, for no longer than the existing 24-hour retry horizon. When the delivery becomes `delivered`, `failed`, or `expired`, SQLite atomically replaces that payload with an empty object while retaining sanitized delivery/attempt metadata.
+
+Consequences:
+
+- treat a live `/app/data` volume and backups as potentially containing message content when incoming webhook deliveries are still active;
+- do not expose webhook delivery payloads through diagnostics, logs, or the dashboard;
+- terminal `message.received` deliveries cannot be manually redelivered because their sender/text payload has been deliberately destroyed;
+- receivers should persist only the incoming content they actually need under their own privacy/retention policy.
 
 ## Operational Guidance
 
@@ -48,7 +63,7 @@ Audit rows still belong to the private gateway state. They can reveal timing, li
 - Wago does not expose a configurable CORS allowlist. Keep external application integration server-to-server unless you intentionally provide browser cross-origin behavior at your routing/proxy layer.
 - Manage webhook callback URL and signing-secret lifecycle from the authenticated Wago Settings workspace.
 - Keep `/app/data` on a persistent volume with restricted host access. The webhook signing secret is intentionally recoverable by Wago from this private state because the original secret is required to create HMAC signatures; unlike API keys and browser-session tokens it cannot be stored hash-only.
-- Treat webhook delivery as **at least once**. Receiver code must be idempotent and deduplicate by `Webhook-Id` (the same value is also sent as `X-Wago-Delivery`).
+- Treat webhook delivery as **at least once**. Receiver code must be idempotent and deduplicate callbacks by `Webhook-Id` (the same value is also sent as `X-Wago-Delivery`); for incoming business-message dedupe, also use `data.messageId`.
 - Stop the service before filesystem-style backups. This lets shutdown flush Baileys credential writes and checkpoint SQLite WAL state before the snapshot is taken.
 - Back up the entire `/app/data` state set, not only `wago.db`. A consistent restore requires the database plus Baileys auth state from the same snapshot.
 - Keep backup archives encrypted or otherwise access-restricted, verify file ownership/permissions after restore, and perform restore rehearsals on an isolated single-instance deployment before relying on a backup procedure.
