@@ -137,7 +137,9 @@ describe("database migrations", () => {
 
     database.prepare("UPDATE webhook_deliveries SET status = 'delivered' WHERE id = ?").run("delivery-inbound");
 
-    const row = database.prepare("SELECT payload_json FROM webhook_deliveries WHERE id = ?").get("delivery-inbound") as {
+    const row = database
+      .prepare("SELECT payload_json FROM webhook_deliveries WHERE id = ?")
+      .get("delivery-inbound") as {
       payload_json: string;
     };
     expect(row.payload_json).toBe("{}");
