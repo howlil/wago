@@ -68,4 +68,30 @@ describe("incoming webhook delivery persistence", () => {
     expect(terminal?.payloadJson).toBe("{}");
     database.close();
   });
+
+  it("expires and redacts an inbound payload even when no sender attempts it", () => {
+    const { database, store } = setup();
+    const now = new Date("2026-09-02T00:00:00.000Z");
+    const envelope = createIncomingMessageWebhookEnvelope(
+      {
+        messageId: "in_expiring",
+        from: "6281234567890",
+        text: "expires without sender",
+        receivedAt: now.toISOString(),
+      },
+      {
+        createDeliveryId: () => "44444444-4444-4444-8444-444444444444",
+        now: () => now,
+      },
+    );
+
+    const expiresAt = now.getTime() + 1000;
+    store.enqueue(envelope, expiresAt);
+
+    expect(store.expireDue(expiresAt + 1)).toBe(1);
+    const expired = store.get(envelope.id);
+    expect(expired?.status).toBe("expired");
+    expect(expired?.payloadJson).toBe("{}");
+    database.close();
+  });
 });
