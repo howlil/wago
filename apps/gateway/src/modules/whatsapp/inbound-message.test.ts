@@ -27,6 +27,26 @@ describe("inbound text normalization", () => {
     expect(first?.messageId).toMatch(/^in_[a-f0-9]{32}$/);
   });
 
+  it("keeps the logical message id stable across device-suffixed phone JIDs", () => {
+    const plain = normalizeInboundTextMessage(
+      message({
+        key: { id: "provider-device", remoteJid: "6281234567890@s.whatsapp.net", fromMe: false },
+        message: { conversation: "same message" },
+      }),
+      now,
+    );
+    const device = normalizeInboundTextMessage(
+      message({
+        key: { id: "provider-device", remoteJid: "6281234567890:7@s.whatsapp.net", fromMe: false },
+        message: { conversation: "same message" },
+      }),
+      now,
+    );
+
+    expect(device?.messageId).toBe(plain?.messageId);
+    expect(device?.from).toBe("6281234567890");
+  });
+
   it("uses the phone-number alternate jid when Baileys addresses the chat by LID", () => {
     const result = normalizeInboundTextMessage(
       message({
