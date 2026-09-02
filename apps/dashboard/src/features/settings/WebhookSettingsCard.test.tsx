@@ -16,6 +16,9 @@ vi.mock("./api.js", () => ({
   rotateWebhookSecret: vi.fn(),
   completeWebhookSecretRotation: vi.fn(),
   sendWebhookTest: vi.fn(),
+  getWebhookDeliveries: vi.fn(() => Promise.resolve({ success: true, deliveries: [] })),
+  getWebhookDelivery: vi.fn(),
+  redeliverWebhookDelivery: vi.fn(),
 }));
 
 beforeEach(() => {
