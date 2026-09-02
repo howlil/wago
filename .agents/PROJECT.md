@@ -58,8 +58,9 @@ Vertical delivery is about product completeness, not forcing every implementatio
 Wago currently provides:
 
 - one WhatsApp account per active deployed instance;
+- zero-env operator/deployment setup: product configuration is created from Wago workflows and durable state rather than user-supplied environment variables;
 - first-run dashboard admin setup and HttpOnly browser sessions;
-- optional machine Bearer API credentials for external integrations;
+- optional machine Bearer API credentials for external integrations, generated and rotated from Wago;
 - QR pairing, reconnect handling, invalid-session recovery, and explicit rebind;
 - recipient allow/opt-out policy;
 - protected outbound text messaging with concurrency-safe idempotency and bounded defensive safeguards;
@@ -94,6 +95,7 @@ Unless a concrete approved requirement changes them:
 - one active Wago instance owns one persistent `/app/data` volume;
 - SQLite remains authoritative application storage;
 - Baileys authentication remains filesystem-backed under `/app/data/auth`;
+- operator/deployment product configuration must not require or expose user-facing environment-variable overrides; dashboard workflows plus persisted Wago state own configuration, while process-mode/test variables such as `NODE_ENV` and `VITEST_*` remain internal implementation details;
 - Baileys/provider internals do not leak into unrelated capabilities or primary user-facing vocabulary without a diagnostic reason;
 - outbound safeguards are defensive controls, never enforcement-evasion mechanisms;
 - inbound support remains an integration event surface rather than message-history persistence or a dashboard inbox;

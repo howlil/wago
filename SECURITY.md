@@ -12,7 +12,7 @@ Sensitive runtime files include:
 - `/app/data/wago.db-wal` and `/app/data/wago.db-shm` while SQLite WAL mode is active
 - `/app/data/auth/` — long-lived Baileys/WhatsApp session credentials
 
-The admin password is created from the Wago dashboard on first run. The raw password is never persisted; Wago stores a salted scrypt hash in SQLite and uses it only to establish dashboard browser sessions. `API_KEY` and generated `wa_...` keys are machine credentials for server-to-server API clients and are intentionally separate from the normal dashboard sign-in path.
+The admin password is created from the Wago dashboard on first run. The raw password is never persisted; Wago stores a salted scrypt hash in SQLite and uses it only to establish dashboard browser sessions. Generated `wa_...` keys are machine credentials for server-to-server API clients and are intentionally separate from the normal dashboard sign-in path.
 
 ## Reporting a Vulnerability
 
@@ -59,8 +59,9 @@ Consequences:
 - Production refuses to start when `/app/data` resolves only to the container writable layer or an ephemeral filesystem such as `tmpfs`. Mount durable storage before exposing the service.
 - Prefer one HTTPS origin for the bundled dashboard and API. Production admin setup, dashboard sign-in, and first API-key bootstrap require an `Origin` whose host matches the request `Host`; state-changing cookie-authenticated requests also reject mismatched origins.
 - A fresh production gateway creates its local root of trust through the same-origin dashboard: `POST /app/admin/setup` -> persisted salted password hash + HttpOnly session -> `POST /app/bootstrap` -> generated machine API key.
-- `API_KEY` can still be pre-provisioned by a deployment secret manager. Environment-managed API keys are machine credentials and are rotated in that secret manager rather than from the dashboard.
+- Wago has no deployment-owned machine credential override. Machine API keys are generated and rotated from the authenticated Wago dashboard, and only their hashes are persisted.
 - Wago does not expose a configurable CORS allowlist. Keep external application integration server-to-server unless you intentionally provide browser cross-origin behavior at your routing/proxy layer.
+- Wago does not trust forwarded client identity through an operator/deployment configuration toggle; direct socket identity remains the safe default for rate-limit attribution.
 - Manage webhook callback URL and signing-secret lifecycle from the authenticated Wago Settings workspace.
 - Keep `/app/data` on a persistent volume with restricted host access. The webhook signing secret is intentionally recoverable by Wago from this private state because the original secret is required to create HMAC signatures; unlike API keys and browser-session tokens it cannot be stored hash-only.
 - Treat webhook delivery as **at least once**. Receiver code must be idempotent and deduplicate callbacks by `Webhook-Id` (the same value is also sent as `X-Wago-Delivery`); for incoming business-message dedupe, also use `data.messageId`.
@@ -87,7 +88,7 @@ The dashboard and external API have distinct credential responsibilities:
 
 ```text
 human operator -> persisted admin-password hash -> HttpOnly browser session
-machine client  -> API_KEY / generated wa_ key -> Authorization: Bearer ...
+machine client  -> generated wa_ key -> Authorization: Bearer ...
 ```
 
 The raw browser-session token is sent only as an HttpOnly, SameSite=Lax cookie and is Secure in production. SQLite stores only its SHA-256 hash plus creation, last-seen, expiry, and revocation metadata. Browser sessions expire after 30 days and can be revoked without changing the API key.
