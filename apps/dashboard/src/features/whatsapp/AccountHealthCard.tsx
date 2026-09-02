@@ -47,7 +47,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
             <h3 className="m-0 text-xs font-semibold text-wago-ink">Account health</h3>
             <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">WhatsApp restriction state.</p>
           </div>
-          <span className="text-[11px] font-medium text-wago-warning">Checking</span>
+          <span className="text-[11px] font-medium text-wago-warning">Checking account health</span>
         </div>
         <p className="mb-0 mt-2 text-[11px] leading-5 text-wago-muted">
           Refreshing reach-out and new-chat restriction state.
@@ -67,7 +67,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
             <h3 className="m-0 text-xs font-semibold text-wago-ink">Account health</h3>
             <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">WhatsApp restriction state.</p>
           </div>
-          <span className="text-[11px] font-medium text-wago-muted">Unavailable</span>
+          <span className="text-[11px] font-medium text-wago-muted">Health unavailable</span>
         </div>
         <p className="mb-0 mt-2 text-[11px] leading-5 text-wago-muted">
           {unavailableDescription(accountHealth?.unavailableReason)}
