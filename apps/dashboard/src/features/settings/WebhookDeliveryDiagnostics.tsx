@@ -110,16 +110,21 @@ export function WebhookDeliveryDiagnostics() {
   }
 
   return (
-    <div className="mt-4 border-t border-wago-line pt-4">
-      <div className="flex items-start justify-between gap-3">
+    <div className="mt-5 border-t border-wago-line pt-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="m-0 text-xs font-semibold text-wago-ink">Delivery diagnostics</h3>
+          <h3 className="m-0 text-xs font-semibold text-wago-ink">Delivery activity</h3>
           <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
             Recent callback state and append-only attempt evidence. Incoming message text and sender data are never
             shown here.
           </p>
         </div>
-        <button className={secondaryButtonClass} type="button" onClick={() => void refresh()} disabled={refreshing}>
+        <button
+          className={`${secondaryButtonClass} w-full sm:w-auto`}
+          type="button"
+          onClick={() => void refresh()}
+          disabled={refreshing}
+        >
           <RefreshCcw className={refreshing ? "animate-spin" : ""} size={13} />
           Refresh
         </button>
@@ -129,7 +134,7 @@ export function WebhookDeliveryDiagnostics() {
 
       <div className="mt-3 overflow-x-auto border-y border-wago-line">
         {loading ? (
-          <p className="m-0 px-3 py-3 text-xs text-wago-muted">Loading delivery diagnostics…</p>
+          <p className="m-0 px-3 py-3 text-xs text-wago-muted">Loading delivery activity…</p>
         ) : deliveries.length === 0 ? (
           <p className="m-0 px-3 py-3 text-xs text-wago-muted">No retained webhook deliveries yet.</p>
         ) : (
@@ -167,11 +172,11 @@ export function WebhookDeliveryDiagnostics() {
       </div>
 
       {selected ? (
-        <div className="mt-4 border border-wago-line p-3">
+        <div className="mt-4 rounded-md border border-wago-line p-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-[0.08em] text-wago-muted">Selected delivery</div>
-              <div className="mt-1 truncate font-mono text-[10px] text-wago-ink">{selected.id}</div>
+              <div className="mt-1 break-all font-mono text-[10px] text-wago-ink">{selected.id}</div>
               <div className="mt-1 text-[11px] text-wago-muted">
                 {selected.event} · {selected.status} · redeliveries {selected.redeliveryCount}
               </div>
@@ -183,7 +188,7 @@ export function WebhookDeliveryDiagnostics() {
               ) : null}
             </div>
             <button
-              className={secondaryButtonClass}
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
               type="button"
               onClick={() => void redeliver()}
               disabled={redelivering || selected.status === "delivering" || !selected.redeliveryAvailable}
