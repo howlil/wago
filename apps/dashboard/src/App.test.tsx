@@ -314,8 +314,8 @@ describe("dashboard", () => {
     await waitFor(() => expect(generateApiKey).toHaveBeenCalledTimes(1));
 
     expect(await screen.findByText("New API key")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Show API key" }));
     expect(screen.getByText(generatedApiKey)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide API key" })).toBeTruthy();
     expect(pairWhatsApp).not.toHaveBeenCalled();
   });
 
@@ -408,8 +408,8 @@ describe("dashboard", () => {
     await waitFor(() => expect(rotateApiKey).toHaveBeenCalledTimes(1));
 
     expect(await screen.findByText("New API key")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Show API key" }));
     expect(screen.getByText(rotatedApiKey)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide API key" })).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: /rotate api key/i })).toBeNull();
   });
 
