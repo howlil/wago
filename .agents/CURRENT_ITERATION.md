@@ -4,55 +4,44 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Active product milestone:** Dashboard Anti-Slop Visual Consolidation — implementation complete, verification in progress.
+**Active product milestone:** none.
 
-Goal: remove residual admin-dashboard chrome and make Wago read as a focused gateway tool without changing backend/public API behavior.
+The repository is at a clean, resumable baseline after completion and integration of the Dashboard Anti-Slop Visual Consolidation milestone.
 
 ## Current baseline
 
 - global navigation remains exactly `Control`, `Settings`, and `Audit Log`;
 - Settings shows one hash-addressable active module at a time: `Access`, `Messaging`, `Webhooks`, or `Sessions`;
-- Webhook configuration uses linear subsections and delivery detail expands inline with its row;
-- machine access uses explicit `Not generated` / `Configured` states and only shows raw keys as one-time reveal output;
-- shared controls and the highest-traffic dashboard surfaces use semantic color tokens, while normal explanatory prose is no longer compressed to 9-10px;
-- Control uses `Messaging` dependency language (`Waiting`) instead of repeating WhatsApp/root failures as another alarm, and the optional integration promo surface is removed;
-- Audit Log is a flat operational console rather than card-inside-card composition;
-- sidebar no longer renders the redundant `Workspace` group label;
-- session-wide sign-out is destructive and requires an explicit in-context confirmation;
-- `apps/dashboard/DESIGN.md` codifies the anti-slop contract;
-- backend behavior and public API contracts remain unchanged.
+- Webhook configuration is linear rather than a nested mega-card, and delivery evidence expands inline with the selected row;
+- machine access uses explicit `Not generated` / `Configured` states and exposes raw API keys only as one-time reveal output;
+- normal explanatory prose uses readable body sizing while technical metadata remains compact;
+- shared/high-traffic dashboard surfaces use semantic color tokens instead of proliferating arbitrary literal colors;
+- Control uses `Messaging` dependency language such as `Waiting` instead of repeating a root WhatsApp/gateway failure as another independent alarm;
+- the optional application-integration promotional surface was removed from Control;
+- Audit Log is a flat searchable/filterable operational console rather than card-inside-card composition;
+- session-wide sign-out is visually destructive and requires explicit confirmation;
+- the redundant sidebar `Workspace` label and obsolete integration-promo component were removed;
+- `apps/dashboard/DESIGN.md` codifies the anti-slop visual and interaction contract;
+- backend behavior and public API contracts were unchanged by this milestone;
+- no known material blocker.
 
 ## Active slice
 
-Milestone: Dashboard Anti-Slop Visual Consolidation
-Current slice: verification and cleanup.
-
-Completed slices:
-1. Settings single-module navigation with hash active state.
-2. Webhook linear hierarchy + inline delivery inspection.
-3. Machine access state redesign.
-4. Typography/semantic-token cleanup on shared/high-traffic surfaces.
-5. Control alarm deduplication + removal of integration promotion.
-6. Flat Audit Log composition.
-7. Decorative/redundant chrome cleanup.
-
-Verification gate:
-- focused architecture/component tests;
-- formatting/lint;
-- core tests;
-- production build;
-- Docker persistence/rollback smoke;
-- CodeQL.
+None.
 
 Evidence:
-- branch `feat/dashboard-anti-slop` created from `main` at `4f983677e00422afdc0957d18d381aecb5715af1`;
-- obsolete `IntegrationNextStep` component/test removed;
-- `information-architecture.test.ts` now protects single-module Settings, dependency-aware Control, non-nested Webhook diagnostics, simplified machine access, flat Audit, and sidebar chrome removal.
+- PR #116 `refactor(dashboard): complete anti-slop visual consolidation` was squash-merged into `main` as `9417cbfcb3f150916087568a610ce986b0aeb36f`;
+- final verified PR head: `124660f9238d411611b3c116460530d7440285f2`;
+- CI run `33682800708`: success; formatting/lint, core tests, production build, and Docker persistence/rollback smoke passed;
+- CodeQL run `33682800671`: success;
+- architecture/component acceptance protects single-module Settings, Webhook inline evidence, explicit machine-access states, dependency-aware Control summaries, flat Audit composition, and reduced navigation chrome.
 
-Blockers: none known.
+Blockers: none.
 
-Next action: open PR, fix every deterministic CI regression on this branch, then squash-merge automatically when all required gates are green. After merge, return this file on `main` to idle.
+Next action: await explicit authorization for the next product milestone. Do not invent one from this file.
 
 ## Completion rule
+
+When a slice completes, record only evidence needed to leave truthful resumable state and remove stale blockers/next actions.
 
 When a milestone completes and is integrated into `main`, return this file to an idle/no-active-milestone state unless the user has already authorized the next milestone.
