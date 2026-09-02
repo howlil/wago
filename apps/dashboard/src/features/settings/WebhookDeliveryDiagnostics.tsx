@@ -1,5 +1,5 @@
-import { Eye, RefreshCcw, RotateCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronRight, RefreshCcw, RotateCcw } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import { secondaryButtonClass } from "../../shared/ui/classes.js";
 import {
   getWebhookDeliveries,
@@ -32,7 +32,7 @@ function attemptLabel(attempt: WebhookDeliveryAttempt): string {
 }
 
 function statusClass(status: WebhookDelivery["status"]): string {
-  if (status === "delivered") return "text-wago-brand";
+  if (status === "delivered") return "text-wago-positive";
   if (status === "failed" || status === "expired") return "text-wago-danger";
   return "text-wago-warning";
 }
@@ -84,6 +84,10 @@ export function WebhookDeliveryDiagnostics() {
   }
 
   async function inspect(id: string): Promise<void> {
+    if (selected?.id === id) {
+      setSelected(null);
+      return;
+    }
     setError("");
     try {
       const result = await getWebhookDelivery(id);
@@ -114,9 +118,8 @@ export function WebhookDeliveryDiagnostics() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="m-0 text-xs font-semibold text-wago-ink">Delivery activity</h3>
-          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
-            Recent callback state and append-only attempt evidence. Incoming message text and sender data are never
-            shown here.
+          <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">
+            Recent callback state and attempt evidence. Incoming message text and sender data are never shown here.
           </p>
         </div>
         <button
@@ -145,89 +148,102 @@ export function WebhookDeliveryDiagnostics() {
                 <th className="px-3 py-2 font-medium">Event</th>
                 <th className="px-3 py-2 font-medium">Attempts</th>
                 <th className="px-3 py-2 font-medium">Created</th>
-                <th className="px-3 py-2 font-medium">Action</th>
+                <th className="px-3 py-2 font-medium">
+                  <span className="sr-only">Inspect</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {deliveries.map((delivery) => (
-                <tr className="border-t border-wago-line" key={delivery.id}>
-                  <td className={`px-3 py-2 font-medium ${statusClass(delivery.status)}`}>{delivery.status}</td>
-                  <td className="px-3 py-2 text-wago-ink">{delivery.event}</td>
-                  <td className="px-3 py-2 text-wago-muted">{delivery.attemptCount}</td>
-                  <td className="px-3 py-2 text-wago-muted">{formatTimestamp(delivery.createdAt)}</td>
-                  <td className="px-3 py-2">
-                    <button
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-wago-brand hover:underline"
-                      type="button"
-                      onClick={() => void inspect(delivery.id)}
-                    >
-                      <Eye size={12} /> Inspect
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {deliveries.map((delivery) => {
+                const expanded = selected?.id === delivery.id;
+                return (
+                  <Fragment key={delivery.id}>
+                    <tr className="border-t border-wago-line">
+                      <td className={`px-3 py-2 font-medium ${statusClass(delivery.status)}`}>{delivery.status}</td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-wago-ink">{delivery.event}</td>
+                      <td className="px-3 py-2 text-wago-muted">{delivery.attemptCount}</td>
+                      <td className="px-3 py-2 text-wago-muted">{formatTimestamp(delivery.createdAt)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted hover:bg-wago-hover hover:text-wago-ink"
+                          type="button"
+                          onClick={() => void inspect(delivery.id)}
+                          aria-label={expanded ? "Collapse delivery details" : "Inspect delivery"}
+                          aria-expanded={expanded}
+                        >
+                          <ChevronRight className={expanded ? "rotate-90" : ""} size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                    {expanded && selected ? (
+                      <tr className="border-t border-wago-line bg-wago-surface-subtle">
+                        <td colSpan={5} className="px-3 py-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <code className="block break-all font-mono text-[10px] text-wago-tertiary">
+                                {selected.id}
+                              </code>
+                              {!selected.redeliveryAvailable ? (
+                                <p className="mb-0 mt-1 text-xs leading-5 text-wago-muted">
+                                  Terminal incoming payload was removed; diagnostic evidence remains, but manual
+                                  redelivery is unavailable.
+                                </p>
+                              ) : null}
+                            </div>
+                            {selected.redeliveryAvailable ? (
+                              <button
+                                className={`${secondaryButtonClass} w-full sm:w-auto`}
+                                type="button"
+                                onClick={() => void redeliver()}
+                                disabled={redelivering || selected.status === "delivering"}
+                              >
+                                <RotateCcw size={13} />
+                                {redelivering ? "Redelivering" : "Redeliver"}
+                              </button>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-3 border-t border-wago-line pt-3">
+                            <div className="text-[11px] font-semibold text-wago-secondary">Attempt history</div>
+                            {selected.attempts.length === 0 ? (
+                              <p className="mb-0 mt-2 text-xs text-wago-muted">No attempt has started yet.</p>
+                            ) : (
+                              <ol className="mb-0 mt-2 grid list-none gap-2 p-0">
+                                {selected.attempts.map((attempt) => (
+                                  <li
+                                    className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+                                    key={attempt.sequence}
+                                  >
+                                    <code className="font-mono text-[10px] text-wago-tertiary">
+                                      #{attempt.sequence}
+                                    </code>
+                                    <span className="font-medium text-wago-ink">{attemptLabel(attempt)}</span>
+                                    {attempt.statusCode ? (
+                                      <span className="text-wago-muted">HTTP {attempt.statusCode}</span>
+                                    ) : null}
+                                    {attempt.errorCode ? (
+                                      <code className="font-mono text-[10px] text-wago-tertiary">
+                                        {attempt.errorCode}
+                                      </code>
+                                    ) : null}
+                                    <span className="text-[10px] text-wago-tertiary">
+                                      {formatTimestamp(attempt.startedAt)}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ol>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
-
-      {selected ? (
-        <div className="mt-4 rounded-md border border-wago-line p-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.08em] text-wago-muted">Selected delivery</div>
-              <div className="mt-1 break-all font-mono text-[10px] text-wago-ink">{selected.id}</div>
-              <div className="mt-1 text-[11px] text-wago-muted">
-                {selected.event} · {selected.status} · redeliveries {selected.redeliveryCount}
-              </div>
-              {!selected.redeliveryAvailable ? (
-                <div className="mt-1 text-[10px] leading-4 text-wago-muted">
-                  Incoming payload was removed after terminal delivery; diagnostics remain, but manual redelivery is
-                  unavailable.
-                </div>
-              ) : null}
-            </div>
-            <button
-              className={`${secondaryButtonClass} w-full sm:w-auto`}
-              type="button"
-              onClick={() => void redeliver()}
-              disabled={redelivering || selected.status === "delivering" || !selected.redeliveryAvailable}
-              title={selected.redeliveryAvailable ? undefined : "Incoming payload was removed after terminal delivery"}
-            >
-              <RotateCcw size={13} />
-              {redelivering ? "Redelivering" : "Redeliver"}
-            </button>
-          </div>
-
-          <div className="mt-3 border-t border-wago-line pt-3">
-            <div className="text-[10px] uppercase tracking-[0.08em] text-wago-muted">Attempt history</div>
-            {selected.attempts.length === 0 ? (
-              <p className="mb-0 mt-2 text-xs text-wago-muted">No attempt has started yet.</p>
-            ) : (
-              <ol className="mb-0 mt-2 grid list-none gap-2 p-0">
-                {selected.attempts.map((attempt) => (
-                  <li
-                    className="grid gap-0.5 border-t border-wago-line pt-2 first:border-0 first:pt-0"
-                    key={attempt.sequence}
-                  >
-                    <div className="flex flex-wrap items-center gap-x-2 text-xs">
-                      <span className="font-mono text-[10px] text-wago-muted">#{attempt.sequence}</span>
-                      <span className="font-medium text-wago-ink">{attemptLabel(attempt)}</span>
-                      {attempt.statusCode ? <span className="text-wago-muted">HTTP {attempt.statusCode}</span> : null}
-                      {attempt.errorCode ? (
-                        <span className="font-mono text-[10px] text-wago-muted">{attempt.errorCode}</span>
-                      ) : null}
-                    </div>
-                    <div className="text-[10px] text-wago-muted">
-                      {formatTimestamp(attempt.startedAt)} · delivery cycle {attempt.redeliveryNumber}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

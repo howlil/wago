@@ -150,16 +150,27 @@ describe("dashboard", () => {
     expect(screen.queryByRole("heading", { name: "Recipient access" })).toBeNull();
   });
 
-  it("renders Settings as the configuration workspace", async () => {
+  it("renders Settings as a single-module configuration workspace", async () => {
     window.history.replaceState({}, "", "/settings");
+    const user = userEvent.setup();
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("heading", { name: "Machine access" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Recipient access" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Webhook integration" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Dashboard session" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Recipient access" })).toBeNull();
+
+    await user.click(screen.getByRole("link", { name: "Messaging" }));
+    expect(await screen.findByRole("heading", { name: "Recipient access" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Machine access" })).toBeNull();
+
+    await user.click(screen.getByRole("link", { name: "Webhooks" }));
+    expect(await screen.findByRole("heading", { name: "Webhook integration" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Recipient access" })).toBeNull();
+
+    await user.click(screen.getByRole("link", { name: "Sessions" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard session" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Webhook integration" })).toBeNull();
   });
 
   it("renders Audit Log as a dedicated investigation workspace route", async () => {
@@ -302,9 +313,9 @@ describe("dashboard", () => {
     await user.click(await screen.findByRole("button", { name: /generate api key/i }));
     await waitFor(() => expect(generateApiKey).toHaveBeenCalledTimes(1));
 
-    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
-      generatedApiKey,
-    );
+    expect(await screen.findByText("New API key")).toBeTruthy();
+    expect(screen.getByText(generatedApiKey)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide API key" })).toBeTruthy();
     expect(pairWhatsApp).not.toHaveBeenCalled();
   });
 
@@ -364,7 +375,7 @@ describe("dashboard", () => {
   });
 
   it("returns to the sign-in surface after signing out from Settings", async () => {
-    window.history.replaceState({}, "", "/settings");
+    window.history.replaceState({}, "", "/settings#sessions");
     const user = userEvent.setup();
     vi.mocked(getAppInfo).mockResolvedValue(appInfo({ authenticated: true }));
     vi.mocked(logoutBrowserSession).mockImplementationOnce(async () => {
@@ -396,9 +407,9 @@ describe("dashboard", () => {
     await user.click(screen.getByRole("button", { name: /rotate and revoke other sessions/i }));
     await waitFor(() => expect(rotateApiKey).toHaveBeenCalledTimes(1));
 
-    expect((screen.getByLabelText("Machine API key", { selector: "input" }) as HTMLInputElement).value).toBe(
-      rotatedApiKey,
-    );
+    expect(await screen.findByText("New API key")).toBeTruthy();
+    expect(screen.getByText(rotatedApiKey)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide API key" })).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: /rotate api key/i })).toBeNull();
   });
 

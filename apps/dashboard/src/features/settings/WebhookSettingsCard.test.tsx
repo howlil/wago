@@ -67,7 +67,7 @@ describe("WebhookSettingsCard", () => {
       });
     });
     expect(await screen.findByDisplayValue("generated-secret-value")).toBeTruthy();
-    expect(screen.getByText("Copy the new signing secret now")).toBeTruthy();
+    expect(screen.getByText("New signing secret")).toBeTruthy();
   });
 
   it("sends a production-path test webhook and reports the immediate attempt result", async () => {

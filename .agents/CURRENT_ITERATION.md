@@ -4,40 +4,55 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Active product milestone:** none.
+**Active product milestone:** Dashboard Anti-Slop Visual Consolidation — implementation complete, verification in progress.
 
-The repository is at a clean baseline after completion and integration of the Dashboard Information Architecture & Layout Consolidation milestone.
+Goal: remove residual admin-dashboard chrome and make Wago read as a focused gateway tool without changing backend/public API behavior.
 
 ## Current baseline
 
-- workspace layout is `apps/gateway`, `apps/dashboard`, and `apps/docs`;
-- global dashboard navigation remains exactly `Control`, `Settings`, and `Audit Log`;
-- Control uses a compact gateway overview, one cohesive WhatsApp runtime module for connection/binding/account health, and secondary prerequisite-aware diagnostics;
-- Settings uses page-local `Access`, `Messaging`, `Webhooks`, and `Sessions` navigation without adding global destinations;
-- redundant Settings section -> card hierarchy has been removed;
-- webhook configuration and delivery activity are presented as one cohesive operator domain;
-- desktop, tablet, and mobile composition follow the consolidated rules in `apps/dashboard/DESIGN.md`;
-- backend behavior and public API contracts were unchanged by the dashboard IA milestone;
-- canonical `.agents/` SWE-flow structure remains authoritative;
-- no known material blocker.
+- global navigation remains exactly `Control`, `Settings`, and `Audit Log`;
+- Settings shows one hash-addressable active module at a time: `Access`, `Messaging`, `Webhooks`, or `Sessions`;
+- Webhook configuration uses linear subsections and delivery detail expands inline with its row;
+- machine access uses explicit `Not generated` / `Configured` states and only shows raw keys as one-time reveal output;
+- shared controls and the highest-traffic dashboard surfaces use semantic color tokens, while normal explanatory prose is no longer compressed to 9-10px;
+- Control uses `Messaging` dependency language (`Waiting`) instead of repeating WhatsApp/root failures as another alarm, and the optional integration promo surface is removed;
+- Audit Log is a flat operational console rather than card-inside-card composition;
+- sidebar no longer renders the redundant `Workspace` group label;
+- session-wide sign-out is destructive and requires an explicit in-context confirmation;
+- `apps/dashboard/DESIGN.md` codifies the anti-slop contract;
+- backend behavior and public API contracts remain unchanged.
 
 ## Active slice
 
-None.
+Milestone: Dashboard Anti-Slop Visual Consolidation
+Current slice: verification and cleanup.
+
+Completed slices:
+1. Settings single-module navigation with hash active state.
+2. Webhook linear hierarchy + inline delivery inspection.
+3. Machine access state redesign.
+4. Typography/semantic-token cleanup on shared/high-traffic surfaces.
+5. Control alarm deduplication + removal of integration promotion.
+6. Flat Audit Log composition.
+7. Decorative/redundant chrome cleanup.
+
+Verification gate:
+- focused architecture/component tests;
+- formatting/lint;
+- core tests;
+- production build;
+- Docker persistence/rollback smoke;
+- CodeQL.
 
 Evidence:
-- PR #115 `refactor(dashboard): consolidate operator information architecture` was squash-merged into `main` as `920875cbc1674e25293f250959bb5063c62f7c24`;
-- final PR head `35c86c90c0d582b1018e4c1f41fc164597eebf0e` was mergeable;
-- CI run `33671926870`: success;
-- CodeQL run `33671926843`: success;
-- milestone acceptance covered Control consolidation, Settings local navigation/module ownership, responsive density, truthful state semantics, regression tests, production builds, and Docker persistence/rollback smoke.
+- branch `feat/dashboard-anti-slop` created from `main` at `4f983677e00422afdc0957d18d381aecb5715af1`;
+- obsolete `IntegrationNextStep` component/test removed;
+- `information-architecture.test.ts` now protects single-module Settings, dependency-aware Control, non-nested Webhook diagnostics, simplified machine access, flat Audit, and sidebar chrome removal.
 
-Blockers: none.
+Blockers: none known.
 
-Next action: await explicit authorization for the next product milestone. Do not invent one from this file.
+Next action: open PR, fix every deterministic CI regression on this branch, then squash-merge automatically when all required gates are green. After merge, return this file on `main` to idle.
 
 ## Completion rule
-
-When a slice completes, record only evidence needed to leave truthful resumable state, advance to the next already-authorized slice, and remove stale blockers/next actions.
 
 When a milestone completes and is integrated into `main`, return this file to an idle/no-active-milestone state unless the user has already authorized the next milestone.

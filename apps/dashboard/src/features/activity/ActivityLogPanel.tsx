@@ -1,10 +1,5 @@
 import { ChevronDown, Loader2, RefreshCcw, Search } from "lucide-react";
-import {
-  cardBodyClass,
-  secondaryButtonClass,
-  sectionDescriptionClass,
-  sectionTitleClass,
-} from "../../shared/ui/classes.js";
+import { secondaryButtonClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 import { ActivityEventList } from "./ActivityEventList.js";
 import {
   type ActivityLogInitialFilters,
@@ -21,7 +16,7 @@ type ActivityLogPanelProps = {
 };
 
 const selectClass =
-  "h-9 w-full appearance-none rounded-md border border-[#d6dfda] bg-white py-2 pl-3 pr-8 text-xs font-medium text-[#415048] outline-none transition-colors focus:border-wago-brand focus:ring-2 focus:ring-[#dcefe6]";
+  "h-9 w-full appearance-none rounded-md border border-wago-control-line bg-white py-2 pl-3 pr-8 text-xs font-medium text-wago-secondary outline-none transition-colors focus:border-wago-brand focus:ring-2 focus:ring-wago-brand-soft";
 
 export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFilters }: ActivityLogPanelProps) {
   const {
@@ -43,13 +38,12 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFil
   } = useActivityLog(enabled, initialFilters);
 
   return (
-    <section className={cardBodyClass}>
+    <section className="min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>{heading}</h2>
           <p className={sectionDescriptionClass}>
-            Sanitized gateway and WhatsApp transport lifecycle evidence. Message content and session secrets are not
-            shown here.
+            Sanitized gateway and WhatsApp lifecycle evidence. Message content and session secrets are not shown.
           </p>
         </div>
         <button
@@ -64,12 +58,12 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFil
         </button>
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-[minmax(260px,1fr)_repeat(3,minmax(130px,160px))]">
+      <div className="mt-4 grid gap-2 border-y border-wago-line py-3 md:grid-cols-3 xl:grid-cols-[minmax(260px,1fr)_repeat(3,minmax(130px,160px))]">
         <label className="relative md:col-span-3 xl:col-span-1">
           <span className="sr-only">Search audit events</span>
-          <Search className="pointer-events-none absolute left-3 top-2.5 text-[#7f8a84]" size={14} />
+          <Search className="pointer-events-none absolute left-3 top-2.5 text-wago-tertiary" size={14} />
           <input
-            className="h-9 w-full rounded-md border border-[#d6dfda] bg-white py-2 pl-9 pr-3 text-xs text-[#415048] outline-none transition-colors placeholder:text-[#9aa49f] focus:border-wago-brand focus:ring-2 focus:ring-[#dcefe6]"
+            className="h-9 w-full rounded-md border border-wago-control-line bg-white py-2 pl-9 pr-3 text-xs text-wago-secondary outline-none transition-colors placeholder:text-wago-tertiary focus:border-wago-brand focus:ring-2 focus:ring-wago-brand-soft"
             value={search}
             maxLength={100}
             onChange={(event) => setSearch(event.target.value)}
@@ -88,7 +82,7 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFil
             <option value="wago">Wago</option>
             <option value="baileys">WhatsApp transport</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-wago-tertiary" size={14} />
         </label>
 
         <label className="relative">
@@ -105,7 +99,7 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFil
             <option value="security">Security</option>
             <option value="system">System</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-wago-tertiary" size={14} />
         </label>
 
         <label className="relative">
@@ -121,26 +115,24 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFil
             <option value="warning">Warning</option>
             <option value="error">Error</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-[#7f8a84]" size={14} />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 text-wago-tertiary" size={14} />
         </label>
       </div>
 
       {!enabled ? (
-        <p className="mb-0 mt-4 border-t border-wago-line pt-4 text-sm text-wago-muted">
-          Authenticate the gateway to view operational activity.
-        </p>
+        <p className="mb-0 mt-4 text-sm text-wago-muted">Authenticate the gateway to view operational activity.</p>
       ) : error ? (
-        <div className="mt-4 rounded-md border border-[#ead6a2] bg-[#fff9e9] px-3 py-3">
-          <strong className="block text-xs font-semibold text-[#705617]">Audit log unavailable</strong>
-          <p className="mb-0 mt-1 text-xs leading-5 text-[#7d6a36]">{error}</p>
+        <div className="mt-4 border-y border-wago-warning/30 bg-wago-warning-soft px-3 py-3">
+          <strong className="block text-xs font-semibold text-wago-warning">Audit log unavailable</strong>
+          <p className="mb-0 mt-1 text-xs leading-5 text-wago-warning">{error}</p>
         </div>
       ) : loading && events.length === 0 ? (
-        <div className="mt-4 flex items-center justify-center gap-2 border-t border-wago-line px-3 py-7 text-sm text-wago-muted">
+        <div className="mt-4 flex items-center justify-center gap-2 border-y border-wago-line px-3 py-7 text-sm text-wago-muted">
           <Loader2 className="animate-spin" size={16} />
           Loading audit events
         </div>
       ) : events.length === 0 ? (
-        <p className="mb-0 mt-4 border-t border-wago-line px-3 pt-5 text-sm text-wago-muted">
+        <p className="mb-0 mt-4 border-y border-wago-line px-3 py-5 text-sm text-wago-muted">
           No audit events match the current filters.
         </p>
       ) : (

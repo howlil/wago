@@ -7,20 +7,21 @@ afterEach(() => {
   cleanup();
 });
 
-function outboundMetricScope() {
-  return within(screen.getByRole("region", { name: "Outbound status" }));
+function messagingMetricScope() {
+  return within(screen.getByRole("region", { name: "Messaging status" }));
 }
 
 describe("operator status semantics", () => {
-  it("does not show outbound Normal while WhatsApp is disconnected", () => {
+  it("shows messaging as a dependency state rather than a second alarm while WhatsApp is disconnected", () => {
     render(<OverviewCards health="ok" status="disconnected" accountHealth={{ availability: "available" }} />);
 
-    const outbound = outboundMetricScope();
-    expect(outbound.getByText("Unavailable")).toBeTruthy();
-    expect(outbound.queryByText("Normal")).toBeNull();
+    const messaging = messagingMetricScope();
+    expect(messaging.getByText("Waiting")).toBeTruthy();
+    expect(messaging.getByText("Requires WhatsApp")).toBeTruthy();
+    expect(messaging.queryByText("Normal")).toBeNull();
   });
 
-  it("does not show outbound Normal while account health is unavailable", () => {
+  it("does not show messaging Normal while account health is unavailable", () => {
     render(
       <OverviewCards
         health="ok"
@@ -29,15 +30,15 @@ describe("operator status semantics", () => {
       />,
     );
 
-    const outbound = outboundMetricScope();
-    expect(outbound.getByText("Unavailable")).toBeTruthy();
-    expect(outbound.queryByText("Normal")).toBeNull();
+    const messaging = messagingMetricScope();
+    expect(messaging.getByText("Waiting")).toBeTruthy();
+    expect(messaging.queryByText("Normal")).toBeNull();
   });
 
-  it("shows outbound Normal only for connected available health without restrictions", () => {
+  it("shows messaging Normal only for connected available health without restrictions", () => {
     render(<OverviewCards health="ok" status="connected" accountHealth={{ availability: "available" }} />);
 
-    expect(outboundMetricScope().getByText("Normal")).toBeTruthy();
+    expect(messagingMetricScope().getByText("Normal")).toBeTruthy();
   });
 
   it("renders account health unavailable instead of optimistic defaults", () => {

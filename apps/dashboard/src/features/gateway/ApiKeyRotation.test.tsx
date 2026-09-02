@@ -7,34 +7,21 @@ import { RotateApiKeyDialog } from "./RotateApiKeyDialog.js";
 const baseProps = {
   appId: "wa-gateway-test",
   apiKeyConfigured: true,
-  apiKeySource: "generated" as const,
-  dashboardAuthMode: "password" as const,
-  signInCredential: "",
   apiKeyInput: "",
-  credentialSetupRequired: false,
-  isAuthenticated: true,
-  showSignInCredential: false,
   showApiKey: false,
   copiedField: null,
   credentialHint: "Machine API key is configured.",
-  signInHint: "Dashboard uses the admin password.",
   isGeneratingApiKey: false,
-  isSigningIn: false,
-  isSigningOut: false,
   isRotatingApiKey: false,
-  onSignInCredentialChange: vi.fn(),
-  onToggleSignInCredential: vi.fn(),
   onToggleApiKey: vi.fn(),
   onCopyAppId: vi.fn(),
   onCopyApiKey: vi.fn(),
   onGenerateApiKey: vi.fn(),
-  onSignIn: vi.fn(),
-  onSignOut: vi.fn(),
   onRotateApiKey: vi.fn(),
 };
 
 describe("API key rotation dashboard controls", () => {
-  it("offers rotation only for authenticated generated credentials", async () => {
+  it("offers rotation only when machine access is configured", async () => {
     const user = userEvent.setup();
     const onRotateApiKey = vi.fn();
     const { rerender } = render(<GatewayCredentialsCard {...baseProps} onRotateApiKey={onRotateApiKey} />);
@@ -42,16 +29,9 @@ describe("API key rotation dashboard controls", () => {
     await user.click(screen.getByRole("button", { name: /rotate api key/i }));
     expect(onRotateApiKey).toHaveBeenCalledTimes(1);
 
-    rerender(
-      <GatewayCredentialsCard
-        {...baseProps}
-        apiKeyConfigured={false}
-        apiKeySource="unset"
-        credentialSetupRequired
-        onRotateApiKey={onRotateApiKey}
-      />,
-    );
+    rerender(<GatewayCredentialsCard {...baseProps} apiKeyConfigured={false} onRotateApiKey={onRotateApiKey} />);
     expect(screen.queryByRole("button", { name: /rotate api key/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /generate api key/i })).toBeTruthy();
   });
 
   it("requires an explicit confirmation before rotating and revoking other sessions", async () => {
