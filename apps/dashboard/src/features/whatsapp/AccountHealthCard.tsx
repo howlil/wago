@@ -100,11 +100,15 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
       <dl className="mb-0 mt-2 divide-y divide-wago-line border-y border-wago-line">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 py-2.5">
           <dt className="text-[11px] font-medium text-[#52615a]">Reach-out</dt>
-          <dd className={`mb-0 text-[11px] font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-brand"}`}>
+          <dd
+            className={`mb-0 text-[11px] font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-brand"}`}
+          >
             {reachoutRestricted ? "Limited" : "Available"}
           </dd>
           <p className="col-span-2 mb-0 text-[10px] leading-4 text-[#7c8781]">
-            {reachoutRestricted ? "New recipients are blocked while the timelock is active." : "No reach-out timelock is active."}
+            {reachoutRestricted
+              ? "New recipients are blocked while the timelock is active."
+              : "No reach-out timelock is active."}
           </p>
           {reachoutRestricted && reachout?.retryAt ? (
             <p className="col-span-2 mb-0 text-[10px] font-medium text-wago-warning">
@@ -115,7 +119,9 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
 
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 py-2.5">
           <dt className="text-[11px] font-medium text-[#52615a]">New chats</dt>
-          <dd className={`mb-0 text-[11px] font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-brand"}`}>
+          <dd
+            className={`mb-0 text-[11px] font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-brand"}`}
+          >
             {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "Normal"}
           </dd>
           <p className="col-span-2 mb-0 text-[10px] leading-4 text-[#7c8781]">
