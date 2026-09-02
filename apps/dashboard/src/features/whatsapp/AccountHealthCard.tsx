@@ -1,4 +1,3 @@
-import { cardBodyClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
 import type { AccountHealthSnapshot, AccountHealthUnavailableReason } from "./api.js";
 
 type AccountHealthCardProps = {
@@ -42,17 +41,19 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
 
   if (availability === "checking") {
     return (
-      <section className={cardBodyClass}>
-        <h2 className={sectionTitleClass}>Account health</h2>
-        <p className={sectionDescriptionClass}>Restrictions reported by the current WhatsApp session.</p>
-        <div className="mt-3 rounded-lg border border-[#dce4e0] bg-[#f7f9f8] px-4 py-4">
-          <strong className="block text-xs font-semibold text-[#4d5b54]">Checking account health</strong>
-          <p className="mb-0 mt-1 text-[11px] leading-5 text-wago-muted">
-            Refreshing WhatsApp reach-out and new-chat restriction state.
-          </p>
+      <div className="mt-4 border-t border-wago-line pt-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="m-0 text-xs font-semibold text-wago-ink">Account health</h3>
+            <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">WhatsApp restriction state.</p>
+          </div>
+          <span className="text-[11px] font-medium text-wago-warning">Checking account health</span>
         </div>
-        <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
-      </section>
+        <p className="mb-0 mt-2 text-[11px] leading-5 text-wago-muted">
+          Refreshing reach-out and new-chat restriction state.
+        </p>
+        <p className="mb-0 mt-1 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+      </div>
     );
   }
 
@@ -60,17 +61,19 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
 
   if (!availableHealth) {
     return (
-      <section className={cardBodyClass}>
-        <h2 className={sectionTitleClass}>Account health</h2>
-        <p className={sectionDescriptionClass}>Restrictions reported by the current WhatsApp session.</p>
-        <div className="mt-3 rounded-lg border border-[#e5ddd0] bg-[#fbf8f2] px-4 py-4">
-          <strong className="block text-xs font-semibold text-[#705f42]">Health unavailable</strong>
-          <p className="mb-0 mt-1 text-[11px] leading-5 text-[#776b58]">
-            {unavailableDescription(accountHealth?.unavailableReason)}
-          </p>
+      <div className="mt-4 border-t border-wago-line pt-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="m-0 text-xs font-semibold text-wago-ink">Account health</h3>
+            <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">WhatsApp restriction state.</p>
+          </div>
+          <span className="text-[11px] font-medium text-wago-muted">Health unavailable</span>
         </div>
-        <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
-      </section>
+        <p className="mb-0 mt-2 text-[11px] leading-5 text-wago-muted">
+          {unavailableDescription(accountHealth?.unavailableReason)}
+        </p>
+        <p className="mb-0 mt-1 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+      </div>
     );
   }
 
@@ -80,57 +83,61 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
   const capRestricted = cap?.capping_status === "CAPPED";
   const capWarning = cap?.capping_status === "FIRST_WARNING" || cap?.capping_status === "SECOND_WARNING";
   const showQuota = typeof cap?.total_quota === "number" && cap.total_quota > 0;
+  const overallLimited = reachoutRestricted || capRestricted || capWarning;
 
   return (
-    <section className={cardBodyClass}>
-      <h2 className={sectionTitleClass}>Account health</h2>
-      <p className={sectionDescriptionClass}>Restrictions reported by the current WhatsApp session.</p>
+    <div className="mt-4 border-t border-wago-line pt-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="m-0 text-xs font-semibold text-wago-ink">Account health</h3>
+          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">WhatsApp restriction state.</p>
+        </div>
+        <span className={`text-[11px] font-semibold ${overallLimited ? "text-wago-warning" : "text-wago-brand"}`}>
+          {overallLimited ? "Limited" : "Available"}
+        </span>
+      </div>
 
-      <dl className="mb-0 mt-3 divide-y divide-[#e7ebe8] border-y border-[#e7ebe8]">
-        <div className="py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <dt className="text-[11px] font-medium text-[#52615a]">Reach-out</dt>
-            <dd
-              className={`mb-0 text-[11px] font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-brand"}`}
-            >
-              {reachoutRestricted ? "Limited" : "Available"}
-            </dd>
-          </div>
-          <p className="mb-0 mt-0.5 text-[10px] leading-4 text-[#7c8781]">
+      <dl className="mb-0 mt-2 divide-y divide-wago-line border-y border-wago-line">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 py-2.5">
+          <dt className="text-[11px] font-medium text-[#52615a]">Reach-out</dt>
+          <dd
+            className={`mb-0 text-[11px] font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-brand"}`}
+          >
+            {reachoutRestricted ? "Limited" : "Available"}
+          </dd>
+          <p className="col-span-2 mb-0 text-[10px] leading-4 text-[#7c8781]">
             {reachoutRestricted
-              ? "Only new recipients are blocked while this timelock is active."
+              ? "New recipients are blocked while the timelock is active."
               : "No reach-out timelock is active."}
           </p>
           {reachoutRestricted && reachout?.retryAt ? (
-            <p className="mb-0 mt-1 text-[10px] font-medium text-wago-warning">
+            <p className="col-span-2 mb-0 text-[10px] font-medium text-wago-warning">
               Retry new chats after {formatDate(reachout.retryAt)}
             </p>
           ) : null}
         </div>
 
-        <div className="py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <dt className="text-[11px] font-medium text-[#52615a]">New chats</dt>
-            <dd
-              className={`mb-0 text-[11px] font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-brand"}`}
-            >
-              {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "Normal"}
-            </dd>
-          </div>
-          <p className="mb-0 mt-0.5 text-[10px] leading-4 text-[#7c8781]">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 py-2.5">
+          <dt className="text-[11px] font-medium text-[#52615a]">New chats</dt>
+          <dd
+            className={`mb-0 text-[11px] font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-brand"}`}
+          >
+            {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "Normal"}
+          </dd>
+          <p className="col-span-2 mb-0 text-[10px] leading-4 text-[#7c8781]">
             {capRestricted || capWarning
               ? "New-recipient sends are paused; known recipients are evaluated normally."
               : "No new-chat warning or cap is reported."}
           </p>
           {showQuota ? (
-            <p className="mb-0 mt-1 text-[10px] text-[#7c8781]">
+            <p className="col-span-2 mb-0 text-[10px] text-[#7c8781]">
               {cap?.used_quota ?? 0} / {cap?.total_quota} used
             </p>
           ) : null}
         </div>
       </dl>
 
-      <p className="mb-0 mt-2 text-[9px] text-[#87918c]">Last checked {formatDate(availableHealth.lastFetchedAt)}</p>
-    </section>
+      <p className="mb-0 mt-1.5 text-[9px] text-[#87918c]">Last checked {formatDate(availableHealth.lastFetchedAt)}</p>
+    </div>
   );
 }

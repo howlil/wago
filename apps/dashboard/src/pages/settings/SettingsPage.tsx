@@ -1,31 +1,18 @@
-import type { ReactNode } from "react";
 import { OperatorSessionCard } from "../../features/access/OperatorSessionCard.js";
 import { useDashboardController } from "../../features/dashboard/useDashboardController.js";
 import { GatewayCredentialsCard } from "../../features/gateway/GatewayCredentialsCard.js";
 import { RotateApiKeyDialog } from "../../features/gateway/RotateApiKeyDialog.js";
 import { RecipientAccessCard } from "../../features/recipients/RecipientAccessCard.js";
-import { WebhookDeliveryDiagnostics } from "../../features/settings/WebhookDeliveryDiagnostics.js";
 import { WebhookSettingsCard } from "../../features/settings/WebhookSettingsCard.js";
 import { AppShell } from "../../shared/components/AppShell.js";
 import { NoticeBanner } from "../../shared/components/NoticeBanner.js";
 
-type SettingsSectionProps = {
-  title: string;
-  description: string;
-  children: ReactNode;
-};
-
-function SettingsSection({ title, description, children }: SettingsSectionProps) {
-  return (
-    <section>
-      <div className="mb-2">
-        <h2 className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">{title}</h2>
-        <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">{description}</p>
-      </div>
-      {children}
-    </section>
-  );
-}
+const settingsSections = [
+  { href: "#settings-access", label: "Access" },
+  { href: "#settings-messaging", label: "Messaging" },
+  { href: "#settings-webhooks", label: "Webhooks" },
+  { href: "#settings-sessions", label: "Sessions" },
+] as const;
 
 export function SettingsPage() {
   const settings = useDashboardController();
@@ -33,66 +20,70 @@ export function SettingsPage() {
   return (
     <AppShell
       title="Settings"
-      description="Configure application access, outbound policy and gateway integrations."
+      description="Configure application access, messaging policy and gateway integrations."
       activePath="/settings"
     >
       <NoticeBanner notice={settings.notice} />
 
-      <div className="grid w-full max-w-[820px] gap-6">
-        <SettingsSection
-          title="Application integration"
-          description="Credentials external services use to call the Wago HTTP API."
+      <div className="grid w-full max-w-[1120px] items-start gap-5 lg:grid-cols-[168px_minmax(0,880px)] lg:gap-6">
+        <nav
+          className="grid grid-cols-2 gap-1 rounded-lg border border-wago-line bg-white p-1.5 sm:grid-cols-4 lg:sticky lg:top-20 lg:grid-cols-1"
+          aria-label="Settings sections"
         >
-          <GatewayCredentialsCard
-            appId={settings.appId}
-            apiKeyConfigured={settings.apiKeyConfigured}
-            apiKeySource={settings.apiKeySource}
-            apiKeyInput={settings.apiKeyInput}
-            credentialSetupRequired={settings.credentialSetupRequired}
-            showApiKey={settings.showApiKey}
-            copiedField={settings.copiedField}
-            credentialHint={settings.credentialHint}
-            isGeneratingApiKey={settings.isGeneratingApiKey}
-            isRotatingApiKey={settings.isRotatingApiKey}
-            onToggleApiKey={settings.toggleApiKey}
-            onCopyAppId={settings.copyAppId}
-            onCopyApiKey={settings.copyApiKey}
-            onGenerateApiKey={() => void settings.handleGenerateApiKey()}
-            onRotateApiKey={settings.openApiKeyRotationDialog}
-          />
-        </SettingsSection>
+          {settingsSections.map((section) => (
+            <a
+              className="rounded-md px-3 py-2 text-xs font-medium text-wago-muted transition-colors hover:bg-wago-surface-soft hover:text-wago-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wago-brand/30"
+              href={section.href}
+              key={section.href}
+            >
+              {section.label}
+            </a>
+          ))}
+        </nav>
 
-        <SettingsSection
-          title="Outbound policy"
-          description="Control which recipients applications are allowed to contact."
-        >
-          <RecipientAccessCard
-            enabled={settings.isAuthenticated}
-            refreshKey={settings.recipientRefreshKey}
-            suggestedPhone={settings.recipientApprovalPhone}
-            onAllowed={settings.handleRecipientAllowed}
-          />
-        </SettingsSection>
+        <div className="grid min-w-0 gap-5">
+          <div id="settings-access" className="min-w-0 scroll-mt-6">
+            <GatewayCredentialsCard
+              appId={settings.appId}
+              apiKeyConfigured={settings.apiKeyConfigured}
+              apiKeySource={settings.apiKeySource}
+              apiKeyInput={settings.apiKeyInput}
+              credentialSetupRequired={settings.credentialSetupRequired}
+              showApiKey={settings.showApiKey}
+              copiedField={settings.copiedField}
+              credentialHint={settings.credentialHint}
+              isGeneratingApiKey={settings.isGeneratingApiKey}
+              isRotatingApiKey={settings.isRotatingApiKey}
+              onToggleApiKey={settings.toggleApiKey}
+              onCopyAppId={settings.copyAppId}
+              onCopyApiKey={settings.copyApiKey}
+              onGenerateApiKey={() => void settings.handleGenerateApiKey()}
+              onRotateApiKey={settings.openApiKeyRotationDialog}
+            />
+          </div>
 
-        <SettingsSection
-          title="Delivery integration"
-          description="Configure signed incoming-message and outbound-delivery events sent to your application."
-        >
-          <WebhookSettingsCard />
-          <WebhookDeliveryDiagnostics />
-        </SettingsSection>
+          <div id="settings-messaging" className="min-w-0 scroll-mt-6">
+            <RecipientAccessCard
+              enabled={settings.isAuthenticated}
+              refreshKey={settings.recipientRefreshKey}
+              suggestedPhone={settings.recipientApprovalPhone}
+              onAllowed={settings.handleRecipientAllowed}
+            />
+          </div>
 
-        <SettingsSection
-          title="Operator access"
-          description="Manage dashboard browser sessions independently from application credentials."
-        >
-          <OperatorSessionCard
-            isSigningOut={settings.isSigningOut}
-            isSigningOutAll={settings.isSigningOutAll}
-            onSignOut={() => void settings.handleSignOut()}
-            onSignOutAll={() => void settings.handleSignOutAll()}
-          />
-        </SettingsSection>
+          <div id="settings-webhooks" className="min-w-0 scroll-mt-6">
+            <WebhookSettingsCard />
+          </div>
+
+          <div id="settings-sessions" className="min-w-0 scroll-mt-6">
+            <OperatorSessionCard
+              isSigningOut={settings.isSigningOut}
+              isSigningOutAll={settings.isSigningOutAll}
+              onSignOut={() => void settings.handleSignOut()}
+              onSignOutAll={() => void settings.handleSignOutAll()}
+            />
+          </div>
+        </div>
       </div>
 
       <RotateApiKeyDialog

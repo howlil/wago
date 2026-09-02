@@ -18,6 +18,7 @@ import {
   updateWebhookSettings,
   type WebhookTestDelivery,
 } from "./api.js";
+import { WebhookDeliveryDiagnostics } from "./WebhookDeliveryDiagnostics.js";
 
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
@@ -165,8 +166,7 @@ export function WebhookSettingsCard() {
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>Webhook integration</h2>
           <p className={sectionDescriptionClass}>
-            Send signed incoming-message and outbound-delivery events to another backend. Configuration is persisted by
-            Wago.
+            Send signed incoming-message and outbound-delivery events to another backend.
           </p>
         </div>
         <span className={`shrink-0 text-xs font-medium ${enabled ? "text-wago-brand" : "text-wago-muted"}`}>
@@ -202,16 +202,28 @@ export function WebhookSettingsCard() {
           <span className="min-w-0">
             <span className="block text-sm font-medium text-wago-ink">Enable webhook delivery</span>
             <span className="mt-0.5 block text-xs leading-5 text-wago-muted">
-              Wago will enqueue supported message and delivery events and retry transient failures automatically.
+              Enqueue supported events and retry transient delivery failures automatically.
             </span>
           </span>
         </label>
 
-        <div className="rounded-md border border-wago-line bg-wago-surface-soft px-3 py-2 text-[11px] leading-5 text-wago-muted">
-          Events: <span className="font-mono text-wago-ink">message.received</span>,{" "}
-          <span className="font-mono text-wago-ink">message.server_accepted</span>, and{" "}
-          <span className="font-mono text-wago-ink">message.rejected</span>. Incoming text/sender data is retained only
-          while active retry delivery needs it and is removed when that delivery becomes terminal.
+        <div className="grid gap-2 rounded-md border border-wago-line bg-wago-surface-soft px-3 py-3 sm:grid-cols-3">
+          <div>
+            <div className="text-[11px] font-medium text-wago-ink">Incoming messages</div>
+            <div className="mt-0.5 font-mono text-[10px] text-wago-muted">message.received</div>
+          </div>
+          <div>
+            <div className="text-[11px] font-medium text-wago-ink">Message accepted</div>
+            <div className="mt-0.5 font-mono text-[10px] text-wago-muted">message.server_accepted</div>
+          </div>
+          <div>
+            <div className="text-[11px] font-medium text-wago-ink">Message rejected</div>
+            <div className="mt-0.5 font-mono text-[10px] text-wago-muted">message.rejected</div>
+          </div>
+          <p className="col-span-full mb-0 text-[10px] leading-4 text-wago-muted">
+            Incoming text and sender data exist only while an active retry delivery needs them and are removed when that
+            delivery becomes terminal.
+          </p>
         </div>
 
         <label>
@@ -323,6 +335,8 @@ export function WebhookSettingsCard() {
           </div>
         </div>
       </div>
+
+      <WebhookDeliveryDiagnostics />
     </section>
   );
 }
