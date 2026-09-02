@@ -63,7 +63,7 @@ afterEach(() => {
 });
 
 describe("WebhookDeliveryDiagnostics", () => {
-  it("shows retained attempt evidence and preserves it through explicit redelivery", async () => {
+  it("expands retained attempt evidence inline and preserves it through explicit redelivery", async () => {
     vi.mocked(getWebhookDeliveries).mockResolvedValue({ success: true, deliveries: [delivery] });
     vi.mocked(getWebhookDelivery).mockResolvedValue({ success: true, delivery: detail });
     vi.mocked(redeliverWebhookDelivery).mockResolvedValue({
@@ -75,11 +75,12 @@ describe("WebhookDeliveryDiagnostics", () => {
     render(<WebhookDeliveryDiagnostics />);
 
     expect(await screen.findByText("message.server_accepted")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Inspect" }));
+    await user.click(screen.getByRole("button", { name: "Inspect delivery" }));
 
     expect(await screen.findByText("Permanent failure")).toBeTruthy();
     expect(screen.getByText("Retryable failure")).toBeTruthy();
     expect(screen.getByText("HTTP 401")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse delivery details" })).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Redeliver" }));
     await waitFor(() => expect(redeliverWebhookDelivery).toHaveBeenCalledWith(delivery.id));
@@ -103,10 +104,10 @@ describe("WebhookDeliveryDiagnostics", () => {
     render(<WebhookDeliveryDiagnostics />);
 
     expect(await screen.findByText("message.received")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Inspect" }));
+    await user.click(screen.getByRole("button", { name: "Inspect delivery" }));
 
-    expect(await screen.findByText(/Incoming payload was removed after terminal delivery/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Redeliver" }).hasAttribute("disabled")).toBe(true);
+    expect(await screen.findByText(/Terminal incoming payload was removed/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Redeliver" })).toBeNull();
     expect(redeliverWebhookDelivery).not.toHaveBeenCalled();
   });
 });
