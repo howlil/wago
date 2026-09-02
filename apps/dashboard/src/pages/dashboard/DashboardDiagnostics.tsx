@@ -9,8 +9,8 @@ type DashboardDiagnosticsProps = {
 
 export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
   const diagnosticsLayout = dashboard.lastMessage
-    ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]"
-    : "max-w-[780px]";
+    ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.8fr)]"
+    : "w-full";
   const canOpenSendTool = dashboard.status === "connected";
 
   return (
@@ -29,9 +29,9 @@ export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
       </summary>
 
       {!canOpenSendTool ? (
-        <div className="mt-3 max-w-[780px] rounded-lg border border-wago-line bg-white px-4 py-3">
+        <div className="mt-3 w-full rounded-lg border border-wago-line bg-white px-4 py-3">
           <strong className="block text-xs font-semibold text-wago-ink">Diagnostics unavailable</strong>
-          <p className="mb-0 mt-1 text-[11px] leading-5 text-wago-muted">
+          <p className="mb-0 mt-1 max-w-prose text-[11px] leading-5 text-wago-muted">
             Connect WhatsApp before running an outbound delivery diagnostic.
           </p>
         </div>
