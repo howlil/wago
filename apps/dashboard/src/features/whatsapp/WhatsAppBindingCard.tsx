@@ -7,13 +7,15 @@ import {
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
-import type { WhatsAppBinding, WhatsAppStatus } from "./api.js";
+import { AccountHealthCard } from "./AccountHealthCard.js";
+import type { AccountHealthSnapshot, WhatsAppBinding, WhatsAppStatus } from "./api.js";
 import { QrPairingCard } from "./QrPairingCard.js";
 
 type WhatsAppBindingCardProps = {
   health: BackendHealthState;
   status: WhatsAppStatus;
   binding: WhatsAppBinding;
+  accountHealth?: AccountHealthSnapshot;
   qrImage: string | null;
   connectionDescription: string;
   canStartPairing: boolean;
@@ -34,6 +36,7 @@ export function WhatsAppBindingCard({
   health,
   status,
   binding,
+  accountHealth,
   qrImage,
   connectionDescription,
   canStartPairing,
@@ -51,7 +54,7 @@ export function WhatsAppBindingCard({
     <section className={cardBodyClass}>
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className={sectionTitleClass}>WhatsApp connection</h2>
+          <h2 className={sectionTitleClass}>WhatsApp</h2>
           <p className={sectionDescriptionClass}>{connectionDescription}</p>
         </div>
 
@@ -88,22 +91,28 @@ export function WhatsAppBindingCard({
       </div>
 
       {qrImage && status !== "connected" ? (
-        <div className="mt-3 border-t border-[#e7ebe8] pt-3">
+        <div className="mt-3 border-t border-wago-line pt-3">
           <QrPairingCard qrImage={qrImage} />
         </div>
       ) : null}
 
-      {binding.state === "bound" ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] pt-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-[#2f8b67]" />
-            <strong className="min-w-0 break-all font-mono text-xs font-semibold text-[#285f49]">
-              {binding.phone}
-            </strong>
-          </div>
-          <span className="text-[10px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
-        </div>
-      ) : null}
+      <dl className="mb-0 mt-4 grid gap-2 border-t border-wago-line pt-3 text-[11px] sm:grid-cols-[120px_minmax(0,1fr)]">
+        <dt className="font-medium text-wago-muted">Connection</dt>
+        <dd className="mb-0 font-medium text-wago-ink">{connectionDescription}</dd>
+        <dt className="font-medium text-wago-muted">Account</dt>
+        <dd className="mb-0 min-w-0">
+          {binding.state === "bound" ? (
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <strong className="break-all font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
+              <span className="text-[10px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
+            </span>
+          ) : (
+            <span className="text-wago-muted">Not paired</span>
+          )}
+        </dd>
+      </dl>
+
+      <AccountHealthCard accountHealth={accountHealth} />
     </section>
   );
 }
