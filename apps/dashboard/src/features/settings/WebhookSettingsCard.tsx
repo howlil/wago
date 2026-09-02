@@ -34,17 +34,19 @@ function testResultMessage(delivery: WebhookTestDelivery): string {
   if (delivery.status === "failed") {
     return `Test webhook failed${delivery.lastStatusCode ? ` (HTTP ${delivery.lastStatusCode})` : ""}.`;
   }
-  if (delivery.status === "expired") {
-    return "Test webhook expired before delivery.";
-  }
+  if (delivery.status === "expired") return "Test webhook expired before delivery.";
   if (delivery.status === "pending" && delivery.lastStatusCode) {
     return `Test webhook queued for retry after HTTP ${delivery.lastStatusCode}.`;
   }
-  if (delivery.status === "delivering") {
-    return "Test webhook is being delivered.";
-  }
+  if (delivery.status === "delivering") return "Test webhook is being delivered.";
   return "Test webhook queued.";
 }
+
+const supportedEvents = [
+  ["Incoming messages", "message.received"],
+  ["Message accepted", "message.server_accepted"],
+  ["Message rejected", "message.rejected"],
+] as const;
 
 export function WebhookSettingsCard() {
   const [enabled, setEnabled] = useState(false);
@@ -100,9 +102,7 @@ export function WebhookSettingsCard() {
       setSecretConfigured(settings.secretConfigured);
       setRotationPending(settings.rotationPending);
       setUpdatedAt(settings.updatedAt);
-      if (settings.generatedSecret) {
-        setGeneratedSecret(settings.generatedSecret);
-      }
+      if (settings.generatedSecret) setGeneratedSecret(settings.generatedSecret);
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {
@@ -165,23 +165,21 @@ export function WebhookSettingsCard() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className={sectionTitleClass}>Webhook integration</h2>
-          <p className={sectionDescriptionClass}>
-            Send signed incoming-message and outbound-delivery events to another backend.
-          </p>
+          <p className={sectionDescriptionClass}>Send signed gateway events to another backend.</p>
         </div>
-        <span className={`shrink-0 text-xs font-medium ${enabled ? "text-wago-brand" : "text-wago-muted"}`}>
+        <span className={`shrink-0 text-xs font-medium ${enabled ? "text-wago-positive" : "text-wago-muted"}`}>
           {enabled ? "Enabled" : "Disabled"}
         </span>
       </div>
 
       {error ? (
-        <div className="mt-4 rounded-md border border-[#e4b8bc] bg-wago-danger-soft px-3 py-2 text-xs text-wago-danger">
+        <div className="mt-4 rounded-md border border-wago-danger/30 bg-wago-danger-soft px-3 py-2 text-xs text-wago-danger">
           {error}
         </div>
       ) : null}
 
       {testResult ? (
-        <div className="mt-4 rounded-md border border-wago-line bg-wago-surface-soft px-3 py-2 text-xs text-wago-ink">
+        <div className="mt-4 rounded-md border border-wago-line bg-wago-surface-subtle px-3 py-2 text-xs text-wago-ink">
           {testResult}
         </div>
       ) : null}
@@ -202,29 +200,10 @@ export function WebhookSettingsCard() {
           <span className="min-w-0">
             <span className="block text-sm font-medium text-wago-ink">Enable webhook delivery</span>
             <span className="mt-0.5 block text-xs leading-5 text-wago-muted">
-              Enqueue supported events and retry transient delivery failures automatically.
+              Retry transient callback failures automatically.
             </span>
           </span>
         </label>
-
-        <div className="grid gap-2 rounded-md border border-wago-line bg-wago-surface-soft px-3 py-3 sm:grid-cols-3">
-          <div>
-            <div className="text-[11px] font-medium text-wago-ink">Incoming messages</div>
-            <div className="mt-0.5 font-mono text-[10px] text-wago-muted">message.received</div>
-          </div>
-          <div>
-            <div className="text-[11px] font-medium text-wago-ink">Message accepted</div>
-            <div className="mt-0.5 font-mono text-[10px] text-wago-muted">message.server_accepted</div>
-          </div>
-          <div>
-            <div className="text-[11px] font-medium text-wago-ink">Message rejected</div>
-            <div className="mt-0.5 font-mono text-[10px] text-wago-muted">message.rejected</div>
-          </div>
-          <p className="col-span-full mb-0 text-[10px] leading-4 text-wago-muted">
-            Incoming text and sender data exist only while an active retry delivery needs them and are removed when that
-            delivery becomes terminal.
-          </p>
-        </div>
 
         <label>
           <span className={fieldLabelClass}>Callback URL</span>
@@ -240,7 +219,7 @@ export function WebhookSettingsCard() {
             autoComplete="url"
             disabled={loading || saving || testing}
           />
-          <span className="mt-1 block text-[10px] leading-4 text-wago-muted">
+          <span className="mt-1 block text-xs leading-5 text-wago-muted">
             Use an HTTPS endpoint owned by the receiving backend in production.
           </span>
         </label>
@@ -248,12 +227,10 @@ export function WebhookSettingsCard() {
         <div className="border-y border-wago-line py-3">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="text-xs font-medium text-wago-ink">Signing secret</div>
-              <div className="mt-0.5 text-[11px] leading-5 text-wago-muted">
-                {secretConfigured
-                  ? "Configured. Raw value is not returned by settings reads."
-                  : "Created automatically on first enable."}
-              </div>
+              <div className="text-xs font-semibold text-wago-ink">Signing</div>
+              <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">
+                {secretConfigured ? "Signing secret configured." : "A signing secret is created on first enable."}
+              </p>
             </div>
             {secretConfigured ? (
               <button
@@ -270,8 +247,8 @@ export function WebhookSettingsCard() {
 
           {rotationPending ? (
             <div className="mt-3 flex flex-col items-start gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="m-0 min-w-0 text-[11px] leading-5 text-wago-muted">
-                Rotation overlap is active. Update the receiver with the new secret before completing rotation.
+              <p className="m-0 min-w-0 text-xs leading-5 text-wago-muted">
+                Rotation overlap is active. Update the receiver before completing rotation.
               </p>
               <button
                 className={`${secondaryButtonClass} w-full sm:w-auto`}
@@ -286,12 +263,10 @@ export function WebhookSettingsCard() {
         </div>
 
         {generatedSecret ? (
-          <div className="rounded-md border border-[#c9ddd3] bg-wago-brand-soft p-3">
-            <strong className="block text-xs font-semibold text-wago-brand-strong">
-              Copy the new signing secret now
-            </strong>
-            <p className="mb-2 mt-1 text-[11px] leading-5 text-[#53675e]">
-              This value is shown only from the create/rotate response. Store it in the receiving backend.
+          <div className="border-b border-wago-line pb-3">
+            <strong className="block text-xs font-semibold text-wago-ink">New signing secret</strong>
+            <p className="mb-2 mt-0.5 text-xs leading-5 text-wago-muted">
+              Copy this now. The raw secret is only returned by this create or rotate response.
             </p>
             <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
               <input className={`${inputClass} min-w-0 font-mono text-xs`} value={generatedSecret} readOnly />
@@ -307,11 +282,27 @@ export function WebhookSettingsCard() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-[10px] leading-4 text-wago-muted">
-            {updatedAt
-              ? `Last updated ${new Date(updatedAt).toLocaleString()}`
-              : "No persisted webhook configuration yet."}
+        <details className="border-b border-wago-line pb-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-wago-ink [&::-webkit-details-marker]:hidden">
+            <span>Supported events</span>
+            <span className="font-normal text-wago-muted">3 events</span>
+          </summary>
+          <div className="mt-3 divide-y divide-wago-line border-t border-wago-line">
+            {supportedEvents.map(([label, event]) => (
+              <div className="flex flex-col gap-0.5 py-2 sm:flex-row sm:items-center sm:justify-between" key={event}>
+                <span className="text-xs text-wago-ink">{label}</span>
+                <code className="font-mono text-[10px] text-wago-tertiary">{event}</code>
+              </div>
+            ))}
+          </div>
+          <p className="mb-0 mt-2 text-xs leading-5 text-wago-muted">
+            Incoming sender and text data are retained only while an active retry needs them and are removed when the delivery becomes terminal.
+          </p>
+        </details>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-[10px] text-wago-tertiary">
+            {updatedAt ? `Last updated ${new Date(updatedAt).toLocaleString()}` : "No saved webhook configuration."}
           </span>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
