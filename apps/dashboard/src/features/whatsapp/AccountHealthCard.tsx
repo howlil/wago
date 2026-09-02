@@ -52,7 +52,9 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         <p className="mb-0 mt-2 max-w-prose text-[11px] leading-5 text-wago-muted">
           Refreshing reach-out and new-chat restriction state.
         </p>
-        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
+          Last checked {formatDate(accountHealth?.lastFetchedAt)}
+        </p>
       </div>
     );
   }
@@ -72,7 +74,9 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         <p className="mb-0 mt-2 max-w-prose text-[11px] leading-5 text-wago-muted">
           {unavailableDescription(accountHealth?.unavailableReason)}
         </p>
-        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
+          Last checked {formatDate(accountHealth?.lastFetchedAt)}
+        </p>
       </div>
     );
   }
@@ -137,7 +141,9 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         </div>
       </dl>
 
-      <p className="mb-0 mt-1.5 text-[10px] text-wago-tertiary">Last checked {formatDate(availableHealth.lastFetchedAt)}</p>
+      <p className="mb-0 mt-1.5 text-[10px] text-wago-tertiary">
+        Last checked {formatDate(availableHealth.lastFetchedAt)}
+      </p>
     </div>
   );
 }
