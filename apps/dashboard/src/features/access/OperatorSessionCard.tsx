@@ -1,4 +1,4 @@
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut } from "lucide-react";
 import {
   cardBodyClass,
   secondaryButtonClass,
@@ -21,16 +21,11 @@ export function OperatorSessionCard({
 }: OperatorSessionCardProps) {
   return (
     <section className={cardBodyClass}>
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-wago-brand-soft text-wago-brand-strong">
-          <ShieldCheck size={16} />
-        </div>
-        <div className="min-w-0">
-          <h2 className={sectionTitleClass}>Dashboard session</h2>
-          <p className={sectionDescriptionClass}>
-            Browser access is protected by the admin password and is separate from machine API credentials.
-          </p>
-        </div>
+      <div className="min-w-0">
+        <h2 className={sectionTitleClass}>Dashboard session</h2>
+        <p className={sectionDescriptionClass}>
+          Browser access uses the admin password and remains separate from machine API credentials.
+        </p>
       </div>
 
       <div className="mt-4 flex flex-col gap-2 border-t border-wago-line pt-3 sm:flex-row sm:justify-end">
