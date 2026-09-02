@@ -23,7 +23,7 @@ export function DashboardPage() {
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
       refreshLabel="Refresh status"
     >
-      <div className="w-full max-w-[1180px]">
+      <div className="w-full">
         <section aria-labelledby="gateway-status-title">
           <div className="mb-2">
             <h2 id="gateway-status-title" className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">
