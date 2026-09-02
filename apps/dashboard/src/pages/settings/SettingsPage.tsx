@@ -71,9 +71,7 @@ export function SettingsPage() {
             <GatewayCredentialsCard
               appId={settings.appId}
               apiKeyConfigured={settings.apiKeyConfigured}
-              apiKeySource={settings.apiKeySource}
               apiKeyInput={settings.apiKeyInput}
-              credentialSetupRequired={settings.credentialSetupRequired}
               showApiKey={settings.showApiKey}
               copiedField={settings.copiedField}
               credentialHint={settings.credentialHint}
