@@ -37,7 +37,9 @@ export function OperatorSessionCard({
         <div className="flex flex-col gap-3 pb-4 xl:pb-0 xl:pr-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <strong className="block text-xs font-semibold text-wago-ink">Current browser</strong>
-            <p className="mb-0 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">Authenticated dashboard session.</p>
+            <p className="mb-0 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">
+              Authenticated dashboard session.
+            </p>
           </div>
           <button
             className={`${secondaryButtonClass} w-full shrink-0 sm:w-auto`}
