@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { config } from "../config/index.js";
 import { normalizePhone, toWhatsAppJid } from "./phone.js";
 
 describe("normalizePhone", () => {
@@ -7,16 +6,7 @@ describe("normalizePhone", () => {
     expect(normalizePhone("+62 812-3456-7890")).toBe("6281234567890");
   });
 
-  it("replaces a leading local zero with the configured default country code", () => {
-    const originalCountryCode = config.defaultCountryCode;
-    config.defaultCountryCode = "60";
-
-    expect(normalizePhone("012 3456 7890")).toBe("601234567890");
-
-    config.defaultCountryCode = originalCountryCode;
-  });
-
-  it("defaults local Indonesian numbers to country code 62", () => {
+  it("normalizes local Indonesian numbers with Wago's internal country-code default", () => {
     expect(normalizePhone("0812 3456 7890")).toBe("6281234567890");
   });
 });

@@ -89,3 +89,11 @@ This file records material decisions whose rationale is expensive to rediscover.
 **Why:** external applications need inbound events with the same restart-safe at-least-once guarantees as existing callbacks, but permanently retaining sender/message content would change Wago into a message store and weaken its privacy boundary.
 
 **Implication:** the stable Wago inbound message ID is derived deterministically so duplicate Baileys notifications converge on the existing unique webhook message/event key. Sender and text may be persisted only inside an active retry payload for at most the webhook retry horizon. SQLite atomically redacts that payload when the delivery becomes delivered, failed, or expired; terminal diagnostics keep IDs/status/attempt evidence only, and manual redelivery is unavailable once the inbound payload is redacted.
+
+## D12 — Product setup and configuration are zero-env
+
+**Decision:** Wago does not expose user/deployment environment variables as a product configuration surface. Admin setup, machine API-key lifecycle, recipient policy, webhook configuration, and other operator settings are owned by Wago workflows and durable state. Internal process-mode/test variables such as `NODE_ENV`, `VITEST_*`, and opt-in test logging are implementation details rather than operator configuration.
+
+**Why:** a self-hosted single-instance gateway should boot from the stock image/Compose definition and become usable through one deterministic onboarding flow. Parallel env overrides create hidden precedence, restart requirements, secret-ownership ambiguity, and dashboard/runtime disagreement.
+
+**Implication:** do not add `.env.example` files, Compose env forwarding, `VITE_*` runtime routing knobs, deployment-owned API keys, configurable country-code envs, or proxy-trust env toggles. New operator-configurable behavior belongs in the dashboard plus persisted Wago state when it is genuinely required. Defensive `.gitignore`/`.dockerignore` patterns for accidental `.env` files may remain, but they do not define a supported setup path.

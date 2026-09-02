@@ -62,15 +62,4 @@ describe("generated API key rotation", () => {
     expect(isApiKeyValid(result.apiKey)).toBe(true);
     expect(isApiKeyValid(candidate)).toBe(false);
   });
-
-  it("refuses to rotate an environment-managed API key", () => {
-    resetAccessStateForTest({ apiKey: "deployment-owned-key", apiKeySource: "env" });
-
-    expect(rotateGeneratedApiKey()).toEqual({
-      success: false,
-      error: "API_KEY_MANAGED_BY_ENV",
-      message: "This API key is managed by the deployment environment and must be rotated there.",
-    });
-    expect(isApiKeyValid("deployment-owned-key")).toBe(true);
-  });
 });

@@ -19,7 +19,7 @@ function cookieFrom(response: ResponseWithHeaders): string {
 
 describe("credential rotation endpoint", () => {
   beforeEach(() => {
-    resetAccessStateForTest({ apiKeyHash: hashApiKey(oldApiKey), apiKeySource: "generated" });
+    resetAccessStateForTest({ apiKeyHash: hashApiKey(oldApiKey) });
     resetAdminPasswordForTest(adminPassword);
     resetBrowserSessionsForTest();
     config.nodeEnv = "test";
@@ -66,14 +66,5 @@ describe("credential rotation endpoint", () => {
     expect((await request(app).get("/recipients").set("Cookie", cookieA)).status).toBe(401);
     expect((await request(app).get("/recipients").set("Cookie", cookieB)).status).toBe(401);
     expect((await request(app).get("/recipients").set("Authorization", `Bearer ${oldApiKey}`)).status).toBe(200);
-  });
-
-  it("does not allow the dashboard to rotate an environment-managed credential", async () => {
-    resetAccessStateForTest({ apiKey: "deployment-owned-key", apiKeySource: "env" });
-    resetAdminPasswordForTest(adminPassword);
-    const login = await request(app).post("/app/session").send({ password: adminPassword });
-    const response = await request(app).post("/app/api-key/rotate").set("Cookie", cookieFrom(login));
-    expect(response.status).toBe(409);
-    expect(response.body.error).toBe("API_KEY_MANAGED_BY_ENV");
   });
 });

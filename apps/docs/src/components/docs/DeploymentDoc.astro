@@ -13,7 +13,7 @@ const id = lang === 'id';
   <PageHeader
     eyebrow="Docker / GHCR"
     title={id ? 'Deployment production' : 'Production deployment'}
-    description={id ? 'Image production menggabungkan backend Express dan build React menjadi satu container non-root. Default deployment tidak memerlukan .env credential; production tetap memerlukan storage persisten dan hanya satu instance aktif untuk satu volume/account.' : 'The production image combines the Express backend and compiled React frontend into one non-root container. The default deployment requires no .env credential; production still requires persistent storage and exactly one active instance for one volume/account.'}
+    description={id ? 'Image production menggabungkan backend Express dan build React menjadi satu container non-root. Deployment Wago bersifat zero-env; production tetap memerlukan storage persisten dan hanya satu instance aktif untuk satu volume/account.' : 'The production image combines the Express backend and compiled React frontend into one non-root container. Wago deployment is zero-env; production still requires persistent storage and exactly one active instance for one volume/account.'}
   />
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">GHCR</h2>
@@ -24,19 +24,18 @@ const id = lang === 'id';
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Docker Compose</h2>
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Tidak perlu membuat password atau .env sebelum container start. Admin password dibuat sekali dari onboarding Wago dan Wago menyimpan hanya salted password hash di SQLite.' : 'You do not need to create a password or .env before the container starts. The admin password is created once from Wago onboarding and Wago stores only a salted password hash in SQLite.'}</p>
+  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Tidak ada .env atau credential deployment yang harus dibuat sebelum container start. Admin password dibuat sekali dari onboarding Wago dan Wago menyimpan hanya salted password hash di SQLite.' : 'There is no .env or deployment credential to create before the container starts. The admin password is created once from Wago onboarding and Wago stores only a salted password hash in SQLite.'}</p>
   <CodeBlock label="shell" code={`git clone https://github.com/howlil/wago.git\ncd wago\ndocker compose pull\ndocker compose up -d\ndocker compose ps\ncurl http://127.0.0.1:3000/health`} />
   <p class="text-sm text-[#71717a] mb-4">{id ? 'Buka dashboard, selesaikan onboarding admin, lalu klik Pair WhatsApp dan scan QR. Pairing memakai HttpOnly browser session dan tidak membuat machine API key. Buat machine API key dari Gateway access hanya jika external REST client memang membutuhkannya.' : 'Open the dashboard, complete admin onboarding, then click Pair WhatsApp and scan the QR. Pairing uses the HttpOnly browser session and does not create a machine API key. Generate a machine API key from Gateway access only if an external REST client actually needs one.'}</p>
+  <Callout title={id ? 'Zero-env adalah satu-satunya setup path' : 'Zero-env is the only setup path'}>
+    {id ? 'Compose tidak meneruskan product configuration melalui environment. Machine API key dibuat/dirotasi dari Wago; recipient policy dan webhook juga disimpan melalui Settings. Perubahan product configuration tidak bergantung pada hidden env precedence atau restart.' : 'Compose does not forward product configuration through the environment. Machine API keys are created/rotated from Wago; recipient policy and webhooks are also stored through Settings. Product configuration does not depend on hidden env precedence or restarts.'}
+  </Callout>
   <Callout title={id ? 'Claim fresh instance sebelum public exposure' : 'Claim a fresh instance before public exposure'} tone="warning">
     {id ? 'Fresh instance memakai first-browser ownership. Buat admin password sebelum origin Wago yang belum ter-setup dapat dijangkau jaringan tidak terpercaya.' : 'A fresh instance uses first-browser ownership. Create the admin password before an uninitialized Wago origin is reachable from an untrusted network.'}
   </Callout>
   <Callout title={id ? 'Network default sengaja tetap' : 'Network default is intentionally fixed'}>
     {id ? 'Compose mem-publish 127.0.0.1:3000. Letakkan Caddy, Nginx, Traefik, Cloudflare Tunnel, atau router PaaS di depannya dan gunakan HTTPS ketika service diakses di luar localhost.' : 'Compose publishes 127.0.0.1:3000. Put Caddy, Nginx, Traefik, Cloudflare Tunnel, or a PaaS router in front of it and use HTTPS when the service is accessed outside localhost.'}
   </Callout>
-
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Pre-provisioned machine API key opsional' : 'Optional pre-provisioned machine API key'}</h2>
-  <CodeBlock label="shell" code={`API_KEY="$(openssl rand -hex 32)" docker compose up -d`} />
-  <p class="text-sm text-[#a1a1aa] mb-4">{id ? 'Gunakan jalur ini hanya bila deployment platform/secret manager harus memiliki machine credential. API_KEY tidak menggantikan admin password dan tidak diperlukan untuk pairing: operator manusia tetap memakai browser session Wago, sedangkan API_KEY dipakai external server-to-server client.' : 'Use this path only when a deployment platform or secret manager must own the machine credential. API_KEY does not replace the admin password and is not required for pairing: human operators use the Wago browser session while external server-to-server clients use API_KEY.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Hardening container' : 'Container hardening'}</h2>
   <ul class="list-disc pl-5 text-sm text-[#a1a1aa] space-y-2 mb-8">
@@ -55,7 +54,7 @@ const id = lang === 'id';
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">{id ? 'Reverse proxy, TLS, dan origin' : 'Reverse proxy, TLS, and origin'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. Wago tidak memiliki configurable CORS allowlist. Production admin setup, dashboard sign-in, dan explicit machine-key generation memvalidasi same-origin; generation juga memerlukan browser session yang valid.' : 'Prefer one HTTPS origin for dashboard and API. Wago does not expose a configurable CORS allowlist. Production admin setup, dashboard sign-in, and explicit machine-key generation validate same-origin; generation also requires a valid browser session.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Gunakan satu origin HTTPS untuk dashboard dan API bila memungkinkan. Wago tidak memiliki configurable CORS allowlist. Production admin setup, dashboard sign-in, dan explicit machine-key generation memvalidasi same-origin; generation juga memerlukan browser session yang valid. Wago tidak mempercayai forwarded client identity sebagai operator-configurable setting.' : 'Prefer one HTTPS origin for dashboard and API. Wago does not expose a configurable CORS allowlist. Production admin setup, dashboard sign-in, and explicit machine-key generation validate same-origin; generation also requires a valid browser session. Wago does not trust forwarded client identity as an operator-configurable setting.'}</p>
   <Callout title={id ? 'Admin password hidup di private Wago state' : 'The admin password lives in private Wago state'} tone="warning">
     {id ? 'Raw password tidak dipersistenkan. Wago menyimpan salted scrypt hash di SQLite. Jangan masukkan password ke image, repository, issue, public browser bundle, atau deployment log.' : 'The raw password is never persisted. Wago stores a salted scrypt hash in SQLite. Do not put the password in the image, repository, issue, public browser bundle, or deployment log.'}
   </Callout>

@@ -17,10 +17,10 @@ Wago is intentionally narrow. It is designed for developers and self-hosters who
 Current capabilities include:
 
 - one WhatsApp account per Wago instance
-- zero-`.env` first-run setup from the dashboard
+- zero-env setup: stock deployment boots without user/deployment environment configuration
 - separate admin-password dashboard authentication and optional machine Bearer API credentials
 - salted persisted admin-password hash and opaque HttpOnly dashboard sessions
-- explicitly generated or optional deployment-managed machine API keys
+- machine API keys generated and rotated from Wago, with only hashes persisted
 - API-key rotation independent from normal dashboard sign-in
 - QR pairing, reconnect handling, terminal-session invalidation, and explicit rebind
 - recipient allow and opt-out controls
@@ -78,7 +78,7 @@ Wago remains single-account and single-active-instance. Never run two active Wag
 
 Requirements: Docker Engine, Docker Compose v2, and an HTTPS reverse proxy/tunnel/PaaS route when Wago is exposed outside localhost.
 
-### Default — no `.env` required
+### Zero-env setup
 
 ```bash
 git clone https://github.com/howlil/wago.git
@@ -94,20 +94,10 @@ Then click **Pair WhatsApp** and scan the QR. Pairing uses the authenticated bro
 
 If an external application later needs Wago's REST API, use **Gateway access → Generate API key**. Wago generates the machine credential on the server, persists only its SHA-256 hash, and shows the raw key once for you to save in your application or secret manager.
 
-No `.env`, setup token, log-derived secret, machine API key, or restart is required for the default first-run pairing path.
+Wago has no user/deployment environment configuration path for product setup. Admin ownership, machine-key lifecycle, recipient policy, and webhooks are managed through Wago and durable state; applying product configuration does not depend on hidden env precedence or a restart.
 
 > [!IMPORTANT]
 > A fresh instance uses first-browser ownership for admin setup. Complete the first-run admin setup before exposing an uninitialized Wago dashboard to an untrusted network.
-
-### Optional — pre-provisioned machine API key
-
-Use `API_KEY` only when your deployment platform or secret manager must own the machine credential:
-
-```bash
-API_KEY="$(openssl rand -hex 32)" docker compose up -d
-```
-
-An environment-managed API key is not copied into SQLite and cannot be rotated from the dashboard; rotate it in the deployment secret manager instead. Dashboard authentication and WhatsApp pairing still use the browser session and do not require an environment password.
 
 ## Production storage is mandatory
 
@@ -131,7 +121,7 @@ The dashboard and external application API use different credentials:
 - Wago persists only a salted scrypt hash of that password in SQLite
 - `POST /app/session` exchanges the admin password for an opaque HttpOnly `wago_session` cookie
 - the browser session can pair and operate Wago before any machine API key exists
-- external applications use `Authorization: Bearer <API_KEY>` only after a machine key is explicitly generated or deployment-managed
+- external applications use `Authorization: Bearer <API_KEY>` only after a machine key is explicitly generated from Wago
 - generated API keys are stored as hashes only
 - rotating a generated API key revokes other dashboard sessions while preserving the initiating session
 - `POST /app/session/logout-all` revokes every dashboard session without changing WhatsApp auth
@@ -155,7 +145,7 @@ Before creating a socket, Wago attempts to resolve the current WhatsApp Web vers
 
 ## Basic server-to-server flow
 
-Before integrating an external backend, generate a machine API key from **Gateway access** (or pre-provision `API_KEY` in deployments that deliberately manage the credential externally), then store it in your application's secret manager.
+Before integrating an external backend, generate a machine API key from **Gateway access**, then store it in your application's secret manager.
 
 ```bash
 export WAGO_URL="https://wago.example.com"
@@ -249,7 +239,7 @@ Incoming sender/text is not retained as chat history. It exists in SQLite only i
 | --- | --- | --- | --- |
 | `GET` | `/health` | Public | HTTP process liveness |
 | `GET` | `/ready` | Public | Operational `ok` / `degraded` / `not_ready` snapshot |
-| `GET` | `/app/info` | Public | Dashboard-auth mode, API credential source, and request-auth state |
+| `GET` | `/app/info` | Public | Dashboard-auth mode, API credential state, and request-auth state |
 | `POST` | `/app/admin/setup` | Fresh same-origin dashboard | Create the one-time admin credential and browser session |
 | `POST` | `/app/session` | Admin password | Exchange the human credential for a browser session |
 | `POST` | `/app/bootstrap` | Browser session | Explicitly generate or verify the machine API key; production requires an authenticated same-origin dashboard session |

@@ -1,5 +1,3 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-
 type RequestJsonOptions = {
   allowedStatuses?: number[];
 };
@@ -50,7 +48,7 @@ async function readResponseBody(response: Response): Promise<{ body: unknown; is
 }
 
 export async function requestJson<T>(path: string, init?: RequestInit, options: RequestJsonOptions = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(path, {
     ...init,
     credentials: "include",
   });
@@ -69,7 +67,7 @@ export async function requestJson<T>(path: string, init?: RequestInit, options: 
 }
 
 export async function requestText(path: string): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
+  const response = await fetch(path, { credentials: "include" });
   const { body, isJson } = await readResponseBody(response);
 
   if (!response.ok) {
@@ -80,5 +78,5 @@ export async function requestText(path: string): Promise<string> {
     throw new ApiError(response.status, "NON_TEXT_RESPONSE", "Expected a text response", body);
   }
 
-  return body;
+  return body as string;
 }

@@ -40,6 +40,12 @@ describe("public product surface", () => {
 
     const publicDocs = [readme, configuration, deployment, api].join("\n");
     assert.doesNotMatch(publicDocs, /CORS_ORIGIN/);
+    assert.doesNotMatch(publicDocs, /VITE_API_BASE_URL/);
+    assert.doesNotMatch(publicDocs, /TRUST_PROXY/);
+    assert.doesNotMatch(publicDocs, /DEFAULT_COUNTRY_CODE/);
+    assert.doesNotMatch(publicDocs, /environment-managed API key/i);
+    assert.doesNotMatch(publicDocs, /pre-provisioned machine API key/i);
+    assert.doesNotMatch(publicDocs, /API_KEY=.*docker compose/);
     assert.doesNotMatch(readme, /\.env\.production\.example/);
   });
 });
