@@ -296,7 +296,8 @@ export function WebhookSettingsCard() {
             ))}
           </div>
           <p className="mb-0 mt-2 text-xs leading-5 text-wago-muted">
-            Incoming sender and text data are retained only while an active retry needs them and are removed when the delivery becomes terminal.
+            Incoming sender and text data are retained only while an active retry needs them and are removed when the
+            delivery becomes terminal.
           </p>
         </details>
 
