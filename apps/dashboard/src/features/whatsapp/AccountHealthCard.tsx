@@ -49,10 +49,12 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
           </div>
           <span className="text-[11px] font-medium text-wago-warning">Checking account health</span>
         </div>
-        <p className="mb-0 mt-2 text-[11px] leading-5 text-wago-muted">
+        <p className="mb-0 mt-2 max-w-prose text-[11px] leading-5 text-wago-muted">
           Refreshing reach-out and new-chat restriction state.
         </p>
-        <p className="mb-0 mt-1 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
+          Last checked {formatDate(accountHealth?.lastFetchedAt)}
+        </p>
       </div>
     );
   }
@@ -69,10 +71,12 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
           </div>
           <span className="text-[11px] font-medium text-wago-muted">Health unavailable</span>
         </div>
-        <p className="mb-0 mt-2 text-[11px] leading-5 text-wago-muted">
+        <p className="mb-0 mt-2 max-w-prose text-[11px] leading-5 text-wago-muted">
           {unavailableDescription(accountHealth?.unavailableReason)}
         </p>
-        <p className="mb-0 mt-1 text-[9px] text-[#87918c]">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
+          Last checked {formatDate(accountHealth?.lastFetchedAt)}
+        </p>
       </div>
     );
   }
@@ -97,15 +101,15 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         </span>
       </div>
 
-      <dl className="mb-0 mt-2 divide-y divide-wago-line border-y border-wago-line">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 py-2.5">
-          <dt className="text-[11px] font-medium text-[#52615a]">Reach-out</dt>
+      <dl className="mb-0 mt-3 grid border-y border-wago-line md:grid-cols-2 md:divide-x md:divide-wago-line">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 py-2.5 md:pr-4">
+          <dt className="text-[11px] font-medium text-wago-secondary">Reach-out</dt>
           <dd
             className={`mb-0 text-[11px] font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-brand"}`}
           >
             {reachoutRestricted ? "Limited" : "Available"}
           </dd>
-          <p className="col-span-2 mb-0 text-[10px] leading-4 text-[#7c8781]">
+          <p className="col-span-2 mb-0 text-[10px] leading-4 text-wago-muted">
             {reachoutRestricted
               ? "New recipients are blocked while the timelock is active."
               : "No reach-out timelock is active."}
@@ -117,27 +121,29 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
           ) : null}
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 py-2.5">
-          <dt className="text-[11px] font-medium text-[#52615a]">New chats</dt>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 border-t border-wago-line py-2.5 md:border-t-0 md:pl-4">
+          <dt className="text-[11px] font-medium text-wago-secondary">New chats</dt>
           <dd
             className={`mb-0 text-[11px] font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-brand"}`}
           >
             {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "Normal"}
           </dd>
-          <p className="col-span-2 mb-0 text-[10px] leading-4 text-[#7c8781]">
+          <p className="col-span-2 mb-0 text-[10px] leading-4 text-wago-muted">
             {capRestricted || capWarning
               ? "New-recipient sends are paused; known recipients are evaluated normally."
               : "No new-chat warning or cap is reported."}
           </p>
           {showQuota ? (
-            <p className="col-span-2 mb-0 text-[10px] text-[#7c8781]">
+            <p className="col-span-2 mb-0 text-[10px] text-wago-muted">
               {cap?.used_quota ?? 0} / {cap?.total_quota} used
             </p>
           ) : null}
         </div>
       </dl>
 
-      <p className="mb-0 mt-1.5 text-[9px] text-[#87918c]">Last checked {formatDate(availableHealth.lastFetchedAt)}</p>
+      <p className="mb-0 mt-1.5 text-[10px] text-wago-tertiary">
+        Last checked {formatDate(availableHealth.lastFetchedAt)}
+      </p>
     </div>
   );
 }

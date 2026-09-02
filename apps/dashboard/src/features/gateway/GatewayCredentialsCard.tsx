@@ -45,16 +45,19 @@ export function GatewayCredentialsCard({
         <p className={sectionDescriptionClass}>Credentials for external applications calling the Wago HTTP API.</p>
       </div>
 
-      <div className="mt-4 grid gap-4">
-        <div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-2 xl:gap-6">
+        <div className="border-b border-wago-line pb-4 xl:border-b-0 xl:border-r xl:pb-0 xl:pr-6">
           <div className="text-[11px] font-medium text-wago-secondary">App ID</div>
-          <div className="mt-1 flex min-w-0 items-center justify-between gap-3 border-b border-wago-line pb-3">
+          <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
             <code className="min-w-0 break-all font-mono text-xs text-wago-ink">{appId}</code>
             <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onCopyAppId}>
               {copiedField === "appId" ? <Check size={14} /> : <Copy size={14} />}
               {copiedField === "appId" ? "Copied" : "Copy"}
             </button>
           </div>
+          <p className="mb-0 mt-2 max-w-prose text-xs leading-5 text-wago-muted">
+            Stable application identifier used alongside the API key by external callers.
+          </p>
         </div>
 
         <div>
@@ -63,7 +66,7 @@ export function GatewayCredentialsCard({
             <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <strong className="block text-sm font-semibold text-wago-ink">Configured</strong>
-                <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">{credentialHint}</p>
+                <p className="mb-0 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">{credentialHint}</p>
               </div>
               <button
                 className={`${secondaryButtonClass} w-full shrink-0 sm:w-auto`}
@@ -79,7 +82,7 @@ export function GatewayCredentialsCard({
             <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <strong className="block text-sm font-semibold text-wago-ink">Not generated</strong>
-                <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">
+                <p className="mb-0 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">
                   Required only when another application needs to call Wago.
                 </p>
               </div>
@@ -97,9 +100,9 @@ export function GatewayCredentialsCard({
         </div>
 
         {apiKeyInput ? (
-          <div className="border-t border-wago-line pt-3">
+          <div className="border-t border-wago-line pt-3 xl:col-span-2">
             <strong className="block text-xs font-semibold text-wago-ink">New API key</strong>
-            <p className="mb-2 mt-0.5 text-xs leading-5 text-wago-muted">
+            <p className="mb-2 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">
               Copy this value now. Wago will not show the raw key again after this response.
             </p>
             <div className="flex min-w-0 flex-col gap-2 sm:flex-row">

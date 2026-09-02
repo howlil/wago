@@ -13,7 +13,7 @@ type RecipientFormProps = {
 
 export function RecipientForm({ phone, label, busy, onPhoneChange, onLabelChange, onSubmit }: RecipientFormProps) {
   return (
-    <form onSubmit={onSubmit} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto]">
+    <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto] xl:grid-cols-1">
       <input
         className={inputClass}
         value={phone}
@@ -29,7 +29,7 @@ export function RecipientForm({ phone, label, busy, onPhoneChange, onLabelChange
         placeholder="Label (optional)"
         aria-label="Recipient label"
       />
-      <button className={primaryButtonClass} type="submit" disabled={busy}>
+      <button className={`${primaryButtonClass} xl:w-full`} type="submit" disabled={busy}>
         {busy ? <Loader2 className="animate-spin" size={14} /> : <UserPlus size={14} />}
         Allow
       </button>

@@ -59,7 +59,7 @@ Audit Log answers: **What happened, and where did the failure occur?**
 
 It is an operational console, not a card stack. Search and filters apply immediately. Event details remain progressively disclosed. Technical provider/library terminology appears only where it materially improves diagnosis.
 
-## Anti-slop visual grammar
+## Operational visual grammar
 
 Preferred hierarchy:
 
@@ -106,6 +106,34 @@ Use hierarchy in this order:
 4. borders/surface contrast;
 5. semantic color;
 6. elevation only for true overlays.
+
+## Width and density strategy
+
+The dashboard workspace is **fluid after the global sidebar**. On desktop, primary operational surfaces should use the available content width instead of stopping at a narrow centered max-width and leaving a large empty right column.
+
+Rules:
+- page-level workspace containers use the available width;
+- primary modules and operational cards are `w-full` inside their workspace column;
+- Settings keeps a fixed local navigation rail and a fluid `minmax(0, 1fr)` active-module column;
+- Control overview, primary WhatsApp module, and diagnostics align to the same fluid workspace width;
+- Audit search, filters, and event rows use the full workspace width;
+- compactness on wide screens comes from responsive **internal grids**, not from constraining the whole page or card;
+- long prose may use a readable text measure inside a full-width module;
+- dialogs, authentication forms, QR blocks, and other intrinsically narrow tasks may keep explicit max-width constraints;
+- tables and technical evidence should gain useful horizontal room before adding horizontal scrolling.
+
+Recommended wide-screen pattern:
+
+```text
+full workspace width
+┌─────────────────────────────────────────────────────────────┐
+│ module header / actions                                     │
+├──────────────────────────────┬──────────────────────────────┤
+│ primary fields / state       │ related state / evidence     │
+└──────────────────────────────┴──────────────────────────────┘
+```
+
+Do not create empty desktop space merely to preserve a form width that was appropriate for tablet. If a form itself should remain narrow, keep the module full-width and use an internal column or grid so the remaining width carries related state, help, or evidence.
 
 ## Typography and density
 
@@ -172,7 +200,13 @@ Required only when another application calls Wago.
 
 After configuration, show configured state and rotation action. A raw generated/rotated key appears only as a temporary one-time reveal with Copy/Show actions.
 
+On wide screens, App ID and API-key lifecycle may share a two-column grid inside the same full-width Access module. The one-time raw-key reveal spans the full module width so long values have room without widening the viewport.
+
 Do not expose source badges such as `generated` when they do not change operator behavior.
+
+### Messaging
+
+Recipient policy stays one module. On wide screens, use the available width to separate the add-recipient controls from the saved-recipient evidence when that reduces vertical scanning. Do not stretch a simple form across the full viewport if a related list can use the adjacent space.
 
 ### Webhooks
 
@@ -193,6 +227,8 @@ actions
 delivery activity
 ```
 
+The module itself is full-width. On wide screens, callback/configuration and signing/event controls may use responsive internal columns while delivery activity uses the full width for table evidence.
+
 Supported event names use operator-readable labels with technical event names as secondary monospace metadata.
 
 Delivery detail expands inline with its delivery row. Do not create a separate nested `Selected delivery` card. Attempt history is inline evidence. Terminal incoming deliveries explain why manual redelivery is unavailable without rendering a dominant disabled action.
@@ -200,6 +236,8 @@ Delivery detail expands inline with its delivery row. Do not create a separate n
 ### Sessions
 
 Current-browser sign-out is the normal action. `Sign out all sessions` is destructive, visually distinct, and requires explicit confirmation before execution.
+
+On wide screens, current-browser and all-session controls may sit in adjacent columns inside one full-width module so the page remains compact without reducing clarity.
 
 ### Audit
 
@@ -249,8 +287,10 @@ Workspace gutters:
 
 ### >= 1024px
 - persistent sidebar;
-- Settings uses a local navigation rail around 168px next to content up to about 880px;
-- large displays use available workspace without stretching forms proportionally.
+- Settings uses a local navigation rail around 176px next to a fluid active-module column;
+- primary workspace panels fill the available content column;
+- use internal two-column or multi-column composition when wider screens can reduce vertical scanning;
+- preserve readable text measure within modules rather than narrowing the whole workspace.
 
 ## Frontend architecture
 
@@ -281,6 +321,7 @@ Rules:
 For meaningful UI changes verify at minimum:
 - narrow mobile composition;
 - desktop shell/navigation;
+- wide desktop fluid workspace behavior;
 - Settings active-module behavior and hash navigation;
 - operational state semantics and dependency alarms;
 - prerequisite-aware diagnostics;

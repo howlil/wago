@@ -47,7 +47,7 @@ export function SendMessageCard({
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-4 grid gap-3">
+      <form onSubmit={onSubmit} className="mt-4 grid gap-3 xl:grid-cols-[minmax(260px,0.7fr)_minmax(0,1.3fr)]">
         <label>
           <span className={fieldLabelClass}>Recipient phone</span>
           <input
@@ -73,13 +73,13 @@ export function SendMessageCard({
         </label>
 
         {approvalRequired ? (
-          <div className="rounded-md border border-[#ead6a2] bg-wago-warning-soft px-3 py-2 text-xs leading-5 text-[#6f5200]">
+          <div className="rounded-md border border-[#ead6a2] bg-wago-warning-soft px-3 py-2 text-xs leading-5 text-[#6f5200] xl:col-span-2">
             This number is not allowed yet. Use <strong>Allow &amp; Send</strong> only after confirming recipient
             permission.
           </div>
         ) : null}
 
-        <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center xl:col-span-2">
           <button className={`${primaryButtonClass} w-full sm:w-auto`} type="submit" disabled={!canSend}>
             {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
             {isSending ? "Sending" : "Send"}

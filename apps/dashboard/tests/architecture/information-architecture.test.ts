@@ -23,10 +23,25 @@ describe("dashboard information architecture", () => {
     expect(settings).toContain('aria-label="Settings sections"');
     expect(settings).toContain("aria-current={active ? \"page\" : undefined}");
     expect(settings).toContain("hashchange");
-    expect(settings).toContain("max-w-[1120px]");
-    expect(settings).toContain("lg:grid-cols-[168px_minmax(0,880px)]");
+    expect(settings).toContain("lg:grid-cols-[176px_minmax(0,1fr)]");
+    expect(settings).not.toContain("max-w-[1120px]");
+    expect(settings).not.toContain("minmax(0,880px)");
     expect(settings).not.toContain("settings-access");
     expect(settings).not.toContain("max-w-[820px]");
+  });
+
+  it("uses the available desktop workspace instead of narrow page-level caps", () => {
+    const control = source("pages/dashboard/DashboardPage.tsx");
+    const mainColumn = source("pages/dashboard/DashboardMainColumn.tsx");
+    const diagnostics = source("pages/dashboard/DashboardDiagnostics.tsx");
+    const settings = source("pages/settings/SettingsPage.tsx");
+
+    expect(control).toContain('className="w-full"');
+    expect(control).not.toContain("max-w-[1180px]");
+    expect(mainColumn).toContain('className="min-w-0 w-full"');
+    expect(mainColumn).not.toContain("max-w-[920px]");
+    expect(diagnostics).not.toContain("max-w-[780px]");
+    expect(settings).toContain("minmax(0,1fr)");
   });
 
   it("keeps WhatsApp connection and account health inside one Control module", () => {
@@ -60,6 +75,7 @@ describe("dashboard information architecture", () => {
     expect(webhook).toContain("WebhookDeliveryDiagnostics");
     expect(webhook).toContain("Supported events");
     expect(webhook).toContain("3 events");
+    expect(webhook).toContain("xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]");
     expect(deliveryActivity).toContain("Delivery activity");
     expect(deliveryActivity).toContain("Collapse delivery details");
     expect(deliveryActivity).not.toContain("Selected delivery");
@@ -70,6 +86,7 @@ describe("dashboard information architecture", () => {
 
     expect(credentials).toContain("Not generated");
     expect(credentials).toContain("New API key");
+    expect(credentials).toContain("xl:grid-cols-2");
     expect(credentials).not.toContain("apiKeySource");
     expect(credentials).not.toContain('placeholder={credentialSetupRequired');
   });

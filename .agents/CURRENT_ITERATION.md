@@ -4,41 +4,50 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Active product milestone:** none.
+**Active product milestone:** Dashboard Fluid Workspace Layout — implementation complete, verification in progress.
 
-The repository is at a clean, resumable baseline after completion and integration of the Dashboard Anti-Slop Visual Consolidation milestone.
+Goal: make the operator dashboard use desktop width intentionally without becoming visually loose. Primary workspace panels fill the available content area; compactness comes from internal grid composition, spacing, and hierarchy rather than narrow page-level max-width constraints.
 
 ## Current baseline
 
 - global navigation remains exactly `Control`, `Settings`, and `Audit Log`;
 - Settings shows one hash-addressable active module at a time: `Access`, `Messaging`, `Webhooks`, or `Sessions`;
-- Webhook configuration is linear rather than a nested mega-card, and delivery evidence expands inline with the selected row;
-- machine access uses explicit `Not generated` / `Configured` states and exposes raw API keys only as one-time reveal output;
-- normal explanatory prose uses readable body sizing while technical metadata remains compact;
-- shared/high-traffic dashboard surfaces use semantic color tokens instead of proliferating arbitrary literal colors;
-- Control uses `Messaging` dependency language such as `Waiting` instead of repeating a root WhatsApp/gateway failure as another independent alarm;
-- the optional application-integration promotional surface was removed from Control;
-- Audit Log is a flat searchable/filterable operational console rather than card-inside-card composition;
-- session-wide sign-out is visually destructive and requires explicit confirmation;
-- the redundant sidebar `Workspace` label and obsolete integration-promo component were removed;
-- `apps/dashboard/DESIGN.md` codifies the anti-slop visual and interaction contract;
-- backend behavior and public API contracts were unchanged by this milestone;
-- no known material blocker.
+- Settings uses a fixed local navigation rail with a fluid active-module column on desktop;
+- Control overview, WhatsApp state, and diagnostics use the available workspace width instead of narrow page-level caps;
+- Access, Messaging, Webhooks, Sessions, WhatsApp state, account health, and manual-send diagnostics use responsive internal grids on wide screens to reduce vertical scanning;
+- intrinsically narrow tasks such as dialogs, authentication, and QR pairing remain measure-constrained;
+- Webhook delivery evidence and Audit Log retain full-width operational table/list behavior;
+- repository design documentation uses neutral design-system terminology;
+- backend behavior and public API contracts remain unchanged by this milestone.
 
 ## Active slice
 
-None.
+Milestone: Dashboard Fluid Workspace Layout
+Current slice: verification and cleanup.
+
+Completed slices:
+1. Removed Settings `1120px`/`880px`, Control `1180px`, WhatsApp `920px`, and diagnostics `780px` workspace caps.
+2. Made Settings `176px/192px + minmax(0, 1fr)` on wide desktop.
+3. Added responsive internal layouts for machine access, recipient policy, webhook configuration, session controls, WhatsApp/account health, and manual send diagnostics.
+4. Updated `apps/dashboard/DESIGN.md` with the fluid-workspace width strategy and neutral visual-system language.
+5. Added architecture regression coverage for fluid desktop workspace behavior.
 
 Evidence:
-- PR #116 `refactor(dashboard): complete anti-slop visual consolidation` was squash-merged into `main` as `9417cbfcb3f150916087568a610ce986b0aeb36f`;
-- final verified PR head: `124660f9238d411611b3c116460530d7440285f2`;
-- CI run `33682800708`: success; formatting/lint, core tests, production build, and Docker persistence/rollback smoke passed;
-- CodeQL run `33682800671`: success;
-- architecture/component acceptance protects single-module Settings, Webhook inline evidence, explicit machine-access states, dependency-aware Control summaries, flat Audit composition, and reduced navigation chrome.
+- branch `feat/dashboard-fluid-workspace` created from `main` at `3aea92ce23d326f8f6882e362b62698f495cdfa7`;
+- PR #117 `refactor(dashboard): make workspace fluid on wide screens` is open;
+- prior merged PR #116 title/body were renamed to neutral visual-hierarchy language;
+- implementation preserves mobile single-column behavior and keeps narrow-task max-width constraints only where functionally appropriate.
 
-Blockers: none.
+Verification gate:
+- formatting/lint;
+- core tests;
+- production build;
+- Docker persistence/rollback smoke;
+- CodeQL.
 
-Next action: await explicit authorization for the next product milestone. Do not invent one from this file.
+Blockers: none known.
+
+Next action: fix every deterministic verification regression on PR #117, then squash-merge when all required gates are green. After merge, return this file on `main` to idle.
 
 ## Completion rule
 

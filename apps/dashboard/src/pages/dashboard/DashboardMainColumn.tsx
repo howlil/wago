@@ -9,7 +9,7 @@ export function DashboardMainColumn({ dashboard }: DashboardMainColumnProps) {
   const activeQrImage = dashboard.hasQr && dashboard.status !== "connected" ? dashboard.qrImage : null;
 
   return (
-    <div className="min-w-0 max-w-[920px]">
+    <div className="min-w-0 w-full">
       <WhatsAppBindingCard
         health={dashboard.health}
         status={dashboard.status}

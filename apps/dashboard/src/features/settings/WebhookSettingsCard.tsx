@@ -184,88 +184,111 @@ export function WebhookSettingsCard() {
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-4">
-        <label className="flex items-start gap-3">
-          <input
-            className="mt-0.5 h-4 w-4 shrink-0 accent-wago-brand"
-            type="checkbox"
-            aria-label="Enable webhook delivery"
-            checked={enabled}
-            onChange={(event) => {
-              setEnabled(event.target.checked);
-              setTestResult("");
-            }}
-            disabled={loading || saving || testing}
-          />
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-wago-ink">Enable webhook delivery</span>
-            <span className="mt-0.5 block text-xs leading-5 text-wago-muted">
-              Retry transient callback failures automatically.
+      <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] xl:gap-x-6 xl:gap-y-4">
+        <div className="grid content-start gap-4">
+          <label className="flex items-start gap-3">
+            <input
+              className="mt-0.5 h-4 w-4 shrink-0 accent-wago-brand"
+              type="checkbox"
+              aria-label="Enable webhook delivery"
+              checked={enabled}
+              onChange={(event) => {
+                setEnabled(event.target.checked);
+                setTestResult("");
+              }}
+              disabled={loading || saving || testing}
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-wago-ink">Enable webhook delivery</span>
+              <span className="mt-0.5 block max-w-prose text-xs leading-5 text-wago-muted">
+                Retry transient callback failures automatically.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
 
-        <label>
-          <span className={fieldLabelClass}>Callback URL</span>
-          <input
-            className={inputClass}
-            value={url}
-            onChange={(event) => {
-              setUrl(event.target.value);
-              setTestResult("");
-            }}
-            placeholder="https://your-backend.example.com/webhooks/wago"
-            inputMode="url"
-            autoComplete="url"
-            disabled={loading || saving || testing}
-          />
-          <span className="mt-1 block text-xs leading-5 text-wago-muted">
-            Use an HTTPS endpoint owned by the receiving backend in production.
-          </span>
-        </label>
+          <label>
+            <span className={fieldLabelClass}>Callback URL</span>
+            <input
+              className={inputClass}
+              value={url}
+              onChange={(event) => {
+                setUrl(event.target.value);
+                setTestResult("");
+              }}
+              placeholder="https://your-backend.example.com/webhooks/wago"
+              inputMode="url"
+              autoComplete="url"
+              disabled={loading || saving || testing}
+            />
+            <span className="mt-1 block max-w-prose text-xs leading-5 text-wago-muted">
+              Use an HTTPS endpoint owned by the receiving backend in production.
+            </span>
+          </label>
+        </div>
 
-        <div className="border-y border-wago-line py-3">
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-wago-ink">Signing</div>
-              <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">
-                {secretConfigured ? "Signing secret configured." : "A signing secret is created on first enable."}
-              </p>
+        <div className="grid content-start gap-4 border-t border-wago-line pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+          <div className="border-b border-wago-line pb-4">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-wago-ink">Signing</div>
+                <p className="mb-0 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">
+                  {secretConfigured ? "Signing secret configured." : "A signing secret is created on first enable."}
+                </p>
+              </div>
+              {secretConfigured ? (
+                <button
+                  className={`${secondaryButtonClass} w-full shrink-0 sm:w-auto`}
+                  type="button"
+                  onClick={() => void rotate()}
+                  disabled={saving || testing}
+                >
+                  <RefreshCcw size={14} />
+                  Rotate secret
+                </button>
+              ) : null}
             </div>
-            {secretConfigured ? (
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={() => void rotate()}
-                disabled={saving || testing}
-              >
-                <RefreshCcw size={14} />
-                Rotate secret
-              </button>
+
+            {rotationPending ? (
+              <div className="mt-3 flex flex-col items-start gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="m-0 min-w-0 text-xs leading-5 text-wago-muted">
+                  Rotation overlap is active. Update the receiver before completing rotation.
+                </p>
+                <button
+                  className={`${secondaryButtonClass} w-full shrink-0 sm:w-auto`}
+                  type="button"
+                  onClick={() => void completeRotation()}
+                  disabled={saving || testing}
+                >
+                  Complete rotation
+                </button>
+              </div>
             ) : null}
           </div>
 
-          {rotationPending ? (
-            <div className="mt-3 flex flex-col items-start gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="m-0 min-w-0 text-xs leading-5 text-wago-muted">
-                Rotation overlap is active. Update the receiver before completing rotation.
-              </p>
-              <button
-                className={`${secondaryButtonClass} w-full sm:w-auto`}
-                type="button"
-                onClick={() => void completeRotation()}
-                disabled={saving || testing}
-              >
-                Complete rotation
-              </button>
+          <details>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-wago-ink [&::-webkit-details-marker]:hidden">
+              <span>Supported events</span>
+              <span className="font-normal text-wago-muted">3 events</span>
+            </summary>
+            <div className="mt-3 divide-y divide-wago-line border-t border-wago-line">
+              {supportedEvents.map(([label, event]) => (
+                <div className="flex flex-col gap-0.5 py-2 sm:flex-row sm:items-center sm:justify-between" key={event}>
+                  <span className="text-xs text-wago-ink">{label}</span>
+                  <code className="font-mono text-[10px] text-wago-tertiary">{event}</code>
+                </div>
+              ))}
             </div>
-          ) : null}
+            <p className="mb-0 mt-2 text-xs leading-5 text-wago-muted">
+              Incoming sender and text data are retained only while an active retry needs them and are removed when the
+              delivery becomes terminal.
+            </p>
+          </details>
         </div>
 
         {generatedSecret ? (
-          <div className="border-b border-wago-line pb-3">
+          <div className="border-t border-wago-line pt-3 xl:col-span-2">
             <strong className="block text-xs font-semibold text-wago-ink">New signing secret</strong>
-            <p className="mb-2 mt-0.5 text-xs leading-5 text-wago-muted">
+            <p className="mb-2 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">
               Copy this now. The raw secret is only returned by this create or rotate response.
             </p>
             <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -282,26 +305,7 @@ export function WebhookSettingsCard() {
           </div>
         ) : null}
 
-        <details className="border-b border-wago-line pb-3">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-wago-ink [&::-webkit-details-marker]:hidden">
-            <span>Supported events</span>
-            <span className="font-normal text-wago-muted">3 events</span>
-          </summary>
-          <div className="mt-3 divide-y divide-wago-line border-t border-wago-line">
-            {supportedEvents.map(([label, event]) => (
-              <div className="flex flex-col gap-0.5 py-2 sm:flex-row sm:items-center sm:justify-between" key={event}>
-                <span className="text-xs text-wago-ink">{label}</span>
-                <code className="font-mono text-[10px] text-wago-tertiary">{event}</code>
-              </div>
-            ))}
-          </div>
-          <p className="mb-0 mt-2 text-xs leading-5 text-wago-muted">
-            Incoming sender and text data are retained only while an active retry needs them and are removed when the
-            delivery becomes terminal.
-          </p>
-        </details>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between xl:col-span-2">
           <span className="text-[10px] text-wago-tertiary">
             {updatedAt ? `Last updated ${new Date(updatedAt).toLocaleString()}` : "No saved webhook configuration."}
           </span>

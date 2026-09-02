@@ -104,20 +104,24 @@ export function WhatsAppBindingCard({
         </div>
       ) : null}
 
-      <dl className="mb-0 mt-4 grid gap-2 border-t border-wago-line pt-3 text-[11px] sm:grid-cols-[120px_minmax(0,1fr)]">
-        <dt className="font-medium text-wago-muted">Connection</dt>
-        <dd className="mb-0 font-medium text-wago-ink">{connectionLabel(health, status)}</dd>
-        <dt className="font-medium text-wago-muted">Account</dt>
-        <dd className="mb-0 min-w-0">
-          {binding.state === "bound" ? (
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <strong className="break-all font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
-              <span className="text-[10px] text-[#7d8882]">Bound {formatBoundAt(binding.boundAt)}</span>
-            </span>
-          ) : (
-            <span className="text-wago-muted">Not paired</span>
-          )}
-        </dd>
+      <dl className="mb-0 mt-4 grid gap-3 border-t border-wago-line pt-3 md:grid-cols-2 md:gap-6">
+        <div className="min-w-0">
+          <dt className="text-[11px] font-medium text-wago-muted">Connection</dt>
+          <dd className="mb-0 mt-1 font-medium text-wago-ink">{connectionLabel(health, status)}</dd>
+        </div>
+        <div className="min-w-0 border-t border-wago-line pt-3 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+          <dt className="text-[11px] font-medium text-wago-muted">Account</dt>
+          <dd className="mb-0 mt-1 min-w-0">
+            {binding.state === "bound" ? (
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <strong className="break-all font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
+                <span className="text-[10px] text-wago-tertiary">Bound {formatBoundAt(binding.boundAt)}</span>
+              </span>
+            ) : (
+              <span className="text-wago-muted">Not paired</span>
+            )}
+          </dd>
+        </div>
       </dl>
 
       <AccountHealthCard accountHealth={accountHealth} />
