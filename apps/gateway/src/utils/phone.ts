@@ -1,11 +1,12 @@
-import { config } from "../config/index.js";
 import { ApplicationError } from "../errors/application-error.js";
+
+const DEFAULT_COUNTRY_CODE = "62";
 
 export function normalizePhone(input: string): string {
   const stripped = input.replace(/[\s+-]/g, "");
 
   if (stripped.startsWith("0")) {
-    return `${config.defaultCountryCode}${stripped.slice(1)}`;
+    return `${DEFAULT_COUNTRY_CODE}${stripped.slice(1)}`;
   }
 
   return stripped;

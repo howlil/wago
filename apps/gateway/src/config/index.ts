@@ -1,1 +1,1 @@
-export { config, type RuntimeConfig } from "./env.js";
+export { config, type RuntimeConfig } from "./runtime.js";

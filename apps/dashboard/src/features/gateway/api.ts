@@ -7,7 +7,7 @@ export type AppInfoResponse = {
   appId: string;
   apiKeyRequired: boolean;
   apiKeyConfigured: boolean;
-  apiKeySource: "env" | "generated" | "unset";
+  apiKeySource: "generated" | "unset";
   authenticated: boolean;
   adminPasswordConfigured: boolean;
   dashboardAuthMode: DashboardAuthMode;

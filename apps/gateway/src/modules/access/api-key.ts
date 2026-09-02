@@ -6,11 +6,10 @@ import { createAppSettingsStore } from "./app-settings-store.js";
 
 const generatedApiKeyPattern = /^wa_[A-Za-z0-9_-]{43,64}$/;
 
-type ApiKeySource = "env" | "generated" | "unset";
+type ApiKeySource = "generated" | "unset";
 
 type MutableAccessState = {
   appId: string;
-  apiKey: string | null;
   apiKeyHash: string | null;
   apiKeySource: ApiKeySource;
   generatedAt: string | null;
@@ -30,7 +29,7 @@ export type BootstrapApiKeyResult =
 
 export type ApiKeyRotationResult =
   | { success: true; apiKey: string; generatedAt: string }
-  | { success: false; error: "API_KEY_MANAGED_BY_ENV" | "GATEWAY_NOT_INITIALIZED"; message: string };
+  | { success: false; error: "GATEWAY_NOT_INITIALIZED"; message: string };
 
 const settingsStore = createAppSettingsStore(getDatabase());
 const persistedSettings = settingsStore.get();
@@ -46,9 +45,8 @@ if (!persistedSettings) {
 
 let state: MutableAccessState = {
   appId: initialAppId,
-  apiKey: config.deploymentApiKey,
-  apiKeyHash: config.deploymentApiKey ? null : (persistedSettings?.apiKeyHash ?? null),
-  apiKeySource: config.deploymentApiKey ? "env" : persistedSettings?.apiKeyHash ? "generated" : "unset",
+  apiKeyHash: persistedSettings?.apiKeyHash ?? null,
+  apiKeySource: persistedSettings?.apiKeyHash ? "generated" : "unset",
   generatedAt: persistedSettings?.generatedAt ?? null,
 };
 
@@ -70,14 +68,14 @@ function constantTimeEquals(left: string, right: string): boolean {
 function saveState(nextState: MutableAccessState): void {
   settingsStore.save({
     appId: nextState.appId,
-    apiKeyHash: nextState.apiKeySource === "generated" ? nextState.apiKeyHash : null,
+    apiKeyHash: nextState.apiKeyHash,
     generatedAt: nextState.generatedAt,
   });
   state = nextState;
 }
 
 export function getAccessSnapshot(): AccessSnapshot {
-  const apiKeyConfigured = Boolean(state.apiKey || state.apiKeyHash);
+  const apiKeyConfigured = Boolean(state.apiKeyHash);
 
   return {
     appId: state.appId,
@@ -93,9 +91,7 @@ export function isApiKeyConfigured(): boolean {
 }
 
 export function isApiKeyValid(candidate: string): boolean {
-  if (state.apiKey && constantTimeEquals(candidate, state.apiKey)) return true;
-  if (state.apiKeyHash && constantTimeEquals(hashApiKey(candidate), state.apiKeyHash)) return true;
-  return false;
+  return Boolean(state.apiKeyHash && constantTimeEquals(hashApiKey(candidate), state.apiKeyHash));
 }
 
 export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult {
@@ -109,16 +105,11 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
     };
   }
 
-  if (
-    candidate &&
-    state.apiKeySource === "generated" &&
-    state.apiKeyHash &&
-    hashApiKey(candidate) === state.apiKeyHash
-  ) {
+  if (candidate && state.apiKeyHash && hashApiKey(candidate) === state.apiKeyHash) {
     return { success: true, appId: state.appId, apiKey: candidate, recovered: true };
   }
 
-  if (state.apiKey || state.apiKeyHash) {
+  if (state.apiKeyHash) {
     return {
       success: false,
       error: "APP_ALREADY_INITIALIZED",
@@ -132,7 +123,6 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
 
   saveState({
     ...state,
-    apiKey: null,
     apiKeyHash,
     apiKeySource: "generated",
     generatedAt,
@@ -142,14 +132,6 @@ export function bootstrapApiKey(requestedApiKey?: string): BootstrapApiKeyResult
 }
 
 export function rotateGeneratedApiKey(): ApiKeyRotationResult {
-  if (state.apiKeySource === "env") {
-    return {
-      success: false,
-      error: "API_KEY_MANAGED_BY_ENV",
-      message: "This API key is managed by the deployment environment and must be rotated there.",
-    };
-  }
-
   if (state.apiKeySource !== "generated" || !state.apiKeyHash) {
     return {
       success: false,
@@ -164,7 +146,6 @@ export function rotateGeneratedApiKey(): ApiKeyRotationResult {
 
   saveState({
     ...state,
-    apiKey: null,
     apiKeyHash,
     apiKeySource: "generated",
     generatedAt,
@@ -174,18 +155,20 @@ export function rotateGeneratedApiKey(): ApiKeyRotationResult {
 }
 
 export function resetAccessStateForTest(
-  overrides: Partial<Pick<MutableAccessState, "apiKey" | "apiKeyHash" | "apiKeySource" | "generatedAt">> = {},
+  overrides: {
+    apiKey?: string | null;
+    apiKeyHash?: string | null;
+    apiKeySource?: string;
+    generatedAt?: string | null;
+  } = {},
 ): void {
-  const apiKey = overrides.apiKey ?? null;
-  const apiKeyHash = apiKey ? null : (overrides.apiKeyHash ?? null);
-  const apiKeySource = overrides.apiKeySource ?? (apiKey ? "env" : apiKeyHash ? "generated" : "unset");
+  const apiKeyHash = overrides.apiKey ? hashApiKey(overrides.apiKey) : (overrides.apiKeyHash ?? null);
 
   settingsStore.clear();
   saveState({
     appId: state.appId,
-    apiKey,
     apiKeyHash,
-    apiKeySource,
+    apiKeySource: apiKeyHash ? "generated" : "unset",
     generatedAt: overrides.generatedAt ?? null,
   });
 }

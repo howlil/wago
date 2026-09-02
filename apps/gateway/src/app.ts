@@ -18,7 +18,9 @@ import { whatsappRouter } from "./modules/whatsapp/routes.js";
 export const app = express();
 const { messageRouter } = createHttpComposition();
 
-app.set("trust proxy", config.trustProxy ? 1 : false);
+// Wago does not trust forwarded client identity by default. This keeps the
+// deployment zero-config and prevents direct clients from spoofing proxy headers.
+app.set("trust proxy", false);
 app.use(
   helmet({
     contentSecurityPolicy: {
