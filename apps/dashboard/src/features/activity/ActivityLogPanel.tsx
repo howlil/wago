@@ -73,7 +73,11 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFil
 
         <label className="relative">
           <span className="sr-only">Filter audit source</span>
-          <select className={selectClass} value={source} onChange={(event) => setSource(event.target.value as SourceFilter)}>
+          <select
+            className={selectClass}
+            value={source}
+            onChange={(event) => setSource(event.target.value as SourceFilter)}
+          >
             <option value="all">All sources</option>
             <option value="wago">Wago</option>
             <option value="baileys">WhatsApp transport</option>
@@ -100,7 +104,11 @@ export function ActivityLogPanel({ enabled, heading = "Activity Log", initialFil
 
         <label className="relative">
           <span className="sr-only">Filter audit level</span>
-          <select className={selectClass} value={level} onChange={(event) => setLevel(event.target.value as LevelFilter)}>
+          <select
+            className={selectClass}
+            value={level}
+            onChange={(event) => setLevel(event.target.value as LevelFilter)}
+          >
             <option value="all">All levels</option>
             <option value="success">Success</option>
             <option value="info">Information</option>
