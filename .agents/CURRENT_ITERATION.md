@@ -4,9 +4,9 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Active product milestone:** Dashboard Fluid Workspace Layout — implementation complete, verification in progress.
+**Active product milestone:** none.
 
-Goal: make the operator dashboard use desktop width intentionally without becoming visually loose. Primary workspace panels fill the available content area; compactness comes from internal grid composition, spacing, and hierarchy rather than narrow page-level max-width constraints.
+The repository is at a clean, resumable baseline after completion and integration of the Dashboard Fluid Workspace Layout milestone.
 
 ## Current baseline
 
@@ -14,40 +14,32 @@ Goal: make the operator dashboard use desktop width intentionally without becomi
 - Settings shows one hash-addressable active module at a time: `Access`, `Messaging`, `Webhooks`, or `Sessions`;
 - Settings uses a fixed local navigation rail with a fluid active-module column on desktop;
 - Control overview, WhatsApp state, and diagnostics use the available workspace width instead of narrow page-level caps;
-- Access, Messaging, Webhooks, Sessions, WhatsApp state, account health, and manual-send diagnostics use responsive internal grids on wide screens to reduce vertical scanning;
-- intrinsically narrow tasks such as dialogs, authentication, and QR pairing remain measure-constrained;
-- Webhook delivery evidence and Audit Log retain full-width operational table/list behavior;
-- repository design documentation uses neutral design-system terminology;
-- backend behavior and public API contracts remain unchanged by this milestone.
+- primary operational modules fill their workspace column while responsive internal grids keep wide-screen layouts compact;
+- Access places App ID and API-key lifecycle side by side on wide screens, with one-time raw-key output spanning the module when present;
+- Messaging separates recipient-entry controls from saved-recipient evidence on wide screens;
+- Webhooks separates callback configuration from signing/events while keeping delivery evidence full-width;
+- Sessions separates current-browser and all-session controls on wide screens;
+- WhatsApp/account-health and manual-send diagnostics use horizontal space to reduce unnecessary vertical scanning;
+- intrinsically narrow tasks such as dialogs, authentication, QR pairing, and long prose remain measure-constrained where appropriate;
+- Audit Log retains full-width operational search, filters, and event evidence;
+- `apps/dashboard/DESIGN.md` defines the fluid-workspace width and density strategy using neutral design-system language;
+- backend behavior and public API contracts were unchanged by this milestone;
+- no known material blocker.
 
 ## Active slice
 
-Milestone: Dashboard Fluid Workspace Layout
-Current slice: verification and cleanup.
-
-Completed slices:
-1. Removed Settings `1120px`/`880px`, Control `1180px`, WhatsApp `920px`, and diagnostics `780px` workspace caps.
-2. Made Settings `176px/192px + minmax(0, 1fr)` on wide desktop.
-3. Added responsive internal layouts for machine access, recipient policy, webhook configuration, session controls, WhatsApp/account health, and manual send diagnostics.
-4. Updated `apps/dashboard/DESIGN.md` with the fluid-workspace width strategy and neutral visual-system language.
-5. Added architecture regression coverage for fluid desktop workspace behavior.
+None.
 
 Evidence:
-- branch `feat/dashboard-fluid-workspace` created from `main` at `3aea92ce23d326f8f6882e362b62698f495cdfa7`;
-- PR #117 `refactor(dashboard): make workspace fluid on wide screens` is open;
-- prior merged PR #116 title/body were renamed to neutral visual-hierarchy language;
-- implementation preserves mobile single-column behavior and keeps narrow-task max-width constraints only where functionally appropriate.
-
-Verification gate:
-- formatting/lint;
-- core tests;
-- production build;
-- Docker persistence/rollback smoke;
-- CodeQL.
+- PR #117 `refactor(dashboard): make workspace fluid on wide screens` was squash-merged into `main` as `0ad09f521075b07509f3d8305b2fa158e5666f8b`;
+- final verified PR head: `adbba2a03963d080543e4e24601e4f1091c6f7d6`;
+- CI run `33686532805`: success; formatting/lint, core tests, production build, and Docker persistence/rollback smoke passed;
+- CodeQL run `33686532806`: success;
+- architecture regression coverage protects the fluid Settings rail/content layout and removal of narrow Control/WhatsApp/diagnostic workspace caps.
 
 Blockers: none known.
 
-Next action: fix every deterministic verification regression on PR #117, then squash-merge when all required gates are green. After merge, return this file on `main` to idle.
+Next action: await explicit authorization for the next product milestone. Do not invent one from this file.
 
 ## Completion rule
 
