@@ -99,7 +99,9 @@ export function ActivityEventList({ events }: { events: ActivityEvent[] }) {
                     <dl className="mb-0 mt-2 grid min-w-0 gap-x-4 gap-y-2 border-l-2 border-wago-line bg-wago-surface-subtle px-3 py-2.5 sm:grid-cols-2 lg:grid-cols-3">
                       {metadata.map(([key, value]) => (
                         <div key={key} className="min-w-0">
-                          <dt className="text-[10px] uppercase tracking-[0.05em] text-wago-tertiary">{humanizeKey(key)}</dt>
+                          <dt className="text-[10px] uppercase tracking-[0.05em] text-wago-tertiary">
+                            {humanizeKey(key)}
+                          </dt>
                           <dd className="mb-0 mt-0.5 break-all font-mono text-[10px] text-wago-secondary">
                             {String(value)}
                           </dd>
