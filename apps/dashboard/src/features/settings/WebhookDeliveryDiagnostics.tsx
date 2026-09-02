@@ -148,7 +148,9 @@ export function WebhookDeliveryDiagnostics() {
                 <th className="px-3 py-2 font-medium">Event</th>
                 <th className="px-3 py-2 font-medium">Attempts</th>
                 <th className="px-3 py-2 font-medium">Created</th>
-                <th className="px-3 py-2 font-medium"><span className="sr-only">Inspect</span></th>
+                <th className="px-3 py-2 font-medium">
+                  <span className="sr-only">Inspect</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -178,10 +180,13 @@ export function WebhookDeliveryDiagnostics() {
                         <td colSpan={5} className="px-3 py-3">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
-                              <code className="block break-all font-mono text-[10px] text-wago-tertiary">{selected.id}</code>
+                              <code className="block break-all font-mono text-[10px] text-wago-tertiary">
+                                {selected.id}
+                              </code>
                               {!selected.redeliveryAvailable ? (
                                 <p className="mb-0 mt-1 text-xs leading-5 text-wago-muted">
-                                  Terminal incoming payload was removed; diagnostic evidence remains, but manual redelivery is unavailable.
+                                  Terminal incoming payload was removed; diagnostic evidence remains, but manual
+                                  redelivery is unavailable.
                                 </p>
                               ) : null}
                             </div>
@@ -205,12 +210,25 @@ export function WebhookDeliveryDiagnostics() {
                             ) : (
                               <ol className="mb-0 mt-2 grid list-none gap-2 p-0">
                                 {selected.attempts.map((attempt) => (
-                                  <li className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" key={attempt.sequence}>
-                                    <code className="font-mono text-[10px] text-wago-tertiary">#{attempt.sequence}</code>
+                                  <li
+                                    className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+                                    key={attempt.sequence}
+                                  >
+                                    <code className="font-mono text-[10px] text-wago-tertiary">
+                                      #{attempt.sequence}
+                                    </code>
                                     <span className="font-medium text-wago-ink">{attemptLabel(attempt)}</span>
-                                    {attempt.statusCode ? <span className="text-wago-muted">HTTP {attempt.statusCode}</span> : null}
-                                    {attempt.errorCode ? <code className="font-mono text-[10px] text-wago-tertiary">{attempt.errorCode}</code> : null}
-                                    <span className="text-[10px] text-wago-tertiary">{formatTimestamp(attempt.startedAt)}</span>
+                                    {attempt.statusCode ? (
+                                      <span className="text-wago-muted">HTTP {attempt.statusCode}</span>
+                                    ) : null}
+                                    {attempt.errorCode ? (
+                                      <code className="font-mono text-[10px] text-wago-tertiary">
+                                        {attempt.errorCode}
+                                      </code>
+                                    ) : null}
+                                    <span className="text-[10px] text-wago-tertiary">
+                                      {formatTimestamp(attempt.startedAt)}
+                                    </span>
                                   </li>
                                 ))}
                               </ol>
