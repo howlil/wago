@@ -28,7 +28,9 @@ export function OperatorSessionCard({
     <section className={cardBodyClass}>
       <div className="min-w-0">
         <h2 className={sectionTitleClass}>Dashboard session</h2>
-        <p className={sectionDescriptionClass}>Browser access uses the admin password, separate from machine API credentials.</p>
+        <p className={sectionDescriptionClass}>
+          Browser access uses the admin password, separate from machine API credentials.
+        </p>
       </div>
 
       <div className="mt-4 flex flex-col gap-3 border-t border-wago-line pt-3 sm:flex-row sm:items-start sm:justify-between">
