@@ -32,6 +32,14 @@ function formatBoundAt(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function connectionLabel(health: BackendHealthState, status: WhatsAppStatus): string {
+  if (health !== "ok") return "Backend unavailable";
+  if (status === "connected") return "Connected";
+  if (status === "connecting") return "Connecting";
+  if (status === "qr") return "QR ready";
+  return "Disconnected";
+}
+
 export function WhatsAppBindingCard({
   health,
   status,
@@ -98,7 +106,7 @@ export function WhatsAppBindingCard({
 
       <dl className="mb-0 mt-4 grid gap-2 border-t border-wago-line pt-3 text-[11px] sm:grid-cols-[120px_minmax(0,1fr)]">
         <dt className="font-medium text-wago-muted">Connection</dt>
-        <dd className="mb-0 font-medium text-wago-ink">{connectionDescription}</dd>
+        <dd className="mb-0 font-medium text-wago-ink">{connectionLabel(health, status)}</dd>
         <dt className="font-medium text-wago-muted">Account</dt>
         <dd className="mb-0 min-w-0">
           {binding.state === "bound" ? (
