@@ -41,7 +41,7 @@ export function SettingsPage() {
     >
       <NoticeBanner notice={settings.notice} />
 
-      <div className="grid w-full max-w-[1120px] items-start gap-5 lg:grid-cols-[168px_minmax(0,880px)] lg:gap-6">
+      <div className="grid w-full items-start gap-5 lg:grid-cols-[176px_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[192px_minmax(0,1fr)]">
         <nav
           className="grid grid-cols-2 gap-1 border-b border-wago-line pb-2 sm:grid-cols-4 lg:sticky lg:top-20 lg:grid-cols-1 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-3"
           aria-label="Settings sections"
@@ -66,7 +66,7 @@ export function SettingsPage() {
           })}
         </nav>
 
-        <div className="min-w-0" aria-live="polite">
+        <div className="min-w-0 w-full" aria-live="polite">
           {activeModule === "access" ? (
             <GatewayCredentialsCard
               appId={settings.appId}
