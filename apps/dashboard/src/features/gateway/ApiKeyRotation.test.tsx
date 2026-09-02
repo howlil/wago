@@ -42,7 +42,15 @@ describe("API key rotation dashboard controls", () => {
     await user.click(screen.getByRole("button", { name: /rotate api key/i }));
     expect(onRotateApiKey).toHaveBeenCalledTimes(1);
 
-    rerender(<GatewayCredentialsCard {...baseProps} apiKeySource="env" onRotateApiKey={onRotateApiKey} />);
+    rerender(
+      <GatewayCredentialsCard
+        {...baseProps}
+        apiKeyConfigured={false}
+        apiKeySource="unset"
+        credentialSetupRequired
+        onRotateApiKey={onRotateApiKey}
+      />,
+    );
     expect(screen.queryByRole("button", { name: /rotate api key/i })).toBeNull();
   });
 
