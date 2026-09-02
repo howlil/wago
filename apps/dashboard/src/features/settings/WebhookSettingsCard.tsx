@@ -221,8 +221,8 @@ export function WebhookSettingsCard() {
             <div className="mt-0.5 font-mono text-[10px] text-wago-muted">message.rejected</div>
           </div>
           <p className="col-span-full mb-0 text-[10px] leading-4 text-wago-muted">
-            Incoming text and sender data exist only while an active retry delivery needs them and are removed when
-            that delivery becomes terminal.
+            Incoming text and sender data exist only while an active retry delivery needs them and are removed when that
+            delivery becomes terminal.
           </p>
         </div>
 
