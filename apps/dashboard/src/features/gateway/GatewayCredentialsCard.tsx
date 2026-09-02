@@ -1,21 +1,16 @@
 import { Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 import {
   cardBodyClass,
-  fieldLabelClass,
-  inputClass,
   secondaryButtonClass,
   sectionDescriptionClass,
   sectionTitleClass,
 } from "../../shared/ui/classes.js";
-import type { AppInfoResponse } from "./api.js";
 import type { CopiedField } from "./types.js";
 
 type GatewayCredentialsCardProps = {
   appId: string;
   apiKeyConfigured: boolean;
-  apiKeySource: AppInfoResponse["apiKeySource"];
   apiKeyInput: string;
-  credentialSetupRequired: boolean;
   showApiKey: boolean;
   copiedField: CopiedField;
   credentialHint: string;
@@ -31,9 +26,7 @@ type GatewayCredentialsCardProps = {
 export function GatewayCredentialsCard({
   appId,
   apiKeyConfigured,
-  apiKeySource,
   apiKeyInput,
-  credentialSetupRequired,
   showApiKey,
   copiedField,
   credentialHint,
@@ -47,34 +40,17 @@ export function GatewayCredentialsCard({
 }: GatewayCredentialsCardProps) {
   return (
     <section className={cardBodyClass}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className={sectionTitleClass}>Machine access</h2>
-          <p className={sectionDescriptionClass}>
-            Credentials used by external applications calling the Wago HTTP API.
-          </p>
-        </div>
-        {apiKeyConfigured ? (
-          <span className="shrink-0 rounded bg-[#f0f2f0] px-1.5 py-1 text-[9px] font-semibold uppercase tracking-[0.05em] text-[#6f7c75]">
-            {apiKeySource}
-          </span>
-        ) : null}
+      <div className="min-w-0">
+        <h2 className={sectionTitleClass}>Machine access</h2>
+        <p className={sectionDescriptionClass}>Credentials for external applications calling the Wago HTTP API.</p>
       </div>
 
       <div className="mt-4 grid gap-4">
         <div>
-          <label className={fieldLabelClass} htmlFor="gateway-app-id">
-            App ID
-          </label>
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <input
-              id="gateway-app-id"
-              className={`${inputClass} min-w-0 font-mono text-xs`}
-              value={appId}
-              readOnly
-              aria-label="App ID"
-            />
-            <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onCopyAppId}>
+          <div className="text-[11px] font-medium text-wago-secondary">App ID</div>
+          <div className="mt-1 flex min-w-0 items-center justify-between gap-3 border-b border-wago-line pb-3">
+            <code className="min-w-0 break-all font-mono text-xs text-wago-ink">{appId}</code>
+            <button className={`${secondaryButtonClass} shrink-0`} type="button" onClick={onCopyAppId}>
               {copiedField === "appId" ? <Check size={14} /> : <Copy size={14} />}
               {copiedField === "appId" ? "Copied" : "Copy"}
             </button>
@@ -82,69 +58,71 @@ export function GatewayCredentialsCard({
         </div>
 
         <div>
-          <label className={fieldLabelClass} htmlFor="gateway-api-key">
-            Machine API key
-          </label>
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="relative min-w-0">
-              <input
-                id="gateway-api-key"
-                className={`${inputClass} pr-9 font-mono text-xs`}
-                value={apiKeyInput}
-                placeholder={credentialSetupRequired ? "Not generated" : "Not stored in browser"}
-                type={showApiKey ? "text" : "password"}
-                readOnly
-                autoComplete="off"
-                aria-label="Machine API key"
-              />
-              {apiKeyInput ? (
+          <div className="text-[11px] font-medium text-wago-secondary">Machine API key</div>
+          {apiKeyConfigured ? (
+            <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <strong className="block text-sm font-semibold text-wago-ink">Configured</strong>
+                <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">{credentialHint}</p>
+              </div>
+              <button
+                className={`${secondaryButtonClass} w-full shrink-0 sm:w-auto`}
+                type="button"
+                onClick={onRotateApiKey}
+                disabled={isRotatingApiKey}
+              >
+                <KeyRound size={14} />
+                {isRotatingApiKey ? "Rotating" : "Rotate API key"}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <strong className="block text-sm font-semibold text-wago-ink">Not generated</strong>
+                <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">
+                  Required only when another application needs to call Wago.
+                </p>
+              </div>
+              <button
+                className={`${secondaryButtonClass} w-full shrink-0 sm:w-auto`}
+                type="button"
+                onClick={onGenerateApiKey}
+                disabled={isGeneratingApiKey}
+              >
+                <KeyRound size={14} />
+                {isGeneratingApiKey ? "Generating" : "Generate API key"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {apiKeyInput ? (
+          <div className="border-t border-wago-line pt-3">
+            <strong className="block text-xs font-semibold text-wago-ink">New API key</strong>
+            <p className="mb-2 mt-0.5 text-xs leading-5 text-wago-muted">
+              Copy this value now. Wago will not show the raw key again after this response.
+            </p>
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+              <div className="flex min-w-0 flex-1 items-center border-b border-wago-line py-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-xs text-wago-ink">
+                  {showApiKey ? apiKeyInput : "•".repeat(Math.min(Math.max(apiKeyInput.length, 16), 40))}
+                </code>
                 <button
-                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-[#758079]"
+                  className="ml-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-wago-muted hover:bg-wago-hover hover:text-wago-ink"
                   type="button"
                   onClick={onToggleApiKey}
                   aria-label={showApiKey ? "Hide API key" : "Show API key"}
                 >
                   {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
-              ) : null}
+              </div>
+              <button className={`${secondaryButtonClass} w-full sm:w-auto`} type="button" onClick={onCopyApiKey}>
+                {copiedField === "apiKey" ? <Check size={14} /> : <Copy size={14} />}
+                {copiedField === "apiKey" ? "Copied" : "Copy key"}
+              </button>
             </div>
-            <button
-              className={`${secondaryButtonClass} w-full sm:w-auto`}
-              type="button"
-              onClick={onCopyApiKey}
-              disabled={!apiKeyInput}
-            >
-              {copiedField === "apiKey" ? <Check size={14} /> : <Copy size={14} />}
-              {copiedField === "apiKey" ? "Copied" : "Copy"}
-            </button>
           </div>
-          <span className="mt-1 block text-[10px] leading-4 text-[#7b8680]">{credentialHint}</span>
-        </div>
-
-        <div className="flex flex-col justify-end gap-2 border-t border-wago-line pt-3 sm:flex-row">
-          {!apiKeyConfigured ? (
-            <button
-              className={`${secondaryButtonClass} w-full sm:w-auto`}
-              type="button"
-              onClick={onGenerateApiKey}
-              disabled={isGeneratingApiKey}
-            >
-              <KeyRound size={14} />
-              {isGeneratingApiKey ? "Generating" : "Generate API key"}
-            </button>
-          ) : null}
-          {apiKeySource === "generated" ? (
-            <button
-              className={`${secondaryButtonClass} w-full sm:w-auto`}
-              type="button"
-              onClick={onRotateApiKey}
-              disabled={isRotatingApiKey}
-            >
-              <KeyRound size={14} />
-              {isRotatingApiKey ? "Rotating" : "Rotate API key"}
-            </button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
     </section>
   );
