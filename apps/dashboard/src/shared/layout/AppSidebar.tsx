@@ -48,8 +48,8 @@ function WorkspaceNavigation({
             onClick={onNavigate}
             className={`flex h-10 items-center rounded-md border text-[13px] font-medium transition-colors ${
               active
-                ? "border-[#c9ddd3] bg-wago-brand-soft text-wago-brand-strong"
-                : "border-transparent text-[#607069] hover:bg-[#f4f7f5] hover:text-wago-ink"
+                ? "border-wago-brand/20 bg-wago-brand-soft text-wago-brand-strong"
+                : "border-transparent text-wago-secondary hover:bg-wago-hover hover:text-wago-ink"
             } ${collapsed ? "mx-auto w-10 justify-center" : "gap-2.5 px-3"}`}
           >
             <Icon className="shrink-0" size={17} />
@@ -84,7 +84,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
           {!collapsed ? (
             <Tooltip content="Collapse sidebar">
               <button
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-wago-hover hover:text-wago-ink"
                 type="button"
                 onClick={onToggleCollapsed}
                 aria-label="Collapse sidebar"
@@ -95,13 +95,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
           ) : null}
         </div>
 
-        {!collapsed ? (
-          <div className="px-3 pt-3">
-            <span className="px-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">Workspace</span>
-          </div>
-        ) : null}
-
-        <nav className="px-2 py-2" aria-label="Application navigation">
+        <nav className="px-2 py-3" aria-label="Application navigation">
           <WorkspaceNavigation activePath={activePath} collapsed={collapsed} />
         </nav>
 
@@ -109,7 +103,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
           <div className="mt-auto border-t border-wago-line p-2">
             <Tooltip content="Expand sidebar">
               <button
-                className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
+                className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-wago-hover hover:text-wago-ink"
                 type="button"
                 onClick={onToggleCollapsed}
                 aria-label="Expand sidebar"
@@ -124,9 +118,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
       <Sheet
         open={mobileOpen}
         onOpenChange={(open) => {
-          if (!open) {
-            onCloseMobile();
-          }
+          if (!open) onCloseMobile();
         }}
       >
         <SheetContent>
@@ -136,7 +128,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
             <AppBrand />
             <SheetClose asChild>
               <button
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-[#eef3f0] hover:text-wago-ink"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-wago-hover hover:text-wago-ink"
                 type="button"
                 aria-label="Close sidebar"
               >
@@ -144,8 +136,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
               </button>
             </SheetClose>
           </div>
-          <div className="px-3 pt-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8a9690]">Workspace</div>
-          <nav className="px-2 py-2" aria-label="Mobile application navigation">
+          <nav className="px-2 py-3" aria-label="Mobile application navigation">
             <WorkspaceNavigation activePath={activePath} onNavigate={onCloseMobile} />
           </nav>
         </SheetContent>
