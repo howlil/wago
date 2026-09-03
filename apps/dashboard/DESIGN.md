@@ -21,7 +21,9 @@ Control answers: **Is the gateway operational, and what action is needed now?**
 It owns runtime readiness, WhatsApp connection/account lifecycle, account restriction state, and secondary end-to-end diagnostics.
 
 Rules:
-- overview is summary only;
+- the runtime summary is one compact status rail, not a row of KPI cards;
+- the status rail is the routine authoritative gateway/WhatsApp/messaging summary;
+- do not repeat the same routine gateway state in the page header and the status rail;
 - WhatsApp connection, binding, and account health are one operator domain;
 - one dependency failure must not read as several independent alarms;
 - downstream capability summaries use dependency language such as `Waiting` when a root prerequisite is unavailable;
@@ -51,7 +53,7 @@ Ownership:
 - Webhooks: callback, signing, supported events, test action, and delivery activity;
 - Sessions: operator browser-session controls.
 
-Settings must not regress into a long page containing all modules at once.
+Settings must not regress into a long page containing all modules at once. The one active module is a workspace section, not a giant routine card.
 
 ### Audit Log
 
@@ -59,32 +61,70 @@ Audit Log answers: **What happened, and where did the failure occur?**
 
 It is an operational console, not a card stack. Search and filters apply immediately. Event details remain progressively disclosed. Technical provider/library terminology appears only where it materially improves diagnosis.
 
-## Operational visual grammar
+## Console surface grammar
 
-Preferred hierarchy:
+The default hierarchy is divider-led workspace composition:
 
 ```text
-Page
-  module / toolbar
-    state
-    fields or rows
-    action
+workspace
+
+module title                                      primary action
+short state only when useful
+---------------------------------------------------------------
+field / state          field / state          related evidence
+---------------------------------------------------------------
+secondary operational evidence
 ```
+
+A routine primary module does **not** receive a rounded card merely because it needs a visual boundary. Use alignment, spacing, typography, and dividers first.
+
+### Surface types
+
+**Workspace section** is the default for primary Control and Settings modules.
+
+Use it for:
+- WhatsApp runtime state;
+- Access;
+- Messaging recipient policy;
+- Webhooks;
+- Sessions;
+- Audit tooling.
+
+A workspace section normally has:
+- a module header;
+- optional action/state on the opposite edge;
+- a bottom divider;
+- responsive internal regions or key/value rows.
+
+**Bounded surface** is reserved for a real self-contained interaction or exceptional state.
+
+Appropriate examples:
+- QR pairing content;
+- one-time API key/signing-secret reveal;
+- destructive confirmation;
+- warnings/errors requiring stronger containment;
+- dialogs, sheets, tooltips;
+- secondary diagnostic forms where a form boundary improves comprehension.
+
+Do not use bounded surfaces as the default wrapper for the only active module on a page.
+
+**Operational rail** is for compact cross-domain runtime summaries. A rail uses text state plus a semantic dot; it is not a set of metric/KPI cards.
+
+### Borders and hierarchy
+
+A border represents a real conceptual boundary. Subsections inside one domain normally use dividers and smaller headings, not nested full cards.
 
 Avoid:
 
 ```text
 Page
-  explanatory heading
-    card
-      duplicate heading
-      decorative info panel
-        mini cards
-      nested card
-        selected-item card
+  card
+    duplicate heading
+    info panel
+      mini cards
+    nested card
+      selected-item card
 ```
-
-A border should represent a real conceptual boundary. Subsections inside one domain normally use dividers and smaller headings, not more full cards.
 
 Do not add:
 - decorative gradients or glass effects;
@@ -93,7 +133,8 @@ Do not add:
 - oversized rounding;
 - decorative icon boxes for routine modules;
 - promotional onboarding cards inside operational pages;
-- status pills/badges that expose implementation state without helping an operator decide;
+- tiny status badges or pills when readable status text is enough;
+- status badges that expose implementation state without helping an operator decide;
 - empty disabled form controls for capabilities that do not yet exist;
 - nested cards when inline disclosure is sufficient;
 - arbitrary centered application max-width containers;
@@ -109,28 +150,28 @@ Use hierarchy in this order:
 
 ## Width and density strategy
 
-The dashboard workspace is **fluid after the global sidebar**. On desktop, primary operational surfaces should use the available content width instead of stopping at a narrow centered max-width and leaving a large empty right column.
+The dashboard workspace is **fluid after the global sidebar**. On desktop, primary operational surfaces use the available content width instead of stopping at a narrow centered max-width and leaving a large empty right column.
 
 Rules:
 - page-level workspace containers use the available width;
-- primary modules and operational cards are `w-full` inside their workspace column;
+- primary workspace sections are `w-full` inside their workspace column;
 - Settings keeps a fixed local navigation rail and a fluid `minmax(0, 1fr)` active-module column;
-- Control overview, primary WhatsApp module, and diagnostics align to the same fluid workspace width;
+- Control status rail, WhatsApp module, and diagnostics align to the same fluid workspace width;
 - Audit search, filters, and event rows use the full workspace width;
-- compactness on wide screens comes from responsive **internal grids**, not from constraining the whole page or card;
+- compactness on wide screens comes from responsive internal grids, not from constraining the whole page;
 - long prose may use a readable text measure inside a full-width module;
 - dialogs, authentication forms, QR blocks, and other intrinsically narrow tasks may keep explicit max-width constraints;
-- tables and technical evidence should gain useful horizontal room before adding horizontal scrolling.
+- tables and technical evidence gain useful horizontal room before adding horizontal scrolling.
 
 Recommended wide-screen pattern:
 
 ```text
 full workspace width
-┌─────────────────────────────────────────────────────────────┐
-│ module header / actions                                     │
-├──────────────────────────────┬──────────────────────────────┤
-│ primary fields / state       │ related state / evidence     │
-└──────────────────────────────┴──────────────────────────────┘
+---------------------------------------------------------------
+module header / action
+---------------------------------------------------------------
+primary fields / state       | related state / evidence
+---------------------------------------------------------------
 ```
 
 Do not create empty desktop space merely to preserve a form width that was appropriate for tablet. If a form itself should remain narrow, keep the module full-width and use an internal column or grid so the remaining width carries related state, help, or evidence.
@@ -150,9 +191,10 @@ technical identifier   10-13px monospace
 ```
 
 Rules:
-- normal explanatory prose is **never 9-10px**;
+- explanatory prose and instructions are at least 12px;
 - 10px is reserved for metadata such as timestamps, counts, short event codes, and technical identifiers;
 - 9px is not used for normal operator UI;
+- readable semantic status text is preferred over tiny badges;
 - monospace is limited to identifiers, keys, JIDs, endpoints, event codes, and similar technical values.
 
 Spacing rhythm:
@@ -161,13 +203,13 @@ Spacing rhythm:
 4px   micro
 8px   tight internal
 12px  related content
-16px  standard component/module
+16px  standard region
 20px  tablet workspace gutter
 24px  desktop gutter / major separation
 32px  exceptional page-level separation
 ```
 
-Standard controls are 36px high. Routine module padding is 16px. Inputs/buttons/nav items use about 6px radius; standard bounded modules use about 8px. Shadows are reserved for true overlays.
+Standard controls are 36px high. Inputs/buttons/nav items use about 6px radius. Bounded exceptional surfaces normally use about 6-8px radius. Routine workspace sections do not need rounding because their hierarchy comes from the workspace itself.
 
 ## Color and tokens
 
@@ -177,13 +219,30 @@ Prefer token classes such as:
 - `wago-line` / `wago-control-line`;
 - `wago-secondary` / `wago-tertiary`;
 - `wago-surface-subtle` / `wago-hover`;
+- `wago-brand` / `wago-brand-strong`;
 - `wago-positive`, `wago-warning`, `wago-danger`.
 
-Do not introduce a new literal hex value for a routine control or text state when an existing semantic token can represent it. A few literals may remain for exceptional brand or accessibility tuning, but literal-color proliferation is design debt.
+Do not introduce a literal hex value for a routine dashboard control, text state, status, divider, or notice when an existing semantic token can represent it. Literal colors are acceptable only for exceptional rendering needs such as overlay tuning when a semantic token would be misleading.
 
 Status color is never the only signal; pair it with text.
 
 ## Key component rules
+
+### Runtime status rail
+
+The Control summary presents `Gateway`, `WhatsApp`, and `Messaging` as one compact rail. Each state contains:
+- semantic dot;
+- domain label;
+- readable state text;
+- concise dependency/evidence text.
+
+The rail may stack on narrow screens, but must not become three rounded KPI cards.
+
+### WhatsApp
+
+WhatsApp connection, account binding, and account health are one workspace module. The module header owns `Pair WhatsApp` / `Change account` actions.
+
+Connection/account/account-health evidence uses divider-led key/value regions. QR pairing is a bounded task surface because the QR code is an intrinsically self-contained interaction; it does not need an additional decorative icon box.
 
 ### Machine access
 
@@ -198,46 +257,39 @@ Required only when another application calls Wago.
 [Generate API key]
 ```
 
-After configuration, show configured state and rotation action. A raw generated/rotated key appears only as a temporary one-time reveal with Copy/Show actions.
+After configuration, show configured state and rotation action. A raw generated/rotated key appears only as a temporary one-time bounded reveal with Copy/Show actions.
 
-On wide screens, App ID and API-key lifecycle may share a two-column grid inside the same full-width Access module. The one-time raw-key reveal spans the full module width so long values have room without widening the viewport.
-
-Do not expose source badges such as `generated` when they do not change operator behavior.
+On wide screens, App ID and API-key lifecycle may share a two-column region. Do not expose source badges such as `generated` when they do not change operator behavior.
 
 ### Messaging
 
-Recipient policy stays one module. On wide screens, use the available width to separate the add-recipient controls from the saved-recipient evidence when that reduces vertical scanning. Do not stretch a simple form across the full viewport if a related list can use the adjacent space.
+Recipient policy stays one workspace module. On wide screens, use the available width to separate add-recipient controls from saved-recipient evidence when that reduces vertical scanning.
+
+Recipient state uses readable semantic text (optionally with a small dot) rather than a tiny pill. `Allowed`, `Opted out`, and `Not allowed` must remain understandable without color.
 
 ### Webhooks
 
-Webhooks remain one product domain but must not become one mega-card.
-
-Use a linear structure:
+Webhooks remain one product domain but use two clear workspace regions:
 
 ```text
-Webhook integration
-status + callback
-------------------
-signing
-------------------
-supported events (compact disclosure)
-------------------
-actions
-------------------
-delivery activity
+Webhooks
+---------------------------------------------------------------
+Configuration
+  callback / enablement      | signing / supported events
+  temporary secret when any
+  save / test
+---------------------------------------------------------------
+Delivery activity
+  recent deliveries / inline attempt evidence
 ```
 
-The module itself is full-width. On wide screens, callback/configuration and signing/event controls may use responsive internal columns while delivery activity uses the full width for table evidence.
+Do not wrap the entire Webhooks module in a routine card. The configuration region and delivery region are separated by the workspace divider. Generated signing-secret output may be bounded because it is temporary and sensitive.
 
-Supported event names use operator-readable labels with technical event names as secondary monospace metadata.
-
-Delivery detail expands inline with its delivery row. Do not create a separate nested `Selected delivery` card. Attempt history is inline evidence. Terminal incoming deliveries explain why manual redelivery is unavailable without rendering a dominant disabled action.
+Supported event names use operator-readable labels with technical event names as secondary monospace metadata. Delivery detail expands inline with its delivery row. Do not create a separate nested `Selected delivery` card.
 
 ### Sessions
 
-Current-browser sign-out is the normal action. `Sign out all sessions` is destructive, visually distinct, and requires explicit confirmation before execution.
-
-On wide screens, current-browser and all-session controls may sit in adjacent columns inside one full-width module so the page remains compact without reducing clarity.
+Current-browser sign-out is the normal action. `Sign out all sessions` is destructive, visually distinct, and requires explicit confirmation before execution. The confirmation may use a bounded danger surface; the routine Sessions module itself does not.
 
 ### Audit
 
@@ -253,6 +305,20 @@ event rows
 
 Do not wrap the whole Audit workspace in a routine card and then put the event list in another rounded card.
 
+## Copy rules
+
+UI copy exists to change a decision or explain a constraint. Remove copy that merely restates the heading.
+
+Keep copy when it communicates:
+- a prerequisite;
+- a security/privacy boundary;
+- a risk or restriction;
+- an irreversible/destructive consequence;
+- a one-time secret requirement;
+- a dependency that explains why an action is unavailable.
+
+Prefer concise state labels and direct actions over generic explanatory paragraphs.
+
 ## Application shell and responsive behavior
 
 Desktop sidebar:
@@ -262,7 +328,7 @@ Desktop sidebar:
 - no promotional/footer card;
 - no redundant group label when all global destinations belong to one group.
 
-Header height is about 56px. Global Control status reflects gateway readiness rather than only WhatsApp socket state.
+Header height is about 56px. The header owns page identity and page-level actions such as Refresh; routine Control gateway state belongs to the status rail directly below and is not duplicated in the header.
 
 Workspace gutters:
 
@@ -276,6 +342,7 @@ Workspace gutters:
 - drawer global navigation;
 - single-column task flow;
 - Settings local navigation is a compact two-column selector;
+- status rail stacks cleanly;
 - actions may stack/full-width;
 - technical tables scroll only inside bounded regions;
 - no viewport horizontal overflow.
@@ -283,12 +350,13 @@ Workspace gutters:
 ### 768-1023px
 - drawer global navigation;
 - Settings module selector may be a four-item row;
-- forms remain one readable main flow.
+- forms remain one readable main flow;
+- key/value workbench regions may begin distributing horizontally when space is sufficient.
 
 ### >= 1024px
 - persistent sidebar;
 - Settings uses a local navigation rail around 176px next to a fluid active-module column;
-- primary workspace panels fill the available content column;
+- primary workspace sections fill the available content column;
 - use internal two-column or multi-column composition when wider screens can reduce vertical scanning;
 - preserve readable text measure within modules rather than narrowing the whole workspace.
 
@@ -308,6 +376,7 @@ Rules:
 5. Components use the frontend API boundary rather than calling `fetch` directly.
 6. Browser authentication uses the HttpOnly browser session; machine API keys are not browser auth state.
 7. React local state/focused hooks remain the default; do not add global state infrastructure without demonstrated need.
+8. Shared visual classes should encode demonstrated repeated primitives only; do not build a generic component framework around this surface grammar.
 
 ## Accessibility and verification
 
@@ -322,10 +391,14 @@ For meaningful UI changes verify at minimum:
 - narrow mobile composition;
 - desktop shell/navigation;
 - wide desktop fluid workspace behavior;
+- Control status rail semantics and lack of header duplication;
+- WhatsApp pairing/binding/account-health workbench;
 - Settings active-module behavior and hash navigation;
-- operational state semantics and dependency alarms;
+- machine API-key generation/rotation one-time reveal;
+- recipient allow/opt-out/reallow state;
+- Webhook save/test/signing rotation and inline delivery diagnostics;
+- session sign-out and sign-out-all confirmation;
 - prerequisite-aware diagnostics;
-- Webhook disclosure/inline diagnostics;
 - Audit filters and event disclosure;
 - relevant component/architecture tests;
 - formatting/lint, production build, Docker persistence/rollback smoke, and repository security gates.
