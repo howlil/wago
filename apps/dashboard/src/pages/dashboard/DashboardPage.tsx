@@ -13,7 +13,6 @@ export function DashboardPage() {
   return (
     <AppShell
       title="Control"
-      description="Observe gateway health, operate the WhatsApp connection and troubleshoot delivery."
       activePath="/"
       isRefreshing={dashboard.isRefreshing}
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
