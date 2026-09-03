@@ -53,6 +53,8 @@ describe("dashboard information architecture", () => {
   it("uses one compact Control status rail without duplicate header state", () => {
     const control = source("pages/dashboard/DashboardPage.tsx");
     const overview = source("features/dashboard/OverviewCards.tsx");
+    const shell = source("shared/components/AppShell.tsx");
+    const header = source("shared/layout/AppHeader.tsx");
 
     expect(overview).toContain('aria-label="Gateway runtime status"');
     expect(overview).toContain('label: "Gateway"');
@@ -64,7 +66,13 @@ describe("dashboard information architecture", () => {
     expect(overview).not.toContain("bg-white px-4 py-3.5");
     expect(control).not.toContain("statusLabel=");
     expect(control).not.toContain("statusTone=");
-    expect(control).not.toContain("header-status");
+    expect(control).not.toContain("description=");
+    expect(shell).not.toContain("statusLabel");
+    expect(shell).not.toContain("statusTone");
+    expect(shell).not.toContain("description:");
+    expect(header).not.toContain("statusLabel");
+    expect(header).not.toContain("statusTone");
+    expect(header).not.toContain("description:");
   });
 
   it("keeps WhatsApp connection and account health in a divider-led workbench", () => {
@@ -131,6 +139,17 @@ describe("dashboard information architecture", () => {
     expect(credentials).not.toContain('placeholder={credentialSetupRequired');
   });
 
+  it("keeps authentication bounded without startup-card decoration", () => {
+    const access = source("features/access/AccessGate.tsx");
+
+    expect(access).toContain("rounded-md border border-wago-line bg-wago-surface p-6");
+    expect(access).toContain("border-y border-wago-line py-5");
+    expect(access).not.toContain("rounded-xl");
+    expect(access).not.toContain("shadow-sm");
+    expect(access).not.toContain("h-11 w-11");
+    expect(access).not.toContain("bg-[#");
+  });
+
   it("uses readable recipient status text instead of tiny status pills", () => {
     const recipients = source("features/recipients/RecipientList.tsx");
     const status = source("features/recipients/utils.ts");
@@ -151,6 +170,7 @@ describe("dashboard information architecture", () => {
 
   it("keeps migrated high-traffic surfaces on semantic color tokens", () => {
     for (const path of [
+      "features/access/AccessGate.tsx",
       "features/whatsapp/WhatsAppBindingCard.tsx",
       "features/whatsapp/QrPairingCard.tsx",
       "features/recipients/RecipientAccessCard.tsx",
@@ -172,8 +192,13 @@ describe("dashboard information architecture", () => {
     expect(list).toContain("border-y border-wago-line");
   });
 
-  it("does not render a redundant Workspace label in global navigation", () => {
+  it("keeps global navigation rule-led instead of active-card shaped", () => {
     const sidebar = source("shared/layout/AppSidebar.tsx");
+
+    expect(sidebar).toContain("border-l-2");
+    expect(sidebar).toContain("border-l-wago-brand text-wago-brand-strong");
+    expect(sidebar).not.toContain("border-wago-brand/20");
+    expect(sidebar).not.toContain("bg-wago-brand-soft text-wago-brand-strong");
     expect(sidebar).not.toContain(">Workspace<");
   });
 });

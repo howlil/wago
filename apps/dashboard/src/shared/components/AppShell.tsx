@@ -5,10 +5,7 @@ import { AppSidebar, type WorkspacePath } from "../layout/AppSidebar.js";
 type AppShellProps = {
   children: ReactNode;
   title: string;
-  description: string;
   activePath: WorkspacePath;
-  statusLabel?: string;
-  statusTone?: "positive" | "warning" | "danger" | "neutral";
   isRefreshing?: boolean;
   onRefresh?: () => void;
   refreshLabel?: string;
@@ -32,17 +29,7 @@ function persistSidebarCollapsed(value: boolean): void {
   }
 }
 
-export function AppShell({
-  children,
-  title,
-  description,
-  activePath,
-  statusLabel,
-  statusTone,
-  isRefreshing,
-  onRefresh,
-  refreshLabel,
-}: AppShellProps) {
+export function AppShell({ children, title, activePath, isRefreshing, onRefresh, refreshLabel }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -87,9 +74,6 @@ export function AppShell({
       <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-14" : "lg:pl-[196px]"}`}>
         <AppHeader
           title={title}
-          description={description}
-          statusLabel={statusLabel}
-          statusTone={statusTone}
           isRefreshing={isRefreshing}
           onRefresh={onRefresh}
           refreshLabel={refreshLabel}

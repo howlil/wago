@@ -30,11 +30,7 @@ function initialAuditFilters(): ActivityLogInitialFilters {
 
 export function AuditPage() {
   return (
-    <AppShell
-      title="Audit Log"
-      description="Review sanitized gateway and WhatsApp lifecycle events."
-      activePath="/audit"
-    >
+    <AppShell title="Audit Log" activePath="/audit">
       <ActivityLogPanel enabled heading="Operational history" initialFilters={initialAuditFilters()} />
     </AppShell>
   );

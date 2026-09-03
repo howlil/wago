@@ -5,19 +5,12 @@ import { AppHeader } from "./AppHeader.js";
 afterEach(() => cleanup());
 
 describe("AppHeader", () => {
-  it("renders the page title without a redundant Gateway badge", () => {
-    render(
-      <AppHeader
-        title="Control"
-        description="Manage connection, access and outbound messaging."
-        statusLabel="Disconnected"
-        statusTone="neutral"
-        onRefresh={vi.fn()}
-        onOpenMobileNav={vi.fn()}
-      />,
-    );
+  it("renders page identity and page-level actions without routine status chrome", () => {
+    render(<AppHeader title="Control" onRefresh={vi.fn()} onOpenMobileNav={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "Control" })).toBeTruthy();
-    expect(screen.queryByText("Gateway", { selector: "span" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeTruthy();
+    expect(screen.queryByText("Disconnected")).toBeNull();
+    expect(screen.queryByText(/Manage connection/i)).toBeNull();
   });
 });

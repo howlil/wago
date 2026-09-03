@@ -34,11 +34,7 @@ export function SettingsPage() {
   }, []);
 
   return (
-    <AppShell
-      title="Settings"
-      description="Configure application access, messaging policy and gateway integrations."
-      activePath="/settings"
-    >
+    <AppShell title="Settings" activePath="/settings">
       <NoticeBanner notice={settings.notice} />
 
       <div className="grid w-full items-start gap-5 lg:grid-cols-[176px_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[192px_minmax(0,1fr)]">
