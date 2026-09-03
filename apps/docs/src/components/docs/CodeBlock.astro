@@ -7,7 +7,7 @@ interface Props {
 const { code, label } = Astro.props;
 ---
 
-<div class="my-5 overflow-hidden rounded-lg border border-[#262626] bg-[#111]">
-  {label ? <div class="border-b border-[#262626] px-4 py-2 text-xs font-medium text-[#71717a]">{label}</div> : null}
-  <pre class="m-0 overflow-x-auto p-4 text-[13px] leading-6 text-[#d4d4d8]"><code>{code}</code></pre>
+<div class="docs-code-block">
+  {label ? <div class="docs-code-label">{label}</div> : null}
+  <pre><code>{code}</code></pre>
 </div>

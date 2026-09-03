@@ -8,7 +8,10 @@ interface Props {
 const { href, title, description } = Astro.props;
 ---
 
-<a href={href} class="group block border border-[#262626] rounded-lg p-5 bg-[#0d0d0d] hover:border-[#3f3f46] hover:bg-[#111] transition-colors">
-  <h3 class="text-sm font-semibold text-[#fafafa] group-hover:text-white mb-1.5">{title}</h3>
-  <p class="text-sm text-[#71717a] leading-relaxed">{description}</p>
+<a href={href} class="docs-list-link group">
+  <span>
+    <span class="docs-list-link-title group-hover:text-[var(--docs-accent-strong)]">{title}</span>
+    <span class="docs-list-link-description block">{description}</span>
+  </span>
+  <span class="docs-list-link-arrow" aria-hidden="true">→</span>
 </a>

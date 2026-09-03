@@ -5,21 +5,18 @@ const lang = getLangFromUrl(Astro.url);
 const basePrefix = lang === 'en' ? '/en' : '/id';
 ---
 
-<footer class="border-t border-[#1a1a1a] py-10 mt-20">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6">
-    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
-      <div>
-        <p class="text-sm text-[#71717a]">Wago — single-account, self-hosted WhatsApp gateway.</p>
-        <p class="text-xs text-[#3f3f46] mt-1">Unofficial WhatsApp Web client. Not affiliated with WhatsApp or Meta.</p>
-      </div>
-      <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#52525b]">
-        <a href={`${basePrefix}/docs`} class="hover:text-[#a1a1aa] transition-colors">Docs</a>
-        <a href={`${basePrefix}/docs/project`} class="hover:text-[#a1a1aa] transition-colors">OSS</a>
-        <a href="https://github.com/howlil/wago/blob/main/SECURITY.md" target="_blank" rel="noreferrer" class="hover:text-[#a1a1aa] transition-colors">Security</a>
-        <a href="https://github.com/howlil/wago/blob/main/CONTRIBUTING.md" target="_blank" rel="noreferrer" class="hover:text-[#a1a1aa] transition-colors">Contributing</a>
-        <a href="https://github.com/howlil/wago/blob/main/LICENSE" target="_blank" rel="noreferrer" class="hover:text-[#a1a1aa] transition-colors">MIT</a>
-        <a href="https://github.com/howlil/wago" target="_blank" rel="noreferrer" class="hover:text-[#a1a1aa] transition-colors">GitHub</a>
-      </nav>
+<footer class="mt-20 border-t border-[var(--docs-line)] py-8">
+  <div class="docs-shell flex flex-col gap-5 text-[12px] sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="m-0 docs-muted">Wago — single-account, self-hosted WhatsApp gateway.</p>
+      <p class="m-0 mt-1 docs-tertiary">Unofficial WhatsApp Web client. Not affiliated with WhatsApp or Meta.</p>
     </div>
+    <nav class="flex flex-wrap gap-x-4 gap-y-2 docs-tertiary" aria-label="Footer navigation">
+      <a href={`${basePrefix}/docs`} class="hover:text-[var(--docs-text-soft)]">Docs</a>
+      <a href={`${basePrefix}/docs/project`} class="hover:text-[var(--docs-text-soft)]">Project</a>
+      <a href="https://github.com/howlil/wago/blob/main/SECURITY.md" target="_blank" rel="noreferrer" class="hover:text-[var(--docs-text-soft)]">Security</a>
+      <a href="https://github.com/howlil/wago/blob/main/LICENSE" target="_blank" rel="noreferrer" class="hover:text-[var(--docs-text-soft)]">MIT</a>
+      <a href="https://github.com/howlil/wago" target="_blank" rel="noreferrer" class="hover:text-[var(--docs-text-soft)]">GitHub</a>
+    </nav>
   </div>
 </footer>

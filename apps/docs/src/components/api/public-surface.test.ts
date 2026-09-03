@@ -8,26 +8,38 @@ async function read(relativePath: string): Promise<string> {
 
 describe("public product surface", () => {
   it("keeps the API Explorer out of product homepages", async () => {
-    const [idHome, enHome] = await Promise.all([
+    const [idHome, enHome, landing] = await Promise.all([
       read("../../pages/id/index.astro"),
       read("../../pages/en/index.astro"),
+      read("../LandingPage.astro"),
     ]);
 
     assert.doesNotMatch(idHome, /ApiExplorer/);
     assert.doesNotMatch(enHome, /ApiExplorer/);
+    assert.doesNotMatch(landing, /ApiExplorer/);
   });
 
-  it("keeps the product onboarding path visible in both languages", async () => {
-    const [idHome, enHome] = await Promise.all([
+  it("keeps one bilingual onboarding composition with the product path visible", async () => {
+    const [idHome, enHome, landing] = await Promise.all([
       read("../../pages/id/index.astro"),
       read("../../pages/en/index.astro"),
+      read("../LandingPage.astro"),
     ]);
 
-    for (const source of [idHome, enHome]) {
-      assert.match(source, /Deploy/);
-      assert.match(source, /Pair/);
-      assert.match(source, /Integrate/);
-    }
+    assert.match(idHome, /<LandingPage lang="id"/);
+    assert.match(enHome, /<LandingPage lang="en"/);
+    assert.match(landing, /Deploy/);
+    assert.match(landing, /Pair/);
+    assert.match(landing, /Integrate/);
+  });
+
+  it("keeps the landing page technical and free of decorative hero chrome", async () => {
+    const landing = await read("../LandingPage.astro");
+
+    assert.doesNotMatch(landing, /blur-3xl/);
+    assert.doesNotMatch(landing, /shadow-2xl/);
+    assert.doesNotMatch(landing, /rounded-2xl/);
+    assert.doesNotMatch(landing, /Wago Control/);
   });
 
   it("does not document removed production env configuration", async () => {
