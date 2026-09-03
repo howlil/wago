@@ -1,5 +1,8 @@
 packages:
   - "."
 
-onlyBuiltDependencies:
-  - esbuild
+# Static hosts build from apps/docs without the monorepo root lockfile.
+lockfile: false
+
+allowBuilds:
+  esbuild: true
