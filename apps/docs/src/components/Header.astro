@@ -32,7 +32,7 @@ if (lang === 'en') {
       <a
         href={`${basePrefix}/docs`}
         aria-current={currentPath.includes('/docs') ? 'page' : undefined}
-        class={`hidden text-[13px] font-medium sm:inline ${currentPath.includes('/docs') ? 'docs-text' : 'docs-tertiary hover:docs-text-soft'}`}
+        class={`hidden text-[13px] font-medium sm:inline ${currentPath.includes('/docs') ? 'docs-text' : 'docs-tertiary hover:text-[var(--docs-text-soft)]'}`}
       >
         {lang === 'id' ? 'Dokumentasi' : 'Documentation'}
       </a>
