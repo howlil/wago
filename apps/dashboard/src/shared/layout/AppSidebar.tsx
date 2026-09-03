@@ -1,4 +1,5 @@
 import { Gauge, PanelLeftClose, PanelLeftOpen, ScrollText, Settings2, X } from "lucide-react";
+import { motion } from "motion/react";
 import { type ComponentType, Fragment } from "react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "../ui/sheet.js";
 import { Tooltip } from "../ui/tooltip.js";
@@ -26,6 +27,13 @@ const navigationItems: NavigationItem[] = [
   { href: "/audit", label: "Audit Log", icon: ScrollText },
 ];
 
+const navigationMotion = {
+  type: "spring",
+  stiffness: 420,
+  damping: 34,
+  mass: 0.7,
+} as const;
+
 function WorkspaceNavigation({
   activePath,
   collapsed = false,
@@ -41,20 +49,39 @@ function WorkspaceNavigation({
         const Icon = item.icon;
         const active = activePath === item.href;
         const navigationLink = (
-          <a
+          <motion.a
             href={item.href}
             aria-current={active ? "page" : undefined}
             aria-label={collapsed ? item.label : undefined}
             onClick={onNavigate}
-            className={`flex h-10 items-center border-l-2 text-[13px] font-medium transition-colors ${
-              active
-                ? "border-l-wago-brand text-wago-brand-strong"
-                : "border-l-transparent text-wago-secondary hover:bg-wago-hover hover:text-wago-ink"
+            whileHover={{ x: collapsed ? 0 : 2 }}
+            whileTap={{ scale: 0.985 }}
+            transition={navigationMotion}
+            className={`relative isolate flex h-10 items-center overflow-hidden border-y border-transparent text-[13px] font-medium ${
+              active ? "text-wago-ink" : "text-wago-secondary hover:bg-wago-hover hover:text-wago-ink"
             } ${collapsed ? "mx-auto w-10 justify-center" : "gap-2.5 px-3"}`}
           >
-            <Icon className="shrink-0" size={17} />
-            {!collapsed ? <span>{item.label}</span> : null}
-          </a>
+            {active ? (
+              <>
+                <motion.span
+                  aria-hidden="true"
+                  className="absolute inset-0 -z-10 border-y border-wago-sidebar-active-line bg-wago-sidebar-active"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.14 }}
+                />
+                <motion.span
+                  aria-hidden="true"
+                  className="absolute inset-y-2 left-0 w-[3px] bg-wago-brand"
+                  initial={{ opacity: 0, scaleY: 0.55 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  transition={navigationMotion}
+                />
+              </>
+            ) : null}
+            <Icon className={`relative z-10 shrink-0 ${active ? "text-wago-brand-strong" : ""}`} size={17} />
+            {!collapsed ? <span className="relative z-10">{item.label}</span> : null}
+          </motion.a>
         );
 
         return (
@@ -83,14 +110,16 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
           <AppBrand collapsed={collapsed} />
           {!collapsed ? (
             <Tooltip content="Collapse sidebar">
-              <button
+              <motion.button
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-wago-hover hover:text-wago-ink"
                 type="button"
                 onClick={onToggleCollapsed}
                 aria-label="Collapse sidebar"
+                whileTap={{ scale: 0.94 }}
+                transition={navigationMotion}
               >
                 <PanelLeftClose size={16} />
-              </button>
+              </motion.button>
             </Tooltip>
           ) : null}
         </div>
@@ -102,14 +131,16 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
         {collapsed ? (
           <div className="mt-auto border-t border-wago-line p-2">
             <Tooltip content="Expand sidebar">
-              <button
+              <motion.button
                 className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-wago-hover hover:text-wago-ink"
                 type="button"
                 onClick={onToggleCollapsed}
                 aria-label="Expand sidebar"
+                whileTap={{ scale: 0.94 }}
+                transition={navigationMotion}
               >
                 <PanelLeftOpen size={16} />
-              </button>
+              </motion.button>
             </Tooltip>
           </div>
         ) : null}
