@@ -54,6 +54,11 @@ tasks:
     cmds:
       - pnpm --filter @wago/dashboard test
 
+  dashboard:design:test:
+    desc: Run fast dashboard design and information-architecture regression guards
+    cmds:
+      - pnpm --filter @wago/dashboard exec vitest run --environment jsdom --pool=threads --testTimeout=15000 tests/architecture/information-architecture.test.ts src/shared/layout/AppHeader.test.ts
+
   dashboard:build:
     desc: Build the dashboard
     cmds:
@@ -68,6 +73,11 @@ tasks:
     desc: Run documentation tests
     cmds:
       - pnpm --filter @wago/docs test
+
+  docs:design:test:
+    desc: Run fast docs public-surface and design regression guards
+    cmds:
+      - pnpm --filter @wago/docs exec node --test src/components/api/public-surface.test.ts
 
   docs:build:
     desc: Build the documentation site
@@ -126,7 +136,7 @@ tasks:
       - docker build -t wago-simple:local .
 
   docker:up:
-    desc: Start Wago with Docker Compose
+    desc: Start Wago with Docker Compose services
     cmds:
       - docker compose up -d
 

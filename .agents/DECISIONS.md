@@ -97,3 +97,11 @@ This file records material decisions whose rationale is expensive to rediscover.
 **Why:** a self-hosted single-instance gateway should boot from the stock image/Compose definition and become usable through one deterministic onboarding flow. Parallel env overrides create hidden precedence, restart requirements, secret-ownership ambiguity, and dashboard/runtime disagreement.
 
 **Implication:** do not add `.env.example` files, Compose env forwarding, `VITE_*` runtime routing knobs, deployment-owned API keys, configurable country-code envs, or proxy-trust env toggles. New operator-configurable behavior belongs in the dashboard plus persisted Wago state when it is genuinely required. Defensive `.gitignore`/`.dockerignore` patterns for accidental `.env` files may remain, but they do not define a supported setup path.
+
+## D13 — CI is risk-routed, not ceremony-routed
+
+**Decision:** Wago CI separates fast application correctness from heavyweight deployment/persistence verification. Core and docs changes always receive the relevant test/build gates, while Docker persistence/rollback smoke and standalone docs deployment smoke are triggered only by paths that can affect those boundaries. JavaScript/TypeScript CodeQL analysis runs without a redundant application build.
+
+**Why:** the user's preferred engineering loop favors fast, accurate feedback and explicit design regression guards. Running deployment smoke for routine dashboard styling or standalone-host installation for routine docs copy/layout increases latency without detecting a realistic additional failure for those changes.
+
+**Implication:** presentation work uses targeted design guards first, then full affected-app tests/build. Do not broaden heavyweight workflows merely to create a sense of coverage; expand them when a concrete regression path crosses runtime, persistence, deployment, package/build configuration, or release boundaries. Keep explicit dependency installation singular and frozen in CI when setup actions would otherwise install implicitly.

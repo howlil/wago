@@ -25,7 +25,7 @@ jobs:
   check-test-build:
     name: Check, Test, Build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -36,6 +36,7 @@ jobs:
           version: 11.21.0
           runtime: node@26
           cache: true
+          install: false
 
       - name: Setup Task
         uses: go-task/setup-task@v2
@@ -53,46 +54,3 @@ jobs:
 
       - name: Build core
         run: task core:build
-
-  docker-smoke:
-    name: Docker Build and Persistence Smoke
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Build Docker image
-        run: docker build -t wago-simple:ci .
-
-      - name: Resolve rollback baseline
-        id: rollback
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          BEFORE_SHA: ${{ github.event.before }}
-          CURRENT_SHA: ${{ github.sha }}
-        run: |
-          if [[ "$EVENT_NAME" == "pull_request" && -n "$BASE_SHA" ]]; then
-            echo "ref=$BASE_SHA" >> "$GITHUB_OUTPUT"
-          elif [[ -n "$BEFORE_SHA" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
-            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=$CURRENT_SHA" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout rollback baseline
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ steps.rollback.outputs.ref }}
-          path: rollback-main
-
-      - name: Build known-good rollback image
-        run: docker build -t wago-simple:rollback-base rollback-main
-
-      - name: Run container persistence and rollback smoke
-        env:
-          IMAGE: wago-simple:ci
-          ROLLBACK_IMAGE: wago-simple:rollback-base
-          SKIP_BUILD: "1"
-        run: EXPECTED_MIGRATIONS="$(node scripts/expected-migrations.mjs)" bash scripts/smoke-container.sh

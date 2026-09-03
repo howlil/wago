@@ -30,6 +30,7 @@ jobs:
   analyze:
     name: Analyze Core JavaScript and TypeScript
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -39,25 +40,6 @@ jobs:
         with:
           languages: javascript-typescript
           config-file: ./.github/codeql-config.yml
-
-      - name: Setup pnpm and Node
-        uses: pnpm/setup@v2
-        with:
-          version: 11.21.0
-          runtime: node@26
-          cache: true
-          install: false
-
-      - name: Setup Task
-        uses: go-task/setup-task@v2
-        with:
-          version: 3.x
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build core apps
-        run: task core:build
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4

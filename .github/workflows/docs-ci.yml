@@ -31,7 +31,7 @@ jobs:
   docs:
     name: Test and Build Docs
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -42,6 +42,7 @@ jobs:
           version: 11.21.0
           runtime: node@26
           cache: true
+          install: false
 
       - name: Setup Task
         uses: go-task/setup-task@v2
@@ -56,20 +57,3 @@ jobs:
 
       - name: Build docs
         run: task docs:build
-
-      - name: Smoke standalone static build
-        shell: bash
-        run: |
-          standalone_dir="$(mktemp -d)"
-          tar \
-            --exclude='node_modules' \
-            --exclude='dist' \
-            --exclude='.astro' \
-            -C apps/docs -cf - . | tar -C "$standalone_dir" -xf -
-          test ! -f "$standalone_dir/pnpm-lock.yaml"
-          docker run --rm \
-            --env CI=true \
-            --volume "$standalone_dir:/workspace" \
-            --workdir /workspace \
-            node:22-alpine \
-            sh -ec 'corepack enable && corepack prepare pnpm@11.21.0 --activate && pnpm install && pnpm build'
