@@ -63,7 +63,7 @@ It is an operational console, not a card stack. Search and filters apply immedia
 
 ## Console surface grammar
 
-The default hierarchy is divider-led workspace composition:
+The default hierarchy is divider-led workspace composition with deliberate surface contrast:
 
 ```text
 workspace
@@ -76,7 +76,9 @@ field / state          field / state          related evidence
 secondary operational evidence
 ```
 
-A routine primary module does **not** receive a rounded card merely because it needs a visual boundary. Use alignment, spacing, typography, and dividers first.
+A routine primary module does **not** receive a rounded floating card merely because it needs a visual boundary. Use alignment, spacing, typography, dividers, and a restrained low-chroma surface tint first.
+
+A workspace tint is allowed when it materially improves scanning. Treat it as part of the page plane: one controlled tint plus a rule or divider, no shadow, no glow, no decorative icon box, and no oversized rounding.
 
 ### Surface types
 
@@ -93,8 +95,12 @@ Use it for:
 A workspace section normally has:
 - a module header;
 - optional action/state on the opposite edge;
-- a bottom divider;
-- responsive internal regions or key/value rows.
+- responsive internal regions or key/value rows;
+- dividers for internal boundaries;
+- a restrained semantic surface tint when additional separation from the canvas is useful;
+- at most one strong editorial rule for the outer section boundary.
+
+The tint must not turn the page back into a card wall. Routine sections remain flat, fluid, and integrated with the workspace.
 
 **Bounded surface** is reserved for a real self-contained interaction or exceptional state.
 
@@ -138,7 +144,8 @@ Do not add:
 - empty disabled form controls for capabilities that do not yet exist;
 - nested cards when inline disclosure is sufficient;
 - arbitrary centered application max-width containers;
-- redundant headings or explanatory paragraphs.
+- redundant headings or explanatory paragraphs;
+- active-navigation pills or rounded tinted tiles that read like generic SaaS navigation.
 
 Use hierarchy in this order:
 1. layout/alignment;
@@ -209,7 +216,7 @@ Spacing rhythm:
 32px  exceptional page-level separation
 ```
 
-Standard controls are 36px high. Inputs/buttons/nav items use about 6px radius. Bounded exceptional surfaces normally use about 6-8px radius. Routine workspace sections do not need rounding because their hierarchy comes from the workspace itself.
+Standard controls are 36px high. Inputs/buttons/nav items use about 6px radius. Bounded exceptional surfaces normally use about 6-8px radius. Routine workspace sections normally stay unrounded; their low-chroma tint and editorial rule belong to the workspace plane rather than a floating card.
 
 ## Color and tokens
 
@@ -219,12 +226,35 @@ Prefer token classes such as:
 - `wago-line` / `wago-control-line`;
 - `wago-secondary` / `wago-tertiary`;
 - `wago-surface-subtle` / `wago-hover`;
+- `wago-section` / `wago-section-line` for routine primary workspace separation;
+- `wago-sidebar-active` / `wago-sidebar-active-line` for active navigation wash and rule;
 - `wago-brand` / `wago-brand-strong`;
 - `wago-positive`, `wago-warning`, `wago-danger`.
 
-Do not introduce a literal hex value for a routine dashboard control, text state, status, divider, or notice when an existing semantic token can represent it. Literal colors are acceptable only for exceptional rendering needs such as overlay tuning when a semantic token would be misleading.
+Do not introduce a literal hex value for a routine dashboard control, text state, status, divider, or notice when an existing semantic token can represent it. Literal colors are acceptable only inside the token definition layer or for exceptional rendering needs where a semantic token would be misleading.
 
 Status color is never the only signal; pair it with text.
+
+Do not create a rainbow of per-module cards. Routine modules share the same low-chroma workspace family unless their semantic state genuinely requires warning/danger treatment.
+
+## Motion and interaction
+
+Motion exists to clarify state and make direct manipulation feel responsive. It is not decoration.
+
+Use Motion for React for purposeful interaction transitions such as:
+- active navigation indicator changes;
+- restrained hover/press feedback;
+- small state/layout transitions where continuity helps orientation.
+
+Rules:
+- the application root uses `MotionConfig` with `reducedMotion="user"`;
+- respect `prefers-reduced-motion` without requiring separate user configuration;
+- keep routine navigation motion short and restrained;
+- small translation feedback should stay within a few pixels;
+- press scale may be subtle, never rubbery or bouncy;
+- do not add hover lift, floating cards, parallax, glow trails, springy page choreography, or decorative entrance animations;
+- motion must never delay navigation, data rendering, or an operator action;
+- CSS color changes may remain CSS when Motion provides no meaningful continuity benefit.
 
 ## Key component rules
 
@@ -283,13 +313,13 @@ Delivery activity
   recent deliveries / inline attempt evidence
 ```
 
-Do not wrap the entire Webhooks module in a routine card. The configuration region and delivery region are separated by the workspace divider. Generated signing-secret output may be bounded because it is temporary and sensitive.
+Do not wrap the entire Webhooks module in a floating routine card. The configuration region and delivery region are separated by workspace dividers. A shared low-chroma workspace tint is acceptable because it separates the active operational surface from the canvas without introducing card-wall hierarchy. Generated signing-secret output may be bounded because it is temporary and sensitive.
 
 Supported event names use operator-readable labels with technical event names as secondary monospace metadata. Delivery detail expands inline with its delivery row. Do not create a separate nested `Selected delivery` card.
 
 ### Sessions
 
-Current-browser sign-out is the normal action. `Sign out all sessions` is destructive, visually distinct, and requires explicit confirmation before execution. The confirmation may use a bounded danger surface; the routine Sessions module itself does not.
+Current-browser sign-out is the normal action. `Sign out all sessions` is destructive, visually distinct, and requires explicit confirmation before execution. The confirmation may use a bounded danger surface; the routine Sessions module itself does not become a floating card.
 
 ### Audit
 
@@ -303,7 +333,7 @@ event rows
 ------------------------------
 ```
 
-Do not wrap the whole Audit workspace in a routine card and then put the event list in another rounded card.
+Do not wrap the whole Audit workspace in a routine floating card and then put the event list in another rounded card.
 
 ## Copy rules
 
@@ -326,7 +356,12 @@ Desktop sidebar:
 - collapsed: 56px;
 - nav target: 40px;
 - no promotional/footer card;
-- no redundant group label when all global destinations belong to one group.
+- no redundant group label when all global destinations belong to one group;
+- active destination uses a low-chroma full-row wash plus a narrow brand rule, never a rounded active pill/tile;
+- icon and label remain plain content, not decorative icon-box components;
+- hover/press motion is restrained and cannot delay routing.
+
+Settings local navigation follows the same active-state grammar: low-chroma wash plus a directional rule, not rounded brand-soft pills.
 
 Header height is about 56px. The header owns page identity and page-level actions such as Refresh; routine Control gateway state belongs to the status rail directly below and is not duplicated in the header.
 
@@ -377,6 +412,7 @@ Rules:
 6. Browser authentication uses the HttpOnly browser session; machine API keys are not browser auth state.
 7. React local state/focused hooks remain the default; do not add global state infrastructure without demonstrated need.
 8. Shared visual classes should encode demonstrated repeated primitives only; do not build a generic component framework around this surface grammar.
+9. Motion primitives are used directly where continuity is useful; do not create a broad animation abstraction layer without repeated demonstrated need.
 
 ## Accessibility and verification
 
@@ -385,12 +421,17 @@ Rules:
 - dialogs/drawers preserve keyboard and focus behavior;
 - Settings module links expose active state and remain keyboard/browser navigable;
 - long technical values wrap, truncate, or scroll without widening the viewport;
-- destructive actions use explicit language and confirmation proportional to impact.
+- destructive actions use explicit language and confirmation proportional to impact;
+- Motion respects the user's reduced-motion preference;
+- active navigation remains understandable without animation.
 
 For meaningful UI changes verify at minimum:
 - narrow mobile composition;
 - desktop shell/navigation;
 - wide desktop fluid workspace behavior;
+- active navigation at expanded, collapsed, and mobile widths;
+- reduced-motion behavior for Motion interactions;
+- workspace tint does not regress into nested/rounded card walls;
 - Control status rail semantics and lack of header duplication;
 - WhatsApp pairing/binding/account-health workbench;
 - Settings active-module behavior and hash navigation;
