@@ -11,7 +11,7 @@ const sourceUrl = `https://github.com/howlil/wago/blob/main/apps/docs/diagrams/$
 const diagramUrl = `https://www.plantuml.com/plantuml/proxy?src=${encodeURIComponent(rawSourceUrl)}&fmt=svg`;
 ---
 
-<figure class="mb-10 overflow-hidden rounded-xl border border-[#262626] bg-[#111]">
+<figure class="docs-bounded mb-10 overflow-hidden">
   <a
     href={sourceUrl}
     target="_blank"
@@ -21,9 +21,9 @@ const diagramUrl = `https://www.plantuml.com/plantuml/proxy?src=${encodeURICompo
   >
     <img src={diagramUrl} alt={alt} loading="lazy" decoding="async" class="mx-auto h-auto min-w-[680px] max-w-full" />
   </a>
-  <figcaption class="flex flex-col gap-1 border-t border-[#262626] px-4 py-3 text-xs text-[#71717a] sm:flex-row sm:items-center sm:justify-between">
+  <figcaption class="flex flex-col gap-1 border-t border-[var(--docs-line)] px-4 py-3 text-[11px] text-[var(--docs-tertiary)] sm:flex-row sm:items-center sm:justify-between">
     <span>{caption ?? alt}</span>
-    <a href={sourceUrl} target="_blank" rel="noreferrer" class="text-[#a1a1aa] hover:text-white">
+    <a href={sourceUrl} target="_blank" rel="noreferrer" class="text-[var(--docs-muted)] hover:text-[var(--docs-text)]">
       PlantUML source
     </a>
   </figcaption>
