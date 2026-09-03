@@ -18,7 +18,7 @@ export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md px-1 py-1.5 [&::-webkit-details-marker]:hidden">
         <div className="min-w-0">
           <h2 className="m-0 text-[13px] font-semibold tracking-[-0.01em] text-wago-ink">Gateway diagnostics</h2>
-          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
+          <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">
             Secondary tools for end-to-end delivery troubleshooting.
           </p>
         </div>
@@ -29,9 +29,9 @@ export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
       </summary>
 
       {!canOpenSendTool ? (
-        <div className="mt-3 w-full rounded-lg border border-wago-line bg-white px-4 py-3">
+        <div className="mt-3 w-full rounded-md border border-wago-line bg-white px-4 py-3">
           <strong className="block text-xs font-semibold text-wago-ink">Diagnostics unavailable</strong>
-          <p className="mb-0 mt-1 max-w-prose text-[11px] leading-5 text-wago-muted">
+          <p className="mb-0 mt-1 max-w-prose text-xs leading-5 text-wago-muted">
             Connect WhatsApp before running an outbound delivery diagnostic.
           </p>
         </div>
