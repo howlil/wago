@@ -46,10 +46,10 @@ function WorkspaceNavigation({
             aria-current={active ? "page" : undefined}
             aria-label={collapsed ? item.label : undefined}
             onClick={onNavigate}
-            className={`flex h-10 items-center rounded-md border text-[13px] font-medium transition-colors ${
+            className={`flex h-10 items-center border-l-2 text-[13px] font-medium transition-colors ${
               active
-                ? "border-wago-brand/20 bg-wago-brand-soft text-wago-brand-strong"
-                : "border-transparent text-wago-secondary hover:bg-wago-hover hover:text-wago-ink"
+                ? "border-l-wago-brand text-wago-brand-strong"
+                : "border-l-transparent text-wago-secondary hover:bg-wago-hover hover:text-wago-ink"
             } ${collapsed ? "mx-auto w-10 justify-center" : "gap-2.5 px-3"}`}
           >
             <Icon className="shrink-0" size={17} />
