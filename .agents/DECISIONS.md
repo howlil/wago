@@ -105,3 +105,11 @@ This file records material decisions whose rationale is expensive to rediscover.
 **Why:** the user's preferred engineering loop favors fast, accurate feedback and explicit design regression guards. Running deployment smoke for routine dashboard styling or standalone-host installation for routine docs copy/layout increases latency without detecting a realistic additional failure for those changes.
 
 **Implication:** presentation work uses targeted design guards first, then full affected-app tests/build. Do not broaden heavyweight workflows merely to create a sense of coverage; expand them when a concrete regression path crosses runtime, persistence, deployment, package/build configuration, or release boundaries. Keep explicit dependency installation singular and frozen in CI when setup actions would otherwise install implicitly.
+
+## D14 — Dashboard color and motion stay semantic, flat, and restrained
+
+**Decision:** primary dashboard workspace sections may use one shared low-chroma semantic tint plus an editorial rule to improve scanning, while active global/Settings navigation uses a flat full-row wash plus a narrow directional brand rule. Purposeful interaction continuity uses Motion for React and the application root respects the user's reduced-motion preference.
+
+**Why:** a completely uncolored workspace makes operational modules visually collapse into the canvas, while rounded brand-soft navigation pills, card walls, glow, hover lift, and ornamental animation reproduce the generic AI-generated SaaS look the dashboard is explicitly avoiding. Controlled tint and rule-led state provide stronger hierarchy without creating decorative chrome.
+
+**Implication:** do not create per-module rainbow cards, rounded active-navigation pills, nested tinted cards, shadows, glow, or bouncy page choreography. Prefer the shared `wago-section*` and `wago-sidebar-active*` token families. Motion should clarify active state or direct manipulation, stay spatially small, never delay routing/data rendering, and remain understandable when animation is reduced or absent.
