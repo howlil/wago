@@ -35,9 +35,9 @@ const capabilities = id
   <Callout title={id ? 'Batas produk' : 'Product boundary'} tone="warning">{id ? 'Wago bukan bulk sender, campaign platform, multi-tenant SaaS, scraper, atau anti-detection toolkit. Satu instance ditujukan untuk satu akun WhatsApp.' : 'Wago is not a bulk sender, campaign platform, multi-tenant SaaS, scraper, or anti-detection toolkit. One instance is designed for one WhatsApp account.'}</Callout>
 
   <h2>{id ? 'Kemampuan inti' : 'Core capabilities'}</h2>
-  <div class="grid gap-x-10 md:grid-cols-2">
+  <div class="grid border-b border-[var(--docs-line)] md:grid-cols-2 md:gap-x-10">
     {capabilities.map(([title, description]) => (
-      <section class="border-t border-[var(--docs-line)] py-4 last:border-b md:[&:nth-last-child(-n+2)]:border-b">
+      <section class="border-t border-[var(--docs-line)] py-4">
         <h3 class="m-0 text-[13px] font-semibold text-[var(--docs-text)]">{title}</h3>
         <p class="mb-0 mt-1.5 text-[13px] leading-6 text-[var(--docs-muted)]">{description}</p>
       </section>
