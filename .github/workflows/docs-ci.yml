@@ -61,7 +61,11 @@ jobs:
         shell: bash
         run: |
           standalone_dir="$(mktemp -d)"
-          cp -R apps/docs/. "$standalone_dir/"
+          tar \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='.astro' \
+            -C apps/docs -cf - . | tar -C "$standalone_dir" -xf -
           test ! -f "$standalone_dir/pnpm-lock.yaml"
           docker run --rm \
             --env CI=true \
