@@ -1,5 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { cardBodyClass, sectionDescriptionClass, sectionTitleClass } from "../../shared/ui/classes.js";
+import {
+  sectionDescriptionClass,
+  sectionTitleClass,
+  workspaceModuleClass,
+  workspaceModuleHeaderClass,
+} from "../../shared/ui/classes.js";
 import { allowRecipient, listRecipients, optOutRecipient, type RecipientRecord } from "./api.js";
 import { RecipientForm } from "./RecipientForm.js";
 import { RecipientList } from "./RecipientList.js";
@@ -115,31 +120,40 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
   }
 
   return (
-    <section className={cardBodyClass}>
-      <div>
-        <h2 className={sectionTitleClass}>Recipient access</h2>
-        <p className={sectionDescriptionClass}>Control who is approved for outbound messages.</p>
+    <section className={workspaceModuleClass} aria-labelledby="recipient-access-title">
+      <div className={workspaceModuleHeaderClass}>
+        <div className="min-w-0">
+          <h2 id="recipient-access-title" className={sectionTitleClass}>
+            Recipient access
+          </h2>
+          <p className={sectionDescriptionClass}>Approve recipients for outbound messages.</p>
+        </div>
+        {enabled ? <span className="text-[10px] text-wago-tertiary">{recipients.length} saved</span> : null}
       </div>
 
       {!enabled ? (
-        <p className="mb-0 mt-3 border-t border-wago-line pt-3 text-xs leading-5 text-wago-muted">
+        <p className="mb-0 border-b border-wago-line py-4 text-xs leading-5 text-wago-muted">
           Authenticate the gateway to manage recipients.
         </p>
       ) : (
         <>
           {notice ? (
             <p
-              className={`mb-0 mt-3 rounded-md px-3 py-2 text-xs ${notice.type === "success" ? "bg-[#edf7f2] text-[#255c48]" : "bg-wago-danger-soft text-wago-danger"}`}
+              className={`mb-0 mt-4 rounded-md border px-3 py-2 text-xs ${
+                notice.type === "success"
+                  ? "border-wago-positive/25 bg-wago-brand-soft text-wago-brand-strong"
+                  : "border-wago-danger/30 bg-wago-danger-soft text-wago-danger"
+              }`}
             >
               {notice.message}
             </p>
           ) : null}
 
-          <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:gap-6">
-            <div className="min-w-0">
+          <div className="grid border-b border-wago-line py-4 xl:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:divide-x xl:divide-wago-line">
+            <div className="min-w-0 pb-4 xl:pb-0 xl:pr-6">
               <h3 className="m-0 text-xs font-semibold text-wago-ink">Allow recipient</h3>
-              <p className="mb-2 mt-0.5 text-xs leading-5 text-wago-muted">
-                Add a phone number before an application can start a new outbound conversation.
+              <p className="mb-2 mt-1 text-xs leading-5 text-wago-muted">
+                Add a phone number before an application starts a new outbound conversation.
               </p>
               <RecipientForm
                 phone={phone}
@@ -151,17 +165,8 @@ export function RecipientAccessCard({ enabled, refreshKey = 0, suggestedPhone, o
               />
             </div>
 
-            <div className="min-w-0 border-t border-wago-line pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="m-0 text-xs font-semibold text-wago-ink">Saved recipients</h3>
-                  <p className="mb-0 mt-0.5 text-xs leading-5 text-wago-muted">
-                    Current outbound recipient policy and opt-out state.
-                  </p>
-                </div>
-                <span className="shrink-0 text-[10px] text-wago-tertiary">{recipients.length} saved</span>
-              </div>
-
+            <div className="min-w-0 border-t border-wago-line pt-4 xl:border-t-0 xl:pl-6 xl:pt-0">
+              <h3 className="m-0 text-xs font-semibold text-wago-ink">Saved recipients</h3>
               <RecipientList
                 recipients={recipients}
                 loading={loading}

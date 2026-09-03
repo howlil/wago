@@ -1,11 +1,12 @@
 import { LogOut } from "lucide-react";
 import { useState } from "react";
 import {
-  cardBodyClass,
   dangerButtonClass,
   secondaryButtonClass,
   sectionDescriptionClass,
   sectionTitleClass,
+  workspaceModuleClass,
+  workspaceModuleHeaderClass,
 } from "../../shared/ui/classes.js";
 
 type OperatorSessionCardProps = {
@@ -25,21 +26,21 @@ export function OperatorSessionCard({
   const busy = isSigningOut || isSigningOutAll;
 
   return (
-    <section className={cardBodyClass}>
-      <div className="min-w-0">
-        <h2 className={sectionTitleClass}>Dashboard session</h2>
-        <p className={sectionDescriptionClass}>
-          Browser access uses the admin password, separate from machine API credentials.
-        </p>
+    <section className={workspaceModuleClass} aria-labelledby="dashboard-session-title">
+      <div className={workspaceModuleHeaderClass}>
+        <div className="min-w-0">
+          <h2 id="dashboard-session-title" className={sectionTitleClass}>
+            Dashboard sessions
+          </h2>
+          <p className={sectionDescriptionClass}>Browser sessions are separate from machine API credentials.</p>
+        </div>
       </div>
 
-      <div className="mt-4 grid border-t border-wago-line pt-3 xl:grid-cols-2 xl:divide-x xl:divide-wago-line">
-        <div className="flex flex-col gap-3 pb-4 xl:pb-0 xl:pr-6 sm:flex-row sm:items-start sm:justify-between">
+      <div className="grid border-b border-wago-line py-4 xl:grid-cols-2 xl:divide-x xl:divide-wago-line">
+        <div className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-start sm:justify-between xl:pb-0 xl:pr-6">
           <div className="min-w-0">
             <strong className="block text-xs font-semibold text-wago-ink">Current browser</strong>
-            <p className="mb-0 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">
-              Authenticated dashboard session.
-            </p>
+            <p className="mb-0 mt-1 max-w-prose text-xs leading-5 text-wago-muted">Authenticated dashboard session.</p>
           </div>
           <button
             className={`${secondaryButtonClass} w-full shrink-0 sm:w-auto`}
@@ -56,7 +57,7 @@ export function OperatorSessionCard({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <strong className="block text-xs font-semibold text-wago-ink">All browser sessions</strong>
-              <p className="mb-0 mt-0.5 max-w-prose text-xs leading-5 text-wago-muted">
+              <p className="mb-0 mt-1 max-w-prose text-xs leading-5 text-wago-muted">
                 Revoke every authenticated dashboard browser, including this one.
               </p>
             </div>
@@ -75,9 +76,9 @@ export function OperatorSessionCard({
           </div>
 
           {confirmAll ? (
-            <div className="mt-3 flex flex-col gap-2 border-t border-wago-line pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-3 rounded-md border border-wago-danger/25 bg-wago-danger-soft p-3">
               <p className="m-0 text-xs font-medium text-wago-danger">Confirm signing out every browser session.</p>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <button
                   className={`${secondaryButtonClass} w-full sm:w-auto`}
                   type="button"

@@ -30,7 +30,7 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
 
   return (
     <div className="mt-3 max-h-[330px] overflow-y-auto rounded-md border border-wago-line">
-      <div className="divide-y divide-[#e8ece9]">
+      <div className="divide-y divide-wago-line">
         {recipients.map((recipient) => {
           const recipientPhone = phoneFromJid(recipient.jid);
           const status = recipientStatus(recipient);
@@ -42,14 +42,15 @@ export function RecipientList({ recipients, loading, busyPhone, onOptOut, onReal
               className="flex items-center justify-between gap-3 bg-white px-3 py-2.5 max-[620px]:flex-col max-[620px]:items-stretch"
             >
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <strong className="break-all font-mono text-xs font-semibold text-[#26362f]">{recipientPhone}</strong>
-                  <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${status.className}`}>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <strong className="break-all font-mono text-xs font-semibold text-wago-ink">{recipientPhone}</strong>
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${status.className}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${status.dotClassName}`} aria-hidden="true" />
                     {status.label}
                   </span>
                 </div>
                 {recipient.label ? (
-                  <span className="mt-0.5 block break-words text-[11px] text-[#7b8680]">{recipient.label}</span>
+                  <span className="mt-0.5 block break-words text-xs text-wago-muted">{recipient.label}</span>
                 ) : null}
               </div>
 

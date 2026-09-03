@@ -2,6 +2,12 @@ export const cardClass = "rounded-lg border border-wago-line bg-wago-surface";
 
 export const cardBodyClass = `${cardClass} p-4`;
 
+export const workspaceModuleClass = "min-w-0 w-full";
+export const workspaceModuleHeaderClass =
+  "flex flex-col gap-3 border-b border-wago-line pb-3 sm:flex-row sm:items-start sm:justify-between";
+export const keyValueLabelClass = "text-[11px] font-medium text-wago-secondary";
+export const keyValueClass = "mt-1 text-sm font-medium text-wago-ink";
+
 export const inputClass =
   "h-9 w-full rounded-md border border-wago-control-line bg-white px-3 text-sm text-wago-ink outline-none transition focus:border-wago-brand focus:ring-2 focus:ring-wago-brand-soft disabled:cursor-not-allowed disabled:bg-wago-disabled-surface disabled:text-wago-disabled";
 

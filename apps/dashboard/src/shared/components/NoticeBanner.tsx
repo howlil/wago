@@ -15,7 +15,9 @@ export function NoticeBanner({ notice }: NoticeBannerProps) {
   return (
     <div
       className={`mt-3 flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-[13px] ${
-        success ? "border-[#c9e2d7] bg-[#eef7f3] text-[#245b47]" : "border-[#ecc9cd] bg-wago-danger-soft text-[#813039]"
+        success
+          ? "border-wago-positive/25 bg-wago-brand-soft text-wago-brand-strong"
+          : "border-wago-danger/30 bg-wago-danger-soft text-wago-danger"
       }`}
       role={success ? "status" : "alert"}
     >

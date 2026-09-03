@@ -4,14 +4,18 @@ export function phoneFromJid(jid: string): string {
   return jid.split("@")[0]?.split(":")[0] ?? jid;
 }
 
-export function recipientStatus(recipient: RecipientRecord): { label: string; className: string } {
+export function recipientStatus(recipient: RecipientRecord): {
+  label: string;
+  className: string;
+  dotClassName: string;
+} {
   if (recipient.optedOut) {
-    return { label: "Opted out", className: "bg-wago-danger-soft text-wago-danger" };
+    return { label: "Opted out", className: "text-wago-danger", dotClassName: "bg-wago-danger" };
   }
 
   if (recipient.allowed) {
-    return { label: "Allowed", className: "bg-[#edf7f2] text-[#255c48]" };
+    return { label: "Allowed", className: "text-wago-positive", dotClassName: "bg-wago-positive" };
   }
 
-  return { label: "Not allowed", className: "bg-wago-warning-soft text-wago-warning" };
+  return { label: "Not allowed", className: "text-wago-warning", dotClassName: "bg-wago-warning" };
 }

@@ -1,11 +1,14 @@
 import { Link2Off, Loader2, QrCode } from "lucide-react";
 import type { BackendHealthState } from "../../shared/types/status.js";
 import {
-  cardBodyClass,
   dangerButtonClass,
+  keyValueClass,
+  keyValueLabelClass,
   primaryButtonClass,
   sectionDescriptionClass,
   sectionTitleClass,
+  workspaceModuleClass,
+  workspaceModuleHeaderClass,
 } from "../../shared/ui/classes.js";
 import { AccountHealthCard } from "./AccountHealthCard.js";
 import type { AccountHealthSnapshot, WhatsAppBinding, WhatsAppStatus } from "./api.js";
@@ -59,18 +62,17 @@ export function WhatsAppBindingCard({
   const showPairAction = canStartPairing || binding.state === "unbound";
 
   return (
-    <section className={cardBodyClass}>
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className={workspaceModuleClass} aria-labelledby="whatsapp-module-title">
+      <div className={workspaceModuleHeaderClass}>
         <div className="min-w-0">
-          <h2 className={sectionTitleClass}>WhatsApp</h2>
+          <h2 id="whatsapp-module-title" className={sectionTitleClass}>
+            WhatsApp
+          </h2>
           <p className={sectionDescriptionClass}>{connectionDescription}</p>
         </div>
 
         {qrReady ? (
-          <span className="inline-flex h-8 w-fit items-center gap-2 rounded-md bg-[#edf5f1] px-2.5 text-[11px] font-medium text-[#35614f]">
-            <QrCode size={13} />
-            Scan QR
-          </span>
+          <span className="shrink-0 text-xs font-medium text-wago-warning">QR ready</span>
         ) : showPairAction ? (
           <button
             className={`${primaryButtonClass} w-full shrink-0 sm:w-auto`}
@@ -99,27 +101,32 @@ export function WhatsAppBindingCard({
       </div>
 
       {qrImage && status !== "connected" ? (
-        <div className="mt-3 border-t border-wago-line pt-3">
+        <div className="border-b border-wago-line py-4">
           <QrPairingCard qrImage={qrImage} />
         </div>
       ) : null}
 
-      <dl className="mb-0 mt-4 grid gap-3 border-t border-wago-line pt-3 md:grid-cols-2 md:gap-6">
-        <div className="min-w-0">
-          <dt className="text-[11px] font-medium text-wago-muted">Connection</dt>
-          <dd className="mb-0 mt-1 font-medium text-wago-ink">{connectionLabel(health, status)}</dd>
+      <dl className="mb-0 grid gap-4 border-b border-wago-line py-4 md:grid-cols-3 md:gap-0 md:divide-x md:divide-wago-line">
+        <div className="min-w-0 md:pr-4">
+          <dt className={keyValueLabelClass}>Connection</dt>
+          <dd className={`${keyValueClass} mb-0`}>{connectionLabel(health, status)}</dd>
         </div>
-        <div className="min-w-0 border-t border-wago-line pt-3 md:border-l md:border-t-0 md:pl-6 md:pt-0">
-          <dt className="text-[11px] font-medium text-wago-muted">Account</dt>
+        <div className="min-w-0 border-t border-wago-line pt-4 md:border-t-0 md:px-4 md:pt-0">
+          <dt className={keyValueLabelClass}>Account</dt>
           <dd className="mb-0 mt-1 min-w-0">
             {binding.state === "bound" ? (
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <strong className="break-all font-mono text-xs font-semibold text-[#285f49]">{binding.phone}</strong>
-                <span className="text-[10px] text-wago-tertiary">Bound {formatBoundAt(binding.boundAt)}</span>
-              </span>
+              <strong className="break-all font-mono text-xs font-semibold text-wago-brand-strong">
+                {binding.phone}
+              </strong>
             ) : (
-              <span className="text-wago-muted">Not paired</span>
+              <span className="text-sm font-medium text-wago-muted">Not paired</span>
             )}
+          </dd>
+        </div>
+        <div className="min-w-0 border-t border-wago-line pt-4 md:border-t-0 md:pl-4 md:pt-0">
+          <dt className={keyValueLabelClass}>Bound</dt>
+          <dd className="mb-0 mt-1 text-xs font-medium text-wago-ink">
+            {binding.state === "bound" ? formatBoundAt(binding.boundAt) : "—"}
           </dd>
         </div>
       </dl>

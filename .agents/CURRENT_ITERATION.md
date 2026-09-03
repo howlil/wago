@@ -4,45 +4,60 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Active product milestone:** none.
+**Active product milestone:** Dashboard Console Surface Consolidation — implementation complete, verification in progress.
 
-The repository is at a clean, resumable baseline after completion and integration of the Dashboard Fluid Workspace Layout milestone.
+Goal: make Control and Settings read as a purpose-built gateway console. Routine hierarchy comes from workspace layout, dividers, key/value regions, operational tables, and action placement rather than KPI cards, giant rounded module cards, repeated status chrome, tiny badges, or redundant explanatory copy.
 
 ## Current baseline
 
 - global navigation remains exactly `Control`, `Settings`, and `Audit Log`;
-- Settings shows one hash-addressable active module at a time: `Access`, `Messaging`, `Webhooks`, or `Sessions`;
-- Settings uses a fixed local navigation rail with a fluid active-module column on desktop;
-- Control overview, WhatsApp state, and diagnostics use the available workspace width instead of narrow page-level caps;
-- primary operational modules fill their workspace column while responsive internal grids keep wide-screen layouts compact;
-- Access places App ID and API-key lifecycle side by side on wide screens, with one-time raw-key output spanning the module when present;
-- Messaging separates recipient-entry controls from saved-recipient evidence on wide screens;
-- Webhooks separates callback configuration from signing/events while keeping delivery evidence full-width;
-- Sessions separates current-browser and all-session controls on wide screens;
-- WhatsApp/account-health and manual-send diagnostics use horizontal space to reduce unnecessary vertical scanning;
-- intrinsically narrow tasks such as dialogs, authentication, QR pairing, and long prose remain measure-constrained where appropriate;
-- Audit Log retains full-width operational search, filters, and event evidence;
-- `apps/dashboard/DESIGN.md` defines the fluid-workspace width and density strategy using neutral design-system language;
-- backend behavior and public API contracts were unchanged by this milestone;
-- no known material blocker.
+- Settings remains one hash-addressable active module at a time: `Access`, `Messaging`, `Webhooks`, or `Sessions`;
+- Control uses one divider-led `Gateway / WhatsApp / Messaging` status rail and no longer duplicates routine gateway state in the page header;
+- the obsolete Control header-status helper/test have been removed;
+- WhatsApp connection, account binding, QR pairing, and account health are one workbench module without a routine outer card;
+- QR pairing keeps a bounded task surface but no decorative icon box;
+- Access, Messaging, Sessions, and Webhooks use workspace sections rather than giant active-module cards;
+- temporary API-key/signing-secret reveal and destructive session confirmation remain bounded because those are exceptional states;
+- Webhooks is one domain with distinct `Configuration` and `Delivery activity` regions;
+- recipient state uses readable dot + text semantics instead of 9px status pills;
+- normal pairing, diagnostics, and account-health prose uses at least 12px text while 10px remains metadata/code/count territory;
+- migrated high-traffic dashboard surfaces use semantic color tokens instead of routine literal colors;
+- `apps/dashboard/DESIGN.md` codifies workspace sections, bounded exceptional surfaces, operational rails, typography, token, and copy rules;
+- architecture/shared-class regression tests protect the console surface model;
+- backend behavior and public API contracts are unchanged.
 
 ## Active slice
 
-None.
+Slice 7 — Verification, responsive review, and cleanup.
+
+Completed product slices:
+1. Workspace surface primitives and design contract.
+2. Control status rail and header deduplication.
+3. WhatsApp workbench and pairing cleanup.
+4. Settings workspace surfaces.
+5. Webhook console composition.
+6. Typography, status, token, and copy cleanup.
+
+Verification gate:
+- formatting/lint;
+- core tests;
+- production build;
+- Docker persistence/rollback smoke;
+- CodeQL;
+- final PR head must be the same SHA across required green gates before merge.
 
 Evidence:
-- PR #117 `refactor(dashboard): make workspace fluid on wide screens` was squash-merged into `main` as `0ad09f521075b07509f3d8305b2fa158e5666f8b`;
-- final verified PR head: `adbba2a03963d080543e4e24601e4f1091c6f7d6`;
-- CI run `33686532805`: success; formatting/lint, core tests, production build, and Docker persistence/rollback smoke passed;
-- CodeQL run `33686532806`: success;
-- architecture regression coverage protects the fluid Settings rail/content layout and removal of narrow Control/WhatsApp/diagnostic workspace caps.
+- execution branch: `feat/dashboard-console-surface-consolidation`;
+- baseline `main` before milestone: `5cd15787ef8db70f3b823470d6e35c9542b6da2a`;
+- target modules no longer import `cardBodyClass`: WhatsApp, Machine Access, Recipient Access, Sessions, Webhooks;
+- architecture coverage asserts no Control KPI-card shell, no duplicate header status, no decorative QR icon box, no 9px dashboard text, readable recipient state, semantic colors on migrated high-traffic surfaces, and Webhook configuration/delivery regions.
 
 Blockers: none known.
 
-Next action: await explicit authorization for the next product milestone. Do not invent one from this file.
+Next action: open the milestone PR, fix every deterministic verification regression, merge automatically when all required gates are green, then return this file on `main` to idle.
 
 ## Completion rule
 
 When a slice completes, record only evidence needed to leave truthful resumable state and remove stale blockers/next actions.
 
-When a milestone completes and is integrated into `main`, return this file to an idle/no-active-milestone state unless the user has already authorized the next milestone.
+When the milestone completes and is integrated into `main`, return this file to an idle/no-active-milestone state unless the user has already authorized the next milestone.
