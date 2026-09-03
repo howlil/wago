@@ -9,32 +9,50 @@ interface Props { lang: 'en' | 'id' }
 const { lang } = Astro.props;
 const id = lang === 'id';
 const base = id ? '/id' : '/en';
+
+const capabilities = id
+  ? [
+      ['REST API', 'Health/readiness, pairing/rebind, recipient policy, text send/status, account health, webhook, dan audit query.'],
+      ['Operator dashboard', 'Control untuk runtime dan WhatsApp; Settings untuk Access, Messaging, Webhooks, Sessions; Audit Log untuk investigasi.'],
+      ['Durable state', 'SQLite /app/data/wago.db menyimpan application state; credential Baileys berada di /app/data/auth.'],
+      ['Outbound safety', 'Explicit allow/opt-out, idempotency, local rate windows, new-chat classification, dan account-health signal.'],
+      ['Structured audit', 'Source wago/baileys, category/level/search filters, cursor pagination, bounded retention, dan sanitized metadata.'],
+      ['API tooling', 'Hybrid API Explorer berada di Referensi API untuk membuat request dan mencoba instance operator ketika browser-origin rules terpenuhi.'],
+    ]
+  : [
+      ['REST API', 'Health/readiness, pairing/rebind, recipient policy, text send/status, account health, webhooks, and audit queries.'],
+      ['Operator dashboard', 'Control for runtime and WhatsApp; Settings for Access, Messaging, Webhooks, Sessions; Audit Log for investigation.'],
+      ['Durable state', 'SQLite /app/data/wago.db stores application state; Baileys credentials live under /app/data/auth.'],
+      ['Outbound safety', 'Explicit allow/opt-out, idempotency, local rate windows, new-chat classification, and account-health signals.'],
+      ['Structured audit', 'wago/baileys sources, category/level/search filters, cursor pagination, bounded retention, and sanitized metadata.'],
+      ['API tooling', 'The Hybrid API Explorer lives in API Reference to generate requests and optionally call an operator instance when browser-origin rules permit it.'],
+    ];
 ---
 
 <DocsLayout title={id ? 'Ringkasan' : 'Overview'} description={id ? 'Kemampuan, batasan, arsitektur, dan peta dokumentasi Wago.' : 'Wago capabilities, boundaries, architecture, and documentation map.'}>
-  <PageHeader eyebrow="Wago" title={id ? 'Gateway WhatsApp self-hosted untuk integrasi yang terkontrol' : 'A self-hosted WhatsApp gateway for controlled integrations'} description={id ? 'Wago menghubungkan satu akun WhatsApp melalui Baileys dan menyediakan REST API terautentikasi, dashboard React, SQLite durable state, recipient policy, outbound safety, serta structured audit Wago/Baileys.' : 'Wago connects one WhatsApp account through Baileys and provides an authenticated REST API, React dashboard, durable SQLite state, recipient policy, outbound safety, and structured Wago/Baileys audit events.'} />
+  <PageHeader eyebrow="Wago" title={id ? 'Gateway WhatsApp self-hosted untuk integrasi yang terkontrol' : 'A self-hosted WhatsApp gateway for controlled integrations'} description={id ? 'Wago menghubungkan satu akun WhatsApp melalui Baileys dan menyediakan REST API terautentikasi, dashboard operator, durable SQLite state, recipient policy, outbound safety, webhook delivery, dan structured audit.' : 'Wago connects one WhatsApp account through Baileys and provides an authenticated REST API, operator dashboard, durable SQLite state, recipient policy, outbound safety, webhook delivery, and structured audit.'} />
 
   <Callout title={id ? 'Batas produk' : 'Product boundary'} tone="warning">{id ? 'Wago bukan bulk sender, campaign platform, multi-tenant SaaS, scraper, atau anti-detection toolkit. Satu instance ditujukan untuk satu akun WhatsApp.' : 'Wago is not a bulk sender, campaign platform, multi-tenant SaaS, scraper, or anti-detection toolkit. One instance is designed for one WhatsApp account.'}</Callout>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mt-10 mb-4">{id ? 'Kemampuan inti' : 'Core capabilities'}</h2>
-  <div class="grid sm:grid-cols-2 gap-4 mb-10">
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">REST API</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Health/readiness, bootstrap, pairing/rebind, recipient policy, text send/status, account health, dan audit query.' : 'Health/readiness, bootstrap, pairing/rebind, recipient policy, text send/status, account health, and audit queries.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Control dashboard</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Control workspace untuk pairing/rebind, recipient access, manual send/status, dan account health; dedicated /audit workspace untuk operational events dan filter server-side.' : 'A Control workspace for pairing/rebind, recipient access, manual send/status, and account health; plus a dedicated /audit workspace for operational events and server-side filters.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Durable state</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'SQLite /app/data/wago.db menyimpan gateway settings, binding, recipient policy, outbound safety, migrations, dan bounded audit. Baileys auth berada di /app/data/auth.' : 'SQLite /app/data/wago.db stores gateway settings, binding, recipient policy, outbound safety, migrations, and bounded audit events. Baileys auth lives under /app/data/auth.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Outbound safety</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Explicit allow/opt-out, idempotency, account/recipient/new-chat limits, pause/cooldown state, dan WhatsApp reach-out/new-chat health checks.' : 'Explicit allow/opt-out, idempotency, account/recipient/new-chat limits, pause/cooldown state, and WhatsApp reach-out/new-chat health checks.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">Structured audit</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Source wago/baileys, filter category/level/search, cursor pagination, retention 2.000 event, dan sanitizer untuk metadata Baileys.' : 'wago/baileys sources, category/level/search filters, cursor pagination, 2,000-event retention, and Baileys metadata sanitization.'}</p></div>
-    <div class="border border-[#262626] rounded-lg p-5"><h3 class="text-sm font-semibold text-[#fafafa] mb-2">API documentation</h3><p class="text-sm text-[#71717a] leading-relaxed">{id ? 'Hybrid API Explorer ditempatkan di Referensi API, terpisah dari product landing page, untuk membuat contoh request dan mencoba instance operator bila browser origin rules dipenuhi.' : 'The Hybrid API Explorer lives in the API Reference, separate from the product landing page, to generate requests and optionally call an operator instance when browser origin rules are satisfied.'}</p></div>
+  <h2>{id ? 'Kemampuan inti' : 'Core capabilities'}</h2>
+  <div class="grid gap-x-10 md:grid-cols-2">
+    {capabilities.map(([title, description]) => (
+      <section class="border-t border-[var(--docs-line)] py-4 last:border-b md:[&:nth-last-child(-n+2)]:border-b">
+        <h3 class="m-0 text-[13px] font-semibold text-[var(--docs-text)]">{title}</h3>
+        <p class="mb-0 mt-1.5 text-[13px] leading-6 text-[var(--docs-muted)]">{description}</p>
+      </section>
+    ))}
   </div>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Model sistem' : 'System model'}</h2>
+  <h2>{id ? 'Model sistem' : 'System model'}</h2>
   <PlantUmlDiagram file="system-architecture.puml" alt="Wago runtime architecture overview" caption={id ? 'Source diagram disimpan sebagai PlantUML agar perubahan arsitektur dapat direview bersama code.' : 'The diagram source is stored as PlantUML so architecture changes can be reviewed with code.'} />
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-4">{id ? 'Peta dokumentasi' : 'Documentation map'}</h2>
-  <div class="grid sm:grid-cols-2 gap-4">
+  <h2>{id ? 'Peta dokumentasi' : 'Documentation map'}</h2>
+  <div>
     <DocCard href={`${base}/docs/getting-started`} title={id ? 'Memulai' : 'Getting Started'} description={id ? 'Deploy, pair, simpan API key dengan benar, allow recipient, dan kirim pesan dari aplikasi eksternal.' : 'Deploy, pair, keep the API key correctly, allow a recipient, and send from an external application.'} />
     <DocCard href={`${base}/docs/api`} title={id ? 'Referensi API' : 'API Reference'} description={id ? 'Semua route, Hybrid API Explorer, auth, payload, status, audit, error, dan limit.' : 'All routes, Hybrid API Explorer, auth, payloads, status, audit, errors, and limits.'} />
     <DocCard href={`${base}/docs/architecture`} title={id ? 'Arsitektur' : 'Architecture'} description={id ? 'Runtime, lifecycle session, outbound flow, dan persistence boundary.' : 'Runtime, session lifecycle, outbound flow, and persistence boundaries.'} />
-    <DocCard href={`${base}/docs/configuration`} title={id ? 'Konfigurasi' : 'Configuration'} description={id ? 'First-run bootstrap, API_KEY opsional, origin security, SQLite, dan default internal.' : 'First-run bootstrap, optional API_KEY, origin security, SQLite, and internal defaults.'} />
+    <DocCard href={`${base}/docs/configuration`} title={id ? 'Konfigurasi' : 'Configuration'} description={id ? 'First-run bootstrap, runtime access, origin security, SQLite, dan default internal.' : 'First-run bootstrap, runtime access, origin security, SQLite, and internal defaults.'} />
     <DocCard href={`${base}/docs/deployment`} title="Deployment" description={id ? 'GHCR, Compose, reverse proxy, volume, backup, dan upgrade.' : 'GHCR, Compose, reverse proxying, volumes, backup, and upgrades.'} />
     <DocCard href={`${base}/docs/operations`} title={id ? 'Operasional' : 'Operations'} description={id ? 'Health, account health, structured audit, logs, persistence, dan troubleshooting.' : 'Health, account health, structured audit, logs, persistence, and troubleshooting.'} />
     <DocCard href={`${base}/docs/development`} title="Development" description={id ? 'Toolchain, local workflow, test, build, dan PR checks.' : 'Toolchain, local workflow, tests, builds, and PR checks.'} />
