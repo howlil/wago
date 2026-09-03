@@ -29,14 +29,7 @@ function persistSidebarCollapsed(value: boolean): void {
   }
 }
 
-export function AppShell({
-  children,
-  title,
-  activePath,
-  isRefreshing,
-  onRefresh,
-  refreshLabel,
-}: AppShellProps) {
+export function AppShell({ children, title, activePath, isRefreshing, onRefresh, refreshLabel }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
