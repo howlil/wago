@@ -115,7 +115,9 @@ export function WhatsAppBindingCard({
           <dt className={keyValueLabelClass}>Account</dt>
           <dd className="mb-0 mt-1 min-w-0">
             {binding.state === "bound" ? (
-              <strong className="break-all font-mono text-xs font-semibold text-wago-brand-strong">{binding.phone}</strong>
+              <strong className="break-all font-mono text-xs font-semibold text-wago-brand-strong">
+                {binding.phone}
+              </strong>
             ) : (
               <span className="text-sm font-medium text-wago-muted">Not paired</span>
             )}
