@@ -4,32 +4,44 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**No active product milestone.**
+**Active milestone: Dashboard surface color + restrained Motion interaction.**
 
-## Current baseline
+## Current slice
 
-- `main` includes **Fast Risk-Based CI and Design Verification** via PR #122;
-- squash merge commit: `9863979cea48c8f8ac0d78ffe17c46bdbc963ed1`;
-- final implementation head verified before merge: `16f202ce681ea54d7726f7486f9acb1dd55833d1`;
-- core and docs CI use one explicit frozen pnpm install instead of setup-time install plus a second install;
-- normal core CI remains formatting/lint + full gateway/dashboard tests and builds;
-- Docker image/persistence/rollback smoke is isolated to a path-scoped runtime/deployment/persistence workflow;
-- standalone docs install/build smoke is isolated to package/workspace/build-configuration changes instead of routine content/design edits;
-- JavaScript/TypeScript CodeQL runs source analysis without redundant dependency installation or core build;
-- `task dashboard:design:test` and `task docs:design:test` provide fast deterministic design-contract loops before full affected-app verification;
-- `.agents/QUALITY.md` defines the fast/accurate risk-based verification policy and design-specific testing flow;
-- `.agents/DECISIONS.md` records risk-routed CI as durable decision D13;
-- final-head workflows were all green: CI, Docs CI, Docker Smoke, Docs Standalone Smoke, and CodeQL;
-- product behavior, public API, persistence schema, authentication semantics, and Wago design language were unchanged.
+Branch: `feat/dashboard-surface-motion`
+
+Goal:
+- give routine Control/Settings workspace sections visible low-chroma surface color without returning to a rounded card wall;
+- replace generic active-navigation styling with a rule-led active wash for global and Settings navigation;
+- add restrained Motion for React interaction feedback with user reduced-motion support;
+- keep current information architecture, routing, runtime behavior, and public API unchanged.
+
+Implemented so far:
+- added semantic `wago-section`, `wago-section-line`, `wago-sidebar-active`, and `wago-sidebar-active-line` tokens;
+- changed shared workspace modules from visually empty sections to tinted flat work surfaces with one editorial rule;
+- redesigned desktop/collapsed/mobile global navigation active state as a square full-row wash plus narrow brand rule;
+- aligned Settings local navigation to the same non-pill active-state grammar;
+- added Motion for React hover/press/active-indicator transitions;
+- wrapped dashboard interaction motion with `MotionConfig reducedMotion="user"`;
+- updated `apps/dashboard/DESIGN.md` and dashboard architecture regression coverage.
+
+## Verification required
+
+Before merge:
+- synchronize `pnpm-lock.yaml` for the new `motion` dependency;
+- run the fast dashboard design regression gate;
+- run dashboard component tests;
+- run dashboard production build/typecheck through the normal CI path;
+- confirm the final PR head is green for all workflows triggered by these paths.
 
 ## Blockers
 
-None.
+None known. Dependency lock synchronization and final CI are still pending.
 
 ## Next action
 
-Await the next explicit user-authorized milestone or task. Do not infer or start product work from historical plans alone.
+Synchronize the lockfile on this branch, inspect final CI, fix any regression, then leave the PR ready for merge unless the user explicitly authorizes merging.
 
 ## Completion rule
 
-When a milestone completes and is integrated into `main`, return this file to this idle/no-active-milestone state unless the user has already authorized the next milestone.
+When this milestone completes and is integrated into `main`, return this file to the idle/no-active-milestone state unless the user has already authorized the next milestone.
