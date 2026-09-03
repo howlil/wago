@@ -32,6 +32,8 @@ describe("dashboard information architecture", () => {
     expect(settings).toContain("aria-current={active ? \"page\" : undefined}");
     expect(settings).toContain("hashchange");
     expect(settings).toContain("lg:grid-cols-[176px_minmax(0,1fr)]");
+    expect(settings).toContain("<motion.a");
+    expect(settings).toContain("bg-wago-sidebar-active");
     expect(settings).not.toContain("max-w-[1120px]");
     expect(settings).not.toContain("minmax(0,880px)");
   });
@@ -101,7 +103,12 @@ describe("dashboard information architecture", () => {
     expect(diagnostics).toContain("<details");
   });
 
-  it("uses workspace surfaces instead of giant cards for active Settings modules", () => {
+  it("uses tinted workspace surfaces instead of giant routine cards", () => {
+    const classes = source("shared/ui/classes.ts");
+
+    expect(classes).toContain("border-l-2 border-wago-section-line bg-wago-section");
+    expect(classes).not.toContain("workspaceModuleClass = \"rounded");
+
     for (const path of [
       "features/gateway/GatewayCredentialsCard.tsx",
       "features/recipients/RecipientAccessCard.tsx",
@@ -182,6 +189,19 @@ describe("dashboard information architecture", () => {
     }
   });
 
+  it("keeps workspace and active-navigation color on semantic tokens", () => {
+    const styles = source("styles.css");
+    const classes = source("shared/ui/classes.ts");
+    const sidebar = source("shared/layout/AppSidebar.tsx");
+
+    expect(styles).toContain("--color-wago-section:");
+    expect(styles).toContain("--color-wago-section-line:");
+    expect(styles).toContain("--color-wago-sidebar-active:");
+    expect(styles).toContain("--color-wago-sidebar-active-line:");
+    expect(classes).toContain("bg-wago-section");
+    expect(sidebar).toContain("bg-wago-sidebar-active");
+  });
+
   it("keeps Audit Log as a flat operational console", () => {
     const panel = source("features/activity/ActivityLogPanel.tsx");
     const list = source("features/activity/ActivityEventList.tsx");
@@ -192,13 +212,16 @@ describe("dashboard information architecture", () => {
     expect(list).toContain("border-y border-wago-line");
   });
 
-  it("keeps global navigation rule-led instead of active-card shaped", () => {
+  it("keeps global navigation rule-led while adding restrained motion", () => {
     const sidebar = source("shared/layout/AppSidebar.tsx");
+    const app = source("App.tsx");
 
-    expect(sidebar).toContain("border-l-2");
-    expect(sidebar).toContain("border-l-wago-brand text-wago-brand-strong");
-    expect(sidebar).not.toContain("border-wago-brand/20");
+    expect(sidebar).toContain("<motion.a");
+    expect(sidebar).toContain("bg-wago-sidebar-active");
+    expect(sidebar).toContain("w-[3px] bg-wago-brand");
+    expect(sidebar).not.toContain("border-l-wago-brand text-wago-brand-strong");
     expect(sidebar).not.toContain("bg-wago-brand-soft text-wago-brand-strong");
     expect(sidebar).not.toContain(">Workspace<");
+    expect(app).toContain('<MotionConfig reducedMotion="user">');
   });
 });
