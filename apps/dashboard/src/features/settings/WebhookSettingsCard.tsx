@@ -280,15 +280,18 @@ export function WebhookSettingsCard() {
               </summary>
               <div className="mt-3 divide-y divide-wago-line border-t border-wago-line">
                 {supportedEvents.map(([label, event]) => (
-                  <div className="flex flex-col gap-0.5 py-2 sm:flex-row sm:items-center sm:justify-between" key={event}>
+                  <div
+                    className="flex flex-col gap-0.5 py-2 sm:flex-row sm:items-center sm:justify-between"
+                    key={event}
+                  >
                     <span className="text-xs text-wago-ink">{label}</span>
                     <code className="font-mono text-[10px] text-wago-tertiary">{event}</code>
                   </div>
                 ))}
               </div>
               <p className="mb-0 mt-2 text-xs leading-5 text-wago-muted">
-                Incoming sender and text data are retained only while an active retry needs them and are removed when the
-                delivery becomes terminal.
+                Incoming sender and text data are retained only while an active retry needs them and are removed when
+                the delivery becomes terminal.
               </p>
             </details>
           </div>
