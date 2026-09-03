@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { OperatorSessionCard } from "../../features/access/OperatorSessionCard.js";
 import { useDashboardController } from "../../features/dashboard/useDashboardController.js";
@@ -16,6 +17,13 @@ const settingsSections = [
   { id: "webhooks", href: "#webhooks", label: "Webhooks" },
   { id: "sessions", href: "#sessions", label: "Sessions" },
 ] as const satisfies ReadonlyArray<{ id: SettingsModule; href: string; label: string }>;
+
+const sectionNavigationMotion = {
+  type: "spring",
+  stiffness: 420,
+  damping: 34,
+  mass: 0.7,
+} as const;
 
 function moduleFromHash(): SettingsModule {
   if (typeof window === "undefined") return "access";
@@ -45,19 +53,38 @@ export function SettingsPage() {
           {settingsSections.map((section) => {
             const active = section.id === activeModule;
             return (
-              <a
-                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wago-brand/30 ${
-                  active
-                    ? "bg-wago-brand-soft text-wago-brand-strong"
-                    : "text-wago-muted hover:bg-wago-surface-subtle hover:text-wago-ink"
+              <motion.a
+                className={`relative isolate overflow-hidden px-3 py-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wago-brand/30 ${
+                  active ? "text-wago-ink" : "text-wago-muted hover:bg-wago-hover hover:text-wago-ink"
                 }`}
                 href={section.href}
                 key={section.id}
                 aria-current={active ? "page" : undefined}
                 onClick={() => setActiveModule(section.id)}
+                whileHover={{ x: active ? 0 : 2 }}
+                whileTap={{ scale: 0.985 }}
+                transition={sectionNavigationMotion}
               >
-                {section.label}
-              </a>
+                {active ? (
+                  <>
+                    <motion.span
+                      aria-hidden="true"
+                      className="absolute inset-0 -z-10 border-y border-wago-sidebar-active-line bg-wago-sidebar-active"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.14 }}
+                    />
+                    <motion.span
+                      aria-hidden="true"
+                      className="absolute bottom-0 left-3 right-3 h-0.5 bg-wago-brand lg:inset-y-2 lg:left-0 lg:right-auto lg:h-auto lg:w-0.5"
+                      initial={{ opacity: 0, scale: 0.55 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={sectionNavigationMotion}
+                    />
+                  </>
+                ) : null}
+                <span className="relative z-10">{section.label}</span>
+              </motion.a>
             );
           })}
         </nav>
