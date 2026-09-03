@@ -4,29 +4,42 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**No active product milestone.**
+**Active engineering milestone:** Fast Risk-Based CI and Design Verification.
 
-## Current baseline
+Goal: reduce CI feedback time without weakening relevant regression detection, especially for dashboard/docs design work, and make the user's preferred fast/accurate verification strategy canonical under `.agents/`.
 
-- `main` includes **Residual Anti-Slop Surface Consolidation** via PR #121;
-- squash merge commit: `6d8e2788079c6a28c558a00f5fc9f98df346bdf8`;
-- final implementation head verified before merge: `b359bb6891d90894c2bab5dcb399c7a5b4a9d7b2`;
-- docs API Explorer now uses one semantic bounded technical surface with divider-led internal hierarchy, semantic tokens, no metadata-only pills, and no routine nested cards;
-- dashboard AccessGate keeps first-run/sign-in behavior while removing decorative logo-tile/shadow-card treatment and simplifying loading/unavailable states;
-- EN/ID landing pages remain one shared composition but use information-specific layouts for operating sequence, product boundary, guardrails, documentation map, and runtime model;
-- global dashboard navigation uses a rule-led active state instead of a rounded/tinted active tile;
-- AppShell/AppHeader no longer carry dormant `statusLabel` / `statusTone` or routine header-description plumbing;
-- protected operational surfaces and product behavior remain unchanged: runtime rail, WhatsApp workbench, recipient state semantics, QR pairing, one-time secret reveals, destructive confirmations, Settings hash navigation, flat Audit Log, backend/persistence/WhatsApp lifecycle/auth semantics/public API contracts;
-- final required gates were green on the verified head: formatting/lint, core tests, core build, Docker persistence/rollback smoke, Docs tests, Astro build, standalone docs static-build smoke, and CodeQL.
+## Acceptance boundary
+
+- core CI performs one explicit frozen install, then formatting/lint, gateway/dashboard tests, and builds;
+- dashboard design changes retain deterministic anti-slop/information-architecture guards plus full dashboard test/build coverage;
+- docs design/content changes retain public-surface tests plus Astro build;
+- Docker image/persistence/rollback smoke runs only for runtime/deployment/persistence-relevant paths;
+- standalone docs install/build smoke runs only for the standalone deployment/package/build boundary;
+- CodeQL retains JavaScript/TypeScript analysis without redundant dependency install/core build;
+- obsolete workflow runs remain cancellable through concurrency groups;
+- no product behavior, API, persistence schema, auth semantics, or design language changes are introduced.
+
+## Active work
+
+Implementation branch: `chore/fast-risk-based-ci`.
+
+Current changes:
+
+- core and docs pnpm setup no longer performs an implicit dependency install before the explicit frozen install;
+- Docker persistence/rollback smoke moved to a path-scoped workflow;
+- standalone docs static smoke moved to a path-scoped workflow;
+- CodeQL no longer duplicates core build setup for JavaScript/TypeScript analysis;
+- `task dashboard:design:test` and `task docs:design:test` provide fast design-contract loops;
+- `.agents/QUALITY.md` and `.agents/DECISIONS.md` codify risk-routed CI and design verification preferences.
 
 ## Blockers
 
-None.
+None known.
 
 ## Next action
 
-Await the next explicit user-authorized milestone or task. Do not infer or start product work from historical plans alone.
+Verify workflow syntax, Taskfile commands, affected tests/builds, and PR workflow routing. Merge when final-head gates are green, then return this file to idle with final evidence.
 
 ## Completion rule
 
-When a milestone completes and is integrated into `main`, return this file to this idle/no-active-milestone state unless the user has already authorized the next milestone.
+When the milestone completes and is integrated into `main`, return this file to an idle/no-active-milestone state unless the user has already authorized the next milestone.
