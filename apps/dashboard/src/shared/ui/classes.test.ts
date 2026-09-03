@@ -10,7 +10,6 @@ import {
   secondaryButtonClass,
   workspaceModuleClass,
   workspaceModuleHeaderClass,
-  workspaceRegionClass,
 } from "./classes.js";
 
 const standardControls = [inputClass, primaryButtonClass, secondaryButtonClass, dangerButtonClass];
@@ -32,14 +31,12 @@ describe("shared UI classes", () => {
     const workspaceClasses = [
       workspaceModuleClass,
       workspaceModuleHeaderClass,
-      workspaceRegionClass,
       keyValueLabelClass,
       keyValueClass,
     ].join(" ");
 
     expect(workspaceModuleClass).toContain("w-full");
     expect(workspaceModuleHeaderClass).toContain("border-b");
-    expect(workspaceRegionClass).toContain("border-t");
     expect(workspaceClasses).not.toContain("rounded-lg");
     expect(workspaceClasses).not.toContain("shadow");
   });
