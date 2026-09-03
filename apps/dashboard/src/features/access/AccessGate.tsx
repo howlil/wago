@@ -23,12 +23,7 @@ function AccessFrame({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-[400px]">
-        <div className="mb-6 text-center">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-wago-brand text-lg font-semibold text-white">
-            W
-          </div>
-          <div className="mt-3 text-sm font-semibold tracking-[-0.01em] text-wago-ink">Wago</div>
-        </div>
+        <div className="mb-5 text-[15px] font-semibold tracking-[-0.02em] text-wago-ink">Wago</div>
         {children}
       </div>
     </main>
@@ -79,8 +74,8 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
   const passwordVisibilityLabel = showPassword ? "Hide admin password" : "Show admin password";
 
   return (
-    <section className="rounded-xl border border-wago-line bg-wago-surface p-6 shadow-sm">
-      <h1 className="text-xl font-semibold tracking-[-0.02em] text-wago-ink">
+    <section className="rounded-md border border-wago-line bg-wago-surface p-6">
+      <h1 className="m-0 text-xl font-semibold tracking-[-0.025em] text-wago-ink">
         {creatingAccount ? "Set up your gateway" : "Sign in"}
       </h1>
       <p className="mb-0 mt-1.5 text-sm leading-6 text-wago-muted">
@@ -107,7 +102,7 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
             {password ? (
               <Tooltip content={passwordVisibilityLabel} side="top">
                 <button
-                  className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-[#758079]"
+                  className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-wago-muted hover:text-wago-ink"
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
                   aria-label={passwordVisibilityLabel}
@@ -137,10 +132,7 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
         ) : null}
 
         {submitError ? (
-          <div
-            className="rounded-md border border-[#e4b8bc] bg-wago-danger-soft px-3 py-2 text-xs leading-5 text-wago-danger"
-            role="alert"
-          >
+          <div className="rounded-md border border-wago-danger/30 bg-wago-danger-soft px-3 py-2 text-xs leading-5 text-wago-danger" role="alert">
             {submitError}
           </div>
         ) : null}
@@ -150,11 +142,11 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
         </button>
       </form>
 
-      {creatingAccount ? (
-        <p className="mb-0 mt-4 text-center text-[11px] leading-5 text-wago-muted">
-          Wago stores only a salted password hash in its private SQLite state.
-        </p>
-      ) : null}
+      <p className="mb-0 mt-5 border-t border-wago-line pt-4 text-[11px] leading-5 text-wago-muted">
+        {creatingAccount
+          ? "Wago stores only a salted password hash in its private SQLite state."
+          : "Browser access is local to this Wago instance and separate from machine API credentials."}
+      </p>
     </section>
   );
 }
@@ -192,8 +184,8 @@ export function AccessGate({ children }: AccessGateProps) {
   if (isLoading) {
     return (
       <AccessFrame>
-        <section className="rounded-xl border border-wago-line bg-wago-surface p-6 text-center shadow-sm">
-          <h1 className="text-base font-semibold text-wago-ink">Loading Wago</h1>
+        <section className="border-y border-wago-line py-5" aria-live="polite">
+          <h1 className="m-0 text-base font-semibold text-wago-ink">Loading Wago</h1>
           <p className="mb-0 mt-1.5 text-sm text-wago-muted">Checking dashboard access.</p>
         </section>
       </AccessFrame>
@@ -203,8 +195,8 @@ export function AccessGate({ children }: AccessGateProps) {
   if (!info || loadError) {
     return (
       <AccessFrame>
-        <section className="rounded-xl border border-wago-line bg-wago-surface p-6 text-center shadow-sm">
-          <h1 className="text-base font-semibold text-wago-ink">Wago is unavailable</h1>
+        <section className="border-y border-wago-line py-5">
+          <h1 className="m-0 text-base font-semibold text-wago-ink">Wago is unavailable</h1>
           <p className="mb-0 mt-1.5 text-sm leading-6 text-wago-muted">{loadError ?? "Access state is unavailable."}</p>
           <button className={`${secondaryButtonClass} mt-5`} type="button" onClick={() => void refresh()}>
             Retry
