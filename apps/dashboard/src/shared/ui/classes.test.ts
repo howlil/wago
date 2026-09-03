@@ -4,23 +4,44 @@ import {
   cardClass,
   dangerButtonClass,
   inputClass,
+  keyValueClass,
+  keyValueLabelClass,
   primaryButtonClass,
   secondaryButtonClass,
+  workspaceModuleClass,
+  workspaceModuleHeaderClass,
+  workspaceRegionClass,
 } from "./classes.js";
 
 const standardControls = [inputClass, primaryButtonClass, secondaryButtonClass, dangerButtonClass];
 
 describe("shared UI classes", () => {
-  it("keeps standard cards and controls on the agreed radius scale", () => {
+  it("keeps bounded cards and standard controls on the agreed radius scale", () => {
     expect(cardClass).toContain("rounded-lg");
     for (const control of standardControls) {
       expect(control).toContain("rounded-md");
     }
   });
 
-  it("uses one 16px padding contract for standard cards", () => {
+  it("keeps bounded card padding explicit", () => {
     expect(cardBodyClass).toContain("p-4");
     expect(cardBodyClass).not.toContain("p-3.5");
+  });
+
+  it("keeps workspace primitives divider-led instead of card-shaped", () => {
+    const workspaceClasses = [
+      workspaceModuleClass,
+      workspaceModuleHeaderClass,
+      workspaceRegionClass,
+      keyValueLabelClass,
+      keyValueClass,
+    ].join(" ");
+
+    expect(workspaceModuleClass).toContain("w-full");
+    expect(workspaceModuleHeaderClass).toContain("border-b");
+    expect(workspaceRegionClass).toContain("border-t");
+    expect(workspaceClasses).not.toContain("rounded-lg");
+    expect(workspaceClasses).not.toContain("shadow");
   });
 
   it("keeps standard surfaces flat instead of adding decorative elevation or motion", () => {
