@@ -29,6 +29,13 @@ const groupLabels: Record<ApiEndpoint["group"], Record<ApiLanguage, string>> = {
   audit: { en: "Audit", id: "Audit" },
 };
 
+const fieldClass =
+  "w-full rounded-md border border-[var(--docs-line-strong)] bg-[var(--docs-code)] px-3 py-2.5 text-sm text-[var(--docs-text-soft)] outline-none focus:border-[var(--docs-accent)]";
+const primaryActionClass =
+  "rounded-md bg-[var(--docs-text)] px-3.5 py-2 text-xs font-semibold text-[var(--docs-bg)] hover:bg-[var(--docs-text-soft)] disabled:cursor-not-allowed disabled:opacity-50";
+const secondaryActionClass =
+  "rounded-md border border-[var(--docs-line-strong)] px-3.5 py-2 text-xs font-medium text-[var(--docs-muted)] hover:text-[var(--docs-text)]";
+
 function initialValues(endpoint: ApiEndpoint): ExplorerValues {
   return Object.fromEntries(endpoint.fields.map((field) => [field.key, field.defaultValue ?? ""]));
 }
@@ -70,6 +77,8 @@ export function ApiExplorer({ lang = "en" }: { lang?: ApiLanguage }) {
     baseUrl: lang === "id" ? "Base URL Wago" : "Wago Base URL",
     apiKey: "API key",
     endpoint: "Endpoint",
+    request: lang === "id" ? "Request" : "Request",
+    snippet: lang === "id" ? "Generated snippet" : "Generated snippet",
     response: "Response",
     send: lang === "id" ? "Kirim request" : "Send request",
     sending: lang === "id" ? "Mengirim..." : "Sending...",
@@ -162,126 +171,230 @@ export function ApiExplorer({ lang = "en" }: { lang?: ApiLanguage }) {
   }
 
   return (
-    <div className="my-8 overflow-hidden rounded-xl border border-[#262626] bg-[#0d0d0d]">
-      <div className="border-b border-[#262626] px-5 py-4 sm:px-6">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#71717a]">API Explorer</p>
-            <h2 className="mt-1 text-lg font-semibold text-[#fafafa]">
-              {lang === "id" ? "Bangun request, lalu coba secara opsional" : "Build a request, then optionally try it live"}
-            </h2>
-          </div>
-          <span className="mt-2 inline-flex w-fit rounded-full border border-[#262626] px-2.5 py-1 text-xs text-[#a1a1aa] sm:mt-0">
-            {lang === "id" ? "Secret hanya di memory browser" : "Secrets stay in browser memory"}
-          </span>
-        </div>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[#71717a]">
+    <section className="my-8 overflow-hidden rounded-md border border-[var(--docs-line)] bg-[var(--docs-surface)]" aria-labelledby="api-explorer-title">
+      <header className="border-b border-[var(--docs-line)] px-4 py-4 sm:px-5">
+        <h2 id="api-explorer-title" className="m-0 text-[15px] font-semibold text-[var(--docs-text)]">
+          API Explorer
+        </h2>
+        <p className="mb-0 mt-1 max-w-3xl text-[13px] leading-6 text-[var(--docs-muted)]">
           {lang === "id"
-            ? "Generated snippet selalu memakai YOUR_API_KEY. API key asli hanya dipakai untuk Authorization header ketika Anda menekan Kirim request dan tidak disimpan oleh halaman ini."
-            : "Generated snippets always use YOUR_API_KEY. Your real key is only used in the Authorization header when you send a live request and is not persisted by this page."}
+            ? "Bangun request dan, bila perlu, jalankan langsung dari browser. API key asli hanya berada di memory halaman ini dan tidak dimasukkan ke generated snippet."
+            : "Build a request and, when useful, run it directly from the browser. Your real API key stays in this page's memory and is never inserted into generated snippets."}
         </p>
-      </div>
+      </header>
 
-      <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+      <div className="grid xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:divide-x xl:divide-[var(--docs-line)]">
+        <div className="min-w-0 px-4 py-5 sm:px-5">
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-[#a1a1aa]">{copy.baseUrl}</span>
-              <input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} spellCheck={false} className="w-full rounded-lg border border-[#2a2a2a] bg-[#111] px-3 py-2.5 font-mono text-sm text-[#e4e4e7] outline-none focus:border-[#52525b]" placeholder="https://wago.example.com" />
+              <span className="mb-1.5 block text-xs font-medium text-[var(--docs-text-soft)]">{copy.baseUrl}</span>
+              <input
+                value={baseUrl}
+                onChange={(event) => setBaseUrl(event.target.value)}
+                spellCheck={false}
+                className={`${fieldClass} font-mono`}
+                placeholder="https://wago.example.com"
+              />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-[#a1a1aa]">{copy.apiKey}</span>
-              <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} autoComplete="off" className="w-full rounded-lg border border-[#2a2a2a] bg-[#111] px-3 py-2.5 font-mono text-sm text-[#e4e4e7] outline-none focus:border-[#52525b]" placeholder="wa_..." />
+              <span className="mb-1.5 block text-xs font-medium text-[var(--docs-text-soft)]">{copy.apiKey}</span>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                autoComplete="off"
+                className={`${fieldClass} font-mono`}
+                placeholder="wa_..."
+              />
             </label>
           </div>
 
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-[#a1a1aa]">{copy.endpoint}</span>
-            <select value={endpoint.id} onChange={(event) => selectEndpoint(event.target.value)} className="w-full rounded-lg border border-[#2a2a2a] bg-[#111] px-3 py-2.5 text-sm text-[#e4e4e7] outline-none focus:border-[#52525b]">
-              {Object.entries(groupLabels).map(([group, labels]) => (
-                <optgroup key={group} label={labels[lang]}>
-                  {apiEndpoints.filter((item) => item.group === group).map((item) => (
-                    <option key={item.id} value={item.id}>{item.method} {item.path} — {item.title[lang]}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+          <div className="mt-5 border-y border-[var(--docs-line)] py-4">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[var(--docs-text-soft)]">{copy.endpoint}</span>
+              <select value={endpoint.id} onChange={(event) => selectEndpoint(event.target.value)} className={fieldClass}>
+                {Object.entries(groupLabels).map(([group, labels]) => (
+                  <optgroup key={group} label={labels[lang]}>
+                    {apiEndpoints
+                      .filter((item) => item.group === group)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.method} {item.path} — {item.title[lang]}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
 
-          <div className="rounded-lg border border-[#262626] bg-[#111] p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded px-2 py-1 font-mono text-xs font-semibold ${endpoint.method === "GET" ? "bg-emerald-950 text-emerald-300" : "bg-blue-950 text-blue-300"}`}>{endpoint.method}</span>
-              <code className="text-sm text-[#fafafa]">{endpoint.path}</code>
-              <span className="rounded-full border border-[#303030] px-2 py-0.5 text-[11px] text-[#71717a]">{authLabel(endpoint, lang)}</span>
+            <div className="mt-4 grid gap-1 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-baseline sm:gap-x-3">
+              <span className="font-mono text-xs font-semibold text-[var(--docs-accent-strong)]">{endpoint.method}</span>
+              <code className="break-all text-sm text-[var(--docs-text)]">{endpoint.path}</code>
+              <span className="text-[11px] text-[var(--docs-tertiary)]">{authLabel(endpoint, lang)}</span>
+              <p className="mb-0 mt-2 text-[13px] leading-6 text-[var(--docs-muted)] sm:col-span-3">{endpoint.description[lang]}</p>
             </div>
-            <p className="mt-3 text-sm leading-relaxed text-[#a1a1aa]">{endpoint.description[lang]}</p>
           </div>
 
-          {endpoint.fields.length > 0 && (
-            <div className="space-y-4">
-              {endpoint.fields.map((field) => (
-                <label key={`${field.location}-${field.key}`} className="block">
-                  <span className="mb-1.5 flex items-center gap-2 text-xs font-medium text-[#a1a1aa]">
-                    {field.label[lang]}
-                    <span className="text-[10px] uppercase tracking-wide text-[#52525b]">{field.location}</span>
-                    <span className="text-[10px] text-[#52525b]">{field.required ? copy.required : copy.optional}</span>
-                  </span>
-                  {field.input === "select" ? (
-                    <select value={values[field.key] ?? ""} onChange={(event) => setField(field.key, event.target.value)} className="w-full rounded-lg border border-[#2a2a2a] bg-[#111] px-3 py-2.5 text-sm text-[#e4e4e7] outline-none focus:border-[#52525b]">
-                      {(field.options ?? []).map((option) => <option key={option || "__empty"} value={option}>{option || (lang === "id" ? "Semua / kosong" : "All / empty")}</option>)}
-                    </select>
-                  ) : field.input === "textarea" ? (
-                    <textarea value={values[field.key] ?? ""} onChange={(event) => setField(field.key, event.target.value)} rows={4} className="w-full resize-y rounded-lg border border-[#2a2a2a] bg-[#111] px-3 py-2.5 text-sm text-[#e4e4e7] outline-none focus:border-[#52525b]" placeholder={field.placeholder} />
-                  ) : (
-                    <input value={values[field.key] ?? ""} onChange={(event) => setField(field.key, event.target.value)} className="w-full rounded-lg border border-[#2a2a2a] bg-[#111] px-3 py-2.5 font-mono text-sm text-[#e4e4e7] outline-none focus:border-[#52525b]" placeholder={field.placeholder} />
-                  )}
-                  <span className="mt-1.5 block text-xs leading-relaxed text-[#52525b]">{field.description[lang]}</span>
-                </label>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={requestLive} disabled={sending} className="rounded-lg bg-[#fafafa] px-4 py-2.5 text-sm font-semibold text-[#0a0a0a] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{sending ? copy.sending : copy.send}</button>
-            {response && <button type="button" onClick={() => setResponse(null)} className="rounded-lg border border-[#2a2a2a] px-4 py-2.5 text-sm text-[#a1a1aa] hover:text-[#fafafa]">{copy.clear}</button>}
-          </div>
-
-          {confirmationOpen && (
-            <div className={`rounded-lg border p-4 ${endpoint.danger === "high" ? "border-red-900 bg-red-950/20" : "border-amber-900 bg-amber-950/20"}`}>
-              <p className="text-sm font-semibold text-[#fafafa]">{endpoint.danger === "high" ? (lang === "id" ? "Tindakan ini mengganti session WhatsApp saat ini" : "This replaces the current WhatsApp session") : (lang === "id" ? "Konfirmasi perubahan state" : "Confirm state-changing request")}</p>
-              <p className="mt-1.5 text-xs leading-relaxed text-[#a1a1aa]">{endpoint.danger === "high" ? (lang === "id" ? "Rebind akan menghapus auth/binding lama dan memulai pairing akun baru. Gunakan hanya jika memang ingin mengganti akun atau memulihkan session." : "Rebind clears the previous auth/binding and starts pairing a replacement account. Use it only when intentionally changing accounts or recovering the session.") : (lang === "id" ? "Endpoint POST dapat mengubah state gateway atau mengirim pesan. Periksa Base URL dan input sebelum melanjutkan." : "POST endpoints can change gateway state or send a message. Verify the Base URL and request values before continuing.")}</p>
-              <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => void executeRequest()} className="rounded-md bg-[#fafafa] px-3 py-2 text-xs font-semibold text-[#0a0a0a]">{copy.confirm}</button>
-                <button type="button" onClick={() => setConfirmationOpen(false)} className="rounded-md border border-[#3f3f46] px-3 py-2 text-xs text-[#a1a1aa]">{copy.cancel}</button>
+          {endpoint.fields.length > 0 ? (
+            <section className="py-5" aria-labelledby="api-explorer-request-title">
+              <h3 id="api-explorer-request-title" className="m-0 text-xs font-semibold text-[var(--docs-text)]">
+                {copy.request}
+              </h3>
+              <div className="mt-3 space-y-4">
+                {endpoint.fields.map((field) => (
+                  <label key={`${field.location}-${field.key}`} className="block">
+                    <span className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs font-medium text-[var(--docs-text-soft)]">
+                      {field.label[lang]}
+                      <span className="font-mono text-[10px] font-normal text-[var(--docs-tertiary)]">{field.location}</span>
+                      <span className="text-[10px] font-normal text-[var(--docs-tertiary)]">
+                        {field.required ? copy.required : copy.optional}
+                      </span>
+                    </span>
+                    {field.input === "select" ? (
+                      <select
+                        value={values[field.key] ?? ""}
+                        onChange={(event) => setField(field.key, event.target.value)}
+                        className={fieldClass}
+                      >
+                        {(field.options ?? []).map((option) => (
+                          <option key={option || "__empty"} value={option}>
+                            {option || (lang === "id" ? "Semua / kosong" : "All / empty")}
+                          </option>
+                        ))}
+                      </select>
+                    ) : field.input === "textarea" ? (
+                      <textarea
+                        value={values[field.key] ?? ""}
+                        onChange={(event) => setField(field.key, event.target.value)}
+                        rows={4}
+                        className={`${fieldClass} resize-y`}
+                        placeholder={field.placeholder}
+                      />
+                    ) : (
+                      <input
+                        value={values[field.key] ?? ""}
+                        onChange={(event) => setField(field.key, event.target.value)}
+                        className={`${fieldClass} font-mono`}
+                        placeholder={field.placeholder}
+                      />
+                    )}
+                    <span className="mt-1.5 block text-xs leading-5 text-[var(--docs-tertiary)]">{field.description[lang]}</span>
+                  </label>
+                ))}
               </div>
-            </div>
-          )}
+            </section>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2 border-t border-[var(--docs-line)] pt-4">
+            <button type="button" onClick={requestLive} disabled={sending} className={primaryActionClass}>
+              {sending ? copy.sending : copy.send}
+            </button>
+            {response ? (
+              <button type="button" onClick={() => setResponse(null)} className={secondaryActionClass}>
+                {copy.clear}
+              </button>
+            ) : null}
+          </div>
+
+          {confirmationOpen ? (
+            <aside
+              className={`mt-4 rounded-md border p-4 ${
+                endpoint.danger === "high"
+                  ? "border-[var(--docs-danger)] bg-[var(--docs-danger-soft)]"
+                  : "border-[var(--docs-warning)] bg-[var(--docs-warning-soft)]"
+              }`}
+            >
+              <p className="m-0 text-sm font-semibold text-[var(--docs-text)]">
+                {endpoint.danger === "high"
+                  ? lang === "id"
+                    ? "Tindakan ini mengganti session WhatsApp saat ini"
+                    : "This replaces the current WhatsApp session"
+                  : lang === "id"
+                    ? "Konfirmasi perubahan state"
+                    : "Confirm state-changing request"}
+              </p>
+              <p className="mb-0 mt-1.5 text-xs leading-5 text-[var(--docs-muted)]">
+                {endpoint.danger === "high"
+                  ? lang === "id"
+                    ? "Rebind akan menghapus auth/binding lama dan memulai pairing akun baru. Gunakan hanya jika memang ingin mengganti akun atau memulihkan session."
+                    : "Rebind clears the previous auth/binding and starts pairing a replacement account. Use it only when intentionally changing accounts or recovering the session."
+                  : lang === "id"
+                    ? "Endpoint POST dapat mengubah state gateway atau mengirim pesan. Periksa Base URL dan input sebelum melanjutkan."
+                    : "POST endpoints can change gateway state or send a message. Verify the Base URL and request values before continuing."}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => void executeRequest()} className={primaryActionClass}>
+                  {copy.confirm}
+                </button>
+                <button type="button" onClick={() => setConfirmationOpen(false)} className={secondaryActionClass}>
+                  {copy.cancel}
+                </button>
+              </div>
+            </aside>
+          ) : null}
         </div>
 
-        <div className="min-w-0 space-y-5">
-          <div className="overflow-hidden rounded-lg border border-[#262626] bg-[#111]">
-            <div className="flex items-center justify-between gap-3 border-b border-[#262626]">
-              <div className="flex min-w-0 overflow-x-auto">
-                {snippetTabs.map((tab) => <button type="button" key={tab.id} onClick={() => setSnippetLanguage(tab.id)} className={`whitespace-nowrap border-b-2 px-3 py-3 text-xs ${snippetLanguage === tab.id ? "border-[#fafafa] text-[#fafafa]" : "border-transparent text-[#52525b] hover:text-[#a1a1aa]"}`}>{tab.label}</button>)}
-              </div>
-              <button type="button" onClick={() => void copySnippet()} className="mr-2 shrink-0 rounded-md border border-[#303030] px-2.5 py-1.5 text-xs text-[#a1a1aa] hover:text-[#fafafa]">{copied ? copy.copied : copy.copy}</button>
+        <div className="min-w-0 border-t border-[var(--docs-line)] xl:border-t-0">
+          <section aria-labelledby="api-explorer-snippet-title">
+            <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-[var(--docs-line)] px-4 sm:px-5">
+              <h3 id="api-explorer-snippet-title" className="m-0 text-xs font-semibold text-[var(--docs-text)]">
+                {copy.snippet}
+              </h3>
+              <button type="button" onClick={() => void copySnippet()} className="py-2 text-xs font-medium text-[var(--docs-muted)] hover:text-[var(--docs-text)]">
+                {copied ? copy.copied : copy.copy}
+              </button>
             </div>
-            <pre className="m-0 max-h-[430px] overflow-auto p-4 text-xs leading-6 text-[#d4d4d8]"><code>{snippet}</code></pre>
-          </div>
-
-          <div className="overflow-hidden rounded-lg border border-[#262626] bg-[#111]">
-            <div className="flex min-h-12 flex-wrap items-center gap-2 border-b border-[#262626] px-4 py-2">
-              <span className="text-xs font-semibold text-[#fafafa]">{copy.response}</span>
-              {response?.status !== undefined && <span className={`rounded px-2 py-0.5 font-mono text-[11px] ${response.ok ? "bg-emerald-950 text-emerald-300" : "bg-red-950 text-red-300"}`}>HTTP {response.status}</span>}
-              {response?.elapsedMs !== undefined && <span className="text-[11px] text-[#52525b]">{response.elapsedMs} ms</span>}
-              {response?.contentType && <span className="text-[11px] text-[#52525b]">{response.contentType}</span>}
+            <div className="flex min-w-0 overflow-x-auto border-b border-[var(--docs-line)] px-2">
+              {snippetTabs.map((tab) => (
+                <button
+                  type="button"
+                  key={tab.id}
+                  onClick={() => setSnippetLanguage(tab.id)}
+                  className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-xs ${
+                    snippetLanguage === tab.id
+                      ? "border-[var(--docs-accent)] text-[var(--docs-text)]"
+                      : "border-transparent text-[var(--docs-tertiary)] hover:text-[var(--docs-muted)]"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <pre className="m-0 min-h-40 max-h-[430px] overflow-auto whitespace-pre-wrap break-words p-4 text-xs leading-6 text-[#d4d4d8]"><code>{response?.body ?? (lang === "id" ? "Response live akan muncul di sini. Tidak ada request yang dikirim sampai Anda menekan tombol Kirim request." : "Live response appears here. No request is sent until you click Send request.")}</code></pre>
-          </div>
+            <pre className="m-0 max-h-[430px] overflow-auto bg-[var(--docs-code)] p-4 text-xs leading-6 text-[var(--docs-text-soft)] sm:p-5">
+              <code>{snippet}</code>
+            </pre>
+          </section>
 
-          <p className="text-xs leading-relaxed text-[#52525b]">{lang === "id" ? "Live mode berjalan langsung dari browser ke Base URL Wago yang Anda isi. Dokumentasi ini tidak memiliki proxy, tidak menyimpan history request, dan tidak dapat melewati same-origin/CORS policy browser." : "Live mode runs directly from your browser to the Wago Base URL you enter. This documentation has no proxy, stores no request history, and cannot bypass browser same-origin/CORS policy."}</p>
+          <section className="border-t border-[var(--docs-line)]" aria-labelledby="api-explorer-response-title">
+            <div className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--docs-line)] px-4 py-2 sm:px-5">
+              <h3 id="api-explorer-response-title" className="m-0 text-xs font-semibold text-[var(--docs-text)]">
+                {copy.response}
+              </h3>
+              {response?.status !== undefined ? (
+                <span className={`font-mono text-[11px] font-semibold ${response.ok ? "text-[var(--docs-accent-strong)]" : "text-[var(--docs-danger)]"}`}>
+                  HTTP {response.status}
+                </span>
+              ) : null}
+              {response?.elapsedMs !== undefined ? <span className="text-[11px] text-[var(--docs-tertiary)]">{response.elapsedMs} ms</span> : null}
+              {response?.contentType ? <span className="text-[11px] text-[var(--docs-tertiary)]">{response.contentType}</span> : null}
+            </div>
+            <pre className="m-0 min-h-40 max-h-[430px] overflow-auto whitespace-pre-wrap break-words bg-[var(--docs-code)] p-4 text-xs leading-6 text-[var(--docs-text-soft)] sm:p-5">
+              <code>
+                {response?.body ??
+                  (lang === "id"
+                    ? "Response live akan muncul di sini. Tidak ada request yang dikirim sampai Anda menekan tombol Kirim request."
+                    : "Live response appears here. No request is sent until you click Send request.")}
+              </code>
+            </pre>
+          </section>
+
+          <p className="m-0 border-t border-[var(--docs-line)] px-4 py-3 text-xs leading-5 text-[var(--docs-tertiary)] sm:px-5">
+            {lang === "id"
+              ? "Live mode berjalan langsung dari browser ke Base URL Wago yang Anda isi. Dokumentasi ini tidak memiliki proxy, tidak menyimpan history request, dan tidak dapat melewati same-origin/CORS policy browser."
+              : "Live mode runs directly from your browser to the Wago Base URL you enter. This documentation has no proxy, stores no request history, and cannot bypass browser same-origin/CORS policy."}
+          </p>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
