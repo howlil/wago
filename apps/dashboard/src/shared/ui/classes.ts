@@ -5,7 +5,6 @@ export const cardBodyClass = `${cardClass} p-4`;
 export const workspaceModuleClass = "min-w-0 w-full";
 export const workspaceModuleHeaderClass =
   "flex flex-col gap-3 border-b border-wago-line pb-3 sm:flex-row sm:items-start sm:justify-between";
-export const workspaceRegionClass = "border-t border-wago-line pt-4";
 export const keyValueLabelClass = "text-[11px] font-medium text-wago-secondary";
 export const keyValueClass = "mt-1 text-sm font-medium text-wago-ink";
 
