@@ -2,9 +2,10 @@ export const cardClass = "rounded-lg border border-wago-line bg-wago-surface";
 
 export const cardBodyClass = `${cardClass} p-4`;
 
-export const workspaceModuleClass = "min-w-0 w-full";
+export const workspaceModuleClass =
+  "min-w-0 w-full border-l-2 border-wago-section-line bg-wago-section px-4 py-4";
 export const workspaceModuleHeaderClass =
-  "flex flex-col gap-3 border-b border-wago-line pb-3 sm:flex-row sm:items-start sm:justify-between";
+  "flex flex-col gap-3 border-b border-wago-section-line pb-3 sm:flex-row sm:items-start sm:justify-between";
 export const keyValueLabelClass = "text-[11px] font-medium text-wago-secondary";
 export const keyValueClass = "mt-1 text-sm font-medium text-wago-ink";
 
