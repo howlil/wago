@@ -92,20 +92,26 @@ function messagingMetric(
 
 function StatusMetric({ metric }: { metric: Metric }) {
   return (
-    <section aria-label={`${metric.label} status`} className="min-w-0 bg-white px-4 py-3.5">
-      <div className="flex items-center gap-2">
+    <div
+      aria-label={`${metric.label} status`}
+      className="grid min-w-0 grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-0.5 py-2.5 md:px-4 md:first:pl-0 md:last:pr-0"
+    >
+      <div className="flex items-center gap-2 text-[11px] font-semibold text-wago-secondary">
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${toneDot[metric.tone]}`} />
-        <span className="text-[11px] font-semibold text-wago-muted">{metric.label}</span>
+        <span>{metric.label}</span>
       </div>
-      <strong className="mt-1 block text-[15px] font-semibold tracking-[-0.015em] text-wago-ink">{metric.value}</strong>
-      <span className="mt-0.5 block text-[10px] leading-4 text-wago-tertiary">{metric.detail}</span>
-    </section>
+      <strong className="min-w-0 text-[13px] font-semibold text-wago-ink">{metric.value}</strong>
+      <span className="col-start-2 text-xs leading-5 text-wago-muted">{metric.detail}</span>
+    </div>
   );
 }
 
 export function OverviewCards({ health, status, accountHealth }: OverviewCardsProps) {
   return (
-    <section className="grid divide-y divide-wago-line overflow-hidden rounded-lg border border-wago-line bg-white md:grid-cols-3 md:divide-x md:divide-y-0">
+    <section
+      aria-label="Gateway runtime status"
+      className="grid divide-y divide-wago-line border-y border-wago-line md:grid-cols-3 md:divide-x md:divide-y-0"
+    >
       <StatusMetric metric={backendMetric(health)} />
       <StatusMetric metric={whatsappMetric(status)} />
       <StatusMetric metric={messagingMetric(health, status, accountHealth)} />
