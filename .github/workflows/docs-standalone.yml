@@ -1,0 +1,52 @@
+name: Docs Standalone Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/docs/package.json"
+      - "apps/docs/pnpm-workspace.yaml"
+      - "apps/docs/astro.config.*"
+      - "apps/docs/tsconfig.json"
+      - ".github/workflows/docs-standalone.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/docs/package.json"
+      - "apps/docs/pnpm-workspace.yaml"
+      - "apps/docs/astro.config.*"
+      - "apps/docs/tsconfig.json"
+      - ".github/workflows/docs-standalone.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-standalone-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  standalone:
+    name: Standalone Static Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Smoke standalone static build
+        shell: bash
+        run: |
+          standalone_dir="$(mktemp -d)"
+          tar \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='.astro' \
+            -C apps/docs -cf - . | tar -C "$standalone_dir" -xf -
+          test ! -f "$standalone_dir/pnpm-lock.yaml"
+          docker run --rm \
+            --env CI=true \
+            --volume "$standalone_dir:/workspace" \
+            --workdir /workspace \
+            node:22-alpine \
+            sh -ec 'corepack enable && corepack prepare pnpm@11.21.0 --activate && pnpm install && pnpm build'
