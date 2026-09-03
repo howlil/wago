@@ -33,13 +33,28 @@ describe("public product surface", () => {
     assert.match(landing, /Integrate/);
   });
 
-  it("keeps the landing page technical and free of decorative hero chrome", async () => {
+  it("keeps the landing page technical without falling back to one repeated section template", async () => {
     const landing = await read("../LandingPage.astro");
+    const kickerCount = landing.match(/class="landing-kicker"/g)?.length ?? 0;
 
+    assert.equal(kickerCount, 2);
+    assert.match(landing, /boundaryRows/);
+    assert.match(landing, /aria-label=\{id \? 'Peta dokumentasi' : 'Documentation map'\}/);
     assert.doesNotMatch(landing, /blur-3xl/);
     assert.doesNotMatch(landing, /shadow-2xl/);
     assert.doesNotMatch(landing, /rounded-2xl/);
     assert.doesNotMatch(landing, /Wago Control/);
+  });
+
+  it("keeps the API Explorer as one semantic technical surface instead of a nested SaaS island", async () => {
+    const explorer = await read("./ApiExplorer.tsx");
+
+    assert.match(explorer, /rounded-md border border-\[var\(--docs-line\)\] bg-\[var\(--docs-surface\)\]/);
+    assert.match(explorer, /xl:divide-x xl:divide-\[var\(--docs-line\)\]/);
+    assert.doesNotMatch(explorer, /rounded-xl/);
+    assert.doesNotMatch(explorer, /rounded-full/);
+    assert.doesNotMatch(explorer, /\[#/);
+    assert.doesNotMatch(explorer, /uppercase tracking-\[/);
   });
 
   it("does not document removed production env configuration", async () => {
