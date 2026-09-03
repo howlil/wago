@@ -28,12 +28,9 @@ describe("shared UI classes", () => {
   });
 
   it("keeps workspace primitives divider-led instead of card-shaped", () => {
-    const workspaceClasses = [
-      workspaceModuleClass,
-      workspaceModuleHeaderClass,
-      keyValueLabelClass,
-      keyValueClass,
-    ].join(" ");
+    const workspaceClasses = [workspaceModuleClass, workspaceModuleHeaderClass, keyValueLabelClass, keyValueClass].join(
+      " ",
+    );
 
     expect(workspaceModuleClass).toContain("w-full");
     expect(workspaceModuleHeaderClass).toContain("border-b");
