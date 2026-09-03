@@ -92,8 +92,7 @@ function messagingMetric(
 
 function StatusMetric({ metric }: { metric: Metric }) {
   return (
-    <div
-      role="group"
+    <section
       aria-label={`${metric.label} status`}
       className="grid min-w-0 grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-0.5 py-2.5 md:px-4 md:first:pl-0 md:last:pr-0"
     >
@@ -103,7 +102,7 @@ function StatusMetric({ metric }: { metric: Metric }) {
       </div>
       <strong className="min-w-0 text-[13px] font-semibold text-wago-ink">{metric.value}</strong>
       <span className="col-start-2 text-xs leading-5 text-wago-muted">{metric.detail}</span>
-    </div>
+    </section>
   );
 }
 
