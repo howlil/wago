@@ -56,3 +56,16 @@ jobs:
 
       - name: Build docs
         run: task docs:build
+
+      - name: Smoke standalone static build
+        shell: bash
+        run: |
+          standalone_dir="$(mktemp -d)"
+          cp -R apps/docs/. "$standalone_dir/"
+          test ! -f "$standalone_dir/pnpm-lock.yaml"
+          docker run --rm \
+            --env CI=true \
+            --volume "$standalone_dir:/workspace" \
+            --workdir /workspace \
+            node:22-alpine \
+            sh -ec 'corepack enable && corepack prepare pnpm@11.21.0 --activate && pnpm install && pnpm build'
