@@ -1,0 +1,242 @@
+---
+import CodeBlock from './docs/CodeBlock.astro';
+
+interface Props {
+  lang: 'en' | 'id';
+}
+
+const { lang } = Astro.props;
+const id = lang === 'id';
+const base = id ? '/id' : '/en';
+
+const copy = id
+  ? {
+      kicker: 'Self-hosted · single account · open source',
+      title: 'WhatsApp gateway kecil untuk satu runtime yang Anda kendalikan.',
+      description: 'Wago menjalankan HTTP API dan dashboard operator dalam satu Node.js process, menyimpan state penting di /app/data, dan mempertahankan boundary produk yang sengaja sempit.',
+      gettingStarted: 'Mulai menjalankan Wago',
+      api: 'Referensi API',
+      runtime: 'Runtime boundary',
+      deployment: 'Deployment',
+      deploymentValue: 'Satu container, satu persistent volume, HTTPS di depan port loopback.',
+      account: 'WhatsApp',
+      accountValue: 'Satu binding akun aktif per instance dengan pairing/rebind eksplisit.',
+      state: 'Durable state',
+      stateValue: 'SQLite di /app/data/wago.db dan credential Baileys di /app/data/auth/.',
+      integration: 'Integration',
+      integrationValue: 'Bearer API key untuk aplikasi eksternal; browser dashboard memakai session auth terpisah.',
+      sequenceKicker: 'Operating path',
+      sequenceTitle: 'Dari container ke aplikasi dalam tiga tahap.',
+      steps: [
+        ['01', 'Deploy', 'Jalankan image Wago, pertahankan /app/data, dan terminasi HTTPS melalui reverse proxy atau tunnel Anda.'],
+        ['02', 'Pair', 'Buka dashboard, buat admin password pada first run, lalu scan QR dari Linked devices untuk membentuk binding WhatsApp.'],
+        ['03', 'Integrate', 'Generate machine API key hanya jika aplikasi lain perlu memanggil REST API, lalu kelola recipient policy dan webhook dari Settings.'],
+      ],
+      boundaryKicker: 'Product boundary',
+      boundaryTitle: 'Fokus pada gateway, bukan platform messaging umum.',
+      owns: 'Wago owns',
+      ownsItems: [
+        'Gateway readiness dan WhatsApp lifecycle',
+        'Recipient allow / opt-out policy',
+        'Outbound text send dan retained message status',
+        'Signed webhook delivery dan incoming message events',
+        'Audit evidence untuk operasi dan troubleshooting',
+      ],
+      excludes: 'Deliberately out of scope',
+      excludesItems: [
+        'Multi-session atau multi-tenant orchestration',
+        'CRM, inbox, campaign, atau bulk messaging UI',
+        'External queue/database infrastructure sebagai requirement',
+        'Automation untuk menghindari restriction atau spoofing client behavior',
+      ],
+      guardrailKicker: 'Controlled outbound',
+      guardrailTitle: 'Guardrail lokal dievaluasi sebelum outbound mencapai Baileys.',
+      guardrailDescription: 'Wago menggabungkan recipient permission, opt-out, idempotency, rate windows, new-chat classification, dan account-health signal yang tersedia untuk membuat keputusan defensif lokal.',
+      guardrailNote: 'Kontrol ini bukan threshold resmi WhatsApp dan bukan jaminan anti-ban atau deliverability.',
+      guardrails: [
+        ['Recipient permission', 'Explicit allow + persisted opt-out'],
+        ['Retry safety', 'Idempotency key untuk satu logical message'],
+        ['Rate windows', 'Account, recipient, dan new-chat local limits'],
+        ['Account signals', 'Reach-out/new-chat health digunakan secara defensif'],
+        ['Audit evidence', 'Policy block dan lifecycle event tanpa raw protocol dump'],
+      ],
+      docsKicker: 'Documentation map',
+      docsTitle: 'Masuk langsung ke pekerjaan yang Anda butuhkan.',
+      docsLinks: [
+        [`${base}/docs/getting-started`, 'Memulai', 'First run, admin password, pairing WhatsApp, dan request pertama.'],
+        [`${base}/docs/api`, 'API Reference', 'Machine endpoints, authentication, request/response, dan error contract.'],
+        [`${base}/docs/deployment`, 'Deployment', 'Container, persistent data, HTTPS boundary, backup, dan upgrade.'],
+        [`${base}/docs/operations`, 'Operasional & Troubleshooting', 'Readiness, audit evidence, recovery, dan diagnosis failure.'],
+      ],
+      architectureKicker: 'Runtime model',
+      architectureTitle: 'Sengaja kecil agar state dan failure boundary mudah dipahami.',
+    }
+  : {
+      kicker: 'Self-hosted · single account · open source',
+      title: 'A small WhatsApp gateway for one runtime you control.',
+      description: 'Wago runs the HTTP API and operator dashboard in one Node.js process, keeps durable state under /app/data, and maintains a deliberately narrow product boundary.',
+      gettingStarted: 'Start running Wago',
+      api: 'API Reference',
+      runtime: 'Runtime boundary',
+      deployment: 'Deployment',
+      deploymentValue: 'One container, one persistent volume, HTTPS in front of the loopback port.',
+      account: 'WhatsApp',
+      accountValue: 'One active account binding per instance with explicit pairing and rebind.',
+      state: 'Durable state',
+      stateValue: 'SQLite at /app/data/wago.db and Baileys credentials under /app/data/auth/.',
+      integration: 'Integration',
+      integrationValue: 'Bearer API key for external applications; browser dashboard auth stays separate.',
+      sequenceKicker: 'Operating path',
+      sequenceTitle: 'From container to application in three stages.',
+      steps: [
+        ['01', 'Deploy', 'Run the Wago image, persist /app/data, and terminate HTTPS through your reverse proxy or tunnel.'],
+        ['02', 'Pair', 'Open the dashboard, create the admin password on first run, then scan the QR from Linked devices to establish the WhatsApp binding.'],
+        ['03', 'Integrate', 'Generate a machine API key only when another application needs the REST API, then configure recipient policy and webhooks in Settings.'],
+      ],
+      boundaryKicker: 'Product boundary',
+      boundaryTitle: 'Focused on the gateway, not a general messaging platform.',
+      owns: 'Wago owns',
+      ownsItems: [
+        'Gateway readiness and WhatsApp lifecycle',
+        'Recipient allow / opt-out policy',
+        'Outbound text send and retained message status',
+        'Signed webhook delivery and incoming message events',
+        'Audit evidence for operations and troubleshooting',
+      ],
+      excludes: 'Deliberately out of scope',
+      excludesItems: [
+        'Multi-session or multi-tenant orchestration',
+        'CRM, inbox, campaign, or bulk-messaging UI',
+        'External queue/database infrastructure as a requirement',
+        'Restriction avoidance automation or client-behavior spoofing',
+      ],
+      guardrailKicker: 'Controlled outbound',
+      guardrailTitle: 'Local guardrails are evaluated before outbound reaches Baileys.',
+      guardrailDescription: 'Wago combines recipient permission, opt-out, idempotency, rate windows, new-chat classification, and available account-health signals to make local defensive decisions.',
+      guardrailNote: 'These controls are not official WhatsApp thresholds and do not guarantee anti-ban behavior or deliverability.',
+      guardrails: [
+        ['Recipient permission', 'Explicit allow + persisted opt-out'],
+        ['Retry safety', 'Idempotency key for one logical message'],
+        ['Rate windows', 'Account, recipient, and new-chat local limits'],
+        ['Account signals', 'Reach-out/new-chat health used defensively'],
+        ['Audit evidence', 'Policy blocks and lifecycle events without raw protocol dumps'],
+      ],
+      docsKicker: 'Documentation map',
+      docsTitle: 'Go directly to the work you need to do.',
+      docsLinks: [
+        [`${base}/docs/getting-started`, 'Getting Started', 'First run, admin password, WhatsApp pairing, and the first request.'],
+        [`${base}/docs/api`, 'API Reference', 'Machine endpoints, authentication, requests/responses, and the error contract.'],
+        [`${base}/docs/deployment`, 'Deployment', 'Container, persistent data, HTTPS boundary, backup, and upgrades.'],
+        [`${base}/docs/operations`, 'Operations & Troubleshooting', 'Readiness, audit evidence, recovery, and failure diagnosis.'],
+      ],
+      architectureKicker: 'Runtime model',
+      architectureTitle: 'Intentionally small so state and failure boundaries stay understandable.',
+    };
+---
+
+<section class="py-14 sm:py-20 lg:py-24">
+  <div class="landing-shell grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(330px,0.85fr)] lg:gap-16">
+    <div>
+      <p class="landing-kicker">{copy.kicker}</p>
+      <h1 class="landing-title">{copy.title}</h1>
+      <p class="landing-description">{copy.description}</p>
+      <div class="mt-7 flex flex-wrap items-center gap-2.5">
+        <a class="landing-primary-link" href={`${base}/docs/getting-started`}>{copy.gettingStarted}</a>
+        <a class="landing-secondary-link" href={`${base}/docs/api`}>{copy.api}</a>
+        <a class="landing-text-link px-2 py-2" href="https://github.com/howlil/wago">GitHub →</a>
+      </div>
+      <div class="mt-8 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--docs-tertiary)]">
+        <span>Node.js</span><span>Express</span><span>React</span><span>SQLite</span><span>Baileys</span><span>Docker</span>
+      </div>
+    </div>
+
+    <div>
+      <p class="mb-3 mt-0 text-[12px] font-semibold text-[var(--docs-text-soft)]">{copy.runtime}</p>
+      <div>
+        <div class="landing-fact-row"><span class="landing-fact-label">{copy.deployment}</span><span class="landing-fact-value">{copy.deploymentValue}</span></div>
+        <div class="landing-fact-row"><span class="landing-fact-label">{copy.account}</span><span class="landing-fact-value">{copy.accountValue}</span></div>
+        <div class="landing-fact-row"><span class="landing-fact-label">{copy.state}</span><span class="landing-fact-value">{copy.stateValue}</span></div>
+        <div class="landing-fact-row"><span class="landing-fact-label">{copy.integration}</span><span class="landing-fact-value">{copy.integrationValue}</span></div>
+      </div>
+      <CodeBlock label="shell" code="docker compose up -d" />
+    </div>
+  </div>
+</section>
+
+<section class="landing-rule-section">
+  <div class="landing-shell grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-16">
+    <div>
+      <p class="landing-kicker">{copy.sequenceKicker}</p>
+      <h2 class="m-0 max-w-lg text-2xl font-semibold tracking-[-0.03em] text-[var(--docs-text)]">{copy.sequenceTitle}</h2>
+    </div>
+    <div>
+      {copy.steps.map(([index, title, description]) => (
+        <div class="landing-step">
+          <span class="landing-step-index">{index}</span>
+          <div><h3 class="landing-step-title">{title}</h3><p class="landing-step-description">{description}</p></div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section class="landing-rule-section">
+  <div class="landing-shell">
+    <div class="max-w-2xl">
+      <p class="landing-kicker">{copy.boundaryKicker}</p>
+      <h2 class="m-0 text-2xl font-semibold tracking-[-0.03em] text-[var(--docs-text)]">{copy.boundaryTitle}</h2>
+    </div>
+    <div class="mt-8 grid gap-10 md:grid-cols-2 md:gap-12">
+      <section>
+        <h3 class="mb-3 mt-0 text-[13px] font-semibold text-[var(--docs-text-soft)]">{copy.owns}</h3>
+        <ul class="m-0 list-none border-t border-[var(--docs-line)] p-0">
+          {copy.ownsItems.map(item => <li class="border-b border-[var(--docs-line)] py-2.5 text-[13px] text-[var(--docs-muted)]">{item}</li>)}
+        </ul>
+      </section>
+      <section>
+        <h3 class="mb-3 mt-0 text-[13px] font-semibold text-[var(--docs-text-soft)]">{copy.excludes}</h3>
+        <ul class="m-0 list-none border-t border-[var(--docs-line)] p-0">
+          {copy.excludesItems.map(item => <li class="border-b border-[var(--docs-line)] py-2.5 text-[13px] text-[var(--docs-muted)]">{item}</li>)}
+        </ul>
+      </section>
+    </div>
+  </div>
+</section>
+
+<section class="landing-rule-section">
+  <div class="landing-shell grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+    <div>
+      <p class="landing-kicker">{copy.guardrailKicker}</p>
+      <h2 class="m-0 text-2xl font-semibold tracking-[-0.03em] text-[var(--docs-text)]">{copy.guardrailTitle}</h2>
+      <p class="mt-4 max-w-xl text-[14px] leading-7 text-[var(--docs-muted)]">{copy.guardrailDescription}</p>
+      <p class="mt-5 border-l-2 border-[var(--docs-warning)] bg-[var(--docs-warning-soft)] px-4 py-3 text-[13px] leading-6 text-[var(--docs-muted)]">{copy.guardrailNote}</p>
+    </div>
+    <div>
+      {copy.guardrails.map(([label, value]) => (
+        <div class="landing-fact-row"><span class="landing-fact-label">{label}</span><span class="landing-fact-value">{value}</span></div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section class="landing-rule-section">
+  <div class="landing-shell grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
+    <div>
+      <p class="landing-kicker">{copy.docsKicker}</p>
+      <h2 class="m-0 max-w-lg text-2xl font-semibold tracking-[-0.03em] text-[var(--docs-text)]">{copy.docsTitle}</h2>
+      <div class="mt-7">
+        {copy.docsLinks.map(([href, title, description]) => (
+          <a class="docs-list-link group" href={href}>
+            <span><span class="docs-list-link-title group-hover:text-[var(--docs-accent-strong)]">{title}</span><span class="docs-list-link-description block">{description}</span></span>
+            <span class="docs-list-link-arrow" aria-hidden="true">→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+    <div>
+      <p class="landing-kicker">{copy.architectureKicker}</p>
+      <h2 class="m-0 max-w-lg text-2xl font-semibold tracking-[-0.03em] text-[var(--docs-text)]">{copy.architectureTitle}</h2>
+      <CodeBlock label="runtime" code={`HTTP API + React dashboard\n           │\n           ▼\n     one Node.js process\n       ╱             ╲\n SQLite state    Baileys auth\n wago.db         /app/data/auth\n                      │\n                      ▼\n                 WhatsApp Web`} />
+    </div>
+  </div>
+</section>
