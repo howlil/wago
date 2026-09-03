@@ -132,7 +132,10 @@ function AccessForm({ info, onRefresh }: { info: AppInfoResponse; onRefresh: () 
         ) : null}
 
         {submitError ? (
-          <div className="rounded-md border border-wago-danger/30 bg-wago-danger-soft px-3 py-2 text-xs leading-5 text-wago-danger" role="alert">
+          <div
+            className="rounded-md border border-wago-danger/30 bg-wago-danger-soft px-3 py-2 text-xs leading-5 text-wago-danger"
+            role="alert"
+          >
             {submitError}
           </div>
         ) : null}
