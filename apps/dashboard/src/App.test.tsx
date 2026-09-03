@@ -165,12 +165,12 @@ describe("dashboard", () => {
     expect(screen.queryByRole("heading", { name: "Machine access" })).toBeNull();
 
     await user.click(screen.getByRole("link", { name: "Webhooks" }));
-    expect(await screen.findByRole("heading", { name: "Webhook integration" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Webhooks" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Recipient access" })).toBeNull();
 
     await user.click(screen.getByRole("link", { name: "Sessions" }));
-    expect(await screen.findByRole("heading", { name: "Dashboard session" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Webhook integration" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Dashboard sessions" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Webhooks" })).toBeNull();
   });
 
   it("renders Audit Log as a dedicated investigation workspace route", async () => {
