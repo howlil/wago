@@ -18,6 +18,7 @@ import {
   getMessageStatusByProviderId,
   rememberPendingMessageStatus,
   resetMessageStatusStoreForTest,
+  updateMessageDeliveryEvidence,
   updateMessageStatus,
 } from "./message-status-store.js";
 
@@ -43,6 +44,7 @@ describe("durable message status store", () => {
       id: "trace-1",
       providerMessageId: "provider-1",
       status: "pending",
+      deliveryEvidence: "submitted",
     });
     expect(byProviderId?.id).toBe("trace-1");
     expect(byCanonicalId).not.toHaveProperty("text");
@@ -64,6 +66,40 @@ describe("durable message status store", () => {
       messageId: "trace-1",
       status: "accepted",
     });
+  });
+
+  it("promotes delivery evidence monotonically and emits each richer evidence once", () => {
+    rememberPendingMessageStatus({
+      id: "trace-evidence",
+      providerMessageId: "provider-evidence",
+      to: "6281234567890@s.whatsapp.net",
+    });
+    updateMessageStatus("trace-evidence", { status: "accepted" });
+    updateMessageDeliveryEvidence("trace-evidence", "server_accepted", new Date("2026-09-05T00:00:00.000Z"));
+    updateMessageDeliveryEvidence("trace-evidence", "delivered", new Date("2026-09-05T00:00:05.000Z"));
+    updateMessageDeliveryEvidence("trace-evidence", "read", new Date("2026-09-05T00:00:10.000Z"));
+    updateMessageDeliveryEvidence("trace-evidence", "delivered", new Date("2026-09-05T00:00:20.000Z"));
+
+    expect(getMessageStatus("trace-evidence")).toMatchObject({
+      status: "accepted",
+      deliveryEvidence: "read",
+      serverAcceptedAt: "2026-09-05T00:00:00.000Z",
+      deliveredAt: "2026-09-05T00:00:05.000Z",
+      readAt: "2026-09-05T00:00:10.000Z",
+    });
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+      messageId: "trace-evidence",
+      status: "accepted",
+    });
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+      messageId: "trace-evidence",
+      status: "delivered",
+    });
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+      messageId: "trace-evidence",
+      status: "read",
+    });
+    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledTimes(3);
   });
 
   it("does not allow a terminal message state to be reversed", () => {
