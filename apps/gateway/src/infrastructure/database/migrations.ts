@@ -311,6 +311,23 @@ export const migrations: Migration[] = [
         ADD COLUMN played_at INTEGER;
     `,
   },
+  {
+    version: 15,
+    sql: `
+      DROP TRIGGER IF EXISTS redact_terminal_inbound_webhook_payload;
+
+      CREATE TRIGGER redact_terminal_inbound_webhook_payload
+      AFTER UPDATE OF status ON webhook_deliveries
+      WHEN NEW.event_type IN ('message.received', 'message.media_received')
+        AND NEW.status IN ('delivered', 'failed', 'expired')
+        AND NEW.payload_json <> '{}'
+      BEGIN
+        UPDATE webhook_deliveries
+        SET payload_json = '{}'
+        WHERE id = NEW.id;
+      END;
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
