@@ -1,4 +1,9 @@
-export type { MessageDeliveryStatus, MessageDispatchState, StoredMessageStatus } from "./message-status-store.js";
+export type {
+  MessageDeliveryEvidence,
+  MessageDeliveryStatus,
+  MessageDispatchState,
+  StoredMessageStatus,
+} from "./message-status-store.js";
 export {
   deletePendingMessageStatus,
   getMessageStatus,
@@ -9,6 +14,8 @@ export {
   markMessageSubmitting,
   prepareMessageStatus,
   rememberPendingMessageStatus,
+  updateMessageDeliveryEvidence,
+  updateMessageDeliveryEvidenceByProviderId,
   updateMessageStatus,
   updateMessageStatusByProviderId,
 } from "./message-status-store.js";
