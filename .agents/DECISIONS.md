@@ -105,3 +105,11 @@ This file records material decisions whose rationale is expensive to rediscover.
 **Why:** the user's preferred engineering loop favors fast, accurate feedback and explicit design regression guards. Running deployment smoke for routine dashboard styling or standalone-host installation for routine docs copy/layout increases latency without detecting a realistic additional failure for those changes.
 
 **Implication:** presentation work uses targeted design guards first, then full affected-app tests/build. Do not broaden heavyweight workflows merely to create a sense of coverage; expand them when a concrete regression path crosses runtime, persistence, deployment, package/build configuration, or release boundaries. Keep explicit dependency installation singular and frozen in CI when setup actions would otherwise install implicitly.
+
+## D14 — Logical recipient identity and delivery evidence stay separate from Baileys transport details
+
+**Decision:** recipient policy remains keyed by the logical phone-number JID while Baileys LID mappings are persisted as transport addressing metadata. Outbound operation state remains `pending | accepted | rejected`; provider delivery evidence is an additive monotonic dimension (`submitted | server_accepted | delivered | read | played`). New-chat warning states are surfaced as warnings and do not block sends unless WhatsApp explicitly reports `CAPPED`.
+
+**Why:** LID is provider addressing that can change independently of Wago recipient consent/policy, and delivery/read receipts are observations rather than operation-state transitions. Collapsing either distinction would create duplicate recipient policy records, break public status compatibility, or overstate what WhatsApp has actually guaranteed.
+
+**Implication:** `lid-mapping.update` invalidates stale recipient routing without creating a second logical recipient; delivery evidence may advance but never regress; read/played are optional provider evidence; public clients can continue relying on the existing operation status contract while newer clients inspect additive evidence and timestamps.
