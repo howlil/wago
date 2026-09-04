@@ -44,7 +44,8 @@ function lifecycleMetadata(fields: Record<string, unknown>): ActivityMetadata {
   const metadata: ActivityMetadata = {};
   for (const key of keys) {
     const value = fields[key];
-    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") metadata[key] = value;
+    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+      metadata[key] = value;
   }
   return metadata;
 }
@@ -52,11 +53,33 @@ function lifecycleMetadata(fields: Record<string, unknown>): ActivityMetadata {
 function recordWorkerLifecycle(fields: Record<string, unknown>): void {
   const event = typeof fields.event === "string" ? fields.event : "";
   if (event === "webhook.delivery.failed") {
-    void recordActivity({ level: "error", category: "system", code: event, title: "Webhook delivery failed permanently", description: "Webhook delivery reached a non-retryable failure and requires operator review.", metadata: lifecycleMetadata(fields) });
+    void recordActivity({
+      level: "error",
+      category: "system",
+      code: event,
+      title: "Webhook delivery failed permanently",
+      description: "Webhook delivery reached a non-retryable failure and requires operator review.",
+      metadata: lifecycleMetadata(fields),
+    });
   } else if (event === "webhook.delivery.expired") {
-    void recordActivity({ level: "error", category: "system", code: event, title: "Webhook delivery expired", description: "Webhook delivery exhausted its retry horizon without a successful callback.", metadata: lifecycleMetadata(fields) });
+    void recordActivity({
+      level: "error",
+      category: "system",
+      code: event,
+      title: "Webhook delivery expired",
+      description: "Webhook delivery exhausted its retry horizon without a successful callback.",
+      metadata: lifecycleMetadata(fields),
+    });
   } else if (event === "webhook.delivery.recovered") {
-    void recordActivity({ level: "warning", category: "system", code: event, title: "Interrupted webhook delivery recovered", description: "Webhook attempts left in progress by a previous process were marked interrupted and returned to retry.", metadata: lifecycleMetadata(fields) });
+    void recordActivity({
+      level: "warning",
+      category: "system",
+      code: event,
+      title: "Interrupted webhook delivery recovered",
+      description:
+        "Webhook attempts left in progress by a previous process were marked interrupted and returned to retry.",
+      metadata: lifecycleMetadata(fields),
+    });
   }
 }
 
@@ -65,12 +88,28 @@ const worker = createWebhookDeliveryWorker({
   getSender: currentAttemptSender,
   logger: {
     info: (fields, message) => logger.info(fields, message),
-    warn: (fields, message) => { logger.warn(fields, message); recordWorkerLifecycle(fields); },
-    error: (fields, message) => { logger.error(fields, message); recordWorkerLifecycle(fields); },
+    warn: (fields, message) => {
+      logger.warn(fields, message);
+      recordWorkerLifecycle(fields);
+    },
+    error: (fields, message) => {
+      logger.error(fields, message);
+      recordWorkerLifecycle(fields);
+    },
   },
 });
 
-export type PublicWebhookDelivery = Omit<StoredWebhookDelivery, "payloadJson" | "createdAt" | "firstAttemptAt" | "lastAttemptAt" | "nextAttemptAt" | "deliveredAt" | "expiresAt" | "claimedAt"> & {
+export type PublicWebhookDelivery = Omit<
+  StoredWebhookDelivery,
+  | "payloadJson"
+  | "createdAt"
+  | "firstAttemptAt"
+  | "lastAttemptAt"
+  | "nextAttemptAt"
+  | "deliveredAt"
+  | "expiresAt"
+  | "claimedAt"
+> & {
   createdAt: string;
   firstAttemptAt: string | null;
   lastAttemptAt: string | null;
@@ -99,7 +138,12 @@ function isInboundEvent(event: WebhookEvent): boolean {
 }
 
 function serializeWebhookAttempt(attempt: StoredWebhookDeliveryAttempt): PublicWebhookAttempt {
-  return { ...attempt, startedAt: new Date(attempt.startedAt).toISOString(), completedAt: iso(attempt.completedAt), nextAttemptAt: iso(attempt.nextAttemptAt) };
+  return {
+    ...attempt,
+    startedAt: new Date(attempt.startedAt).toISOString(),
+    completedAt: iso(attempt.completedAt),
+    nextAttemptAt: iso(attempt.nextAttemptAt),
+  };
 }
 
 export function serializeWebhookDelivery(delivery: StoredWebhookDelivery): PublicWebhookDelivery {
@@ -126,11 +170,22 @@ export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput
     store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
     void worker.tick();
   } catch (error) {
-    logger.error({ event: "webhook.enqueue_failed", messageId: input.messageId, webhookStatus: input.status, errorType: error instanceof Error ? error.name : typeof error }, "Could not persist webhook delivery");
+    logger.error(
+      {
+        event: "webhook.enqueue_failed",
+        messageId: input.messageId,
+        webhookStatus: input.status,
+        errorType: error instanceof Error ? error.name : typeof error,
+      },
+      "Could not persist webhook delivery",
+    );
   }
 }
 
-function enqueueInboundEnvelope(input: IncomingMessageWebhookInput | IncomingMediaWebhookInput, media: boolean): void {
+function enqueueInboundEnvelope(
+  input: IncomingMessageWebhookInput | IncomingMediaWebhookInput,
+  media: boolean,
+): void {
   const settings = settingsStore.get();
   if (!settings?.enabled || !settings.url || !settings.secret) return;
   try {
@@ -153,7 +208,15 @@ function enqueueInboundEnvelope(input: IncomingMessageWebhookInput | IncomingMed
     }
     void worker.tick();
   } catch (error) {
-    logger.error({ event: "webhook.enqueue_failed", messageId: input.messageId, webhookEvent: media ? "message.media_received" : "message.received", errorType: error instanceof Error ? error.name : typeof error }, "Could not persist incoming webhook delivery");
+    logger.error(
+      {
+        event: "webhook.enqueue_failed",
+        messageId: input.messageId,
+        webhookEvent: media ? "message.media_received" : "message.received",
+        errorType: error instanceof Error ? error.name : typeof error,
+      },
+      "Could not persist incoming webhook delivery",
+    );
   }
 }
 
@@ -165,7 +228,9 @@ export function enqueueIncomingMediaWebhook(input: IncomingMediaWebhookInput): v
   enqueueInboundEnvelope(input, true);
 }
 
-export async function sendTestWebhookDelivery(): Promise<{ kind: "disabled" } | { kind: "queued"; delivery: PublicWebhookDelivery }> {
+export async function sendTestWebhookDelivery(): Promise<
+  { kind: "disabled" } | { kind: "queued"; delivery: PublicWebhookDelivery }
+> {
   const settings = settingsStore.get();
   if (!settings?.enabled || !settings.url || !settings.secret) return { kind: "disabled" };
   const now = new Date();
@@ -180,13 +245,24 @@ export async function sendTestWebhookDelivery(): Promise<{ kind: "disabled" } | 
   return { kind: "queued", delivery: serializeWebhookDelivery(current) };
 }
 
-export function startWebhookDeliveryWorker(): void { worker.start(); }
-export async function stopWebhookDeliveryWorker(): Promise<void> { await worker.stop(); }
-export function listWebhookDeliveries(options: { status?: WebhookDeliveryStatus; limit?: number }): PublicWebhookDelivery[] { return store.list(options).map(serializeWebhookDelivery); }
+export function startWebhookDeliveryWorker(): void {
+  worker.start();
+}
+export async function stopWebhookDeliveryWorker(): Promise<void> {
+  await worker.stop();
+}
+export function listWebhookDeliveries(options: {
+  status?: WebhookDeliveryStatus;
+  limit?: number;
+}): PublicWebhookDelivery[] {
+  return store.list(options).map(serializeWebhookDelivery);
+}
 
 export function getWebhookDelivery(id: string): PublicWebhookDeliveryDetail | null {
   const delivery = store.get(id);
-  return delivery ? { ...serializeWebhookDelivery(delivery), attempts: store.listAttempts(id, 50).map(serializeWebhookAttempt) } : null;
+  return delivery
+    ? { ...serializeWebhookDelivery(delivery), attempts: store.listAttempts(id, 50).map(serializeWebhookAttempt) }
+    : null;
 }
 
 export function getMessageWebhookDelivery(messageId: string): PublicWebhookDelivery | null {
@@ -196,7 +272,9 @@ export function getMessageWebhookDelivery(messageId: string): PublicWebhookDeliv
   return delivery ? serializeWebhookDelivery(delivery) : null;
 }
 
-export function redeliverWebhookDelivery(id: string):
+export function redeliverWebhookDelivery(
+  id: string,
+):
   | { kind: "disabled" }
   | { kind: "not_found" }
   | { kind: "in_progress"; delivery: PublicWebhookDelivery }
@@ -207,7 +285,8 @@ export function redeliverWebhookDelivery(id: string):
   const existing = store.get(id);
   if (!existing) return { kind: "not_found" };
   if (existing.status === "delivering") return { kind: "in_progress", delivery: serializeWebhookDelivery(existing) };
-  if (isInboundEvent(existing.event)) return { kind: "payload_unavailable", delivery: serializeWebhookDelivery(existing) };
+  if (isInboundEvent(existing.event))
+    return { kind: "payload_unavailable", delivery: serializeWebhookDelivery(existing) };
 
   const result = store.redeliver(id, Date.now());
   if (result.kind === "not_found") return result;
@@ -218,7 +297,12 @@ export function redeliverWebhookDelivery(id: string):
       code: "webhook.delivery.redelivered",
       title: "Webhook delivery redelivered",
       description: "An authenticated operator requested a new delivery cycle while preserving prior attempt evidence.",
-      metadata: { deliveryId: result.delivery.id, messageId: result.delivery.messageId, webhookEvent: result.delivery.event, redeliveryCount: result.delivery.redeliveryCount },
+      metadata: {
+        deliveryId: result.delivery.id,
+        messageId: result.delivery.messageId,
+        webhookEvent: result.delivery.event,
+        redeliveryCount: result.delivery.redeliveryCount,
+      },
     });
     void worker.tick();
   }
