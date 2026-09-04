@@ -9,6 +9,7 @@ export {
   resumeWhatsAppSession,
   shutdownWhatsApp,
 } from "./lifecycle.js";
+export { downloadRecentInboundMedia } from "./media.js";
 export type {
   MediaKind,
   MessageContextOptions,
@@ -18,4 +19,3 @@ export type {
   SendTextMessageResult,
 } from "./sender.js";
 export { sendMediaMessage, sendTextMessage } from "./sender.js";
-export { downloadRecentInboundMedia } from "./media.js";
