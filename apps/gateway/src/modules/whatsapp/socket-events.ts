@@ -8,14 +8,8 @@ import {
 } from "../messages/index.js";
 import { markRecipientReachoutRestricted, recordOutboundAcknowledged } from "../messages/outbound-policy.js";
 import { rememberRecipientResolution } from "../recipients/store.js";
-import {
-  enqueueIncomingMediaWebhook,
-  enqueueIncomingMessageWebhook,
-} from "../webhooks/index.js";
-import type {
-  IncomingMediaWebhookInput,
-  IncomingMessageWebhookInput,
-} from "../webhooks/delivery-webhook-core.js";
+import type { IncomingMediaWebhookInput, IncomingMessageWebhookInput } from "../webhooks/delivery-webhook-core.js";
+import { enqueueIncomingMediaWebhook, enqueueIncomingMessageWebhook } from "../webhooks/index.js";
 import {
   invalidateAccountHealth,
   markReachoutRestricted,
@@ -34,8 +28,8 @@ import {
 } from "./inbound-message.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
-import { rememberRecentInboundMessage } from "./recent-inbound-store.js";
 import { invalidateRecipientLookupCache } from "./recipient-cache.js";
+import { rememberRecentInboundMessage } from "./recent-inbound-store.js";
 import { rememberRecipientIdentity } from "./recipient-identity-store.js";
 import {
   getActiveSocket,
