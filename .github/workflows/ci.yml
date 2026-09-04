@@ -56,3 +56,86 @@ jobs:
 
       - name: Build core
         run: task core:build
+
+  devland-real-flow-proof:
+    name: Devland real external flow proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Wago
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install isolated Devland master
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/howlil/devland.git "$RUNNER_TEMP/devland"
+          corepack enable
+          pnpm --dir "$RUNNER_TEMP/devland" install --frozen-lockfile
+
+      - name: Feed real M8 engineering evidence
+        shell: bash
+        env:
+          DEVLAND: ${{ runner.temp }}/devland
+        run: |
+          set -euo pipefail
+          mkdir -p .devland/runtime
+          rm -f .devland/runtime/events.ndjson
+
+          cat > "$RUNNER_TEMP/m8-events.ndjson" <<'EOF'
+          {"schema":"devland.event/v1","id":"wago-m8-work-accepted","type":"work.accepted","occurred_at":"2026-09-04T22:10:11Z","source":"wago-m8-runtime","work_id":"wago:issue:125"}
+          {"schema":"devland.event/v1","id":"wago-m8-work-started","type":"work.started","occurred_at":"2026-09-04T22:10:49Z","source":"wago-m8-runtime","work_id":"wago:issue:125"}
+          {"schema":"devland.event/v1","id":"wago-m8-change-committed","type":"change.committed","occurred_at":"2026-09-04T22:10:49Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","commit_sha":"63ad0451e55bd3fffea897ba6b2c544de280d897"}
+          {"schema":"devland.event/v1","id":"wago-m8-change-merged","type":"change.merged","occurred_at":"2026-09-04T22:13:47Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","commit_sha":"beddeb4a96459a96525c71f2a90c28b98c38f1d8"}
+          {"schema":"devland.event/v1","id":"wago-m8-deployment-succeeded","type":"deployment.succeeded","occurred_at":"2026-09-04T22:15:46.286Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","commit_sha":"beddeb4a96459a96525c71f2a90c28b98c38f1d8","deployment_id":"wago:release-container:33924612129","environment":"production","data":{"image":"ghcr.io/howlil/wago-simple:latest","manifest_digest":"sha256:694721433f5422630880ef14353073beb836e4f633f71e113656c2b8a615d2d6"}}
+          {"schema":"devland.event/v1","id":"wago-m8-outcome-observed","type":"outcome.observed","occurred_at":"2026-09-04T22:16:25Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","deployment_id":"wago:release-container:33924612129","environment":"production","data":{"status":"positive","observation":"Wago emitted and uploaded the expected verifiable release evidence after the successful multi-architecture production publish."}}
+          EOF
+
+          while IFS= read -r event; do
+            node "$DEVLAND/bin/devland.mjs" event append "$event" >/dev/null
+          done < "$RUNNER_TEMP/m8-events.ndjson"
+
+          node "$DEVLAND/bin/devland.mjs" flow | tee "$RUNNER_TEMP/m8-flow.json"
+
+      - name: Assert complete FAST + VALUE correlation
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const report = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/m8-flow.json`, 'utf8'));
+
+          assert.equal(report.event_count, 6);
+          assert.deepEqual(report.correlation.coverage, {
+            work_to_change: { linked: 1, total: 1 },
+            change_to_merge: { linked: 1, total: 1 },
+            merge_to_deploy: { linked: 1, total: 1 },
+          });
+          assert.deepEqual(report.correlation.diagnostics, []);
+          assert.deepEqual(report.outcomes.coverage, { linked: 1, total: 1 });
+          assert.deepEqual(report.outcomes.status, {
+            positive: 1,
+            neutral: 0,
+            negative: 0,
+            unknown: 0,
+          });
+
+          const expected = {
+            accept_to_start: 38_000,
+            start_to_change: 0,
+            change_to_merge: 178_000,
+            merge_to_production: 119_286,
+            production_to_outcome: 38_714,
+            idea_to_outcome: 374_000,
+          };
+          for (const [name, duration] of Object.entries(expected)) {
+            assert.equal(report.metrics[name].samples, 1, `${name} sample count`);
+            assert.equal(report.metrics[name].average_ms, duration, `${name} average`);
+            assert.equal(report.metrics[name].max_ms, duration, `${name} max`);
+          }
+          NODE
