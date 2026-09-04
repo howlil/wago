@@ -9,12 +9,15 @@ import {
   type WebhookDeliveryStatus,
 } from "./delivery-store.js";
 import {
+  createIncomingMediaWebhookEnvelope,
   createIncomingMessageWebhookEnvelope,
   createMessageDeliveryWebhookEnvelope,
   createTestWebhookEnvelope,
   createWebhookAttemptSender,
+  type IncomingMediaWebhookInput,
   type IncomingMessageWebhookInput,
   type MessageDeliveryWebhookInput,
+  type WebhookEvent,
 } from "./delivery-webhook-core.js";
 import { createWebhookDeliveryWorker } from "./delivery-worker.js";
 import { webhookSettingsStore as settingsStore } from "./settings-runtime.js";
@@ -31,9 +34,7 @@ const selectLatestMessageDeliveryId = database.prepare(`
 
 function currentAttemptSender() {
   const settings = settingsStore.get();
-  if (!settings?.enabled || !settings.url || !settings.secret) {
-    return null;
-  }
+  if (!settings?.enabled || !settings.url || !settings.secret) return null;
   const secrets = [settings.secret, settings.previousSecret].filter((secret): secret is string => Boolean(secret));
   return createWebhookAttemptSender({ url: settings.url, secrets });
 }
@@ -43,9 +44,7 @@ function lifecycleMetadata(fields: Record<string, unknown>): ActivityMetadata {
   const metadata: ActivityMetadata = {};
   for (const key of keys) {
     const value = fields[key];
-    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-      metadata[key] = value;
-    }
+    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") metadata[key] = value;
   }
   return metadata;
 }
@@ -53,33 +52,11 @@ function lifecycleMetadata(fields: Record<string, unknown>): ActivityMetadata {
 function recordWorkerLifecycle(fields: Record<string, unknown>): void {
   const event = typeof fields.event === "string" ? fields.event : "";
   if (event === "webhook.delivery.failed") {
-    void recordActivity({
-      level: "error",
-      category: "system",
-      code: event,
-      title: "Webhook delivery failed permanently",
-      description: "Webhook delivery reached a non-retryable failure and requires operator review.",
-      metadata: lifecycleMetadata(fields),
-    });
+    void recordActivity({ level: "error", category: "system", code: event, title: "Webhook delivery failed permanently", description: "Webhook delivery reached a non-retryable failure and requires operator review.", metadata: lifecycleMetadata(fields) });
   } else if (event === "webhook.delivery.expired") {
-    void recordActivity({
-      level: "error",
-      category: "system",
-      code: event,
-      title: "Webhook delivery expired",
-      description: "Webhook delivery exhausted its retry horizon without a successful callback.",
-      metadata: lifecycleMetadata(fields),
-    });
+    void recordActivity({ level: "error", category: "system", code: event, title: "Webhook delivery expired", description: "Webhook delivery exhausted its retry horizon without a successful callback.", metadata: lifecycleMetadata(fields) });
   } else if (event === "webhook.delivery.recovered") {
-    void recordActivity({
-      level: "warning",
-      category: "system",
-      code: event,
-      title: "Interrupted webhook delivery recovered",
-      description:
-        "Webhook attempts left in progress by a previous process were marked interrupted and returned to retry.",
-      metadata: lifecycleMetadata(fields),
-    });
+    void recordActivity({ level: "warning", category: "system", code: event, title: "Interrupted webhook delivery recovered", description: "Webhook attempts left in progress by a previous process were marked interrupted and returned to retry.", metadata: lifecycleMetadata(fields) });
   }
 }
 
@@ -88,28 +65,12 @@ const worker = createWebhookDeliveryWorker({
   getSender: currentAttemptSender,
   logger: {
     info: (fields, message) => logger.info(fields, message),
-    warn: (fields, message) => {
-      logger.warn(fields, message);
-      recordWorkerLifecycle(fields);
-    },
-    error: (fields, message) => {
-      logger.error(fields, message);
-      recordWorkerLifecycle(fields);
-    },
+    warn: (fields, message) => { logger.warn(fields, message); recordWorkerLifecycle(fields); },
+    error: (fields, message) => { logger.error(fields, message); recordWorkerLifecycle(fields); },
   },
 });
 
-export type PublicWebhookDelivery = Omit<
-  StoredWebhookDelivery,
-  | "payloadJson"
-  | "createdAt"
-  | "firstAttemptAt"
-  | "lastAttemptAt"
-  | "nextAttemptAt"
-  | "deliveredAt"
-  | "expiresAt"
-  | "claimedAt"
-> & {
+export type PublicWebhookDelivery = Omit<StoredWebhookDelivery, "payloadJson" | "createdAt" | "firstAttemptAt" | "lastAttemptAt" | "nextAttemptAt" | "deliveredAt" | "expiresAt" | "claimedAt"> & {
   createdAt: string;
   firstAttemptAt: string | null;
   lastAttemptAt: string | null;
@@ -127,21 +88,18 @@ export type PublicWebhookAttempt = Omit<StoredWebhookDeliveryAttempt, "startedAt
   nextAttemptAt: string | null;
 };
 
-export type PublicWebhookDeliveryDetail = PublicWebhookDelivery & {
-  attempts: PublicWebhookAttempt[];
-};
+export type PublicWebhookDeliveryDetail = PublicWebhookDelivery & { attempts: PublicWebhookAttempt[] };
 
 function iso(timestamp: number | null): string | null {
   return timestamp == null ? null : new Date(timestamp).toISOString();
 }
 
+function isInboundEvent(event: WebhookEvent): boolean {
+  return event === "message.received" || event === "message.media_received";
+}
+
 function serializeWebhookAttempt(attempt: StoredWebhookDeliveryAttempt): PublicWebhookAttempt {
-  return {
-    ...attempt,
-    startedAt: new Date(attempt.startedAt).toISOString(),
-    completedAt: iso(attempt.completedAt),
-    nextAttemptAt: iso(attempt.nextAttemptAt),
-  };
+  return { ...attempt, startedAt: new Date(attempt.startedAt).toISOString(), completedAt: iso(attempt.completedAt), nextAttemptAt: iso(attempt.nextAttemptAt) };
 }
 
 export function serializeWebhookDelivery(delivery: StoredWebhookDelivery): PublicWebhookDelivery {
@@ -155,154 +113,104 @@ export function serializeWebhookDelivery(delivery: StoredWebhookDelivery): Publi
     deliveredAt: iso(delivery.deliveredAt),
     expiresAt: new Date(delivery.expiresAt).toISOString(),
     claimedAt: iso(delivery.claimedAt),
-    redeliveryAvailable: delivery.event !== "message.received",
+    redeliveryAvailable: !isInboundEvent(delivery.event),
   };
 }
 
 export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput): void {
   const settings = settingsStore.get();
-  if (!settings?.enabled || !settings.url || !settings.secret) {
-    return;
-  }
-
+  if (!settings?.enabled || !settings.url || !settings.secret) return;
   try {
     const now = new Date();
     const envelope = createMessageDeliveryWebhookEnvelope(input, { now: () => now });
     store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
     void worker.tick();
   } catch (error) {
-    logger.error(
-      {
-        event: "webhook.enqueue_failed",
-        messageId: input.messageId,
-        webhookStatus: input.status,
-        errorType: error instanceof Error ? error.name : typeof error,
-      },
-      "Could not persist webhook delivery",
-    );
+    logger.error({ event: "webhook.enqueue_failed", messageId: input.messageId, webhookStatus: input.status, errorType: error instanceof Error ? error.name : typeof error }, "Could not persist webhook delivery");
   }
 }
 
-export function enqueueIncomingMessageWebhook(input: IncomingMessageWebhookInput): void {
+function enqueueInboundEnvelope(input: IncomingMessageWebhookInput | IncomingMediaWebhookInput, media: boolean): void {
   const settings = settingsStore.get();
-  if (!settings?.enabled || !settings.url || !settings.secret) {
-    return;
-  }
-
+  if (!settings?.enabled || !settings.url || !settings.secret) return;
   try {
     const now = new Date();
-    const envelope = createIncomingMessageWebhookEnvelope(input, { now: () => now });
+    const envelope = media
+      ? createIncomingMediaWebhookEnvelope(input as IncomingMediaWebhookInput, { now: () => now })
+      : createIncomingMessageWebhookEnvelope(input as IncomingMessageWebhookInput, { now: () => now });
     const queued = store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
     if (queued.id === envelope.id) {
       void recordActivity({
         level: "info",
         category: "messaging",
         code: "webhook.inbound.queued",
-        title: "Incoming message webhook queued",
-        description: "A direct incoming text message was queued for signed webhook delivery.",
+        title: media ? "Incoming media webhook queued" : "Incoming message webhook queued",
+        description: media
+          ? "Direct incoming media metadata was queued for signed webhook delivery; media bytes remain ephemeral."
+          : "A direct incoming text message was queued for signed webhook delivery.",
         metadata: { messageId: input.messageId, deliveryId: queued.id, webhookEvent: envelope.event },
       });
     }
     void worker.tick();
   } catch (error) {
-    logger.error(
-      {
-        event: "webhook.enqueue_failed",
-        messageId: input.messageId,
-        webhookEvent: "message.received",
-        errorType: error instanceof Error ? error.name : typeof error,
-      },
-      "Could not persist incoming message webhook delivery",
-    );
+    logger.error({ event: "webhook.enqueue_failed", messageId: input.messageId, webhookEvent: media ? "message.media_received" : "message.received", errorType: error instanceof Error ? error.name : typeof error }, "Could not persist incoming webhook delivery");
   }
 }
 
-export async function sendTestWebhookDelivery(): Promise<
-  { kind: "disabled" } | { kind: "queued"; delivery: PublicWebhookDelivery }
-> {
-  const settings = settingsStore.get();
-  if (!settings?.enabled || !settings.url || !settings.secret) {
-    return { kind: "disabled" };
-  }
+export function enqueueIncomingMessageWebhook(input: IncomingMessageWebhookInput): void {
+  enqueueInboundEnvelope(input, false);
+}
 
+export function enqueueIncomingMediaWebhook(input: IncomingMediaWebhookInput): void {
+  enqueueInboundEnvelope(input, true);
+}
+
+export async function sendTestWebhookDelivery(): Promise<{ kind: "disabled" } | { kind: "queued"; delivery: PublicWebhookDelivery }> {
+  const settings = settingsStore.get();
+  if (!settings?.enabled || !settings.url || !settings.secret) return { kind: "disabled" };
   const now = new Date();
   const envelope = createTestWebhookEnvelope({ now: () => now });
   const queued = store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
-
   await worker.tick();
   let current = store.get(envelope.id) ?? queued;
   if (current.status === "pending" && current.attemptCount === 0) {
     await worker.tick();
     current = store.get(envelope.id) ?? current;
   }
-
   return { kind: "queued", delivery: serializeWebhookDelivery(current) };
 }
 
-export function startWebhookDeliveryWorker(): void {
-  worker.start();
-}
-
-export async function stopWebhookDeliveryWorker(): Promise<void> {
-  await worker.stop();
-}
-
-export function listWebhookDeliveries(options: {
-  status?: WebhookDeliveryStatus;
-  limit?: number;
-}): PublicWebhookDelivery[] {
-  return store.list(options).map(serializeWebhookDelivery);
-}
+export function startWebhookDeliveryWorker(): void { worker.start(); }
+export async function stopWebhookDeliveryWorker(): Promise<void> { await worker.stop(); }
+export function listWebhookDeliveries(options: { status?: WebhookDeliveryStatus; limit?: number }): PublicWebhookDelivery[] { return store.list(options).map(serializeWebhookDelivery); }
 
 export function getWebhookDelivery(id: string): PublicWebhookDeliveryDetail | null {
   const delivery = store.get(id);
-  if (!delivery) {
-    return null;
-  }
-  return {
-    ...serializeWebhookDelivery(delivery),
-    attempts: store.listAttempts(id, 50).map(serializeWebhookAttempt),
-  };
+  return delivery ? { ...serializeWebhookDelivery(delivery), attempts: store.listAttempts(id, 50).map(serializeWebhookAttempt) } : null;
 }
 
 export function getMessageWebhookDelivery(messageId: string): PublicWebhookDelivery | null {
   const row = selectLatestMessageDeliveryId.get(messageId) as { id: string } | undefined;
-  if (!row) {
-    return null;
-  }
+  if (!row) return null;
   const delivery = store.get(row.id);
   return delivery ? serializeWebhookDelivery(delivery) : null;
 }
 
-export function redeliverWebhookDelivery(
-  id: string,
-):
+export function redeliverWebhookDelivery(id: string):
   | { kind: "disabled" }
   | { kind: "not_found" }
   | { kind: "in_progress"; delivery: PublicWebhookDelivery }
   | { kind: "payload_unavailable"; delivery: PublicWebhookDelivery }
   | { kind: "queued"; delivery: PublicWebhookDelivery } {
   const settings = settingsStore.get();
-  if (!settings?.enabled || !settings.url || !settings.secret) {
-    return { kind: "disabled" };
-  }
-
+  if (!settings?.enabled || !settings.url || !settings.secret) return { kind: "disabled" };
   const existing = store.get(id);
-  if (!existing) {
-    return { kind: "not_found" };
-  }
-  if (existing.status === "delivering") {
-    return { kind: "in_progress", delivery: serializeWebhookDelivery(existing) };
-  }
-  if (existing.event === "message.received") {
-    return { kind: "payload_unavailable", delivery: serializeWebhookDelivery(existing) };
-  }
+  if (!existing) return { kind: "not_found" };
+  if (existing.status === "delivering") return { kind: "in_progress", delivery: serializeWebhookDelivery(existing) };
+  if (isInboundEvent(existing.event)) return { kind: "payload_unavailable", delivery: serializeWebhookDelivery(existing) };
 
   const result = store.redeliver(id, Date.now());
-  if (result.kind === "not_found") {
-    return result;
-  }
-
+  if (result.kind === "not_found") return result;
   if (result.kind === "queued") {
     void recordActivity({
       level: "info",
@@ -310,18 +218,9 @@ export function redeliverWebhookDelivery(
       code: "webhook.delivery.redelivered",
       title: "Webhook delivery redelivered",
       description: "An authenticated operator requested a new delivery cycle while preserving prior attempt evidence.",
-      metadata: {
-        deliveryId: result.delivery.id,
-        messageId: result.delivery.messageId,
-        webhookEvent: result.delivery.event,
-        redeliveryCount: result.delivery.redeliveryCount,
-      },
+      metadata: { deliveryId: result.delivery.id, messageId: result.delivery.messageId, webhookEvent: result.delivery.event, redeliveryCount: result.delivery.redeliveryCount },
     });
     void worker.tick();
   }
-
-  return {
-    kind: result.kind,
-    delivery: serializeWebhookDelivery(result.delivery),
-  };
+  return { kind: result.kind, delivery: serializeWebhookDelivery(result.delivery) };
 }
