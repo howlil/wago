@@ -10,7 +10,7 @@ Branch: `feat/baileys-reliability-signals`
 
 Pull request: **#128 — `feat(whatsapp): add Baileys reliability signals`**
 
-The milestone is implemented and left open for explicit user-authorized merge.
+The milestone is implemented, verified, documented, and left open for explicit user-authorized merge.
 
 ## Authorized scope
 
@@ -28,20 +28,23 @@ The milestone is implemented and left open for explicit user-authorized merge.
 - message diagnostics persist monotonic delivery evidence while preserving the existing terminal operation-state contract;
 - a delivery/read/played receipt received before a separate server-ACK event is treated as proof that the pending operation was accepted, while later lower evidence cannot downgrade the retained evidence;
 - signed webhook events include `message.delivered`, `message.read`, and `message.played` in addition to existing server-accepted/rejected/incoming events;
+- webhook-core tests lock the additive delivery-evidence event-name mapping;
 - Control account-health UI distinguishes Warning from Capped and does not claim warnings pause sends;
 - Settings Webhooks lists the expanded delivery-evidence event surface;
-- deterministic migration, account-health, recipient-routing, receipt-ordering, message-service compatibility, and dashboard architecture coverage has been added or updated;
+- Configuration docs explain provider capping semantics and observational delivery/read/played evidence;
+- deterministic migration, account-health, recipient-routing, receipt-ordering, message-service compatibility, webhook mapping, and dashboard architecture coverage has been added or updated;
 - durable boundary is recorded in `.agents/DECISIONS.md` D14.
 
 ## Verification
 
-The implementation head `e9491de5d194fff57bd47cfba8b673630c501246` passed all required runtime/persistence gates before this state-only update:
+The final implementation/docs head `4ff299b42fdad548850691aa4cea5bbd4404f265` passed every relevant gate:
 
-- CI **#1254** — frozen install, Biome formatting/lint, full gateway/dashboard core tests, and production core build: **success**;
-- CodeQL **#1253** — JavaScript/TypeScript analysis: **success**;
-- Docker Smoke **#36** — image build plus persistence/rollback smoke: **success**.
+- CI **#1257** — frozen install, Biome formatting/lint, full gateway/dashboard core tests, and production core build: **success**;
+- Docs CI **#435** — docs tests and production docs build: **success**;
+- CodeQL **#1256** — JavaScript/TypeScript analysis: **success**;
+- Docker Smoke **#39** — image build plus persistence/rollback smoke: **success**.
 
-Failures found during the sprint were fixed before the green implementation head, including stale migration-count coverage, Biome formatting, backward-compatible dashboard account-health fixtures, and exact message-service response-shape compatibility.
+Failures found during the sprint were fixed before the green final implementation/docs head, including stale migration-count coverage, Biome formatting, backward-compatible dashboard account-health fixtures, and exact message-service response-shape compatibility.
 
 ## Blockers
 
