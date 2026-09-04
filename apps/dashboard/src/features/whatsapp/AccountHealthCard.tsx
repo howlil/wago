@@ -1,4 +1,4 @@
-import type { AccountHealthSnapshot, AccountHealthUnavailableReason } from "./api.js";
+import type { AccountHealthSnapshot, AccountHealthUnavailableReason, NewChatCapacityStatus } from "./api.js";
 
 type AccountHealthCardProps = {
   accountHealth?: AccountHealthSnapshot;
@@ -34,6 +34,32 @@ function unavailableDescription(reason?: AccountHealthUnavailableReason): string
     return "Connect WhatsApp to check account restrictions.";
   }
   return "Account health is unavailable until the connected session is checked.";
+}
+
+function legacyCapacity(accountHealth: AccountHealthSnapshot): {
+  status: NewChatCapacityStatus;
+  used?: number;
+  total?: number;
+  cycleStartAt?: string;
+  cycleEndAt?: string;
+} {
+  const cap = accountHealth.newChatCap;
+  const status: NewChatCapacityStatus =
+    cap?.capping_status === "CAPPED"
+      ? "capped"
+      : cap?.capping_status === "FIRST_WARNING" || cap?.capping_status === "SECOND_WARNING"
+        ? "warning"
+        : cap?.capping_status === "NONE"
+          ? "healthy"
+          : "unknown";
+
+  return {
+    status,
+    used: cap?.used_quota,
+    total: cap?.total_quota,
+    cycleStartAt: cap?.cycle_start_timestamp,
+    cycleEndAt: cap?.cycle_end_timestamp,
+  };
 }
 
 export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
@@ -80,7 +106,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
   }
 
   const reachout = availableHealth.reachoutTimeLock;
-  const capacity = availableHealth.newChatCapacity;
+  const capacity = availableHealth.newChatCapacity ?? legacyCapacity(availableHealth);
   const reachoutRestricted = Boolean(reachout?.isActive);
   const capRestricted = capacity.status === "capped";
   const capWarning = capacity.status === "warning";
