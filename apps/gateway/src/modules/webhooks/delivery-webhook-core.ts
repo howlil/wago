@@ -147,7 +147,13 @@ export function createMessageDeliveryWebhookEnvelope(
   const now = deps.now ?? (() => new Date());
   const data: MessageDeliveryWebhookEnvelope["data"] = { messageId: input.messageId, status: input.status };
   if (input.status === "rejected" && input.error) data.error = input.error;
-  return { version: WEBHOOK_SCHEMA_VERSION, id: createDeliveryId(), event: eventForStatus(input.status), createdAt: now().toISOString(), data };
+  return {
+    version: WEBHOOK_SCHEMA_VERSION,
+    id: createDeliveryId(),
+    event: eventForStatus(input.status),
+    createdAt: now().toISOString(),
+    data,
+  };
 }
 
 export function createIncomingMessageWebhookEnvelope(
@@ -189,7 +195,13 @@ export function createIncomingMediaWebhookEnvelope(
 export function createTestWebhookEnvelope(deps: EnvelopeDependencies = {}): TestWebhookEnvelope {
   const createDeliveryId = deps.createDeliveryId ?? randomUUID;
   const now = deps.now ?? (() => new Date());
-  return { version: WEBHOOK_SCHEMA_VERSION, id: createDeliveryId(), event: "wago.test", createdAt: now().toISOString(), data: {} };
+  return {
+    version: WEBHOOK_SCHEMA_VERSION,
+    id: createDeliveryId(),
+    event: "wago.test",
+    createdAt: now().toISOString(),
+    data: {},
+  };
 }
 
 export function serializeWebhookEnvelope(envelope: WebhookEnvelope): string {
@@ -215,8 +227,10 @@ export function createWebhookSignatureHeader(input: {
 }
 
 function classifyHttpFailure(status: number): Exclude<WebhookAttemptResult, { ok: true }> {
-  if (status >= 300 && status < 400) return { ok: false, retryable: false, statusCode: status, errorCode: "WEBHOOK_REDIRECT_REJECTED" };
-  if (status === 408 || status === 429) return { ok: false, retryable: true, statusCode: status, errorCode: "WEBHOOK_HTTP_CLIENT_ERROR" };
+  if (status >= 300 && status < 400)
+    return { ok: false, retryable: false, statusCode: status, errorCode: "WEBHOOK_REDIRECT_REJECTED" };
+  if (status === 408 || status === 429)
+    return { ok: false, retryable: true, statusCode: status, errorCode: "WEBHOOK_HTTP_CLIENT_ERROR" };
   if (status >= 500) return { ok: false, retryable: true, statusCode: status, errorCode: "WEBHOOK_HTTP_SERVER_ERROR" };
   return { ok: false, retryable: false, statusCode: status, errorCode: "WEBHOOK_HTTP_CLIENT_ERROR" };
 }
@@ -229,7 +243,12 @@ export function createWebhookAttemptSender(deps: WebhookAttemptSenderDependencie
   return {
     async send(delivery: WebhookAttemptTarget): Promise<WebhookAttemptResult> {
       const timestamp = Math.floor(now().getTime() / 1000).toString();
-      const signature = createWebhookSignatureHeader({ id: delivery.id, timestamp, body: delivery.payloadJson, secrets: deps.secrets });
+      const signature = createWebhookSignatureHeader({
+        id: delivery.id,
+        timestamp,
+        body: delivery.payloadJson,
+        secrets: deps.secrets,
+      });
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       timeout.unref();
