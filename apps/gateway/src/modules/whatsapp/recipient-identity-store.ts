@@ -14,9 +14,7 @@ type RecipientIdentityRow = {
 
 const database = getDatabase();
 const selectByPhone = database.prepare("SELECT * FROM recipient_identities WHERE phone_jid = ?");
-const deleteConflictingLid = database.prepare(
-  "DELETE FROM recipient_identities WHERE lid_jid = ? AND phone_jid <> ?",
-);
+const deleteConflictingLid = database.prepare("DELETE FROM recipient_identities WHERE lid_jid = ? AND phone_jid <> ?");
 const upsertIdentity = database.prepare(`
   INSERT INTO recipient_identities (phone_jid, lid_jid, updated_at)
   VALUES (?, ?, ?)
