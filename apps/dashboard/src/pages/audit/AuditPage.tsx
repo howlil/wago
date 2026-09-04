@@ -6,6 +6,7 @@ import type {
   SourceFilter,
 } from "../../features/activity/useActivityLog.js";
 import { AppShell } from "../../shared/components/AppShell.js";
+import { pageFrameClass } from "../../shared/ui/classes.js";
 
 const sourceFilters = new Set<SourceFilter>(["all", "wago", "baileys"]);
 const categoryFilters = new Set<CategoryFilter>(["all", "system", "security", "connection", "recipient", "messaging"]);
@@ -31,7 +32,9 @@ function initialAuditFilters(): ActivityLogInitialFilters {
 export function AuditPage() {
   return (
     <AppShell title="Audit Log" activePath="/audit">
-      <ActivityLogPanel enabled initialFilters={initialAuditFilters()} />
+      <div className={pageFrameClass}>
+        <ActivityLogPanel enabled initialFilters={initialAuditFilters()} />
+      </div>
     </AppShell>
   );
 }
