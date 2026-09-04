@@ -75,13 +75,8 @@ type MessageServiceOptions = {
   createMessageId?: () => string;
 };
 
-function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
+function optionalStatusFields(status: MessageStatusRecord) {
   return {
-    id: status.id,
-    to: status.to,
-    status: status.status,
-    createdAt: status.createdAt,
-    updatedAt: status.updatedAt,
     ...(status.deliveryEvidence !== undefined ? { deliveryEvidence: status.deliveryEvidence } : {}),
     ...(status.error !== undefined ? { error: status.error } : {}),
     ...(status.message !== undefined ? { message: status.message } : {}),
@@ -91,6 +86,17 @@ function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
     ...(status.deliveredAt !== undefined ? { deliveredAt: status.deliveredAt } : {}),
     ...(status.readAt !== undefined ? { readAt: status.readAt } : {}),
     ...(status.playedAt !== undefined ? { playedAt: status.playedAt } : {}),
+  };
+}
+
+function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
+  return {
+    id: status.id,
+    to: status.to,
+    status: status.status,
+    createdAt: status.createdAt,
+    updatedAt: status.updatedAt,
+    ...optionalStatusFields(status),
   };
 }
 
@@ -112,15 +118,18 @@ export function createMessageService(
       return status ? sanitizeMessageStatus(status) : null;
     },
     findDiagnostic(messageId: string): MessageDiagnostic | null {
-      const rawStatus = deps.getStatus(messageId);
-      if (!rawStatus) {
+      const status = deps.getStatus(messageId);
+      if (!status) {
         return null;
       }
-      const { to: _to, ...status } = sanitizeMessageStatus(rawStatus);
 
       return {
-        ...status,
-        dispatchState: rawStatus.dispatchState ?? "submitted",
+        id: status.id,
+        status: status.status,
+        createdAt: status.createdAt,
+        updatedAt: status.updatedAt,
+        ...optionalStatusFields(status),
+        dispatchState: status.dispatchState ?? "submitted",
         webhook: deps.getWebhookDelivery?.(messageId) ?? null,
       };
     },
