@@ -25,6 +25,8 @@ describe("database migrations", () => {
       { version: 11 },
       { version: 12 },
       { version: 13 },
+      { version: 14 },
+      { version: 15 },
     ]);
 
     const webhookColumns = database.prepare("PRAGMA table_info(webhook_deliveries)").all() as Array<{ name: string }>;
@@ -71,13 +73,25 @@ describe("database migrations", () => {
         "resolved_jid",
         "status",
         "dispatch_state",
+        "delivery_evidence",
         "error_code",
         "error_message",
         "created_at",
         "updated_at",
         "accepted_at",
         "rejected_at",
+        "server_accepted_at",
+        "delivered_at",
+        "read_at",
+        "played_at",
       ]),
+    );
+
+    const recipientIdentityColumns = database.prepare("PRAGMA table_info(recipient_identities)").all() as Array<{
+      name: string;
+    }>;
+    expect(recipientIdentityColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(["phone_jid", "lid_jid", "updated_at"]),
     );
 
     const idempotencyColumns = database.prepare("PRAGMA table_info(idempotency_keys)").all() as Array<{ name: string }>;
@@ -122,27 +136,30 @@ describe("database migrations", () => {
     database.close();
   });
 
-  it("redacts message.received payloads atomically when a delivery becomes terminal", () => {
+  it("redacts text and media inbound payloads atomically when deliveries become terminal", () => {
     const database = new DatabaseSync(":memory:");
     runMigrations(database, migrations);
 
-    database
-      .prepare(`
-        INSERT INTO webhook_deliveries (
-          id, schema_version, event_type, message_id, payload_json, status,
-          attempt_count, redelivery_count, next_attempt_at, created_at, expires_at
-        ) VALUES (?, 1, 'message.received', ?, ?, 'pending', 0, 0, ?, ?, ?)
-      `)
-      .run("delivery-inbound", "in_message", '{"data":{"from":"6281","text":"secret"}}', 1, 1, 1000);
+    for (const [id, eventType, payload] of [
+      ["delivery-text", "message.received", '{"data":{"from":"6281","text":"secret"}}'],
+      ["delivery-media", "message.media_received", '{"data":{"media":{"caption":"secret"}}}'],
+    ] as const) {
+      database
+        .prepare(`
+          INSERT INTO webhook_deliveries (
+            id, schema_version, event_type, message_id, payload_json, status,
+            attempt_count, redelivery_count, next_attempt_at, created_at, expires_at
+          ) VALUES (?, 1, ?, ?, ?, 'pending', 0, 0, ?, ?, ?)
+        `)
+        .run(id, eventType, `in_${id}`, payload, 1, 1, 1000);
 
-    database.prepare("UPDATE webhook_deliveries SET status = 'delivered' WHERE id = ?").run("delivery-inbound");
+      database.prepare("UPDATE webhook_deliveries SET status = 'delivered' WHERE id = ?").run(id);
 
-    const row = database
-      .prepare("SELECT payload_json FROM webhook_deliveries WHERE id = ?")
-      .get("delivery-inbound") as {
-      payload_json: string;
-    };
-    expect(row.payload_json).toBe("{}");
+      const row = database.prepare("SELECT payload_json FROM webhook_deliveries WHERE id = ?").get(id) as {
+        payload_json: string;
+      };
+      expect(row.payload_json).toBe("{}");
+    }
 
     database.close();
   });

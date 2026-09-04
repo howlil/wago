@@ -4,23 +4,47 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**No active product milestone.**
+**PR-ready milestone: Baileys Reliability & Messaging Capability Pass — B1/B2/B3.**
 
-## Current baseline
+Branch: `feat/baileys-reliability-signals`
 
-- `main` includes **Fast Risk-Based CI and Design Verification** via PR #122;
-- squash merge commit: `9863979cea48c8f8ac0d78ffe17c46bdbc963ed1`;
-- final implementation head verified before merge: `16f202ce681ea54d7726f7486f9acb1dd55833d1`;
-- core and docs CI use one explicit frozen pnpm install instead of setup-time install plus a second install;
-- normal core CI remains formatting/lint + full gateway/dashboard tests and builds;
-- Docker image/persistence/rollback smoke is isolated to a path-scoped runtime/deployment/persistence workflow;
-- standalone docs install/build smoke is isolated to package/workspace/build-configuration changes instead of routine content/design edits;
-- JavaScript/TypeScript CodeQL runs source analysis without redundant dependency installation or core build;
-- `task dashboard:design:test` and `task docs:design:test` provide fast deterministic design-contract loops before full affected-app verification;
-- `.agents/QUALITY.md` defines the fast/accurate risk-based verification policy and design-specific testing flow;
-- `.agents/DECISIONS.md` records risk-routed CI as durable decision D13;
-- final-head workflows were all green: CI, Docs CI, Docker Smoke, Docs Standalone Smoke, and CodeQL;
-- product behavior, public API, persistence schema, authentication semantics, and Wago design language were unchanged.
+Pull request: **#128 — `feat(whatsapp): add Baileys reliability signals`**
+
+The milestone is implemented, verified, documented, and left open for explicit user-authorized merge.
+
+## Authorized scope
+
+- **B1 — New-chat message capping:** consume realtime `message-capping.update`, expose normalized capacity state, surface warnings without blocking, and block new-recipient sends only when WhatsApp explicitly reports `CAPPED`.
+- **B2 — LID mapping hardening:** persist PN→LID transport identity, invalidate stale recipient lookup cache on `lid-mapping.update`, and preserve the logical phone recipient as the policy/idempotency identity.
+- **B3 — Delivery evidence:** preserve public `pending | accepted | rejected` operation state while adding monotonic `submitted | server_accepted | delivered | read | played` evidence and signed delivery-evidence webhooks.
+- Keep the existing single-account, no-history, no-inbox, no-groups, no-campaign, no-media product boundary.
+
+## Implementation evidence
+
+- migration 14 adds `recipient_identities` and additive outbound delivery-evidence/timestamp columns;
+- WhatsApp socket wiring consumes `lid-mapping.update`, `message-capping.update`, and `message-receipt.update` while preserving stale-generation guards;
+- account health exposes normalized `newChatCapacity` and treats provider warning states as observable pressure rather than a hard block;
+- recipient lookup prefers persisted LID transport addressing and invalidates the per-phone cache immediately when Baileys supplies a newer mapping;
+- message diagnostics persist monotonic delivery evidence while preserving the existing terminal operation-state contract;
+- a delivery/read/played receipt received before a separate server-ACK event is treated as proof that the pending operation was accepted, while later lower evidence cannot downgrade the retained evidence;
+- signed webhook events include `message.delivered`, `message.read`, and `message.played` in addition to existing server-accepted/rejected/incoming events;
+- webhook-core tests lock the additive delivery-evidence event-name mapping;
+- Control account-health UI distinguishes Warning from Capped and does not claim warnings pause sends;
+- Settings Webhooks lists the expanded delivery-evidence event surface;
+- Configuration docs explain provider capping semantics and observational delivery/read/played evidence;
+- deterministic migration, account-health, recipient-routing, receipt-ordering, message-service compatibility, webhook mapping, and dashboard architecture coverage has been added or updated;
+- durable boundary is recorded in `.agents/DECISIONS.md` D14.
+
+## Verification
+
+The final implementation/docs head `4ff299b42fdad548850691aa4cea5bbd4404f265` passed every relevant gate:
+
+- CI **#1257** — frozen install, Biome formatting/lint, full gateway/dashboard core tests, and production core build: **success**;
+- Docs CI **#435** — docs tests and production docs build: **success**;
+- CodeQL **#1256** — JavaScript/TypeScript analysis: **success**;
+- Docker Smoke **#39** — image build plus persistence/rollback smoke: **success**.
+
+Failures found during the sprint were fixed before the green final implementation/docs head, including stale migration-count coverage, Biome formatting, backward-compatible dashboard account-health fixtures, and exact message-service response-shape compatibility.
 
 ## Blockers
 
@@ -28,8 +52,8 @@ None.
 
 ## Next action
 
-Await the next explicit user-authorized milestone or task. Do not infer or start product work from historical plans alone.
+Leave PR #128 open for review. Merge only after explicit user authorization. After merge, reset this file to the idle/no-active-milestone state unless the next milestone has already been authorized.
 
 ## Completion rule
 
-When a milestone completes and is integrated into `main`, return this file to this idle/no-active-milestone state unless the user has already authorized the next milestone.
+When the milestone is integrated into `main`, return this file to the idle/no-active-milestone state unless the user has already authorized the next milestone.

@@ -1,20 +1,36 @@
 import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
-import { getMessageStatusByProviderId, updateMessageStatusByProviderId } from "../messages/index.js";
+import {
+  getMessageStatusByProviderId,
+  type StoredMessageStatus,
+  updateMessageDeliveryEvidenceByProviderId,
+  updateMessageStatusByProviderId,
+} from "../messages/index.js";
 import { markRecipientReachoutRestricted, recordOutboundAcknowledged } from "../messages/outbound-policy.js";
-import { enqueueIncomingMessageWebhook } from "../webhooks/index.js";
+import { rememberRecipientResolution } from "../recipients/store.js";
+import type { IncomingMediaWebhookInput, IncomingMessageWebhookInput } from "../webhooks/delivery-webhook-core.js";
+import { enqueueIncomingMediaWebhook, enqueueIncomingMessageWebhook } from "../webhooks/index.js";
 import {
   invalidateAccountHealth,
   markReachoutRestricted,
   refreshAccountHealth,
+  updateNewChatCap,
   updateReachoutTimeLock,
 } from "./account-health.js";
 import { bindWhatsAppAccount, clearWhatsAppBinding } from "./binding-store.js";
 import { markConnected, markDisconnected, markQr } from "./connection-state.js";
 import { classifyDisconnect } from "./disconnect-classifier.js";
-import { type InboundTextMessage, normalizeInboundTextMessage } from "./inbound-message.js";
+import {
+  type InboundMediaMessage,
+  type InboundTextMessage,
+  normalizeInboundMediaMessage,
+  normalizeInboundTextMessage,
+} from "./inbound-message.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
+import { invalidateRecipientLookupCache } from "./recipient-cache.js";
+import { rememberRecentInboundMessage } from "./recent-inbound-store.js";
+import { rememberRecipientIdentity } from "./recipient-identity-store.js";
 import {
   getActiveSocket,
   invalidateSocketGeneration,
@@ -37,8 +53,60 @@ type RegisterSocketEventsOptions = {
   resetReconnectAttempt: () => void;
   scheduleReconnect: (generation: number) => void;
   clearReconnectTimer?: () => void;
-  onIncomingMessage?: (message: InboundTextMessage) => void;
+  onIncomingMessage?: (message: IncomingMessageWebhookInput) => void;
+  onIncomingMediaMessage?: (message: IncomingMediaWebhookInput) => void;
 };
+
+function receiptTimestamp(value: unknown): Date {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : new Date();
+}
+
+function acceptPendingOutbound(providerMessageId: string, storedMessage: StoredMessageStatus | null): void {
+  if (storedMessage?.status !== "pending") return;
+
+  try {
+    recordOutboundAcknowledged(storedMessage.recipientJid ?? storedMessage.to, storedMessage.to);
+  } catch (error) {
+    logger.error(
+      {
+        event: "outbound.ack_persistence_failed",
+        errorName: error instanceof Error ? error.name : "UNKNOWN",
+        messageId: storedMessage.id,
+      },
+      "WhatsApp acknowledged a message but Wago could not persist recipient success state",
+    );
+  }
+
+  updateMessageStatusByProviderId(providerMessageId, { status: "accepted" });
+}
+
+function canonicalQuotedMessageId(providerMessageId?: string): string | undefined {
+  if (!providerMessageId) return undefined;
+  return getMessageStatusByProviderId(providerMessageId)?.id ?? undefined;
+}
+
+function incomingTextWebhookInput(message: InboundTextMessage): IncomingMessageWebhookInput {
+  const replyToMessageId = canonicalQuotedMessageId(message.quotedProviderMessageId);
+  return {
+    messageId: message.messageId,
+    from: message.from,
+    text: message.text,
+    receivedAt: message.receivedAt,
+    ...(replyToMessageId ? { replyToMessageId } : {}),
+  };
+}
+
+function incomingMediaWebhookInput(message: InboundMediaMessage): IncomingMediaWebhookInput {
+  const replyToMessageId = canonicalQuotedMessageId(message.quotedProviderMessageId);
+  return {
+    messageId: message.messageId,
+    from: message.from,
+    receivedAt: message.receivedAt,
+    media: message.media,
+    ...(replyToMessageId ? { replyToMessageId } : {}),
+  };
+}
 
 export function registerSocketEvents({
   socket,
@@ -51,31 +119,86 @@ export function registerSocketEvents({
   scheduleReconnect,
   clearReconnectTimer,
   onIncomingMessage = enqueueIncomingMessageWebhook,
+  onIncomingMediaMessage = enqueueIncomingMediaWebhook,
 }: RegisterSocketEventsOptions): void {
   socket.ev.on("creds.update", () => {
     if (!isCurrentGeneration(generation)) return;
     credentialWriter.enqueue(saveCreds, generation);
   });
 
+  socket.ev.on("lid-mapping.update", (mapping) => {
+    if (!isCurrentGeneration(generation)) return;
+    rememberRecipientIdentity(mapping.pn, mapping.lid);
+    invalidateRecipientLookupCache(mapping.pn);
+    void rememberRecipientResolution(mapping.pn, mapping.lid);
+    auditBaileys({
+      level: "info",
+      category: "connection",
+      code: "baileys.recipient.lid_mapping_updated",
+      title: "Recipient addressing refreshed",
+      description: "WhatsApp supplied a newer phone-to-LID mapping for recipient addressing.",
+      metadata: { socketGeneration: generation },
+    });
+  });
+
+  socket.ev.on("message-capping.update", (cap) => {
+    if (!isCurrentGeneration(generation)) return;
+    updateNewChatCap(cap);
+    auditBaileys({
+      level: cap.capping_status === "CAPPED" ? "warning" : "info",
+      category: "connection",
+      code: "baileys.health.new_chat_cap_changed",
+      title: "New-chat capacity changed",
+      description: "WhatsApp pushed an updated new-chat capacity state.",
+      metadata: {
+        socketGeneration: generation,
+        cappingStatus: cap.capping_status ?? null,
+        usedQuota: cap.used_quota ?? null,
+        totalQuota: cap.total_quota ?? null,
+        cycleEndAt: cap.cycle_end_timestamp ?? null,
+      },
+    });
+  });
+
   socket.ev.on("messages.upsert", (event) => {
     if (!isCurrentGeneration(generation) || event.type !== "notify") return;
 
     for (const message of event.messages) {
-      const incoming = normalizeInboundTextMessage(message);
-      if (!incoming) continue;
+      const incomingText = normalizeInboundTextMessage(message);
+      if (incomingText) {
+        rememberRecentInboundMessage(incomingText.messageId, incomingText.from, message);
+        auditBaileys({
+          level: "info",
+          category: "messaging",
+          code: "baileys.message.received",
+          title: "Incoming WhatsApp message received",
+          description: "A direct incoming text message was accepted for Wago webhook processing.",
+          metadata: {
+            messageId: incomingText.messageId,
+            socketGeneration: generation,
+          },
+        });
+        onIncomingMessage(incomingTextWebhookInput(incomingText));
+        continue;
+      }
 
+      const incomingMedia = normalizeInboundMediaMessage(message);
+      if (!incomingMedia) continue;
+
+      rememberRecentInboundMessage(incomingMedia.messageId, incomingMedia.from, message);
       auditBaileys({
         level: "info",
         category: "messaging",
-        code: "baileys.message.received",
-        title: "Incoming WhatsApp message received",
-        description: "A direct incoming text message was accepted for Wago webhook processing.",
+        code: "baileys.message.media_received",
+        title: "Incoming WhatsApp media received",
+        description: "Direct incoming media metadata was accepted; media bytes remain ephemeral.",
         metadata: {
-          messageId: incoming.messageId,
+          messageId: incomingMedia.messageId,
+          mediaKind: incomingMedia.media.kind,
           socketGeneration: generation,
         },
       });
-      onIncomingMessage(incoming);
+      onIncomingMediaMessage(incomingMediaWebhookInput(incomingMedia));
     }
   });
 
@@ -123,22 +246,8 @@ export function registerSocketEvents({
       }
 
       if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
-        if (storedMessage?.status === "pending") {
-          try {
-            recordOutboundAcknowledged(storedMessage.recipientJid ?? storedMessage.to, storedMessage.to);
-          } catch (error) {
-            logger.error(
-              {
-                event: "outbound.ack_persistence_failed",
-                errorName: error instanceof Error ? error.name : "UNKNOWN",
-                messageId,
-              },
-              "WhatsApp acknowledged a message but Wago could not persist recipient success state",
-            );
-          }
-        }
-
-        updateMessageStatusByProviderId(providerMessageId, { status: "accepted" });
+        acceptPendingOutbound(providerMessageId, storedMessage);
+        updateMessageDeliveryEvidenceByProviderId(providerMessageId, "server_accepted");
         auditBaileys({
           level: "info",
           category: "messaging",
@@ -151,6 +260,39 @@ export function registerSocketEvents({
             status: entry.update.status,
           },
         });
+      }
+    }
+  });
+
+  socket.ev.on("message-receipt.update", (updates) => {
+    if (!isCurrentGeneration(generation)) return;
+
+    for (const entry of updates) {
+      const providerMessageId = entry.key?.id;
+      if (!providerMessageId) continue;
+
+      const storedMessage = getMessageStatusByProviderId(providerMessageId);
+      if (!storedMessage || storedMessage.status === "rejected") continue;
+      acceptPendingOutbound(providerMessageId, storedMessage);
+
+      if (entry.receipt.playedTimestamp != null) {
+        updateMessageDeliveryEvidenceByProviderId(
+          providerMessageId,
+          "played",
+          receiptTimestamp(entry.receipt.playedTimestamp),
+        );
+      } else if (entry.receipt.readTimestamp != null) {
+        updateMessageDeliveryEvidenceByProviderId(
+          providerMessageId,
+          "read",
+          receiptTimestamp(entry.receipt.readTimestamp),
+        );
+      } else if (entry.receipt.receiptTimestamp != null) {
+        updateMessageDeliveryEvidenceByProviderId(
+          providerMessageId,
+          "delivered",
+          receiptTimestamp(entry.receipt.receiptTimestamp),
+        );
       }
     }
   });

@@ -59,6 +59,29 @@ describe("delivery webhook signing and attempts", () => {
     });
   });
 
+  it("maps additive delivery evidence to stable webhook event names", () => {
+    const expected = [
+      ["accepted", "message.server_accepted"],
+      ["delivered", "message.delivered"],
+      ["read", "message.read"],
+      ["played", "message.played"],
+      ["rejected", "message.rejected"],
+    ] as const;
+
+    for (const [status, event] of expected) {
+      const envelope = createMessageDeliveryWebhookEnvelope(
+        { messageId: "message-1", status },
+        {
+          createDeliveryId: () => `delivery-${status}`,
+          now: () => new Date("2026-09-05T00:00:00.000Z"),
+        },
+      );
+
+      expect(envelope.event).toBe(event);
+      expect(envelope.data).toMatchObject({ messageId: "message-1", status });
+    }
+  });
+
   it("signs delivery id, timestamp, and raw body with current and previous secrets", async () => {
     const envelope = createMessageDeliveryWebhookEnvelope(
       { messageId: "message-1", status: "accepted" },

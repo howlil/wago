@@ -80,3 +80,17 @@ export async function requestText(path: string): Promise<string> {
 
   return body as string;
 }
+
+export async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const response = await fetch(path, {
+    ...init,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const { body } = await readResponseBody(response);
+    throw toApiError(response.status, body, `Request failed with HTTP ${response.status}`);
+  }
+
+  return response.blob();
+}

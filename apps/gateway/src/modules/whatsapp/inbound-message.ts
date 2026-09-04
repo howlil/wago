@@ -1,51 +1,134 @@
 import { createHash } from "node:crypto";
-import { normalizeMessageContent, type WAMessage } from "@whiskeysockets/baileys";
+import { jidDecode, normalizeMessageContent, type WAMessage } from "@whiskeysockets/baileys";
 
 export type InboundTextMessage = {
   messageId: string;
   from: string;
   text: string;
   receivedAt: string;
+  quotedProviderMessageId?: string;
 };
 
-function directPhoneJid(message: WAMessage): string | null {
-  const candidates = [message.key.remoteJidAlt, message.key.remoteJid];
-  return candidates.find((jid): jid is string => Boolean(jid?.endsWith("@s.whatsapp.net"))) ?? null;
+export type InboundMediaKind = "image" | "video" | "audio" | "document";
+
+export type InboundMediaMessage = {
+  messageId: string;
+  from: string;
+  receivedAt: string;
+  quotedProviderMessageId?: string;
+  media: {
+    kind: InboundMediaKind;
+    mimetype?: string;
+    fileName?: string;
+    fileLength?: number;
+    caption?: string;
+    seconds?: number;
+    width?: number;
+    height?: number;
+  };
+};
+
+function logicalPhoneJid(message: WAMessage): string | null {
+  const primary = message.key.remoteJid;
+  const alternate = message.key.remoteJidAlt;
+  const candidate = primary?.endsWith("@lid") || primary?.endsWith("@hosted.lid") ? alternate : primary;
+  if (!candidate || (!candidate.endsWith("@s.whatsapp.net") && !candidate.endsWith("@hosted"))) return null;
+  return candidate;
 }
 
-function senderFromPhoneJid(jid: string): string | null {
-  const local = jid.slice(0, -"@s.whatsapp.net".length).split(":", 1)[0]?.trim();
-  return local || null;
+function logicalPhone(jid: string): string | null {
+  const decoded = jidDecode(jid);
+  if (!decoded?.user) return null;
+  return decoded.user;
 }
 
-function inboundMessageId(from: string, providerMessageId: string): string {
-  const digest = createHash("sha256").update(`${from}:${providerMessageId}`).digest("hex").slice(0, 32);
-  return `in_${digest}`;
+function stableInboundMessageId(from: string, providerMessageId: string): string {
+  return `in_${createHash("sha256").update(`${from}:${providerMessageId}`).digest("hex").slice(0, 32)}`;
+}
+
+function messageTimestamp(message: WAMessage, now: () => Date): string {
+  const value = Number(message.messageTimestamp);
+  return Number.isFinite(value) && value > 0 ? new Date(value * 1000).toISOString() : now().toISOString();
+}
+
+function numeric(value: unknown): number | undefined {
+  if (value == null) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function commonInbound(message: WAMessage, now: () => Date) {
+  if (message.key.fromMe) return null;
+  const jid = logicalPhoneJid(message);
+  const providerMessageId = message.key.id;
+  if (!jid || !providerMessageId) return null;
+  const from = logicalPhone(jid);
+  if (!from) return null;
+
+  return {
+    messageId: stableInboundMessageId(from, providerMessageId),
+    from,
+    receivedAt: messageTimestamp(message, now),
+  };
 }
 
 export function normalizeInboundTextMessage(
   message: WAMessage,
   now: () => Date = () => new Date(),
 ): InboundTextMessage | null {
-  if (message.key.fromMe) return null;
-
-  const providerMessageId = message.key.id?.trim();
-  if (!providerMessageId) return null;
-
-  const phoneJid = directPhoneJid(message);
-  if (!phoneJid) return null;
-
-  const from = senderFromPhoneJid(phoneJid);
-  if (!from) return null;
+  const common = commonInbound(message, now);
+  if (!common) return null;
 
   const content = normalizeMessageContent(message.message);
-  const text = content?.conversation ?? content?.extendedTextMessage?.text ?? null;
-  if (typeof text !== "string" || text.trim().length === 0) return null;
+  const text = content?.conversation ?? content?.extendedTextMessage?.text;
+  if (!text?.trim()) return null;
+  const quotedProviderMessageId = content?.extendedTextMessage?.contextInfo?.stanzaId ?? undefined;
 
   return {
-    messageId: inboundMessageId(from, providerMessageId),
-    from,
-    text,
-    receivedAt: now().toISOString(),
+    ...common,
+    text: text.trim(),
+    ...(quotedProviderMessageId ? { quotedProviderMessageId } : {}),
+  };
+}
+
+export function normalizeInboundMediaMessage(
+  message: WAMessage,
+  now: () => Date = () => new Date(),
+): InboundMediaMessage | null {
+  const common = commonInbound(message, now);
+  if (!common) return null;
+
+  const content = normalizeMessageContent(message.message);
+  const media = content?.imageMessage ?? content?.videoMessage ?? content?.audioMessage ?? content?.documentMessage;
+  if (!media) return null;
+
+  const kind: InboundMediaKind = content?.imageMessage
+    ? "image"
+    : content?.videoMessage
+      ? "video"
+      : content?.audioMessage
+        ? "audio"
+        : "document";
+  const quotedProviderMessageId = media.contextInfo?.stanzaId ?? undefined;
+
+  return {
+    ...common,
+    ...(quotedProviderMessageId ? { quotedProviderMessageId } : {}),
+    media: {
+      kind,
+      ...(media.mimetype ? { mimetype: media.mimetype } : {}),
+      ...(content?.documentMessage?.fileName ? { fileName: content.documentMessage.fileName } : {}),
+      ...(numeric(media.fileLength) !== undefined ? { fileLength: numeric(media.fileLength) } : {}),
+      ...("caption" in media && media.caption ? { caption: media.caption } : {}),
+      ...(numeric("seconds" in media ? media.seconds : undefined) !== undefined
+        ? { seconds: numeric("seconds" in media ? media.seconds : undefined) }
+        : {}),
+      ...(numeric("width" in media ? media.width : undefined) !== undefined
+        ? { width: numeric("width" in media ? media.width : undefined) }
+        : {}),
+      ...(numeric("height" in media ? media.height : undefined) !== undefined
+        ? { height: numeric("height" in media ? media.height : undefined) }
+        : {}),
+    },
   };
 }
