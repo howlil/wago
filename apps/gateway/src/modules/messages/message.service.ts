@@ -18,17 +18,23 @@ export type MessageSendResult = {
 
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
 export type MessageDispatchState = "prepared" | "submitting" | "submitted" | "indeterminate";
+export type MessageDeliveryEvidence = "submitted" | "server_accepted" | "delivered" | "read" | "played";
 
 export type MessageStatus = {
   id: string;
   to: string;
   status: MessageDeliveryStatus;
+  deliveryEvidence?: MessageDeliveryEvidence;
   error?: string;
   message?: string;
   createdAt: string;
   updatedAt: string;
   acceptedAt?: string;
   rejectedAt?: string;
+  serverAcceptedAt?: string;
+  deliveredAt?: string;
+  readAt?: string;
+  playedAt?: string;
 };
 
 type MessageStatusRecord = MessageStatus & {
@@ -74,12 +80,17 @@ function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
     id: status.id,
     to: status.to,
     status: status.status,
+    deliveryEvidence: status.deliveryEvidence,
     error: status.error,
     message: status.message,
     createdAt: status.createdAt,
     updatedAt: status.updatedAt,
     acceptedAt: status.acceptedAt,
     rejectedAt: status.rejectedAt,
+    serverAcceptedAt: status.serverAcceptedAt,
+    deliveredAt: status.deliveredAt,
+    readAt: status.readAt,
+    playedAt: status.playedAt,
   };
 }
 
@@ -111,12 +122,17 @@ export function createMessageService(
         id: status.id,
         status: status.status,
         dispatchState: rawStatus.dispatchState ?? "submitted",
+        deliveryEvidence: status.deliveryEvidence,
         error: status.error,
         message: status.message,
         createdAt: status.createdAt,
         updatedAt: status.updatedAt,
         acceptedAt: status.acceptedAt,
         rejectedAt: status.rejectedAt,
+        serverAcceptedAt: status.serverAcceptedAt,
+        deliveredAt: status.deliveredAt,
+        readAt: status.readAt,
+        playedAt: status.playedAt,
         webhook: deps.getWebhookDelivery?.(messageId) ?? null,
       };
     },
