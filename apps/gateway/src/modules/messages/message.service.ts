@@ -4,16 +4,47 @@ export type SendMessageCommand = {
   to: string;
   text: string;
   idempotencyKey?: string;
+  replyToMessageId?: string;
 };
 
 export type MessageSendOptions = {
   idempotencyKey?: string;
   messageId: string;
+  replyToMessageId?: string;
 };
+
+export type MessageMediaKind = "image" | "video" | "audio" | "document";
+
+export type SendMediaCommand = {
+  to: string;
+  kind: MessageMediaKind;
+  data: Buffer;
+  mimetype: string;
+  caption?: string;
+  fileName?: string;
+  idempotencyKey?: string;
+  replyToMessageId?: string;
+};
+
+export type MessageMediaInput = Pick<SendMediaCommand, "kind" | "data" | "mimetype" | "caption" | "fileName">;
 
 export type MessageSendResult = {
   messageId: string;
   status: "pending";
+};
+
+export type DownloadedInboundMedia = {
+  data: Buffer;
+  media: {
+    kind: MessageMediaKind;
+    mimetype?: string;
+    fileName?: string;
+    fileLength?: number;
+    caption?: string;
+    seconds?: number;
+    width?: number;
+    height?: number;
+  };
 };
 
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
@@ -61,12 +92,16 @@ export type MessageDiagnostic = Omit<MessageStatus, "to"> & {
 
 export type MessageService = {
   send: (command: SendMessageCommand) => Promise<MessageSendResult>;
+  sendMedia: (command: SendMediaCommand) => Promise<MessageSendResult>;
+  downloadInboundMedia: (messageId: string) => Promise<DownloadedInboundMedia>;
   findStatus: (messageId: string) => MessageStatus | null;
   findDiagnostic: (messageId: string) => MessageDiagnostic | null;
 };
 
 type MessageServiceDependencies = {
   sendText: (to: string, text: string, options: MessageSendOptions) => Promise<MessageSendResult>;
+  sendMedia: (to: string, media: MessageMediaInput, options: MessageSendOptions) => Promise<MessageSendResult>;
+  downloadInboundMedia: (messageId: string) => Promise<DownloadedInboundMedia>;
   getStatus: (messageId: string) => MessageStatusRecord | null | undefined;
   getWebhookDelivery?: (messageId: string) => MessageWebhookDiagnostic | null;
 };
@@ -100,6 +135,14 @@ function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
   };
 }
 
+function sendOptions(command: { idempotencyKey?: string; replyToMessageId?: string }, messageId: string): MessageSendOptions {
+  return {
+    ...(command.idempotencyKey !== undefined ? { idempotencyKey: command.idempotencyKey } : {}),
+    messageId,
+    ...(command.replyToMessageId !== undefined ? { replyToMessageId: command.replyToMessageId } : {}),
+  };
+}
+
 export function createMessageService(
   deps: MessageServiceDependencies,
   options: MessageServiceOptions = {},
@@ -108,10 +151,23 @@ export function createMessageService(
 
   return {
     send(command: SendMessageCommand): Promise<MessageSendResult> {
-      return deps.sendText(command.to, command.text, {
-        idempotencyKey: command.idempotencyKey,
-        messageId: createMessageId(),
-      });
+      return deps.sendText(command.to, command.text, sendOptions(command, createMessageId()));
+    },
+    sendMedia(command: SendMediaCommand): Promise<MessageSendResult> {
+      return deps.sendMedia(
+        command.to,
+        {
+          kind: command.kind,
+          data: command.data,
+          mimetype: command.mimetype,
+          ...(command.caption !== undefined ? { caption: command.caption } : {}),
+          ...(command.fileName !== undefined ? { fileName: command.fileName } : {}),
+        },
+        sendOptions(command, createMessageId()),
+      );
+    },
+    downloadInboundMedia(messageId: string): Promise<DownloadedInboundMedia> {
+      return deps.downloadInboundMedia(messageId);
     },
     findStatus(messageId: string): MessageStatus | null {
       const status = deps.getStatus(messageId);
@@ -119,9 +175,7 @@ export function createMessageService(
     },
     findDiagnostic(messageId: string): MessageDiagnostic | null {
       const status = deps.getStatus(messageId);
-      if (!status) {
-        return null;
-      }
+      if (!status) return null;
 
       return {
         id: status.id,
