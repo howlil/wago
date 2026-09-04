@@ -226,6 +226,31 @@ describe("outbound message outcomes", () => {
     expect(getMessageStatus("trace-ack")?.serverAcceptedAt).toBeDefined();
   });
 
+  it("treats a receipt as acceptance even when the server ACK event arrives later", async () => {
+    const { ev } = outcomeSocket();
+    rememberPendingMessageStatus({
+      id: "trace-out-of-order",
+      providerMessageId: "provider-out-of-order",
+      to: resolvedJid,
+      recipientJid,
+    });
+
+    ev.emit("message-receipt.update", [
+      { key: { id: "provider-out-of-order" }, receipt: { receiptTimestamp: 1_788_000_000 } },
+    ]);
+
+    expect(getMessageStatus("trace-out-of-order")).toMatchObject({
+      status: "accepted",
+      deliveryEvidence: "delivered",
+    });
+    expect((await getRecipientByJid(recipientJid))?.lastSuccessfulOutboundAt).toBeDefined();
+
+    ev.emit("messages.update", [
+      { key: { id: "provider-out-of-order" }, update: { status: WAMessageStatus.SERVER_ACK } },
+    ]);
+    expect(getMessageStatus("trace-out-of-order")?.deliveryEvidence).toBe("delivered");
+  });
+
   it("promotes delivery evidence monotonically from delivered to read to played", () => {
     const { ev } = outcomeSocket();
     rememberPendingMessageStatus({
