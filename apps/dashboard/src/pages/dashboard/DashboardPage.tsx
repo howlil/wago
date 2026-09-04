@@ -19,14 +19,16 @@ export function DashboardPage() {
       onRefresh={() => void dashboard.refresh({ showLoading: true })}
       refreshLabel="Refresh status"
     >
-      <div className={pageFrameClass}>
-        <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
-        <OperationalReadinessBanner readiness={dashboard.readiness} />
-        <NoticeBanner notice={dashboard.notice} />
-        <div className="mt-3">
-          <DashboardMainColumn dashboard={dashboard} />
+      <div className="w-full">
+        <div className={pageFrameClass}>
+          <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
+          <OperationalReadinessBanner readiness={dashboard.readiness} />
+          <NoticeBanner notice={dashboard.notice} />
+          <div className="mt-3">
+            <DashboardMainColumn dashboard={dashboard} />
+          </div>
+          <DashboardDiagnostics dashboard={dashboard} />
         </div>
-        <DashboardDiagnostics dashboard={dashboard} />
       </div>
       <DashboardDialogs dashboard={dashboard} />
     </AppShell>
