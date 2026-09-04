@@ -163,12 +163,7 @@ function pruneMessageDiagnostics(nowMs: number): void {
 
 function recordEvidenceActivity(messageId: string, evidence: MessageDeliveryEvidence): void {
   if (evidence === "submitted" || evidence === "server_accepted") return;
-  const title =
-    evidence === "delivered"
-      ? "Message delivered"
-      : evidence === "read"
-        ? "Message read"
-        : "Message played";
+  const title = evidence === "delivered" ? "Message delivered" : evidence === "read" ? "Message read" : "Message played";
   void recordActivity({
     level: "info",
     category: "messaging",
@@ -301,7 +296,11 @@ export function updateMessageDeliveryEvidence(
       ? observedAtMs
       : null;
   const readAt = current.readAt ? new Date(current.readAt).getTime() : evidence === "read" ? observedAtMs : null;
-  const playedAt = current.playedAt ? new Date(current.playedAt).getTime() : evidence === "played" ? observedAtMs : null;
+  const playedAt = current.playedAt
+    ? new Date(current.playedAt).getTime()
+    : evidence === "played"
+      ? observedAtMs
+      : null;
 
   updateEvidence.run(evidence, observedAtMs, serverAcceptedAt, deliveredAt, readAt, playedAt, messageId);
   recordEvidenceActivity(messageId, evidence);
