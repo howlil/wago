@@ -15,6 +15,14 @@ This file is the thin, agent-agnostic gateway for repository work. It routes age
 
 Do not add workflow mirrors, sprint diaries, generic skills, temporary plans, checkpoints, or duplicate sources of truth under `.agents/`.
 
+## Devland semantic control plane
+
+`.devland/project.yaml` contains only the minimal machine-readable engineering facts Devland needs for risk-budgeted context, deterministic diagnostics, and flow semantics. `.devland/state.yaml` is optional lightweight coordination state. Neither file replaces or outranks Wago's authoritative `.agents/*` product, architecture, decision, quality, or current-iteration knowledge.
+
+Use Devland `resolve_context`, `doctor`, and `flow_report` only when their semantics are useful to the active work. Repository reads/writes, tests, Git, CI, deployment, and production evidence remain owned by the surrounding runtime and Wago repository tooling.
+
+Do not copy `.agents/*` prose into `.devland/*` merely to make Devland self-contained. Keep the Devland surface small and remove it if dogfooding shows that it does not change engineering decisions.
+
 ## Normal read order
 
 Always read `.agents/CURRENT_ITERATION.md` before changing the repository.
@@ -41,6 +49,8 @@ When sources conflict, use this order:
 5. `.agents/CODE_PATTERNS.md` and `.agents/QUALITY.md`;
 6. current code and tests for implementation details;
 7. historical plans, old PR descriptions, stale docs, and chat history.
+
+Devland output is derived engineering guidance and feedback; it does not change this Wago authority order.
 
 ## Operating boundary
 
