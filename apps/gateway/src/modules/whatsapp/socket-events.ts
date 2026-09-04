@@ -8,7 +8,14 @@ import {
 } from "../messages/index.js";
 import { markRecipientReachoutRestricted, recordOutboundAcknowledged } from "../messages/outbound-policy.js";
 import { rememberRecipientResolution } from "../recipients/store.js";
-import { enqueueIncomingMessageWebhook } from "../webhooks/index.js";
+import {
+  enqueueIncomingMediaWebhook,
+  enqueueIncomingMessageWebhook,
+} from "../webhooks/index.js";
+import type {
+  IncomingMediaWebhookInput,
+  IncomingMessageWebhookInput,
+} from "../webhooks/delivery-webhook-core.js";
 import {
   invalidateAccountHealth,
   markReachoutRestricted,
@@ -19,9 +26,15 @@ import {
 import { bindWhatsAppAccount, clearWhatsAppBinding } from "./binding-store.js";
 import { markConnected, markDisconnected, markQr } from "./connection-state.js";
 import { classifyDisconnect } from "./disconnect-classifier.js";
-import { type InboundTextMessage, normalizeInboundTextMessage } from "./inbound-message.js";
+import {
+  type InboundMediaMessage,
+  type InboundTextMessage,
+  normalizeInboundMediaMessage,
+  normalizeInboundTextMessage,
+} from "./inbound-message.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
+import { rememberRecentInboundMessage } from "./recent-inbound-store.js";
 import { invalidateRecipientLookupCache } from "./recipient-cache.js";
 import { rememberRecipientIdentity } from "./recipient-identity-store.js";
 import {
@@ -46,7 +59,8 @@ type RegisterSocketEventsOptions = {
   resetReconnectAttempt: () => void;
   scheduleReconnect: (generation: number) => void;
   clearReconnectTimer?: () => void;
-  onIncomingMessage?: (message: InboundTextMessage) => void;
+  onIncomingMessage?: (message: IncomingMessageWebhookInput) => void;
+  onIncomingMediaMessage?: (message: IncomingMediaWebhookInput) => void;
 };
 
 function receiptTimestamp(value: unknown): Date {
@@ -73,6 +87,33 @@ function acceptPendingOutbound(providerMessageId: string, storedMessage: StoredM
   updateMessageStatusByProviderId(providerMessageId, { status: "accepted" });
 }
 
+function canonicalQuotedMessageId(providerMessageId?: string): string | undefined {
+  if (!providerMessageId) return undefined;
+  return getMessageStatusByProviderId(providerMessageId)?.id ?? undefined;
+}
+
+function incomingTextWebhookInput(message: InboundTextMessage): IncomingMessageWebhookInput {
+  const replyToMessageId = canonicalQuotedMessageId(message.quotedProviderMessageId);
+  return {
+    messageId: message.messageId,
+    from: message.from,
+    text: message.text,
+    receivedAt: message.receivedAt,
+    ...(replyToMessageId ? { replyToMessageId } : {}),
+  };
+}
+
+function incomingMediaWebhookInput(message: InboundMediaMessage): IncomingMediaWebhookInput {
+  const replyToMessageId = canonicalQuotedMessageId(message.quotedProviderMessageId);
+  return {
+    messageId: message.messageId,
+    from: message.from,
+    receivedAt: message.receivedAt,
+    media: message.media,
+    ...(replyToMessageId ? { replyToMessageId } : {}),
+  };
+}
+
 export function registerSocketEvents({
   socket,
   generation,
@@ -84,6 +125,7 @@ export function registerSocketEvents({
   scheduleReconnect,
   clearReconnectTimer,
   onIncomingMessage = enqueueIncomingMessageWebhook,
+  onIncomingMediaMessage = enqueueIncomingMediaWebhook,
 }: RegisterSocketEventsOptions): void {
   socket.ev.on("creds.update", () => {
     if (!isCurrentGeneration(generation)) return;
@@ -128,21 +170,41 @@ export function registerSocketEvents({
     if (!isCurrentGeneration(generation) || event.type !== "notify") return;
 
     for (const message of event.messages) {
-      const incoming = normalizeInboundTextMessage(message);
-      if (!incoming) continue;
+      const incomingText = normalizeInboundTextMessage(message);
+      if (incomingText) {
+        rememberRecentInboundMessage(incomingText.messageId, incomingText.from, message);
+        auditBaileys({
+          level: "info",
+          category: "messaging",
+          code: "baileys.message.received",
+          title: "Incoming WhatsApp message received",
+          description: "A direct incoming text message was accepted for Wago webhook processing.",
+          metadata: {
+            messageId: incomingText.messageId,
+            socketGeneration: generation,
+          },
+        });
+        onIncomingMessage(incomingTextWebhookInput(incomingText));
+        continue;
+      }
 
+      const incomingMedia = normalizeInboundMediaMessage(message);
+      if (!incomingMedia) continue;
+
+      rememberRecentInboundMessage(incomingMedia.messageId, incomingMedia.from, message);
       auditBaileys({
         level: "info",
         category: "messaging",
-        code: "baileys.message.received",
-        title: "Incoming WhatsApp message received",
-        description: "A direct incoming text message was accepted for Wago webhook processing.",
+        code: "baileys.message.media_received",
+        title: "Incoming WhatsApp media received",
+        description: "Direct incoming media metadata was accepted; media bytes remain ephemeral.",
         metadata: {
-          messageId: incoming.messageId,
+          messageId: incomingMedia.messageId,
+          mediaKind: incomingMedia.media.kind,
           socketGeneration: generation,
         },
       });
-      onIncomingMessage(incoming);
+      onIncomingMediaMessage(incomingMediaWebhookInput(incomingMedia));
     }
   });
 
