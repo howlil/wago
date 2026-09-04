@@ -27,21 +27,18 @@ const navigationItems: NavigationItem[] = [
   { href: "/audit", label: "Audit Log", icon: ScrollText },
 ];
 
-const navigationMotion = {
-  type: "spring",
-  stiffness: 420,
-  damping: 34,
-  mass: 0.7,
-} as const;
+const navigationMotion = { duration: 0.14, ease: "easeOut" } as const;
 
 function WorkspaceNavigation({
   activePath,
   collapsed = false,
   onNavigate,
+  motionScope,
 }: {
   activePath: WorkspacePath;
   collapsed?: boolean;
   onNavigate?: () => void;
+  motionScope: "desktop" | "mobile";
 }) {
   return (
     <div className="grid gap-1">
@@ -54,27 +51,25 @@ function WorkspaceNavigation({
             aria-current={active ? "page" : undefined}
             aria-label={collapsed ? item.label : undefined}
             onClick={onNavigate}
-            whileHover={{ x: collapsed ? 0 : 2 }}
+            whileHover={{ x: collapsed ? 0 : 1 }}
             whileTap={{ scale: 0.985 }}
             transition={navigationMotion}
             className={`relative isolate flex h-10 items-center overflow-hidden border-y border-transparent text-[13px] font-medium ${
-              active ? "text-wago-ink" : "text-wago-secondary hover:bg-wago-hover hover:text-wago-ink"
+              active ? "text-wago-ink" : "text-wago-secondary hover:bg-wago-console-row-hover hover:text-wago-ink"
             } ${collapsed ? "mx-auto w-10 justify-center" : "gap-2.5 px-3"}`}
           >
             {active ? (
               <>
                 <motion.span
+                  layoutId={`${motionScope}-global-active-surface`}
                   aria-hidden="true"
-                  className="absolute inset-0 -z-10 border-y border-wago-sidebar-active-line bg-wago-sidebar-active"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.14 }}
+                  className="absolute inset-0 -z-10 border-y border-wago-selected-line bg-wago-selected"
+                  transition={navigationMotion}
                 />
                 <motion.span
+                  layoutId={`${motionScope}-global-active-rule`}
                   aria-hidden="true"
-                  className="absolute inset-y-2 left-0 w-[3px] bg-wago-brand"
-                  initial={{ opacity: 0, scaleY: 0.55 }}
-                  animate={{ opacity: 1, scaleY: 1 }}
+                  className="absolute inset-y-2 left-0 w-0.5 bg-wago-brand"
                   transition={navigationMotion}
                 />
               </>
@@ -98,12 +93,12 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-wago-line bg-wago-sidebar transition-[width] duration-200 lg:flex ${
+        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-wago-workspace-line bg-wago-sidebar transition-[width] duration-150 lg:flex ${
           collapsed ? "w-14" : "w-[196px]"
         }`}
       >
         <div
-          className={`flex min-h-14 items-center border-b border-wago-line px-3 ${
+          className={`flex min-h-12 items-center border-b border-wago-workspace-line px-3 ${
             collapsed ? "justify-center" : "justify-between"
           }`}
         >
@@ -115,7 +110,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
                 type="button"
                 onClick={onToggleCollapsed}
                 aria-label="Collapse sidebar"
-                whileTap={{ scale: 0.94 }}
+                whileTap={{ scale: 0.96 }}
                 transition={navigationMotion}
               >
                 <PanelLeftClose size={16} />
@@ -124,19 +119,19 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
           ) : null}
         </div>
 
-        <nav className="px-2 py-3" aria-label="Application navigation">
-          <WorkspaceNavigation activePath={activePath} collapsed={collapsed} />
+        <nav className="border-b border-wago-workspace-line px-2 py-2.5" aria-label="Application navigation">
+          <WorkspaceNavigation activePath={activePath} collapsed={collapsed} motionScope="desktop" />
         </nav>
 
         {collapsed ? (
-          <div className="mt-auto border-t border-wago-line p-2">
+          <div className="mt-auto border-t border-wago-workspace-line p-2">
             <Tooltip content="Expand sidebar">
               <motion.button
                 className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md text-wago-muted transition-colors hover:bg-wago-hover hover:text-wago-ink"
                 type="button"
                 onClick={onToggleCollapsed}
                 aria-label="Expand sidebar"
-                whileTap={{ scale: 0.94 }}
+                whileTap={{ scale: 0.96 }}
                 transition={navigationMotion}
               >
                 <PanelLeftOpen size={16} />
@@ -155,7 +150,7 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
         <SheetContent>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <SheetDescription className="sr-only">Application navigation</SheetDescription>
-          <div className="flex min-h-14 items-center justify-between border-b border-wago-line px-3">
+          <div className="flex min-h-12 items-center justify-between border-b border-wago-workspace-line px-3">
             <AppBrand />
             <SheetClose asChild>
               <button
@@ -167,8 +162,8 @@ export function AppSidebar({ activePath, collapsed, mobileOpen, onToggleCollapse
               </button>
             </SheetClose>
           </div>
-          <nav className="px-2 py-3" aria-label="Mobile application navigation">
-            <WorkspaceNavigation activePath={activePath} onNavigate={onCloseMobile} />
+          <nav className="px-2 py-2.5" aria-label="Mobile application navigation">
+            <WorkspaceNavigation activePath={activePath} onNavigate={onCloseMobile} motionScope="mobile" />
           </nav>
         </SheetContent>
       </Sheet>

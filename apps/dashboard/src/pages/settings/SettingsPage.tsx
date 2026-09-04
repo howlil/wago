@@ -18,12 +18,7 @@ const settingsSections = [
   { id: "sessions", href: "#sessions", label: "Sessions" },
 ] as const satisfies ReadonlyArray<{ id: SettingsModule; href: string; label: string }>;
 
-const sectionNavigationMotion = {
-  type: "spring",
-  stiffness: 420,
-  damping: 34,
-  mass: 0.7,
-} as const;
+const sectionNavigationMotion = { duration: 0.14, ease: "easeOut" } as const;
 
 function moduleFromHash(): SettingsModule {
   if (typeof window === "undefined") return "access";
@@ -45,40 +40,38 @@ export function SettingsPage() {
     <AppShell title="Settings" activePath="/settings">
       <NoticeBanner notice={settings.notice} />
 
-      <div className="grid w-full items-start gap-5 lg:grid-cols-[176px_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[192px_minmax(0,1fr)]">
+      <div className="grid w-full items-start gap-4 lg:grid-cols-[160px_minmax(0,1fr)] lg:gap-5 2xl:grid-cols-[168px_minmax(0,1fr)]">
         <nav
-          className="grid grid-cols-2 gap-1 border-b border-wago-line pb-2 sm:grid-cols-4 lg:sticky lg:top-20 lg:grid-cols-1 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-3"
+          className="grid grid-cols-2 gap-1 border-b border-wago-workspace-line pb-2 sm:grid-cols-4 lg:sticky lg:top-16 lg:grid-cols-1 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-2.5"
           aria-label="Settings sections"
         >
           {settingsSections.map((section) => {
             const active = section.id === activeModule;
             return (
               <motion.a
-                className={`relative isolate overflow-hidden px-3 py-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wago-brand/30 ${
-                  active ? "text-wago-ink" : "text-wago-muted hover:bg-wago-hover hover:text-wago-ink"
+                className={`relative isolate flex h-9 items-center overflow-hidden px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wago-brand/30 ${
+                  active ? "text-wago-ink" : "text-wago-muted hover:bg-wago-console-row-hover hover:text-wago-ink"
                 }`}
                 href={section.href}
                 key={section.id}
                 aria-current={active ? "page" : undefined}
                 onClick={() => setActiveModule(section.id)}
-                whileHover={{ x: active ? 0 : 2 }}
+                whileHover={{ x: active ? 0 : 1 }}
                 whileTap={{ scale: 0.985 }}
                 transition={sectionNavigationMotion}
               >
                 {active ? (
                   <>
                     <motion.span
+                      layoutId="settings-active-surface"
                       aria-hidden="true"
-                      className="absolute inset-0 -z-10 border-y border-wago-sidebar-active-line bg-wago-sidebar-active"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.14 }}
+                      className="absolute inset-0 -z-10 border-y border-wago-selected-line bg-wago-selected"
+                      transition={sectionNavigationMotion}
                     />
                     <motion.span
+                      layoutId="settings-active-rule"
                       aria-hidden="true"
                       className="absolute bottom-0 left-3 right-3 h-0.5 bg-wago-brand lg:inset-y-2 lg:left-0 lg:right-auto lg:h-auto lg:w-0.5"
-                      initial={{ opacity: 0, scale: 0.55 }}
-                      animate={{ opacity: 1, scale: 1 }}
                       transition={sectionNavigationMotion}
                     />
                   </>
@@ -89,7 +82,14 @@ export function SettingsPage() {
           })}
         </nav>
 
-        <div className="min-w-0 w-full" aria-live="polite">
+        <motion.div
+          key={activeModule}
+          className="min-w-0 w-full"
+          aria-live="polite"
+          initial={{ opacity: 0.86 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.1 }}
+        >
           {activeModule === "access" ? (
             <GatewayCredentialsCard
               appId={settings.appId}
@@ -127,7 +127,7 @@ export function SettingsPage() {
               onSignOutAll={() => void settings.handleSignOutAll()}
             />
           ) : null}
-        </div>
+        </motion.div>
       </div>
 
       <RotateApiKeyDialog

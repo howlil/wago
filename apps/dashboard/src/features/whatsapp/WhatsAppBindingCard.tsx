@@ -81,9 +81,9 @@ export function WhatsAppBindingCard({
             disabled={health !== "ok" || isPairing || pairingInProgress}
           >
             {isPairing || (pairingInProgress && status === "connecting") ? (
-              <Loader2 className="animate-spin" size={15} />
+              <Loader2 className="animate-spin" size={14} />
             ) : (
-              <QrCode size={15} />
+              <QrCode size={14} />
             )}
             {pairButtonLabel}
           </button>
@@ -94,38 +94,38 @@ export function WhatsAppBindingCard({
             onClick={onChangeAccount}
             disabled={health !== "ok" || isRebinding}
           >
-            {isRebinding ? <Loader2 className="animate-spin" size={15} /> : <Link2Off size={15} />}
+            {isRebinding ? <Loader2 className="animate-spin" size={14} /> : <Link2Off size={14} />}
             Change account
           </button>
         ) : null}
       </div>
 
       {qrImage && status !== "connected" ? (
-        <div className="border-b border-wago-line py-4">
+        <div className="border-b border-wago-workspace-line py-3">
           <QrPairingCard qrImage={qrImage} />
         </div>
       ) : null}
 
-      <dl className="mb-0 grid gap-4 border-b border-wago-line py-4 md:grid-cols-3 md:gap-0 md:divide-x md:divide-wago-line">
-        <div className="min-w-0 md:pr-4">
+      <dl className="mb-0 grid gap-3 border-b border-wago-workspace-line py-3 md:grid-cols-3 md:gap-0 md:divide-x md:divide-wago-workspace-line">
+        <div className="min-w-0 md:pr-3">
           <dt className={keyValueLabelClass}>Connection</dt>
           <dd className={`${keyValueClass} mb-0`}>{connectionLabel(health, status)}</dd>
         </div>
-        <div className="min-w-0 border-t border-wago-line pt-4 md:border-t-0 md:px-4 md:pt-0">
+        <div className="min-w-0 border-t border-wago-workspace-line pt-3 md:border-t-0 md:px-3 md:pt-0">
           <dt className={keyValueLabelClass}>Account</dt>
-          <dd className="mb-0 mt-1 min-w-0">
+          <dd className="mb-0 mt-0.5 min-w-0">
             {binding.state === "bound" ? (
               <strong className="break-all font-mono text-xs font-semibold text-wago-brand-strong">
                 {binding.phone}
               </strong>
             ) : (
-              <span className="text-sm font-medium text-wago-muted">Not paired</span>
+              <span className="text-[13px] font-medium text-wago-muted">Not paired</span>
             )}
           </dd>
         </div>
-        <div className="min-w-0 border-t border-wago-line pt-4 md:border-t-0 md:pl-4 md:pt-0">
+        <div className="min-w-0 border-t border-wago-workspace-line pt-3 md:border-t-0 md:pl-3 md:pt-0">
           <dt className={keyValueLabelClass}>Bound</dt>
-          <dd className="mb-0 mt-1 text-xs font-medium text-wago-ink">
+          <dd className="mb-0 mt-0.5 text-xs font-medium text-wago-ink">
             {binding.state === "bound" ? formatBoundAt(binding.boundAt) : "—"}
           </dd>
         </div>

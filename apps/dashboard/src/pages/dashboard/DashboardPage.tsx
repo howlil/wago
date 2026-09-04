@@ -22,7 +22,7 @@ export function DashboardPage() {
         <OverviewCards health={dashboard.health} status={dashboard.status} accountHealth={dashboard.accountHealth} />
         <OperationalReadinessBanner readiness={dashboard.readiness} />
         <NoticeBanner notice={dashboard.notice} />
-        <div className="mt-5">
+        <div className="mt-3">
           <DashboardMainColumn dashboard={dashboard} />
         </div>
         <DashboardDiagnostics dashboard={dashboard} />

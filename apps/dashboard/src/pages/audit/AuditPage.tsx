@@ -31,7 +31,7 @@ function initialAuditFilters(): ActivityLogInitialFilters {
 export function AuditPage() {
   return (
     <AppShell title="Audit Log" activePath="/audit">
-      <ActivityLogPanel enabled heading="Operational history" initialFilters={initialAuditFilters()} />
+      <ActivityLogPanel enabled initialFilters={initialAuditFilters()} />
     </AppShell>
   );
 }
