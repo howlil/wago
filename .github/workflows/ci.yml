@@ -77,21 +77,23 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Devland
+      - name: Install isolated Devland
         shell: bash
         run: |
+          set -euo pipefail
+          mv .dogfood/devland "$RUNNER_TEMP/devland"
           corepack enable
-          pnpm install --dir .dogfood/devland --frozen-lockfile
-          npm install --prefix .dogfood/devland/adapters/openai/chatgpt-plugin
+          pnpm install --dir "$RUNNER_TEMP/devland" --frozen-lockfile
+          npm install --prefix "$RUNNER_TEMP/devland/adapters/openai/chatgpt-plugin"
 
       - name: Validate Wago canonical context
-        run: node .dogfood/devland/bin/devland.mjs validate
+        run: node "$RUNNER_TEMP/devland/bin/devland.mjs" validate
 
       - name: Exercise read-only MCP feedback loop
         shell: bash
         run: |
           set -euo pipefail
-          PORT=8787 node .dogfood/devland/adapters/openai/chatgpt-plugin/server.mjs >/tmp/devland-mcp.log 2>&1 &
+          PORT=8787 node "$RUNNER_TEMP/devland/adapters/openai/chatgpt-plugin/server.mjs" >/tmp/devland-mcp.log 2>&1 &
           pid=$!
           trap 'kill "$pid" >/dev/null 2>&1 || true; cat /tmp/devland-mcp.log || true' EXIT
 
