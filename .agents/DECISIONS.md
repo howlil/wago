@@ -113,3 +113,11 @@ This file records material decisions whose rationale is expensive to rediscover.
 **Why:** LID is provider addressing that can change independently of Wago recipient consent/policy, and delivery/read receipts are observations rather than operation-state transitions. Collapsing either distinction would create duplicate recipient policy records, break public status compatibility, or overstate what WhatsApp has actually guaranteed.
 
 **Implication:** `lid-mapping.update` invalidates stale recipient routing without creating a second logical recipient; delivery evidence may advance but never regress; read/played are optional provider evidence; public clients can continue relying on the existing operation status contract while newer clients inspect additive evidence and timestamps.
+
+## D15 — Reply context and media remain bounded integration capabilities
+
+**Decision:** quoted-message context and media support extend Wago's integration surface without creating durable chat history or a dashboard inbox. Recent inbound provider messages may be retained only in bounded process memory for short-lived reply/download operations. Incoming media webhooks carry metadata only; outbound media accepts caller-supplied bytes rather than remote media URLs.
+
+**Why:** contextual replies and media are useful gateway capabilities, but persisting message bodies/media blobs or fetching arbitrary operator-provided URLs would materially expand privacy, storage, SSRF, and lifecycle risk beyond the single-account integration-gateway product.
+
+**Implication:** `replyToMessageId` must resolve to recent same-recipient inbound context or fail explicitly; inbound media download may expire across TTL/process restart and returns an unavailable result rather than pretending durability; media bytes are never inserted into SQLite/webhook payloads; terminal inbound text/media webhook payloads are redacted; outbound binary payloads are size-bounded and no arbitrary remote media fetch path is introduced.
