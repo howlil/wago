@@ -6,7 +6,10 @@ import { createMessageRouter } from "./routes.js";
 
 const service = {
   send: vi.fn(),
+  sendMedia: vi.fn(),
+  downloadInboundMedia: vi.fn(),
   findStatus: vi.fn(),
+  findDiagnostic: vi.fn(),
 };
 
 function makeApp() {
@@ -19,8 +22,7 @@ function makeApp() {
 describe("message router dependency injection", () => {
   beforeEach(() => {
     resetAccessStateForTest({ apiKey: "contract-key", apiKeySource: "env" });
-    service.send.mockReset();
-    service.findStatus.mockReset();
+    for (const mock of Object.values(service)) mock.mockReset();
   });
 
   it("uses the injected service for outbound sends", async () => {
@@ -35,7 +37,6 @@ describe("message router dependency injection", () => {
     expect(service.send).toHaveBeenCalledWith({
       to: "6281234567890",
       text: "Hello",
-      idempotencyKey: undefined,
     });
   });
 });
