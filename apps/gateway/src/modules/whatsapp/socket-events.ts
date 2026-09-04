@@ -2,6 +2,7 @@ import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
 import {
   getMessageStatusByProviderId,
+  type StoredMessageStatus,
   updateMessageDeliveryEvidenceByProviderId,
   updateMessageStatusByProviderId,
 } from "../messages/index.js";
@@ -51,6 +52,25 @@ type RegisterSocketEventsOptions = {
 function receiptTimestamp(value: unknown): Date {
   const seconds = Number(value);
   return Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : new Date();
+}
+
+function acceptPendingOutbound(providerMessageId: string, storedMessage: StoredMessageStatus | null): void {
+  if (storedMessage?.status !== "pending") return;
+
+  try {
+    recordOutboundAcknowledged(storedMessage.recipientJid ?? storedMessage.to, storedMessage.to);
+  } catch (error) {
+    logger.error(
+      {
+        event: "outbound.ack_persistence_failed",
+        errorName: error instanceof Error ? error.name : "UNKNOWN",
+        messageId: storedMessage.id,
+      },
+      "WhatsApp acknowledged a message but Wago could not persist recipient success state",
+    );
+  }
+
+  updateMessageStatusByProviderId(providerMessageId, { status: "accepted" });
 }
 
 export function registerSocketEvents({
@@ -170,22 +190,7 @@ export function registerSocketEvents({
       }
 
       if (entry.update.status >= WAMessageStatus.SERVER_ACK) {
-        if (storedMessage?.status === "pending") {
-          try {
-            recordOutboundAcknowledged(storedMessage.recipientJid ?? storedMessage.to, storedMessage.to);
-          } catch (error) {
-            logger.error(
-              {
-                event: "outbound.ack_persistence_failed",
-                errorName: error instanceof Error ? error.name : "UNKNOWN",
-                messageId,
-              },
-              "WhatsApp acknowledged a message but Wago could not persist recipient success state",
-            );
-          }
-        }
-
-        updateMessageStatusByProviderId(providerMessageId, { status: "accepted" });
+        acceptPendingOutbound(providerMessageId, storedMessage);
         updateMessageDeliveryEvidenceByProviderId(providerMessageId, "server_accepted");
         auditBaileys({
           level: "info",
@@ -209,6 +214,10 @@ export function registerSocketEvents({
     for (const entry of updates) {
       const providerMessageId = entry.key?.id;
       if (!providerMessageId) continue;
+
+      const storedMessage = getMessageStatusByProviderId(providerMessageId);
+      if (!storedMessage || storedMessage.status === "rejected") continue;
+      acceptPendingOutbound(providerMessageId, storedMessage);
 
       if (entry.receipt.playedTimestamp != null) {
         updateMessageDeliveryEvidenceByProviderId(
