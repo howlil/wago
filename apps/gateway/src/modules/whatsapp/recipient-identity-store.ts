@@ -1,4 +1,4 @@
-import { getDatabase } from "../../infrastructure/database.js";
+import { getDatabase, withTransaction } from "../../infrastructure/database.js";
 
 export type RecipientIdentity = {
   phoneJid: string;
@@ -14,6 +14,9 @@ type RecipientIdentityRow = {
 
 const database = getDatabase();
 const selectByPhone = database.prepare("SELECT * FROM recipient_identities WHERE phone_jid = ?");
+const deleteConflictingLid = database.prepare(
+  "DELETE FROM recipient_identities WHERE lid_jid = ? AND phone_jid <> ?",
+);
 const upsertIdentity = database.prepare(`
   INSERT INTO recipient_identities (phone_jid, lid_jid, updated_at)
   VALUES (?, ?, ?)
@@ -36,13 +39,16 @@ export function getRecipientIdentity(phoneJid: string): RecipientIdentity | null
 }
 
 export function rememberRecipientIdentity(phoneJid: string, lidJid: string): RecipientIdentity {
-  const updatedAt = Date.now();
-  upsertIdentity.run(phoneJid, lidJid, updatedAt);
-  return {
-    phoneJid,
-    lidJid,
-    updatedAt: new Date(updatedAt).toISOString(),
-  };
+  return withTransaction(() => {
+    const updatedAt = Date.now();
+    deleteConflictingLid.run(lidJid, phoneJid);
+    upsertIdentity.run(phoneJid, lidJid, updatedAt);
+    return {
+      phoneJid,
+      lidJid,
+      updatedAt: new Date(updatedAt).toISOString(),
+    };
+  });
 }
 
 export function resetRecipientIdentityStoreForTest(): void {
