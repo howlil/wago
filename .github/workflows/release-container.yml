@@ -244,3 +244,41 @@ jobs:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.manifest.outputs.digest }}
           push-to-registry: true
+
+      - name: Write release evidence
+        env:
+          IMAGE_TAG: ${{ steps.manifest.outputs.tag }}
+          IMAGE_DIGEST: ${{ steps.manifest.outputs.digest }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const evidence = {
+            schema: 'wago.release-evidence/v1',
+            repository: process.env.REPOSITORY,
+            source_sha: process.env.SOURCE_SHA,
+            source_ref: process.env.SOURCE_REF,
+            image: process.env.IMAGE_NAME,
+            tag: process.env.IMAGE_TAG,
+            manifest_digest: process.env.IMAGE_DIGEST,
+            published_at: new Date().toISOString(),
+          };
+
+          fs.writeFileSync(
+            path.join(process.env.RUNNER_TEMP, 'release-evidence.json'),
+            `${JSON.stringify(evidence, null, 2)}\n`,
+          );
+          NODE
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/release-evidence.json
+          if-no-files-found: error
+          retention-days: 30
