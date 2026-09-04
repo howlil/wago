@@ -1,12 +1,12 @@
 import type { WAMessage } from "@whiskeysockets/baileys";
 import { describe, expect, it } from "vitest";
-import { normalizeInboundTextMessage } from "./inbound-message.js";
+import { normalizeInboundMediaMessage, normalizeInboundTextMessage } from "./inbound-message.js";
 
 function message(input: Partial<WAMessage> & { key: WAMessage["key"] }): WAMessage {
   return input as WAMessage;
 }
 
-describe("inbound text normalization", () => {
+describe("inbound message normalization", () => {
   const now = () => new Date("2026-09-02T00:00:00.000Z");
 
   it("normalizes a direct incoming text into a stable Wago message id", () => {
@@ -25,6 +25,60 @@ describe("inbound text normalization", () => {
       receivedAt: "2026-09-02T00:00:00.000Z",
     });
     expect(first?.messageId).toMatch(/^in_[a-f0-9]{32}$/);
+  });
+
+  it("retains only the provider quote reference for internal canonical mapping", () => {
+    const result = normalizeInboundTextMessage(
+      message({
+        key: { id: "provider-quoted", remoteJid: "6281234567890@s.whatsapp.net", fromMe: false },
+        message: {
+          extendedTextMessage: {
+            text: "reply",
+            contextInfo: { stanzaId: "provider-outbound" },
+          },
+        },
+      }),
+      now,
+    );
+
+    expect(result).toMatchObject({
+      text: "reply",
+      quotedProviderMessageId: "provider-outbound",
+    });
+  });
+
+  it("normalizes supported direct media as metadata without downloading bytes", () => {
+    const result = normalizeInboundMediaMessage(
+      message({
+        key: { id: "provider-image", remoteJid: "6281234567890@s.whatsapp.net", fromMe: false },
+        message: {
+          imageMessage: {
+            url: "https://example.invalid/image",
+            mimetype: "image/jpeg",
+            caption: "proof",
+            fileLength: 1234,
+            width: 640,
+            height: 480,
+            contextInfo: { stanzaId: "provider-outbound" },
+          },
+        },
+      }),
+      now,
+    );
+
+    expect(result).toMatchObject({
+      from: "6281234567890",
+      quotedProviderMessageId: "provider-outbound",
+      media: {
+        kind: "image",
+        mimetype: "image/jpeg",
+        caption: "proof",
+        fileLength: 1234,
+        width: 640,
+        height: 480,
+      },
+    });
+    expect(result).not.toHaveProperty("data");
   });
 
   it("keeps the logical message id stable across device-suffixed phone JIDs", () => {
@@ -65,7 +119,7 @@ describe("inbound text normalization", () => {
     expect(result?.text).toBe("from lid");
   });
 
-  it("ignores outgoing, group, broadcast, empty, and non-text messages", () => {
+  it("ignores outgoing, group, broadcast, empty, and unsupported content", () => {
     expect(
       normalizeInboundTextMessage(
         message({
@@ -87,10 +141,10 @@ describe("inbound text normalization", () => {
     ).toBeNull();
 
     expect(
-      normalizeInboundTextMessage(
+      normalizeInboundMediaMessage(
         message({
           key: { id: "status", remoteJid: "status@broadcast", fromMe: false },
-          message: { conversation: "status" },
+          message: { imageMessage: { url: "https://example.invalid/status" } },
         }),
         now,
       ),
@@ -101,16 +155,6 @@ describe("inbound text normalization", () => {
         message({
           key: { id: "empty", remoteJid: "6281234567890@s.whatsapp.net", fromMe: false },
           message: { conversation: "   " },
-        }),
-        now,
-      ),
-    ).toBeNull();
-
-    expect(
-      normalizeInboundTextMessage(
-        message({
-          key: { id: "image", remoteJid: "6281234567890@s.whatsapp.net", fromMe: false },
-          message: { imageMessage: { url: "https://example.invalid/image" } },
         }),
         now,
       ),
