@@ -92,6 +92,7 @@ jobs:
           {"schema":"devland.event/v1","id":"wago-m8-work-started","type":"work.started","occurred_at":"2026-09-04T22:10:49Z","source":"wago-m8-runtime","work_id":"wago:issue:125"}
           {"schema":"devland.event/v1","id":"wago-m8-change-committed","type":"change.committed","occurred_at":"2026-09-04T22:10:49Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","commit_sha":"63ad0451e55bd3fffea897ba6b2c544de280d897"}
           {"schema":"devland.event/v1","id":"wago-m8-change-merged","type":"change.merged","occurred_at":"2026-09-04T22:13:47Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","commit_sha":"beddeb4a96459a96525c71f2a90c28b98c38f1d8"}
+          {"schema":"devland.event/v1","id":"wago-m8-deployment-started","type":"deployment.started","occurred_at":"2026-09-04T22:13:50Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","commit_sha":"beddeb4a96459a96525c71f2a90c28b98c38f1d8","deployment_id":"wago:release-container:33924612129","environment":"production"}
           {"schema":"devland.event/v1","id":"wago-m8-deployment-succeeded","type":"deployment.succeeded","occurred_at":"2026-09-04T22:15:46.286Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","commit_sha":"beddeb4a96459a96525c71f2a90c28b98c38f1d8","deployment_id":"wago:release-container:33924612129","environment":"production","data":{"image":"ghcr.io/howlil/wago-simple:latest","manifest_digest":"sha256:694721433f5422630880ef14353073beb836e4f633f71e113656c2b8a615d2d6"}}
           {"schema":"devland.event/v1","id":"wago-m8-outcome-observed","type":"outcome.observed","occurred_at":"2026-09-04T22:16:25Z","source":"wago-m8-runtime","work_id":"wago:issue:125","change_id":"github:howlil/wago:pr:126","deployment_id":"wago:release-container:33924612129","environment":"production","data":{"status":"positive","observation":"Wago emitted and uploaded the expected verifiable release evidence after the successful multi-architecture production publish."}}
           EOF
@@ -110,7 +111,8 @@ jobs:
           const assert = require('node:assert/strict');
           const report = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/m8-flow.json`, 'utf8'));
 
-          assert.equal(report.event_count, 6);
+          assert.equal(report.event_count, 7);
+          assert.equal(report.evidence_status, 'complete');
           assert.deepEqual(report.correlation.coverage, {
             work_to_change: { linked: 1, total: 1 },
             change_to_merge: { linked: 1, total: 1 },
@@ -130,6 +132,7 @@ jobs:
             start_to_change: 0,
             change_to_merge: 178_000,
             merge_to_production: 119_286,
+            deployment_latency: 116_286,
             production_to_outcome: 38_714,
             idea_to_outcome: 374_000,
           };
