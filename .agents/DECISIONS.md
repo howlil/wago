@@ -108,8 +108,16 @@ This file records material decisions whose rationale is expensive to rediscover.
 
 ## D14 — Dashboard color and motion stay semantic, flat, and restrained
 
-**Decision:** primary dashboard workspace sections may use one shared low-chroma semantic tint plus an editorial rule to improve scanning, while active global/Settings navigation uses a flat full-row wash plus a narrow directional brand rule. Purposeful interaction continuity uses Motion for React and the application root respects the user's reduced-motion preference.
+**Decision:** primary dashboard workspace sections use one shared low-chroma semantic workbench family plus structural rules; active global/Settings navigation uses a flat full-row selected wash plus a narrow directional brand rule. Purposeful interaction continuity uses Motion for React and the application root respects the user's reduced-motion preference.
 
-**Why:** a completely uncolored workspace makes operational modules visually collapse into the canvas, while rounded brand-soft navigation pills, card walls, glow, hover lift, and ornamental animation reproduce the generic AI-generated SaaS look the dashboard is explicitly avoiding. Controlled tint and rule-led state provide stronger hierarchy without creating decorative chrome.
+**Why:** a completely uncolored workspace makes operational modules visually collapse into the canvas, while rounded brand-soft navigation pills, card walls, glow, hover lift, and ornamental animation reproduce the generic AI-generated SaaS look the dashboard is explicitly avoiding. Controlled tint and rule-led state provide stronger hierarchy without decorative chrome.
 
-**Implication:** do not create per-module rainbow cards, rounded active-navigation pills, nested tinted cards, shadows, glow, or bouncy page choreography. Prefer the shared `wago-section*` and `wago-sidebar-active*` token families. Motion should clarify active state or direct manipulation, stay spatially small, never delay routing/data rendering, and remain understandable when animation is reduced or absent.
+**Implication:** prefer `wago-workspace*`, `wago-control-surface`, `wago-selected*`, and `wago-console-row*` semantic tokens. Do not create per-module rainbow cards, rounded active-navigation pills, nested tinted cards, shadows, glow, or bouncy page choreography. Motion should clarify active state, direct manipulation, or inline disclosure, stay spatially small, never delay routing/data rendering, and remain understandable when animation is reduced or absent.
+
+## D15 — Operator density wins over decorative whitespace
+
+**Decision:** Wago's operational surfaces default to compact evidence density rather than sparse decorative whitespace. Control keeps runtime/account evidence close together, Settings uses a compact local rail plus a fluid active workbench, and Audit uses a single-heading dense console with 20 rows per client page, compact filters, honest loaded-count pagination, and inline technical disclosure.
+
+**Why:** excessive blank space increases scan distance and makes a small operator console feel like a generic AI-minimal SaaS template. Wago's users need to understand state and evidence quickly, not admire empty canvas.
+
+**Implication:** do not reintroduce duplicate page headings, 80-100px routine Audit rows, oversized toolbars, large inactive bands, or empty card-shaped regions. Maintain readable type, 40px collapsed navigation targets, 32-36px routine controls, semantic state text, and responsive wrapping at 320px. Density must improve scanning without hiding prerequisites, risk, or technical evidence.

@@ -4,7 +4,7 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Dashboard surface color + restrained Motion interaction implemented and PR-ready.**
+**Active milestone: Wago UI Anti–AI-Slop Pass 2 — S1 through S7 implemented, final verification pending.**
 
 ## Current slice
 
@@ -12,38 +12,35 @@ Branch: `feat/dashboard-surface-motion`
 PR: `#123` — `refactor(dashboard): add tinted surfaces and restrained motion`
 
 Goal:
-- give routine Control/Settings workspace sections visible low-chroma surface color without returning to a rounded card wall;
-- replace generic active-navigation styling with a rule-led active wash for global and Settings navigation;
-- add restrained Motion for React interaction feedback with user reduced-motion support;
-- keep current information architecture, routing, runtime behavior, and public API unchanged.
+- move the dashboard from clean-but-sterile AI-flatness to a compact operator console with stronger Wago-specific hierarchy;
+- preserve flat workspace composition without card walls, glow, gradients, decorative icon boxes, routine shadows, or SaaS-style active pills;
+- increase evidence density across Control, Settings, and especially Audit without changing product behavior, API contracts, authentication, persistence, or global information architecture.
 
-Implemented:
-- added semantic `wago-section`, `wago-section-line`, `wago-sidebar-active`, and `wago-sidebar-active-line` tokens;
-- changed shared workspace modules from visually empty sections to tinted flat work surfaces with one editorial rule;
-- redesigned desktop/collapsed/mobile global navigation active state as a square full-row wash plus narrow brand rule;
-- aligned Settings local navigation to the same non-pill active-state grammar;
-- added Motion for React hover/press/active-indicator transitions;
-- wrapped dashboard interaction motion with `MotionConfig reducedMotion="user"`;
-- synchronized `pnpm-lock.yaml` for the new `motion` dependency;
-- updated `apps/dashboard/DESIGN.md`, architecture regression coverage, and `.agents/DECISIONS.md`.
+Implemented in Pass 2:
+- S1: added `wago-workspace*`, `wago-control-surface`, `wago-selected*`, and `wago-console-row*` semantic token families; shared routine modules use a visible low-chroma workbench plane plus structural rule;
+- S2: compacted the shell/header, kept the 40px collapsed navigation target, moved active navigation to shared selected-surface/rule motion, and removed the generic admin-template feel without adding decorative chrome;
+- S3: compacted the Control runtime rail, WhatsApp state regions, account-health evidence, and diagnostics disclosure while preserving dependency semantics;
+- S4: tightened Settings to a 160-168px desktop local rail plus fluid active workbench, added shared `layoutId` active-state continuity, and kept hash navigation intact;
+- S5: removed Audit's duplicate heading, moved Refresh into a single compact desktop toolbar, reduced routine event rows toward the 56-68px target, added 20-row client pagination over cursor-loaded events, and kept technical evidence inline;
+- S6: expanded Motion for React only where continuity helps: global/Settings active state, compact module switch opacity, button press feedback, Audit count continuity, and height/opacity technical-detail disclosure; root `MotionConfig reducedMotion="user"` remains authoritative;
+- S7: updated deterministic architecture guards, `apps/dashboard/DESIGN.md`, and durable `.agents/DECISIONS.md` rules for semantic color, density, motion, and anti-AI-slop prohibitions.
 
-## Verification evidence
+## Verification required
 
-Implementation head `3404494d147566c1522e374b3f635302e29f6fe5` passed all workflows triggered by the final product diff:
-- CI: formatting/lint, core tests, and core production build passed;
-- Docs CI: docs tests and docs build passed;
-- CodeQL: core JavaScript/TypeScript analysis passed;
-- Docker Smoke: image build plus persistence/rollback smoke passed.
-
-The first PR run exposed one Biome-only line-wrap mismatch in `shared/ui/classes.ts`; commit `3404494d147566c1522e374b3f635302e29f6fe5` applied the formatter output and the full rerun passed.
+Before this milestone is called complete:
+- run the dashboard design regression gate;
+- run dashboard/core component and architecture tests;
+- run formatting/lint and production build/typecheck;
+- inspect all workflows triggered by the final PR head, including CodeQL and Docker smoke when path routing requires them;
+- patch any deterministic formatting or regression failure and re-run the final head to green.
 
 ## Blockers
 
-None.
+None known before CI.
 
 ## Next action
 
-Leave PR #123 ready for review/merge. Do not merge unless the user explicitly authorizes merging.
+Move the branch to the Pass 2 implementation head, inspect the risk-routed final workflows, fix any failure, then leave PR #123 mergeable and ready for explicit user-authorized merge.
 
 ## Completion rule
 

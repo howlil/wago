@@ -61,13 +61,23 @@ Audit Log answers: **What happened, and where did the failure occur?**
 
 It is an operational console, not a card stack. Search and filters apply immediately. Event details remain progressively disclosed. Technical provider/library terminology appears only where it materially improves diagnosis.
 
+Audit is deliberately dense. The page title in the global header is the only page heading; do not add a second `Operational history` heading below it. The privacy/sanitization note is one concise line above the filter toolbar.
+
 ## Console surface grammar
 
 The default hierarchy is divider-led workspace composition with deliberate surface contrast:
 
 ```text
-workspace
+canvas
+  ↓
+workspace surface
+  ↓
+bounded task / exceptional surface
+```
 
+Primary workspace composition remains:
+
+```text
 module title                                      primary action
 short state only when useful
 ---------------------------------------------------------------
@@ -76,9 +86,13 @@ field / state          field / state          related evidence
 secondary operational evidence
 ```
 
-A routine primary module does **not** receive a rounded floating card merely because it needs a visual boundary. Use alignment, spacing, typography, dividers, and a restrained low-chroma surface tint first.
+**Wago must not confuse minimalism with absence of hierarchy.** A routine primary module does not receive a rounded floating card merely because it needs a visual boundary. Use alignment, spacing, typography, dividers, a restrained low-chroma workspace tint, and at most one strong editorial rule first.
 
-A workspace tint is allowed when it materially improves scanning. Treat it as part of the page plane: one controlled tint plus a rule or divider, no shadow, no glow, no decorative icon box, and no oversized rounding.
+A workspace tint is part of the page plane: no shadow, no glow, no decorative icon box, no oversized rounding, and no per-module rainbow palette.
+
+**Density is preferred over decorative whitespace for operational evidence.** Empty canvas is not a design feature when it increases scan distance without improving comprehension.
+
+**Color is structural and semantic, never ornamental.** Use a shared workspace family and reserve positive/warning/danger tint for real state.
 
 ### Surface types
 
@@ -115,6 +129,8 @@ Appropriate examples:
 Do not use bounded surfaces as the default wrapper for the only active module on a page.
 
 **Operational rail** is for compact cross-domain runtime summaries. A rail uses text state plus a semantic dot; it is not a set of metric/KPI cards.
+
+**Console row** is for repeated operational evidence such as Audit events. Console rows use shared row/background tokens, horizontal rules, compact metadata, and inline disclosure. They are not mini-cards.
 
 ### Borders and hierarchy
 
@@ -162,9 +178,9 @@ The dashboard workspace is **fluid after the global sidebar**. On desktop, prima
 Rules:
 - page-level workspace containers use the available width;
 - primary workspace sections are `w-full` inside their workspace column;
-- Settings keeps a fixed local navigation rail and a fluid `minmax(0, 1fr)` active-module column;
+- Settings keeps a compact fixed local navigation rail and a fluid `minmax(0, 1fr)` active-module column;
 - Control status rail, WhatsApp module, and diagnostics align to the same fluid workspace width;
-- Audit search, filters, and event rows use the full workspace width;
+- Audit search, filters, event rows, and pagination use the full workspace width;
 - compactness on wide screens comes from responsive internal grids, not from constraining the whole page;
 - long prose may use a readable text measure inside a full-width module;
 - dialogs, authentication forms, QR blocks, and other intrinsically narrow tasks may keep explicit max-width constraints;
@@ -188,18 +204,18 @@ Do not create empty desktop space merely to preserve a form width that was appro
 Compactness comes from hierarchy and spacing, not unreadably small prose.
 
 ```text
-page title             16-18px semibold
+page title             15-17px semibold
 module title           14px semibold
 subsection title       12-13px semibold
-body/help/prose        12-14px
-field/navigation label 11-13px
+body/help/prose        11-14px
+field/navigation label 10-13px
 metadata               10-11px
 technical identifier   10-13px monospace
 ```
 
 Rules:
-- explanatory prose and instructions are at least 12px;
-- 10px is reserved for metadata such as timestamps, counts, short event codes, and technical identifiers;
+- explanatory prose and instructions normally stay at least 11-12px depending on role and viewport;
+- 10px is reserved for metadata such as timestamps, counts, short event codes, compact field labels, and technical identifiers;
 - 9px is not used for normal operator UI;
 - readable semantic status text is preferred over tiny badges;
 - monospace is limited to identifiers, keys, JIDs, endpoints, event codes, and similar technical values.
@@ -211,25 +227,25 @@ Spacing rhythm:
 8px   tight internal
 12px  related content
 16px  standard region
-20px  tablet workspace gutter
-24px  desktop gutter / major separation
-32px  exceptional page-level separation
+20px  desktop workspace gutter / major separation
+24px  exceptional page-level separation
 ```
 
-Standard controls are 36px high. Inputs/buttons/nav items use about 6px radius. Bounded exceptional surfaces normally use about 6-8px radius. Routine workspace sections normally stay unrounded; their low-chroma tint and editorial rule belong to the workspace plane rather than a floating card.
+Routine controls may be 32-36px high. Collapsed global navigation targets remain 40px. Inputs/buttons/nav items use about 6px radius. Bounded exceptional surfaces normally use about 6-8px radius. Routine workspace sections stay unrounded; their low-chroma tint and editorial rule belong to the workspace plane rather than a floating card.
 
 ## Color and tokens
 
 Use semantic tokens from `src/styles.css` and shared classes from `src/shared/ui/classes.ts`.
 
-Prefer token classes such as:
-- `wago-line` / `wago-control-line`;
-- `wago-secondary` / `wago-tertiary`;
-- `wago-surface-subtle` / `wago-hover`;
-- `wago-section` / `wago-section-line` for routine primary workspace separation;
-- `wago-sidebar-active` / `wago-sidebar-active-line` for active navigation wash and rule;
-- `wago-brand` / `wago-brand-strong`;
-- `wago-positive`, `wago-warning`, `wago-danger`.
+Primary dashboard token families are:
+- `wago-workspace` / `wago-workspace-strong` / `wago-workspace-line` for routine workbench surfaces and internal rules;
+- `wago-control-surface` for compact cross-domain runtime rails/toolbars;
+- `wago-selected` / `wago-selected-line` for global and Settings active-state continuity;
+- `wago-console-row` / `wago-console-row-hover` for repeated operational evidence;
+- `wago-line` / `wago-control-line` for neutral boundaries and input controls;
+- `wago-secondary` / `wago-tertiary` for supporting hierarchy;
+- `wago-brand` / `wago-brand-strong` for actions and structural selection rules;
+- `wago-positive`, `wago-warning`, `wago-danger` for semantic state.
 
 Do not introduce a literal hex value for a routine dashboard control, text state, status, divider, or notice when an existing semantic token can represent it. Literal colors are acceptable only inside the token definition layer or for exceptional rendering needs where a semantic token would be misleading.
 
@@ -242,15 +258,17 @@ Do not create a rainbow of per-module cards. Routine modules share the same low-
 Motion exists to clarify state and make direct manipulation feel responsive. It is not decoration.
 
 Use Motion for React for purposeful interaction transitions such as:
-- active navigation indicator changes;
+- shared active navigation indicator changes via `layoutId`;
 - restrained hover/press feedback;
-- small state/layout transitions where continuity helps orientation.
+- compact Settings-module continuity;
+- Audit inline technical-detail disclosure;
+- small count/state opacity changes where continuity helps orientation.
 
 Rules:
 - the application root uses `MotionConfig` with `reducedMotion="user"`;
 - respect `prefers-reduced-motion` without requiring separate user configuration;
-- keep routine navigation motion short and restrained;
-- small translation feedback should stay within a few pixels;
+- keep routine navigation motion around 100-150ms where possible;
+- small translation feedback should stay around 1-2px;
 - press scale may be subtle, never rubbery or bouncy;
 - do not add hover lift, floating cards, parallax, glow trails, springy page choreography, or decorative entrance animations;
 - motion must never delay navigation, data rendering, or an operator action;
@@ -264,7 +282,8 @@ The Control summary presents `Gateway`, `WhatsApp`, and `Messaging` as one compa
 - semantic dot;
 - domain label;
 - readable state text;
-- concise dependency/evidence text.
+- concise dependency/evidence text;
+- restrained semantic tint only when state benefits from it.
 
 The rail may stack on narrow screens, but must not become three rounded KPI cards.
 
@@ -272,7 +291,7 @@ The rail may stack on narrow screens, but must not become three rounded KPI card
 
 WhatsApp connection, account binding, and account health are one workspace module. The module header owns `Pair WhatsApp` / `Change account` actions.
 
-Connection/account/account-health evidence uses divider-led key/value regions. QR pairing is a bounded task surface because the QR code is an intrinsically self-contained interaction; it does not need an additional decorative icon box.
+Connection/account/account-health evidence uses compact divider-led key/value regions. Account health should not create a large standalone blank band; unavailable/checking state is one compact row plus concise evidence. QR pairing is a bounded task surface because the QR code is an intrinsically self-contained interaction; it does not need an additional decorative icon box.
 
 ### Machine access
 
@@ -289,7 +308,7 @@ Required only when another application calls Wago.
 
 After configuration, show configured state and rotation action. A raw generated/rotated key appears only as a temporary one-time bounded reveal with Copy/Show actions.
 
-On wide screens, App ID and API-key lifecycle may share a two-column region. Do not expose source badges such as `generated` when they do not change operator behavior.
+On wide screens, App ID and API-key lifecycle share the available workbench width. Do not expose source badges such as `generated` when they do not change operator behavior.
 
 ### Messaging
 
@@ -323,15 +342,32 @@ Current-browser sign-out is the normal action. `Sign out all sessions` is destru
 
 ### Audit
 
-Audit uses a flat console composition:
+Audit uses a dense flat console composition:
 
 ```text
-heading / refresh
-search + filters
-------------------------------
-event rows
-------------------------------
+Audit Log                                    [Refresh is in toolbar]
+Sanitized operational lifecycle evidence.
+
+[ Search.................... ][Source][Category][Level][Refresh]
+---------------------------------------------------------------
+TIME       SOURCE       EVENT                                LEVEL
+03:25:56   Wago         Admin account created               ● Success
+                        Browser session created...
+                        Security · gateway.admin...
+---------------------------------------------------------------
+loaded count       Rows 20       ‹ 1 2 3 … ›       Load more
 ```
+
+Rules:
+- no duplicate `Operational history` heading below the page header;
+- desktop filter controls occupy one compact row; mobile may stack;
+- routine event rows target roughly 56-68px when technical details are collapsed;
+- event title, one concise description line, and monospace metadata form the default row hierarchy;
+- status is a semantic dot plus readable text, not a badge;
+- the default client page shows 20 events; 10 and 25 are compact alternatives;
+- the current API is cursor-based and does not expose a total count, so pagination describes loaded events honestly and offers `Load more` when another cursor exists;
+- row hover tint is used only when the row has expandable technical evidence;
+- technical evidence expands inline with height/opacity continuity and does not create a modal or nested floating card.
 
 Do not wrap the whole Audit workspace in a routine floating card and then put the event list in another rounded card.
 
@@ -359,18 +395,18 @@ Desktop sidebar:
 - no redundant group label when all global destinations belong to one group;
 - active destination uses a low-chroma full-row wash plus a narrow brand rule, never a rounded active pill/tile;
 - icon and label remain plain content, not decorative icon-box components;
-- hover/press motion is restrained and cannot delay routing.
+- shared active-state motion uses `layoutId` and cannot delay routing.
 
-Settings local navigation follows the same active-state grammar: low-chroma wash plus a directional rule, not rounded brand-soft pills.
+Settings local navigation follows the same active-state grammar: low-chroma wash plus a directional rule, not rounded brand-soft pills. Desktop rail width is normally around 160-176px before the fluid active-module column.
 
-Header height is about 56px. The header owns page identity and page-level actions such as Refresh; routine Control gateway state belongs to the status rail directly below and is not duplicated in the header.
+Header height is about 48-52px. The header owns page identity and true page-level actions. Audit Refresh belongs to its compact console toolbar; routine Control gateway state belongs to the status rail directly below and is not duplicated in the header.
 
 Workspace gutters:
 
 ```text
 < 768px       16px
 768-1023px    20px
->= 1024px     24px
+>= 1024px     20px
 ```
 
 ### 320-767px
@@ -379,21 +415,23 @@ Workspace gutters:
 - Settings local navigation is a compact two-column selector;
 - status rail stacks cleanly;
 - actions may stack/full-width;
-- technical tables scroll only inside bounded regions;
-- no viewport horizontal overflow.
+- Audit toolbar stacks without horizontal viewport overflow;
+- technical evidence remains inside the viewport and disclosure wraps safely.
 
 ### 768-1023px
 - drawer global navigation;
 - Settings module selector may be a four-item row;
 - forms remain one readable main flow;
-- key/value workbench regions may begin distributing horizontally when space is sufficient.
+- key/value workbench regions may begin distributing horizontally when space is sufficient;
+- Audit filters may use two columns before reaching the single-line desktop toolbar.
 
 ### >= 1024px
 - persistent sidebar;
-- Settings uses a local navigation rail around 176px next to a fluid active-module column;
+- Settings uses a compact local navigation rail next to a fluid active-module column;
 - primary workspace sections fill the available content column;
 - use internal two-column or multi-column composition when wider screens can reduce vertical scanning;
-- preserve readable text measure within modules rather than narrowing the whole workspace.
+- preserve readable text measure within modules rather than narrowing the whole workspace;
+- Audit should comfortably expose at least 8-12 collapsed rows on a typical laptop-height viewport when enough events exist.
 
 ## Frontend architecture
 
@@ -423,10 +461,11 @@ Rules:
 - long technical values wrap, truncate, or scroll without widening the viewport;
 - destructive actions use explicit language and confirmation proportional to impact;
 - Motion respects the user's reduced-motion preference;
-- active navigation remains understandable without animation.
+- active navigation and disclosures remain understandable without animation;
+- pagination controls have explicit accessible names and disabled states.
 
 For meaningful UI changes verify at minimum:
-- narrow mobile composition;
+- narrow mobile composition including 320px width;
 - desktop shell/navigation;
 - wide desktop fluid workspace behavior;
 - active navigation at expanded, collapsed, and mobile widths;
@@ -440,6 +479,7 @@ For meaningful UI changes verify at minimum:
 - Webhook save/test/signing rotation and inline delivery diagnostics;
 - session sign-out and sign-out-all confirmation;
 - prerequisite-aware diagnostics;
-- Audit filters and event disclosure;
+- Audit filters, compact pagination, and inline event disclosure;
+- deterministic anti-AI-slop architecture guards;
 - relevant component/architecture tests;
 - formatting/lint, production build, Docker persistence/rollback smoke, and repository security gates.
