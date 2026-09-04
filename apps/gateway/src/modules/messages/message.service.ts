@@ -80,17 +80,17 @@ function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
     id: status.id,
     to: status.to,
     status: status.status,
-    deliveryEvidence: status.deliveryEvidence,
-    error: status.error,
-    message: status.message,
     createdAt: status.createdAt,
     updatedAt: status.updatedAt,
-    acceptedAt: status.acceptedAt,
-    rejectedAt: status.rejectedAt,
-    serverAcceptedAt: status.serverAcceptedAt,
-    deliveredAt: status.deliveredAt,
-    readAt: status.readAt,
-    playedAt: status.playedAt,
+    ...(status.deliveryEvidence !== undefined ? { deliveryEvidence: status.deliveryEvidence } : {}),
+    ...(status.error !== undefined ? { error: status.error } : {}),
+    ...(status.message !== undefined ? { message: status.message } : {}),
+    ...(status.acceptedAt !== undefined ? { acceptedAt: status.acceptedAt } : {}),
+    ...(status.rejectedAt !== undefined ? { rejectedAt: status.rejectedAt } : {}),
+    ...(status.serverAcceptedAt !== undefined ? { serverAcceptedAt: status.serverAcceptedAt } : {}),
+    ...(status.deliveredAt !== undefined ? { deliveredAt: status.deliveredAt } : {}),
+    ...(status.readAt !== undefined ? { readAt: status.readAt } : {}),
+    ...(status.playedAt !== undefined ? { playedAt: status.playedAt } : {}),
   };
 }
 
@@ -116,23 +116,11 @@ export function createMessageService(
       if (!rawStatus) {
         return null;
       }
-      const status = sanitizeMessageStatus(rawStatus);
+      const { to: _to, ...status } = sanitizeMessageStatus(rawStatus);
 
       return {
-        id: status.id,
-        status: status.status,
+        ...status,
         dispatchState: rawStatus.dispatchState ?? "submitted",
-        deliveryEvidence: status.deliveryEvidence,
-        error: status.error,
-        message: status.message,
-        createdAt: status.createdAt,
-        updatedAt: status.updatedAt,
-        acceptedAt: status.acceptedAt,
-        rejectedAt: status.rejectedAt,
-        serverAcceptedAt: status.serverAcceptedAt,
-        deliveredAt: status.deliveredAt,
-        readAt: status.readAt,
-        playedAt: status.playedAt,
         webhook: deps.getWebhookDelivery?.(messageId) ?? null,
       };
     },
