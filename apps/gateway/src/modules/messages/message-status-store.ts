@@ -5,6 +5,7 @@ import { enqueueMessageDeliveryWebhook } from "../webhooks/index.js";
 
 export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
 export type MessageDispatchState = "prepared" | "submitting" | "submitted" | "indeterminate";
+export type MessageDeliveryEvidence = "submitted" | "server_accepted" | "delivered" | "read" | "played";
 
 export type StoredMessageStatus = {
   id: string;
@@ -13,12 +14,17 @@ export type StoredMessageStatus = {
   recipientJid?: string;
   status: MessageDeliveryStatus;
   dispatchState: MessageDispatchState;
+  deliveryEvidence?: MessageDeliveryEvidence;
   error?: string;
   message?: string;
   createdAt: string;
   updatedAt: string;
   acceptedAt?: string;
   rejectedAt?: string;
+  serverAcceptedAt?: string;
+  deliveredAt?: string;
+  readAt?: string;
+  playedAt?: string;
 };
 
 type MessageStatusRow = {
@@ -28,17 +34,30 @@ type MessageStatusRow = {
   resolved_jid: string;
   status: MessageDeliveryStatus;
   dispatch_state: MessageDispatchState;
+  delivery_evidence: MessageDeliveryEvidence | null;
   error_code: string | null;
   error_message: string | null;
   created_at: number;
   updated_at: number;
   accepted_at: number | null;
   rejected_at: number | null;
+  server_accepted_at: number | null;
+  delivered_at: number | null;
+  read_at: number | null;
+  played_at: number | null;
 };
 
 const MESSAGE_DIAGNOSTIC_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
 const MAX_MESSAGE_DIAGNOSTICS = 2_000;
 const database = getDatabase();
+
+const evidenceRank: Record<MessageDeliveryEvidence, number> = {
+  submitted: 0,
+  server_accepted: 1,
+  delivered: 2,
+  read: 3,
+  played: 4,
+};
 
 const selectById = database.prepare("SELECT * FROM outbound_messages WHERE id = ?");
 const selectByProviderId = database.prepare("SELECT * FROM outbound_messages WHERE provider_message_id = ?");
@@ -52,9 +71,10 @@ const insertPending = database.prepare(`
     recipient_jid,
     resolved_jid,
     status,
+    delivery_evidence,
     created_at,
     updated_at
-  ) VALUES (?, ?, ?, ?, 'pending', ?, ?)
+  ) VALUES (?, ?, ?, ?, 'pending', 'submitted', ?, ?)
 `);
 const insertPrepared = database.prepare(`
   INSERT INTO outbound_messages (
@@ -75,8 +95,18 @@ const transitionDispatchState = database.prepare(`
 `);
 const markSubmitted = database.prepare(`
   UPDATE outbound_messages
-  SET provider_message_id = ?, dispatch_state = 'submitted', updated_at = ?
+  SET provider_message_id = ?, dispatch_state = 'submitted', delivery_evidence = 'submitted', updated_at = ?
   WHERE id = ? AND status = 'pending' AND dispatch_state = 'submitting'
+`);
+const updateEvidence = database.prepare(`
+  UPDATE outbound_messages
+  SET delivery_evidence = ?,
+      updated_at = ?,
+      server_accepted_at = ?,
+      delivered_at = ?,
+      read_at = ?,
+      played_at = ?
+  WHERE id = ?
 `);
 const deletePending = database.prepare("DELETE FROM outbound_messages WHERE id = ? AND status = 'pending'");
 const updateTerminal = database.prepare(`
@@ -112,18 +142,42 @@ function mapRow(row: MessageStatusRow): StoredMessageStatus {
     recipientJid: row.recipient_jid ?? undefined,
     status: row.status,
     dispatchState: row.dispatch_state,
+    deliveryEvidence: row.delivery_evidence ?? undefined,
     error: row.error_code ?? undefined,
     message: row.error_message ?? undefined,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
     acceptedAt: iso(row.accepted_at),
     rejectedAt: iso(row.rejected_at),
+    serverAcceptedAt: iso(row.server_accepted_at),
+    deliveredAt: iso(row.delivered_at),
+    readAt: iso(row.read_at),
+    playedAt: iso(row.played_at),
   };
 }
 
 function pruneMessageDiagnostics(nowMs: number): void {
   deleteExpired.run(nowMs - MESSAGE_DIAGNOSTIC_RETENTION_MS);
   pruneOverflow.run(MAX_MESSAGE_DIAGNOSTICS);
+}
+
+function recordEvidenceActivity(messageId: string, evidence: MessageDeliveryEvidence): void {
+  if (evidence === "submitted" || evidence === "server_accepted") return;
+  const title =
+    evidence === "delivered"
+      ? "Message delivered"
+      : evidence === "read"
+        ? "Message read"
+        : "Message played";
+  void recordActivity({
+    level: "info",
+    category: "messaging",
+    code: `message.${evidence}`,
+    title,
+    description: `WhatsApp reported ${evidence.replace("_", " ")} evidence for the outbound message.`,
+    metadata: { messageId },
+  });
+  enqueueMessageDeliveryWebhook({ messageId, status: evidence });
 }
 
 export function prepareMessageStatus(input: { id: string; to: string; recipientJid?: string }): StoredMessageStatus {
@@ -222,6 +276,60 @@ export function getMessageStatus(messageId: string): StoredMessageStatus | null 
 export function getMessageStatusByProviderId(providerMessageId: string): StoredMessageStatus | null {
   const row = selectByProviderId.get(providerMessageId) as MessageStatusRow | undefined;
   return row ? mapRow(row) : null;
+}
+
+export function updateMessageDeliveryEvidence(
+  messageId: string,
+  evidence: MessageDeliveryEvidence,
+  observedAt = new Date(),
+): StoredMessageStatus | null {
+  const current = getMessageStatus(messageId);
+  if (!current) return null;
+  if (current.deliveryEvidence && evidenceRank[evidence] <= evidenceRank[current.deliveryEvidence]) {
+    return current;
+  }
+
+  const observedAtMs = observedAt.getTime();
+  const serverAcceptedAt = current.serverAcceptedAt
+    ? new Date(current.serverAcceptedAt).getTime()
+    : evidenceRank[evidence] >= evidenceRank.server_accepted
+      ? observedAtMs
+      : null;
+  const deliveredAt = current.deliveredAt
+    ? new Date(current.deliveredAt).getTime()
+    : evidenceRank[evidence] >= evidenceRank.delivered
+      ? observedAtMs
+      : null;
+  const readAt = current.readAt
+    ? new Date(current.readAt).getTime()
+    : evidenceRank[evidence] >= evidenceRank.read
+      ? observedAtMs
+      : null;
+  const playedAt = current.playedAt
+    ? new Date(current.playedAt).getTime()
+    : evidenceRank[evidence] >= evidenceRank.played
+      ? observedAtMs
+      : null;
+
+  updateEvidence.run(evidence, observedAtMs, serverAcceptedAt, deliveredAt, readAt, playedAt, messageId);
+  recordEvidenceActivity(messageId, evidence);
+  return getMessageStatus(messageId);
+}
+
+export function updateMessageDeliveryEvidenceByProviderId(
+  providerMessageId: string,
+  evidence: MessageDeliveryEvidence,
+  observedAt = new Date(),
+): StoredMessageStatus | null {
+  const current = getMessageStatusByProviderId(providerMessageId);
+  if (!current) {
+    logger.warn(
+      { event: "message.trace_missing", providerMessageId, evidence },
+      "WhatsApp reported delivery evidence without retained Wago diagnostics",
+    );
+    return null;
+  }
+  return updateMessageDeliveryEvidence(current.id, evidence, observedAt);
 }
 
 export function updateMessageStatus(
