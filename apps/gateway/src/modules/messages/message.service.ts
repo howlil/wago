@@ -135,7 +135,10 @@ function sanitizeMessageStatus(status: MessageStatusRecord): MessageStatus {
   };
 }
 
-function sendOptions(command: { idempotencyKey?: string; replyToMessageId?: string }, messageId: string): MessageSendOptions {
+function sendOptions(
+  command: { idempotencyKey?: string; replyToMessageId?: string },
+  messageId: string,
+): MessageSendOptions {
   return {
     ...(command.idempotencyKey !== undefined ? { idempotencyKey: command.idempotencyKey } : {}),
     messageId,
