@@ -4,7 +4,7 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**Active milestone: Wago UI Anti–AI-Slop Pass 2 — S1 through S7 implemented, final verification pending.**
+**Wago UI Anti–AI-Slop Pass 2 — S1 through S7 implemented, verified, and PR-ready.**
 
 ## Current slice
 
@@ -25,22 +25,25 @@ Implemented in Pass 2:
 - S6: expanded Motion for React only where continuity helps: global/Settings active state, compact module switch opacity, button press feedback, Audit count continuity, and height/opacity technical-detail disclosure; root `MotionConfig reducedMotion="user"` remains authoritative;
 - S7: updated deterministic architecture guards, `apps/dashboard/DESIGN.md`, and durable `.agents/DECISIONS.md` rules for semantic color, density, motion, and anti-AI-slop prohibitions.
 
-## Verification required
+## Verification evidence
 
-Before this milestone is called complete:
-- run the dashboard design regression gate;
-- run dashboard/core component and architecture tests;
-- run formatting/lint and production build/typecheck;
-- inspect all workflows triggered by the final PR head, including CodeQL and Docker smoke when path routing requires them;
-- patch any deterministic formatting or regression failure and re-run the final head to green.
+Product/test head `72190c6ad2ce2f69228b947277417d7c26a1b7a4` passed every workflow triggered by the final product diff:
+- CI: frozen dependency install, formatting/lint, gateway/dashboard tests, and production build passed;
+- Docs CI: docs tests and docs build passed;
+- CodeQL: core JavaScript/TypeScript analysis passed;
+- Docker Smoke: image build plus persistence/rollback smoke passed.
+
+The sprint exposed two deterministic issues during verification and both were fixed before the green head:
+- Biome flagged Audit pagination ARIA semantics, an unnecessary page-reset effect, and two formatter line-wrap mismatches; commit `af282d0375111961c8acedceb084714b89021a17` corrected them;
+- the existing Audit component test still assumed native `<details>` after the deliberate Motion disclosure refactor; commit `72190c6ad2ce2f69228b947277417d7c26a1b7a4` updated the test to assert button `aria-expanded` semantics plus inline animated metadata visibility.
 
 ## Blockers
 
-None known before CI.
+None.
 
 ## Next action
 
-Move the branch to the Pass 2 implementation head, inspect the risk-routed final workflows, fix any failure, then leave PR #123 mergeable and ready for explicit user-authorized merge.
+Leave PR #123 mergeable and ready for review. Do not merge unless the user explicitly authorizes merging.
 
 ## Completion rule
 
