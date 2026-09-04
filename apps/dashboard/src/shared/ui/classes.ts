@@ -2,8 +2,7 @@ export const cardClass = "rounded-lg border border-wago-line bg-wago-surface";
 
 export const cardBodyClass = `${cardClass} p-4`;
 
-export const pageFrameClass =
-  "min-w-0 w-full rounded-lg border border-wago-control-line bg-wago-surface p-3 sm:p-4";
+export const pageFrameClass = "min-w-0 w-full rounded-lg border border-wago-control-line bg-wago-surface p-3 sm:p-4";
 
 export const workspaceModuleClass =
   "min-w-0 w-full border-l-2 border-wago-workspace-line bg-wago-workspace px-4 py-3.5";
