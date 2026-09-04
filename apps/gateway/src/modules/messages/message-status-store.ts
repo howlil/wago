@@ -284,7 +284,7 @@ export function updateMessageDeliveryEvidence(
   observedAt = new Date(),
 ): StoredMessageStatus | null {
   const current = getMessageStatus(messageId);
-  if (!current) return null;
+  if (!current || current.status === "rejected") return current;
   if (current.deliveryEvidence && evidenceRank[evidence] <= evidenceRank[current.deliveryEvidence]) {
     return current;
   }
@@ -292,24 +292,16 @@ export function updateMessageDeliveryEvidence(
   const observedAtMs = observedAt.getTime();
   const serverAcceptedAt = current.serverAcceptedAt
     ? new Date(current.serverAcceptedAt).getTime()
-    : evidenceRank[evidence] >= evidenceRank.server_accepted
+    : evidence === "server_accepted"
       ? observedAtMs
       : null;
   const deliveredAt = current.deliveredAt
     ? new Date(current.deliveredAt).getTime()
-    : evidenceRank[evidence] >= evidenceRank.delivered
+    : evidence === "delivered"
       ? observedAtMs
       : null;
-  const readAt = current.readAt
-    ? new Date(current.readAt).getTime()
-    : evidenceRank[evidence] >= evidenceRank.read
-      ? observedAtMs
-      : null;
-  const playedAt = current.playedAt
-    ? new Date(current.playedAt).getTime()
-    : evidenceRank[evidence] >= evidenceRank.played
-      ? observedAtMs
-      : null;
+  const readAt = current.readAt ? new Date(current.readAt).getTime() : evidence === "read" ? observedAtMs : null;
+  const playedAt = current.playedAt ? new Date(current.playedAt).getTime() : evidence === "played" ? observedAtMs : null;
 
   updateEvidence.run(evidence, observedAtMs, serverAcceptedAt, deliveredAt, readAt, playedAt, messageId);
   recordEvidenceActivity(messageId, evidence);
