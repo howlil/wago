@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, RefreshCcw, Search } from "lucide-react";
 import { motion } from "motion/react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { secondaryButtonClass } from "../../shared/ui/classes.js";
 import { ActivityEventList } from "./ActivityEventList.js";
 import {
@@ -40,18 +40,41 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [page, setPage] = useState(0);
 
-  useEffect(() => {
-    setPage(0);
-  }, [source, category, level, search, rowsPerPage]);
-
   const pageCount = Math.max(1, Math.ceil(events.length / rowsPerPage));
   const safePage = Math.min(page, pageCount - 1);
   const start = safePage * rowsPerPage;
   const end = Math.min(start + rowsPerPage, events.length);
   const visibleEvents = events.slice(start, end);
   const pageNumbers = Array.from(
-    new Set([0, safePage - 1, safePage, safePage + 1, pageCount - 1].filter((value) => value >= 0 && value < pageCount)),
+    new Set(
+      [0, safePage - 1, safePage, safePage + 1, pageCount - 1].filter((value) => value >= 0 && value < pageCount),
+    ),
   ).sort((left, right) => left - right);
+
+  function updateSource(value: SourceFilter): void {
+    setPage(0);
+    setSource(value);
+  }
+
+  function updateCategory(value: CategoryFilter): void {
+    setPage(0);
+    setCategory(value);
+  }
+
+  function updateLevel(value: LevelFilter): void {
+    setPage(0);
+    setLevel(value);
+  }
+
+  function updateSearch(value: string): void {
+    setPage(0);
+    setSearch(value);
+  }
+
+  function updateRowsPerPage(value: number): void {
+    setPage(0);
+    setRowsPerPage(value);
+  }
 
   return (
     <section className="min-w-0">
@@ -67,7 +90,7 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
             className="h-8 w-full rounded-md border border-wago-control-line bg-white py-1.5 pl-9 pr-3 text-xs text-wago-secondary outline-none transition-colors placeholder:text-wago-tertiary focus:border-wago-brand focus:ring-2 focus:ring-wago-brand-soft"
             value={search}
             maxLength={100}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => updateSearch(event.target.value)}
             placeholder="Search code or description"
           />
         </label>
@@ -77,7 +100,7 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
           <select
             className={selectClass}
             value={source}
-            onChange={(event) => setSource(event.target.value as SourceFilter)}
+            onChange={(event) => updateSource(event.target.value as SourceFilter)}
           >
             <option value="all">All sources</option>
             <option value="wago">Wago</option>
@@ -91,7 +114,7 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
           <select
             className={selectClass}
             value={category}
-            onChange={(event) => setCategory(event.target.value as CategoryFilter)}
+            onChange={(event) => updateCategory(event.target.value as CategoryFilter)}
           >
             <option value="all">All categories</option>
             <option value="connection">WhatsApp</option>
@@ -108,7 +131,7 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
           <select
             className={selectClass}
             value={level}
-            onChange={(event) => setLevel(event.target.value as LevelFilter)}
+            onChange={(event) => updateLevel(event.target.value as LevelFilter)}
           >
             <option value="all">All levels</option>
             <option value="success">Success</option>
@@ -168,7 +191,7 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
                 <select
                   className="h-7 rounded-md border border-wago-control-line bg-white px-2 text-[11px] font-medium text-wago-secondary"
                   value={rowsPerPage}
-                  onChange={(event) => setRowsPerPage(Number(event.target.value))}
+                  onChange={(event) => updateRowsPerPage(Number(event.target.value))}
                   aria-label="Rows per page"
                 >
                   <option value={10}>10</option>
@@ -177,7 +200,7 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
                 </select>
               </label>
 
-              <div className="flex items-center gap-1" aria-label="Audit pagination">
+              <nav className="flex items-center gap-1" aria-label="Audit pagination">
                 <button
                   className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-wago-control-line bg-white text-wago-secondary disabled:opacity-40"
                   type="button"
@@ -219,7 +242,7 @@ export function ActivityLogPanel({ enabled, initialFilters }: ActivityLogPanelPr
                 >
                   <ChevronRight size={13} />
                 </button>
-              </div>
+              </nav>
 
               {nextCursor ? (
                 <button

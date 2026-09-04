@@ -24,7 +24,11 @@ export function DashboardDiagnostics({ dashboard }: DashboardDiagnosticsProps) {
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-wago-muted">
           <span>Diagnostics</span>
-          <ChevronDown className="transition-transform duration-150 group-open:rotate-180" size={14} aria-hidden="true" />
+          <ChevronDown
+            className="transition-transform duration-150 group-open:rotate-180"
+            size={14}
+            aria-hidden="true"
+          />
         </div>
       </summary>
 
