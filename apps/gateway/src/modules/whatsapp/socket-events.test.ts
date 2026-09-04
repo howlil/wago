@@ -234,18 +234,14 @@ describe("outbound message outcomes", () => {
       to: resolvedJid,
       recipientJid,
     });
-    ev.emit("messages.update", [
-      { key: { id: "provider-receipt" }, update: { status: WAMessageStatus.SERVER_ACK } },
-    ]);
+    ev.emit("messages.update", [{ key: { id: "provider-receipt" }, update: { status: WAMessageStatus.SERVER_ACK } }]);
 
     ev.emit("message-receipt.update", [
       { key: { id: "provider-receipt" }, receipt: { receiptTimestamp: 1_788_000_000 } },
     ]);
     expect(getMessageStatus("trace-receipt")?.deliveryEvidence).toBe("delivered");
 
-    ev.emit("message-receipt.update", [
-      { key: { id: "provider-receipt" }, receipt: { readTimestamp: 1_788_000_010 } },
-    ]);
+    ev.emit("message-receipt.update", [{ key: { id: "provider-receipt" }, receipt: { readTimestamp: 1_788_000_010 } }]);
     expect(getMessageStatus("trace-receipt")?.deliveryEvidence).toBe("read");
 
     ev.emit("message-receipt.update", [
