@@ -80,12 +80,13 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
   }
 
   const reachout = availableHealth.reachoutTimeLock;
-  const cap = availableHealth.newChatCap;
+  const capacity = availableHealth.newChatCapacity;
   const reachoutRestricted = Boolean(reachout?.isActive);
-  const capRestricted = cap?.capping_status === "CAPPED";
-  const capWarning = cap?.capping_status === "FIRST_WARNING" || cap?.capping_status === "SECOND_WARNING";
-  const showQuota = typeof cap?.total_quota === "number" && cap.total_quota > 0;
-  const overallLimited = reachoutRestricted || capRestricted || capWarning;
+  const capRestricted = capacity.status === "capped";
+  const capWarning = capacity.status === "warning";
+  const showQuota = typeof capacity.total === "number" && capacity.total > 0;
+  const overallLimited = reachoutRestricted || capRestricted;
+  const overallWarning = !overallLimited && capWarning;
 
   return (
     <section className="border-b border-wago-line py-4" aria-labelledby="account-health-title">
@@ -93,8 +94,12 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         <h3 id="account-health-title" className="m-0 text-xs font-semibold text-wago-ink">
           Account health
         </h3>
-        <span className={`text-xs font-semibold ${overallLimited ? "text-wago-warning" : "text-wago-positive"}`}>
-          {overallLimited ? "Limited" : "Available"}
+        <span
+          className={`text-xs font-semibold ${
+            overallLimited || overallWarning ? "text-wago-warning" : "text-wago-positive"
+          }`}
+        >
+          {overallLimited ? "Limited" : overallWarning ? "Warning" : "Available"}
         </span>
       </div>
 
@@ -121,19 +126,28 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
         <div className="min-w-0 border-t border-wago-line pt-4 md:border-t-0 md:px-4 md:pt-0">
           <dt className="text-[11px] font-medium text-wago-secondary">New chats</dt>
           <dd
-            className={`mb-0 mt-1 text-[13px] font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-positive"}`}
+            className={`mb-0 mt-1 text-[13px] font-semibold ${
+              capRestricted || capWarning ? "text-wago-warning" : "text-wago-positive"
+            }`}
           >
-            {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "Normal"}
+            {capRestricted ? "Capped" : capWarning ? "Warning" : capacity.status === "unknown" ? "Unknown" : "Normal"}
           </dd>
           <p className="mb-0 mt-1 text-xs leading-5 text-wago-muted">
-            {capRestricted || capWarning
-              ? "New-recipient sends are paused; known recipients are evaluated normally."
-              : "No new-chat warning or cap is reported."}
+            {capRestricted
+              ? "WhatsApp has capped new-recipient sends; known recipients are evaluated normally."
+              : capWarning
+                ? "WhatsApp reports capacity pressure. New-recipient sends remain allowed until a cap is reported."
+                : capacity.status === "unknown"
+                  ? "WhatsApp has not reported a new-chat capacity state."
+                  : "No new-chat warning or cap is reported."}
           </p>
           {showQuota ? (
             <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
-              {cap?.used_quota ?? 0} / {cap?.total_quota} used
+              {capacity.used ?? 0} / {capacity.total} used
             </p>
+          ) : null}
+          {capacity.cycleEndAt ? (
+            <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">Cycle ends {formatDate(capacity.cycleEndAt)}</p>
           ) : null}
         </div>
 
