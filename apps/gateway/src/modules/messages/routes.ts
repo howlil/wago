@@ -1,4 +1,4 @@
-import { raw, Router } from "express";
+import { Router, raw } from "express";
 import { isApplicationError } from "../../errors/application-error.js";
 import { asyncHandler } from "../../http/middleware/async-handler.js";
 import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
@@ -145,9 +145,7 @@ export function createMessageRouter(messageService: MessageService) {
         const headerIdempotencyKey = req.header("idempotency-key")?.trim();
         const idempotencyKey =
           headerIdempotencyKey ||
-          (typeof bodyIdempotencyKey === "string" && bodyIdempotencyKey.trim()
-            ? bodyIdempotencyKey.trim()
-            : undefined);
+          (typeof bodyIdempotencyKey === "string" && bodyIdempotencyKey.trim() ? bodyIdempotencyKey.trim() : undefined);
         const result = await messageService.send({
           to,
           text,
@@ -244,10 +242,7 @@ export function createMessageRouter(messageService: MessageService) {
         res.setHeader("Content-Type", result.media.mimetype ?? "application/octet-stream");
         res.setHeader("Content-Length", result.data.length.toString());
         if (result.media.fileName) {
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${safeDownloadFileName(result.media.fileName)}"`,
-          );
+          res.setHeader("Content-Disposition", `attachment; filename="${safeDownloadFileName(result.media.fileName)}"`);
         }
         return res.send(result.data);
       } catch (error) {
