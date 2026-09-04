@@ -163,7 +163,8 @@ function pruneMessageDiagnostics(nowMs: number): void {
 
 function recordEvidenceActivity(messageId: string, evidence: MessageDeliveryEvidence): void {
   if (evidence === "submitted" || evidence === "server_accepted") return;
-  const title = evidence === "delivered" ? "Message delivered" : evidence === "read" ? "Message read" : "Message played";
+  const title =
+    evidence === "delivered" ? "Message delivered" : evidence === "read" ? "Message read" : "Message played";
   void recordActivity({
     level: "info",
     category: "messaging",
