@@ -6,17 +6,24 @@ export type SendMessageResponse = {
   status: "pending";
 };
 
+export type MessageDeliveryEvidence = "submitted" | "server_accepted" | "delivered" | "read" | "played";
+
 export type MessageStatusResponse = {
   success: true;
   id: string;
   to: string;
   status: "pending" | "accepted" | "rejected";
+  deliveryEvidence?: MessageDeliveryEvidence;
   error?: string;
   message?: string;
   createdAt: string;
   updatedAt: string;
   acceptedAt?: string;
   rejectedAt?: string;
+  serverAcceptedAt?: string;
+  deliveredAt?: string;
+  readAt?: string;
+  playedAt?: string;
 };
 
 export type MessageDiagnosticResponse = Omit<MessageStatusResponse, "to"> & {
