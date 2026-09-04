@@ -286,6 +286,31 @@ export const migrations: Migration[] = [
       END;
     `,
   },
+  {
+    version: 14,
+    sql: `
+      CREATE TABLE IF NOT EXISTS recipient_identities (
+        phone_jid TEXT PRIMARY KEY,
+        lid_jid TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_recipient_identities_lid
+        ON recipient_identities(lid_jid);
+
+      ALTER TABLE outbound_messages
+        ADD COLUMN delivery_evidence TEXT
+        CHECK (delivery_evidence IN ('submitted', 'server_accepted', 'delivered', 'read', 'played'));
+      ALTER TABLE outbound_messages
+        ADD COLUMN server_accepted_at INTEGER;
+      ALTER TABLE outbound_messages
+        ADD COLUMN delivered_at INTEGER;
+      ALTER TABLE outbound_messages
+        ADD COLUMN read_at INTEGER;
+      ALTER TABLE outbound_messages
+        ADD COLUMN played_at INTEGER;
+    `,
+  },
 ];
 
 export function runMigrations(database: DatabaseSync, migrationList: Migration[] = migrations): void {
