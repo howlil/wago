@@ -1,0 +1,42 @@
+schema: devland.project/v0
+devland:
+  contract: "1"
+project:
+  name: wago
+  types:
+    - self-hosted-application
+    - gateway
+product:
+  purpose: Production-grade self-hosted WhatsApp gateway for one WhatsApp account per deployed instance.
+  priorities: []
+  non_goals: []
+platforms:
+  - linux
+stack:
+  languages:
+    - typescript
+  frameworks:
+    - express
+    - react
+    - vite
+    - astro
+  runtimes:
+    - node
+  data_stores:
+    - sqlite
+architecture:
+  style: single-instance modular monolith
+  document: .agents/ARCHITECTURE.md
+qualities:
+  - correctness
+  - security
+  - data-integrity
+  - reliability
+  - recoverability
+profiles: []
+delivery:
+  model: docker-first self-hosted
+  production_environments:
+    - production
+constraints:
+  - Authoritative Wago product and architecture knowledge remains under .agents; Devland metadata is supplemental machine-readable engineering context and must not override it.
