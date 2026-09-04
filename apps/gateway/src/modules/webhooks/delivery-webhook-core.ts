@@ -2,8 +2,13 @@ import { createHmac, randomUUID } from "node:crypto";
 
 export const WEBHOOK_SCHEMA_VERSION = "1" as const;
 
-export type MessageDeliveryWebhookStatus = "accepted" | "rejected";
-export type MessageDeliveryWebhookEvent = "message.server_accepted" | "message.rejected";
+export type MessageDeliveryWebhookStatus = "accepted" | "rejected" | "delivered" | "read" | "played";
+export type MessageDeliveryWebhookEvent =
+  | "message.server_accepted"
+  | "message.rejected"
+  | "message.delivered"
+  | "message.read"
+  | "message.played";
 export type IncomingMessageWebhookEvent = "message.received";
 export type WebhookEvent = MessageDeliveryWebhookEvent | IncomingMessageWebhookEvent | "wago.test";
 
@@ -98,7 +103,18 @@ type WebhookAttemptSenderDependencies = {
 const DEFAULT_TIMEOUT_MS = 5_000;
 
 function eventForStatus(status: MessageDeliveryWebhookStatus): MessageDeliveryWebhookEvent {
-  return status === "accepted" ? "message.server_accepted" : "message.rejected";
+  switch (status) {
+    case "accepted":
+      return "message.server_accepted";
+    case "rejected":
+      return "message.rejected";
+    case "delivered":
+      return "message.delivered";
+    case "read":
+      return "message.read";
+    case "played":
+      return "message.played";
+  }
 }
 
 export function createMessageDeliveryWebhookEnvelope(
