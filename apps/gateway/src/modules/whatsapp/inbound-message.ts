@@ -72,7 +72,10 @@ function commonInbound(message: WAMessage, now: () => Date) {
   };
 }
 
-export function normalizeInboundTextMessage(message: WAMessage, now: () => Date = () => new Date()): InboundTextMessage | null {
+export function normalizeInboundTextMessage(
+  message: WAMessage,
+  now: () => Date = () => new Date(),
+): InboundTextMessage | null {
   const common = commonInbound(message, now);
   if (!common) return null;
 
