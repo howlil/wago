@@ -1,12 +1,18 @@
 import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
-import { getMessageStatusByProviderId, updateMessageStatusByProviderId } from "../messages/index.js";
+import {
+  getMessageStatusByProviderId,
+  updateMessageDeliveryEvidenceByProviderId,
+  updateMessageStatusByProviderId,
+} from "../messages/index.js";
 import { markRecipientReachoutRestricted, recordOutboundAcknowledged } from "../messages/outbound-policy.js";
+import { rememberRecipientResolution } from "../recipients/store.js";
 import { enqueueIncomingMessageWebhook } from "../webhooks/index.js";
 import {
   invalidateAccountHealth,
   markReachoutRestricted,
   refreshAccountHealth,
+  updateNewChatCap,
   updateReachoutTimeLock,
 } from "./account-health.js";
 import { bindWhatsAppAccount, clearWhatsAppBinding } from "./binding-store.js";
@@ -15,6 +21,8 @@ import { classifyDisconnect } from "./disconnect-classifier.js";
 import { type InboundTextMessage, normalizeInboundTextMessage } from "./inbound-message.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
+import { invalidateRecipientLookupCache } from "./recipient-cache.js";
+import { rememberRecipientIdentity } from "./recipient-identity-store.js";
 import {
   getActiveSocket,
   invalidateSocketGeneration,
@@ -40,6 +48,11 @@ type RegisterSocketEventsOptions = {
   onIncomingMessage?: (message: InboundTextMessage) => void;
 };
 
+function receiptTimestamp(value: unknown): Date {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : new Date();
+}
+
 export function registerSocketEvents({
   socket,
   generation,
@@ -55,6 +68,40 @@ export function registerSocketEvents({
   socket.ev.on("creds.update", () => {
     if (!isCurrentGeneration(generation)) return;
     credentialWriter.enqueue(saveCreds, generation);
+  });
+
+  socket.ev.on("lid-mapping.update", (mapping) => {
+    if (!isCurrentGeneration(generation)) return;
+    rememberRecipientIdentity(mapping.pn, mapping.lid);
+    invalidateRecipientLookupCache(mapping.pn);
+    void rememberRecipientResolution(mapping.pn, mapping.lid);
+    auditBaileys({
+      level: "info",
+      category: "connection",
+      code: "baileys.recipient.lid_mapping_updated",
+      title: "Recipient addressing refreshed",
+      description: "WhatsApp supplied a newer phone-to-LID mapping for recipient addressing.",
+      metadata: { socketGeneration: generation },
+    });
+  });
+
+  socket.ev.on("message-capping.update", (cap) => {
+    if (!isCurrentGeneration(generation)) return;
+    updateNewChatCap(cap);
+    auditBaileys({
+      level: cap.capping_status === "CAPPED" ? "warning" : "info",
+      category: "connection",
+      code: "baileys.health.new_chat_cap_changed",
+      title: "New-chat capacity changed",
+      description: "WhatsApp pushed an updated new-chat capacity state.",
+      metadata: {
+        socketGeneration: generation,
+        cappingStatus: cap.capping_status ?? null,
+        usedQuota: cap.used_quota ?? null,
+        totalQuota: cap.total_quota ?? null,
+        cycleEndAt: cap.cycle_end_timestamp ?? null,
+      },
+    });
   });
 
   socket.ev.on("messages.upsert", (event) => {
@@ -139,6 +186,7 @@ export function registerSocketEvents({
         }
 
         updateMessageStatusByProviderId(providerMessageId, { status: "accepted" });
+        updateMessageDeliveryEvidenceByProviderId(providerMessageId, "server_accepted");
         auditBaileys({
           level: "info",
           category: "messaging",
@@ -151,6 +199,35 @@ export function registerSocketEvents({
             status: entry.update.status,
           },
         });
+      }
+    }
+  });
+
+  socket.ev.on("message-receipt.update", (updates) => {
+    if (!isCurrentGeneration(generation)) return;
+
+    for (const entry of updates) {
+      const providerMessageId = entry.key?.id;
+      if (!providerMessageId) continue;
+
+      if (entry.receipt.playedTimestamp != null) {
+        updateMessageDeliveryEvidenceByProviderId(
+          providerMessageId,
+          "played",
+          receiptTimestamp(entry.receipt.playedTimestamp),
+        );
+      } else if (entry.receipt.readTimestamp != null) {
+        updateMessageDeliveryEvidenceByProviderId(
+          providerMessageId,
+          "read",
+          receiptTimestamp(entry.receipt.readTimestamp),
+        );
+      } else if (entry.receipt.receiptTimestamp != null) {
+        updateMessageDeliveryEvidenceByProviderId(
+          providerMessageId,
+          "delivered",
+          receiptTimestamp(entry.receipt.receiptTimestamp),
+        );
       }
     }
   });
