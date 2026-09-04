@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths-ignore:
       - ".agents/**"
+      - ".devland/**"
       - "*.md"
       - "apps/docs/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - ".agents/**"
+      - ".devland/**"
       - "*.md"
       - "apps/docs/**"
 
