@@ -1,7 +1,7 @@
 import { downloadMediaMessage } from "@whiskeysockets/baileys";
 import { ApplicationError } from "../../errors/application-error.js";
 import { baileysLogger } from "../../infrastructure/logger.js";
-import { normalizeInboundMediaMessage, type InboundMediaMessage } from "./inbound-message.js";
+import { type InboundMediaMessage, normalizeInboundMediaMessage } from "./inbound-message.js";
 import { getRecentInboundMessage } from "./recent-inbound-store.js";
 import { getActiveSocket } from "./runtime.js";
 
@@ -26,10 +26,15 @@ export async function downloadRecentInboundMedia(messageId: string): Promise<Dow
   }
 
   try {
-    const data = await downloadMediaMessage(message, "buffer", {}, {
-      reuploadRequest: socket.updateMediaMessage,
-      logger: baileysLogger,
-    });
+    const data = await downloadMediaMessage(
+      message,
+      "buffer",
+      {},
+      {
+        reuploadRequest: socket.updateMediaMessage,
+        logger: baileysLogger,
+      },
+    );
     return { data, media: normalized.media };
   } catch (error) {
     throw new ApplicationError("MEDIA_DOWNLOAD_FAILED", "WhatsApp media download failed", { cause: error });
