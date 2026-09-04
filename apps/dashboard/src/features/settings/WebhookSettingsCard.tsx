@@ -46,6 +46,9 @@ function testResultMessage(delivery: WebhookTestDelivery): string {
 const supportedEvents = [
   ["Incoming messages", "message.received"],
   ["Message accepted", "message.server_accepted"],
+  ["Message delivered", "message.delivered"],
+  ["Message read", "message.read"],
+  ["Message played", "message.played"],
   ["Message rejected", "message.rejected"],
 ] as const;
 
@@ -276,7 +279,7 @@ export function WebhookSettingsCard() {
             <details>
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-wago-ink [&::-webkit-details-marker]:hidden">
                 <span>Supported events</span>
-                <span className="font-normal text-wago-muted">3 events</span>
+                <span className="font-normal text-wago-muted">6 events</span>
               </summary>
               <div className="mt-3 divide-y divide-wago-line border-t border-wago-line">
                 {supportedEvents.map(([label, event]) => (
@@ -290,8 +293,9 @@ export function WebhookSettingsCard() {
                 ))}
               </div>
               <p className="mb-0 mt-2 text-xs leading-5 text-wago-muted">
-                Incoming sender and text data are retained only while an active retry needs them and are removed when
-                the delivery becomes terminal.
+                Read and played are observational evidence and appear only when WhatsApp exposes them. Incoming sender
+                and text data are retained only while an active retry needs them and are removed when the delivery
+                becomes terminal.
               </p>
             </details>
           </div>
