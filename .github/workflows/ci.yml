@@ -56,3 +56,156 @@ jobs:
 
       - name: Build core
         run: task core:build
+
+  devland-dogfood:
+    name: Devland external feedback loop
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout Wago
+        uses: actions/checkout@v7
+
+      - name: Checkout Devland master
+        uses: actions/checkout@v7
+        with:
+          repository: howlil/devland
+          ref: master
+          path: .dogfood/devland
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install Devland
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --dir .dogfood/devland --frozen-lockfile
+          npm install --prefix .dogfood/devland/adapters/openai/chatgpt-plugin
+
+      - name: Validate Wago canonical context
+        run: node .dogfood/devland/bin/devland.mjs validate
+
+      - name: Exercise read-only MCP feedback loop
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT=8787 node .dogfood/devland/adapters/openai/chatgpt-plugin/server.mjs >/tmp/devland-mcp.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" >/dev/null 2>&1 || true; cat /tmp/devland-mcp.log || true' EXIT
+
+          ready=0
+          for _ in $(seq 1 30); do
+            if [[ "$(curl -fsS http://127.0.0.1:8787/ 2>/dev/null || true)" == "Devland context plugin" ]]; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const endpoint = 'http://127.0.0.1:8787/mcp';
+          const headers = {
+            'content-type': 'application/json',
+            'accept': 'application/json, text/event-stream',
+            'mcp-protocol-version': '2025-03-26',
+          };
+          const projectYaml = fs.readFileSync('.devland/project.yaml', 'utf8');
+          const stateYaml = fs.readFileSync('.devland/state.yaml', 'utf8');
+
+          async function rpc(id, method, params = {}) {
+            const response = await fetch(endpoint, {
+              method: 'POST', headers,
+              body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
+            });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`${method} returned ${response.status}: ${text}`);
+            const body = JSON.parse(text);
+            if (body.error) throw new Error(`${method} failed: ${JSON.stringify(body.error)}`);
+            return body.result;
+          }
+
+          async function resolve(id, signals, verification, expectedLane) {
+            const result = await rpc(id, 'tools/call', {
+              name: 'resolve_context',
+              arguments: {
+                project_yaml: projectYaml,
+                state_yaml: stateYaml,
+                workflow: 'develop-change',
+                change: { signals, verification },
+                work: {
+                  id: `wago-dogfood-${expectedLane}`,
+                  intent: `Retrospectively evaluate a real Wago ${expectedLane} change through Devland`,
+                  acceptance: [`Devland resolves the expected ${expectedLane} execution lane without inventing product scope`],
+                },
+              },
+            });
+            const context = result?.structuredContent?.context;
+            if (context?.execution?.lane !== expectedLane) {
+              throw new Error(`expected ${expectedLane}, got ${JSON.stringify(context?.execution)}`);
+            }
+          }
+
+          (async () => {
+            await rpc(1, 'initialize', {
+              protocolVersion: '2025-03-26', capabilities: {},
+              clientInfo: { name: 'wago-dogfood', version: '1.0.0' },
+            });
+            const listed = await rpc(2, 'tools/list');
+            const names = (listed?.tools ?? []).map((tool) => tool.name).sort();
+            if (JSON.stringify(names) !== JSON.stringify(['doctor', 'flow_report', 'resolve_context'])) {
+              throw new Error(`unexpected MCP tools: ${JSON.stringify(names)}`);
+            }
+
+            await resolve(3, ['localized', 'reversible'], {
+              criticality: 'peripheral',
+              failure_modes: ['presentation structure regresses without changing Wago behavior'],
+              boundary: 'static', cost: 'cheap',
+              reason: 'recent Wago UI-only consolidation is a reversible presentation change',
+            }, 'rapid');
+
+            await resolve(4, ['multi-module', 'dependency-change'], {
+              criticality: 'behavioral',
+              failure_modes: ['standalone docs installation or build fails outside the monorepo workspace'],
+              boundary: 'release', cost: 'moderate',
+              reason: 'recent standalone docs deployment compatibility work crossed package/workspace boundaries',
+            }, 'guided');
+
+            await resolve(5, ['security-boundary', 'schema-change'], {
+              criticality: 'critical',
+              failure_modes: ['first-run authentication or persisted credential migration weakens the trust boundary'],
+              boundary: 'integration', cost: 'expensive',
+              reason: 'recent zero-env admin setup changed authentication and persisted credential semantics',
+            }, 'deliberate');
+
+            const doctor = await rpc(6, 'tools/call', {
+              name: 'doctor',
+              arguments: {
+                project_yaml: projectYaml,
+                state_yaml: stateYaml,
+                repository_files: [
+                  { path: 'package.json', content: fs.readFileSync('package.json', 'utf8') },
+                  { path: '.agents/ARCHITECTURE.md', content: fs.readFileSync('.agents/ARCHITECTURE.md', 'utf8') },
+                ],
+              },
+            });
+            if (doctor?.structuredContent?.doctor?.status !== 'clean') {
+              throw new Error(`unexpected doctor result: ${JSON.stringify(doctor)}`);
+            }
+
+            const flow = await rpc(7, 'tools/call', {
+              name: 'flow_report',
+              arguments: { project_yaml: projectYaml, state_yaml: stateYaml, events_ndjson: '' },
+            });
+            const report = flow?.structuredContent?.report;
+            if (report?.event_count !== 0 || report?.evidence_status !== 'empty') {
+              throw new Error(`empty flow evidence was not honest: ${JSON.stringify(report)}`);
+            }
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
