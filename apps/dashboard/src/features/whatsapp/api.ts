@@ -36,7 +36,7 @@ export type AccountHealthSnapshot = {
     server_sent_timestamp?: string;
     capping_status?: string;
   };
-  newChatCapacity: {
+  newChatCapacity?: {
     status: NewChatCapacityStatus;
     used?: number;
     total?: number;
