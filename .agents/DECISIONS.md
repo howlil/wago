@@ -106,7 +106,23 @@ This file records material decisions whose rationale is expensive to rediscover.
 
 **Implication:** presentation work uses targeted design guards first, then full affected-app tests/build. Do not broaden heavyweight workflows merely to create a sense of coverage; expand them when a concrete regression path crosses runtime, persistence, deployment, package/build configuration, or release boundaries. Keep explicit dependency installation singular and frozen in CI when setup actions would otherwise install implicitly.
 
-## D14 — Logical recipient identity and delivery evidence stay separate from Baileys transport details
+## D14 — Dashboard color and motion stay semantic, flat, and restrained
+
+**Decision:** primary dashboard workspace sections use one shared low-chroma semantic workbench family plus structural rules; active global/Settings navigation uses a flat full-row selected wash plus a narrow directional brand rule. Purposeful interaction continuity uses Motion for React and the application root respects the user's reduced-motion preference.
+
+**Why:** a completely uncolored workspace makes operational modules visually collapse into the canvas, while rounded brand-soft navigation pills, card walls, glow, hover lift, and ornamental animation reproduce the generic AI-generated SaaS look the dashboard is explicitly avoiding. Controlled tint and rule-led state provide stronger hierarchy without decorative chrome.
+
+**Implication:** prefer `wago-workspace*`, `wago-control-surface`, `wago-selected*`, and `wago-console-row*` semantic tokens. Do not create per-module rainbow cards, rounded active-navigation pills, nested tinted cards, shadows, glow, or bouncy page choreography. Motion should clarify active state, direct manipulation, or inline disclosure, stay spatially small, never delay routing/data rendering, and remain understandable when animation is reduced or absent.
+
+## D15 — Operator density wins over decorative whitespace
+
+**Decision:** Wago's operational surfaces default to compact evidence density rather than sparse decorative whitespace. Control keeps runtime/account evidence close together, Settings uses a compact local rail plus a fluid active workbench, and Audit uses a single-heading dense console with 20 rows per client page, compact filters, honest loaded-count pagination, and inline technical disclosure.
+
+**Why:** excessive blank space increases scan distance and makes a small operator console feel like a generic AI-minimal SaaS template. Wago's users need to understand state and evidence quickly, not admire empty canvas.
+
+**Implication:** do not reintroduce duplicate page headings, 80-100px routine Audit rows, oversized toolbars, large inactive bands, or empty card-shaped regions. Maintain readable type, 40px collapsed navigation targets, 32-36px routine controls, semantic state text, and responsive wrapping at 320px. Density must improve scanning without hiding prerequisites, risk, or technical evidence.
+
+## D16 — Logical recipient identity and delivery evidence stay separate from Baileys transport details
 
 **Decision:** recipient policy remains keyed by the logical phone-number JID while Baileys LID mappings are persisted as transport addressing metadata. Outbound operation state remains `pending | accepted | rejected`; provider delivery evidence is an additive monotonic dimension (`submitted | server_accepted | delivered | read | played`). New-chat warning states are surfaced as warnings and do not block sends unless WhatsApp explicitly reports `CAPPED`.
 
@@ -114,7 +130,7 @@ This file records material decisions whose rationale is expensive to rediscover.
 
 **Implication:** `lid-mapping.update` invalidates stale recipient routing without creating a second logical recipient; delivery evidence may advance but never regress; read/played are optional provider evidence; public clients can continue relying on the existing operation status contract while newer clients inspect additive evidence and timestamps.
 
-## D15 — Reply context and media remain bounded integration capabilities
+## D17 — Reply context and media remain bounded integration capabilities
 
 **Decision:** quoted-message context and media support extend Wago's integration surface without creating durable chat history or a dashboard inbox. Recent inbound provider messages may be retained only in bounded process memory for short-lived reply/download operations. Incoming media webhooks carry metadata only; outbound media accepts caller-supplied bytes rather than remote media URLs.
 
