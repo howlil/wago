@@ -182,10 +182,7 @@ export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput
   }
 }
 
-function enqueueInboundEnvelope(
-  input: IncomingMessageWebhookInput | IncomingMediaWebhookInput,
-  media: boolean,
-): void {
+function enqueueInboundEnvelope(input: IncomingMessageWebhookInput | IncomingMediaWebhookInput, media: boolean): void {
   const settings = settingsStore.get();
   if (!settings?.enabled || !settings.url || !settings.secret) return;
   try {
