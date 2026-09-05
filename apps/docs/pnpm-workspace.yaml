@@ -2,7 +2,6 @@ packages:
   - "."
 
 # Static hosts build from apps/docs without the monorepo root lockfile.
-lockfile: false
-
+# Keep this workspace self-contained and commit its local pnpm-lock.yaml.
 allowBuilds:
   esbuild: true
