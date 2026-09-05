@@ -31,7 +31,10 @@ describe("dashboard information architecture", () => {
     expect(settings).toContain('aria-label="Settings sections"');
     expect(settings).toContain("aria-current={active ? \"page\" : undefined}");
     expect(settings).toContain("hashchange");
-    expect(settings).toContain("lg:grid-cols-[176px_minmax(0,1fr)]");
+    expect(settings).toContain("lg:grid-cols-[160px_minmax(0,1fr)]");
+    expect(settings).toContain("<motion.a");
+    expect(settings).toContain('layoutId="settings-active-surface"');
+    expect(settings).toContain("bg-wago-selected");
     expect(settings).not.toContain("max-w-[1120px]");
     expect(settings).not.toContain("minmax(0,880px)");
   });
@@ -61,7 +64,9 @@ describe("dashboard information architecture", () => {
     expect(overview).toContain('label: "WhatsApp"');
     expect(overview).toContain('label: "Messaging"');
     expect(overview).toContain('value: "Waiting"');
-    expect(overview).toContain("border-y border-wago-line");
+    expect(overview).toContain("bg-wago-control-surface");
+    expect(overview).toContain("border-y border-wago-workspace-line");
+    expect(overview).toContain("toneSurface");
     expect(overview).not.toContain("rounded-lg");
     expect(overview).not.toContain("bg-white px-4 py-3.5");
     expect(control).not.toContain("statusLabel=");
@@ -75,7 +80,7 @@ describe("dashboard information architecture", () => {
     expect(header).not.toContain("description:");
   });
 
-  it("keeps WhatsApp connection and account health in a divider-led workbench", () => {
+  it("keeps WhatsApp connection and account health in a compact divider-led workbench", () => {
     const mainColumn = source("pages/dashboard/DashboardMainColumn.tsx");
     const whatsappModule = source("features/whatsapp/WhatsAppBindingCard.tsx");
     const accountHealth = source("features/whatsapp/AccountHealthCard.tsx");
@@ -85,8 +90,10 @@ describe("dashboard information architecture", () => {
     expect(mainColumn).toContain("accountHealth={dashboard.accountHealth}");
     expect(whatsappModule).toContain("workspaceModuleClass");
     expect(whatsappModule).toContain("AccountHealthCard");
+    expect(whatsappModule).toContain("py-3");
     expect(whatsappModule).not.toContain("cardBodyClass");
     expect(accountHealth).toContain("md:grid-cols-3");
+    expect(accountHealth).toContain("border-wago-workspace-line py-3");
     expect(accountHealth).toContain("New chats");
     expect(accountHealth).toContain("New-recipient sends remain allowed until a cap is reported.");
     expect(pairing).toContain("rounded-md border border-wago-line bg-wago-surface-subtle");
@@ -94,16 +101,23 @@ describe("dashboard information architecture", () => {
     expect(pairing).not.toContain("bg-[#");
   });
 
-  it("keeps diagnostics secondary and prerequisite-aware", () => {
+  it("keeps diagnostics secondary, compact, and prerequisite-aware", () => {
     const diagnostics = source("pages/dashboard/DashboardDiagnostics.tsx");
 
     expect(diagnostics).toContain('dashboard.status === "connected"');
     expect(diagnostics).toContain("Diagnostics unavailable");
     expect(diagnostics).toContain("Connect WhatsApp before running an outbound delivery diagnostic.");
+    expect(diagnostics).toContain("mt-4 border-t border-wago-workspace-line pt-2");
     expect(diagnostics).toContain("<details");
   });
 
-  it("uses workspace surfaces instead of giant cards for active Settings modules", () => {
+  it("uses semantic workspace surfaces instead of giant routine cards", () => {
+    const classes = source("shared/ui/classes.ts");
+
+    expect(classes).toContain("border-l-2 border-wago-workspace-line bg-wago-workspace");
+    expect(classes).not.toContain("workspaceModuleClass = \"rounded");
+    expect(classes).not.toContain("workspaceModuleClass = \"shadow");
+
     for (const path of [
       "features/gateway/GatewayCredentialsCard.tsx",
       "features/recipients/RecipientAccessCard.tsx",
@@ -123,7 +137,8 @@ describe("dashboard information architecture", () => {
     expect(webhook).toContain("WebhookDeliveryDiagnostics");
     expect(webhook).toContain("Configuration");
     expect(webhook).toContain("Supported events");
-    expect(webhook).toContain("6 events");
+    expect(webhook).toContain("7 events");
+    expect(webhook).toContain("message.media_received");
     expect(webhook).toContain("message.delivered");
     expect(webhook).toContain("message.read");
     expect(webhook).toContain("message.played");
@@ -187,23 +202,90 @@ describe("dashboard information architecture", () => {
     }
   });
 
-  it("keeps Audit Log as a flat operational console", () => {
+  it("keeps workspace, selected state, control rail, and console rows on semantic tokens", () => {
+    const styles = source("styles.css");
+    const classes = source("shared/ui/classes.ts");
+    const sidebar = source("shared/layout/AppSidebar.tsx");
+
+    for (const token of [
+      "--color-wago-workspace:",
+      "--color-wago-workspace-strong:",
+      "--color-wago-workspace-line:",
+      "--color-wago-control-surface:",
+      "--color-wago-selected:",
+      "--color-wago-selected-line:",
+      "--color-wago-console-row:",
+      "--color-wago-console-row-hover:",
+    ]) {
+      expect(styles).toContain(token);
+    }
+    expect(classes).toContain("bg-wago-workspace");
+    expect(sidebar).toContain("bg-wago-selected");
+  });
+
+  it("keeps Audit Log dense, single-heading, paginated, and progressively disclosed", () => {
+    const page = source("pages/audit/AuditPage.tsx");
     const panel = source("features/activity/ActivityLogPanel.tsx");
     const list = source("features/activity/ActivityEventList.tsx");
 
+    expect(page).not.toContain("Operational history");
     expect(panel).not.toContain("cardBodyClass");
+    expect(panel).toContain("xl:grid-cols-[minmax(280px,1fr)_140px_150px_130px_auto]");
+    expect(panel).toContain("useState(20)");
+    expect(panel).toContain("Rows per page");
+    expect(panel).toContain("Audit pagination");
+    expect(panel).toContain("Load more");
+    expect(list).toContain("bg-wago-console-row");
+    expect(list).toContain("px-2.5 py-2");
+    expect(list).toContain("AnimatePresence");
+    expect(list).toContain("height: \"auto\"");
     expect(list).not.toContain("rounded-lg border border-wago-line bg-white");
-    expect(panel).toContain("border-y border-wago-line");
-    expect(list).toContain("border-y border-wago-line");
   });
 
-  it("keeps global navigation rule-led instead of active-card shaped", () => {
+  it("keeps global and Settings navigation rule-led with state continuity motion", () => {
     const sidebar = source("shared/layout/AppSidebar.tsx");
+    const settings = source("pages/settings/SettingsPage.tsx");
+    const app = source("App.tsx");
 
-    expect(sidebar).toContain("border-l-2");
-    expect(sidebar).toContain("border-l-wago-brand text-wago-brand-strong");
-    expect(sidebar).not.toContain("border-wago-brand/20");
+    expect(sidebar).toContain("<motion.a");
+    expect(sidebar).toContain("global-active-surface");
+    expect(sidebar).toContain("bg-wago-selected");
+    expect(sidebar).toContain("w-0.5 bg-wago-brand");
+    expect(settings).toContain('layoutId="settings-active-rule"');
+    expect(settings).toContain("initial={{ opacity: 0.86 }}");
     expect(sidebar).not.toContain("bg-wago-brand-soft text-wago-brand-strong");
     expect(sidebar).not.toContain(">Workspace<");
+    expect(app).toContain('<MotionConfig reducedMotion="user">');
+  });
+
+  it("keeps the shell compact without reducing collapsed navigation targets", () => {
+    const shell = source("shared/components/AppShell.tsx");
+    const header = source("shared/layout/AppHeader.tsx");
+    const sidebar = source("shared/layout/AppSidebar.tsx");
+    const classes = source("shared/ui/classes.ts");
+
+    expect(header).toContain("min-h-12");
+    expect(shell).toContain("pb-6 pt-3");
+    expect(sidebar).toContain("h-10");
+    expect(classes).toContain("h-8");
+  });
+
+  it("guards high-traffic operator surfaces against generic AI-SaaS decoration", () => {
+    const paths = [
+      "shared/layout/AppSidebar.tsx",
+      "shared/layout/AppHeader.tsx",
+      "pages/settings/SettingsPage.tsx",
+      "features/dashboard/OverviewCards.tsx",
+      "features/activity/ActivityLogPanel.tsx",
+      "features/activity/ActivityEventList.tsx",
+    ];
+    const prohibited = ["rounded-xl", "shadow-", "bg-gradient", "backdrop-blur", "hover:-translate-y", "drop-shadow"];
+
+    for (const path of paths) {
+      const content = source(path);
+      for (const pattern of prohibited) {
+        expect(content, `${path} should not contain ${pattern}`).not.toContain(pattern);
+      }
+    }
   });
 });
