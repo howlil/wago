@@ -55,7 +55,7 @@ describe("messages feature API", () => {
       .fn()
       .mockResolvedValueOnce(pendingResponse())
       .mockResolvedValueOnce(
-        new Response(new Blob(["downloaded"], { type: "image/png" }), {
+        new Response("downloaded", {
           status: 200,
           headers: { "Content-Type": "image/png" },
         }),
