@@ -28,8 +28,8 @@ import {
 } from "./inbound-message.js";
 import { mapMessageRejection } from "./message-rejection.js";
 import { auditBaileys, auditDate, createAccountHealthFetcher } from "./observability.js";
-import { invalidateRecipientLookupCache } from "./recipient-cache.js";
 import { rememberRecentInboundMessage } from "./recent-inbound-store.js";
+import { invalidateRecipientLookupCache } from "./recipient-cache.js";
 import { rememberRecipientIdentity } from "./recipient-identity-store.js";
 import {
   getActiveSocket,
