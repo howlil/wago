@@ -1,0 +1,53 @@
+name: Generate Docs Lockfile
+
+on:
+  push:
+    branches: ['fix/docs-mypaas-lockfile']
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 11.21.0
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Generate docs lockfile
+        working-directory: apps/docs
+        run: pnpm install --lockfile-only
+
+      - name: Verify exact MyPaas builder path
+        shell: bash
+        run: |
+          rm -rf apps/docs/node_modules apps/docs/dist apps/docs/.astro
+          docker run --rm \
+            --env CI=true \
+            --volume "$GITHUB_WORKSPACE/apps/docs:/app" \
+            --workdir /app \
+            node:22-alpine \
+            sh -ec 'corepack enable && pnpm install --frozen-lockfile && pnpm run build'
+          test -f apps/docs/dist/index.html
+
+      - name: Commit generated lockfile
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/docs/pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "fix: add standalone docs pnpm lockfile"
+          git push
