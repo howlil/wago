@@ -4,6 +4,7 @@ import { logger, maskIdentifier } from "../../infrastructure/logger.js";
 import { toWhatsAppJid } from "../../utils/phone.js";
 import {
   abandonOutboundDispatch,
+  getMessageStatus,
   markOutboundDispatchIndeterminate,
   markOutboundDispatchSubmitted,
   markOutboundDispatchSubmitting,
@@ -301,9 +302,7 @@ export async function sendTextMessage(
   options: SendTextMessageOptions,
 ): Promise<SendTextMessageResult> {
   const result = await whatsappSender.sendText(to, text, options);
-  const status = await import("../messages/message-status-store.js").then(({ getMessageStatus }) =>
-    getMessageStatus(options.messageId),
-  );
+  const status = getMessageStatus(options.messageId);
   if (status?.providerMessageId) {
     rememberRecentTextMessage({ id: status.providerMessageId, remoteJid: status.to }, text);
   }
