@@ -1,9 +1,6 @@
 import type { WASocket } from "@whiskeysockets/baileys";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  rememberPendingMessageStatus,
-  resetMessageStatusStoreForTest,
-} from "../messages/message-status-store.js";
+import { rememberPendingMessageStatus, resetMessageStatusStoreForTest } from "../messages/message-status-store.js";
 import { resetRecentInboundStoreForTest } from "./recent-inbound-store.js";
 import { registerSocketEvents } from "./socket-events.js";
 
