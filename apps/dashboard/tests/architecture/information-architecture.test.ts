@@ -94,6 +94,8 @@ describe("dashboard information architecture", () => {
     expect(whatsappModule).not.toContain("cardBodyClass");
     expect(accountHealth).toContain("md:grid-cols-3");
     expect(accountHealth).toContain("border-wago-workspace-line py-3");
+    expect(accountHealth).toContain("New chats");
+    expect(accountHealth).toContain("New-recipient sends remain allowed until a cap is reported.");
     expect(pairing).toContain("rounded-md border border-wago-line bg-wago-surface-subtle");
     expect(pairing).not.toContain("QrCode");
     expect(pairing).not.toContain("bg-[#");
@@ -135,7 +137,11 @@ describe("dashboard information architecture", () => {
     expect(webhook).toContain("WebhookDeliveryDiagnostics");
     expect(webhook).toContain("Configuration");
     expect(webhook).toContain("Supported events");
-    expect(webhook).toContain("3 events");
+    expect(webhook).toContain("7 events");
+    expect(webhook).toContain("message.media_received");
+    expect(webhook).toContain("message.delivered");
+    expect(webhook).toContain("message.read");
+    expect(webhook).toContain("message.played");
     expect(webhook).toContain("xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]");
     expect(webhook).not.toContain("cardBodyClass");
     expect(deliveryActivity).toContain("Delivery activity");

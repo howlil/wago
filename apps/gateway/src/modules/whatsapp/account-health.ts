@@ -13,6 +13,16 @@ export type NewChatMessageCapInfo = {
   capping_status?: "NONE" | "FIRST_WARNING" | "SECOND_WARNING" | "CAPPED" | string;
 };
 
+export type NewChatCapacityStatus = "unknown" | "healthy" | "warning" | "capped";
+
+export type NewChatCapacitySnapshot = {
+  status: NewChatCapacityStatus;
+  used?: number;
+  total?: number;
+  cycleStartAt?: string;
+  cycleEndAt?: string;
+};
+
 export type AccountHealthFetcher = {
   fetchAccountReachoutTimelock: () => Promise<ReachoutTimelockState | undefined>;
   fetchNewChatMessageCap: () => Promise<NewChatMessageCapInfo | undefined>;
@@ -30,6 +40,7 @@ export type AccountHealthSnapshot = {
     enforcementType?: string;
   };
   newChatCap?: NewChatMessageCapInfo;
+  newChatCapacity: NewChatCapacitySnapshot;
   lastFetchedAt?: string;
   lastFetchErrorAt?: string;
 };
@@ -74,6 +85,25 @@ function normalizeReachoutState(state?: ReachoutTimelockState): ReachoutTimelock
   return {
     ...state,
     timeEnforcementEnds: parseDate(state.timeEnforcementEnds),
+  };
+}
+
+function newChatCapacitySnapshot(cap?: NewChatMessageCapInfo): NewChatCapacitySnapshot {
+  const status: NewChatCapacityStatus =
+    cap?.capping_status === "CAPPED"
+      ? "capped"
+      : cap?.capping_status === "FIRST_WARNING" || cap?.capping_status === "SECOND_WARNING"
+        ? "warning"
+        : cap?.capping_status === "NONE"
+          ? "healthy"
+          : "unknown";
+
+  return {
+    status,
+    used: cap?.used_quota,
+    total: cap?.total_quota,
+    cycleStartAt: cap?.cycle_start_timestamp,
+    cycleEndAt: cap?.cycle_end_timestamp,
   };
 }
 
@@ -151,6 +181,15 @@ export function updateReachoutTimeLock(state?: ReachoutTimelockState): void {
   reachoutTimeLock = normalizeReachoutState(state);
 }
 
+export function updateNewChatCap(state?: NewChatMessageCapInfo): void {
+  newChatCap = state;
+  if (state) {
+    availability = "available";
+    unavailableReason = undefined;
+    lastFetchedAt = Date.now();
+  }
+}
+
 export function markReachoutRestricted(retryAt = new Date(Date.now() + FALLBACK_REACHOUT_RESTRICTION_MS)): void {
   reachoutTimeLock = {
     isActive: true,
@@ -194,17 +233,6 @@ export async function checkAccountHealth(
     };
   }
 
-  if (
-    options.isNewRecipient &&
-    (newChatCap?.capping_status === "FIRST_WARNING" || newChatCap?.capping_status === "SECOND_WARNING")
-  ) {
-    return {
-      allowed: false,
-      reason: "NEW_CHAT_RATE_LIMITED",
-      message: "WhatsApp reports a new-chat warning, so new recipient sends are paused",
-    };
-  }
-
   return { allowed: true };
 }
 
@@ -222,6 +250,7 @@ export function getAccountHealthSnapshot(): AccountHealthSnapshot {
         }
       : undefined,
     newChatCap,
+    newChatCapacity: newChatCapacitySnapshot(newChatCap),
     lastFetchedAt: lastFetchedAt ? new Date(lastFetchedAt).toISOString() : undefined,
     lastFetchErrorAt: lastFetchErrorAt ? new Date(lastFetchErrorAt).toISOString() : undefined,
   };

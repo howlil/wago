@@ -18,6 +18,7 @@ export type WhatsAppBinding =
 
 export type AccountHealthAvailability = "unavailable" | "checking" | "available";
 export type AccountHealthUnavailableReason = "not_connected" | "session_invalid" | "fetch_failed";
+export type NewChatCapacityStatus = "unknown" | "healthy" | "warning" | "capped";
 
 export type AccountHealthSnapshot = {
   availability: AccountHealthAvailability;
@@ -34,6 +35,13 @@ export type AccountHealthSnapshot = {
     cycle_end_timestamp?: string;
     server_sent_timestamp?: string;
     capping_status?: string;
+  };
+  newChatCapacity?: {
+    status: NewChatCapacityStatus;
+    used?: number;
+    total?: number;
+    cycleStartAt?: string;
+    cycleEndAt?: string;
   };
   lastFetchedAt?: string;
   lastFetchErrorAt?: string;

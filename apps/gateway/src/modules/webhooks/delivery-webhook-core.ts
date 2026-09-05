@@ -2,9 +2,14 @@ import { createHmac, randomUUID } from "node:crypto";
 
 export const WEBHOOK_SCHEMA_VERSION = "1" as const;
 
-export type MessageDeliveryWebhookStatus = "accepted" | "rejected";
-export type MessageDeliveryWebhookEvent = "message.server_accepted" | "message.rejected";
-export type IncomingMessageWebhookEvent = "message.received";
+export type MessageDeliveryWebhookStatus = "accepted" | "rejected" | "delivered" | "read" | "played";
+export type MessageDeliveryWebhookEvent =
+  | "message.server_accepted"
+  | "message.rejected"
+  | "message.delivered"
+  | "message.read"
+  | "message.played";
+export type IncomingMessageWebhookEvent = "message.received" | "message.media_received";
 export type WebhookEvent = MessageDeliveryWebhookEvent | IncomingMessageWebhookEvent | "wago.test";
 
 export type MessageDeliveryWebhookInput = {
@@ -18,6 +23,24 @@ export type IncomingMessageWebhookInput = {
   from: string;
   text: string;
   receivedAt: string;
+  replyToMessageId?: string;
+};
+
+export type IncomingMediaWebhookInput = {
+  messageId: string;
+  from: string;
+  receivedAt: string;
+  replyToMessageId?: string;
+  media: {
+    kind: "image" | "video" | "audio" | "document";
+    mimetype?: string;
+    fileName?: string;
+    fileLength?: number;
+    caption?: string;
+    seconds?: number;
+    width?: number;
+    height?: number;
+  };
 };
 
 export type MessageDeliveryWebhookEnvelope = {
@@ -35,14 +58,23 @@ export type MessageDeliveryWebhookEnvelope = {
 export type IncomingMessageWebhookEnvelope = {
   version: typeof WEBHOOK_SCHEMA_VERSION;
   id: string;
-  event: IncomingMessageWebhookEvent;
+  event: "message.received";
   createdAt: string;
   data: {
     messageId: string;
     from: string;
     text: string;
     receivedAt: string;
+    replyToMessageId?: string;
   };
+};
+
+export type IncomingMediaWebhookEnvelope = {
+  version: typeof WEBHOOK_SCHEMA_VERSION;
+  id: string;
+  event: "message.media_received";
+  createdAt: string;
+  data: IncomingMediaWebhookInput;
 };
 
 export type TestWebhookEnvelope = {
@@ -53,7 +85,11 @@ export type TestWebhookEnvelope = {
   data: Record<string, never>;
 };
 
-export type WebhookEnvelope = MessageDeliveryWebhookEnvelope | IncomingMessageWebhookEnvelope | TestWebhookEnvelope;
+export type WebhookEnvelope =
+  | MessageDeliveryWebhookEnvelope
+  | IncomingMessageWebhookEnvelope
+  | IncomingMediaWebhookEnvelope
+  | TestWebhookEnvelope;
 
 export type WebhookAttemptTarget = {
   id: string;
@@ -75,18 +111,9 @@ export type WebhookAttemptResult =
         | "WEBHOOK_HTTP_SERVER_ERROR";
     };
 
-type WebhookFetchResponse = {
-  ok: boolean;
-  status: number;
-};
-
+type WebhookFetchResponse = { ok: boolean; status: number };
 type WebhookFetch = (url: string, init: RequestInit) => Promise<WebhookFetchResponse>;
-
-type EnvelopeDependencies = {
-  createDeliveryId?: () => string;
-  now?: () => Date;
-};
-
+type EnvelopeDependencies = { createDeliveryId?: () => string; now?: () => Date };
 type WebhookAttemptSenderDependencies = {
   url: string;
   secrets: readonly string[];
@@ -98,7 +125,18 @@ type WebhookAttemptSenderDependencies = {
 const DEFAULT_TIMEOUT_MS = 5_000;
 
 function eventForStatus(status: MessageDeliveryWebhookStatus): MessageDeliveryWebhookEvent {
-  return status === "accepted" ? "message.server_accepted" : "message.rejected";
+  switch (status) {
+    case "accepted":
+      return "message.server_accepted";
+    case "rejected":
+      return "message.rejected";
+    case "delivered":
+      return "message.delivered";
+    case "read":
+      return "message.read";
+    case "played":
+      return "message.played";
+  }
 }
 
 export function createMessageDeliveryWebhookEnvelope(
@@ -107,15 +145,8 @@ export function createMessageDeliveryWebhookEnvelope(
 ): MessageDeliveryWebhookEnvelope {
   const createDeliveryId = deps.createDeliveryId ?? randomUUID;
   const now = deps.now ?? (() => new Date());
-  const data: MessageDeliveryWebhookEnvelope["data"] = {
-    messageId: input.messageId,
-    status: input.status,
-  };
-
-  if (input.status === "rejected" && input.error) {
-    data.error = input.error;
-  }
-
+  const data: MessageDeliveryWebhookEnvelope["data"] = { messageId: input.messageId, status: input.status };
+  if (input.status === "rejected" && input.error) data.error = input.error;
   return {
     version: WEBHOOK_SCHEMA_VERSION,
     id: createDeliveryId(),
@@ -131,7 +162,6 @@ export function createIncomingMessageWebhookEnvelope(
 ): IncomingMessageWebhookEnvelope {
   const createDeliveryId = deps.createDeliveryId ?? randomUUID;
   const now = deps.now ?? (() => new Date());
-
   return {
     version: WEBHOOK_SCHEMA_VERSION,
     id: createDeliveryId(),
@@ -142,14 +172,29 @@ export function createIncomingMessageWebhookEnvelope(
       from: input.from,
       text: input.text,
       receivedAt: input.receivedAt,
+      ...(input.replyToMessageId ? { replyToMessageId: input.replyToMessageId } : {}),
     },
+  };
+}
+
+export function createIncomingMediaWebhookEnvelope(
+  input: IncomingMediaWebhookInput,
+  deps: EnvelopeDependencies = {},
+): IncomingMediaWebhookEnvelope {
+  const createDeliveryId = deps.createDeliveryId ?? randomUUID;
+  const now = deps.now ?? (() => new Date());
+  return {
+    version: WEBHOOK_SCHEMA_VERSION,
+    id: createDeliveryId(),
+    event: "message.media_received",
+    createdAt: now().toISOString(),
+    data: input,
   };
 }
 
 export function createTestWebhookEnvelope(deps: EnvelopeDependencies = {}): TestWebhookEnvelope {
   const createDeliveryId = deps.createDeliveryId ?? randomUUID;
   const now = deps.now ?? (() => new Date());
-
   return {
     version: WEBHOOK_SCHEMA_VERSION,
     id: createDeliveryId(),
@@ -174,10 +219,7 @@ export function createWebhookSignatureHeader(input: {
   secrets: readonly string[];
 }): string {
   const uniqueSecrets = [...new Set(input.secrets.filter(Boolean))];
-  if (uniqueSecrets.length === 0) {
-    throw new Error("At least one webhook signing secret is required");
-  }
-
+  if (uniqueSecrets.length === 0) throw new Error("At least one webhook signing secret is required");
   const material = signingMaterial(input.id, input.timestamp, input.body);
   return uniqueSecrets
     .map((secret) => `v1,${createHmac("sha256", secret).update(material).digest("base64")}`)
@@ -185,39 +227,12 @@ export function createWebhookSignatureHeader(input: {
 }
 
 function classifyHttpFailure(status: number): Exclude<WebhookAttemptResult, { ok: true }> {
-  if (status >= 300 && status < 400) {
-    return {
-      ok: false,
-      retryable: false,
-      statusCode: status,
-      errorCode: "WEBHOOK_REDIRECT_REJECTED",
-    };
-  }
-
-  if (status === 408 || status === 429) {
-    return {
-      ok: false,
-      retryable: true,
-      statusCode: status,
-      errorCode: "WEBHOOK_HTTP_CLIENT_ERROR",
-    };
-  }
-
-  if (status >= 500) {
-    return {
-      ok: false,
-      retryable: true,
-      statusCode: status,
-      errorCode: "WEBHOOK_HTTP_SERVER_ERROR",
-    };
-  }
-
-  return {
-    ok: false,
-    retryable: false,
-    statusCode: status,
-    errorCode: "WEBHOOK_HTTP_CLIENT_ERROR",
-  };
+  if (status >= 300 && status < 400)
+    return { ok: false, retryable: false, statusCode: status, errorCode: "WEBHOOK_REDIRECT_REJECTED" };
+  if (status === 408 || status === 429)
+    return { ok: false, retryable: true, statusCode: status, errorCode: "WEBHOOK_HTTP_CLIENT_ERROR" };
+  if (status >= 500) return { ok: false, retryable: true, statusCode: status, errorCode: "WEBHOOK_HTTP_SERVER_ERROR" };
+  return { ok: false, retryable: false, statusCode: status, errorCode: "WEBHOOK_HTTP_CLIENT_ERROR" };
 }
 
 export function createWebhookAttemptSender(deps: WebhookAttemptSenderDependencies) {
@@ -254,26 +269,11 @@ export function createWebhookAttemptSender(deps: WebhookAttemptSenderDependencie
           signal: controller.signal,
           redirect: "manual",
         });
-
-        if (response.ok) {
-          return { ok: true, statusCode: response.status };
-        }
-
-        return classifyHttpFailure(response.status);
+        return response.ok ? { ok: true, statusCode: response.status } : classifyHttpFailure(response.status);
       } catch {
         return controller.signal.aborted
-          ? {
-              ok: false,
-              retryable: true,
-              statusCode: null,
-              errorCode: "WEBHOOK_TIMEOUT",
-            }
-          : {
-              ok: false,
-              retryable: true,
-              statusCode: null,
-              errorCode: "WEBHOOK_NETWORK_ERROR",
-            };
+          ? { ok: false, retryable: true, statusCode: null, errorCode: "WEBHOOK_TIMEOUT" }
+          : { ok: false, retryable: true, statusCode: null, errorCode: "WEBHOOK_NETWORK_ERROR" };
       } finally {
         clearTimeout(timeout);
       }

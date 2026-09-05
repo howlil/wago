@@ -7,6 +7,7 @@ import {
   markReachoutRestricted,
   refreshAccountHealth,
   resetAccountHealthForTest,
+  updateNewChatCap,
   updateReachoutTimeLock,
 } from "./account-health.js";
 
@@ -30,6 +31,7 @@ describe("account health", () => {
     expect(getAccountHealthSnapshot()).toMatchObject({
       availability: "unavailable",
       unavailableReason: "not_connected",
+      newChatCapacity: { status: "unknown" },
     });
   });
 
@@ -47,6 +49,7 @@ describe("account health", () => {
     expect(getAccountHealthSnapshot()).toMatchObject({
       availability: "available",
       unavailableReason: undefined,
+      newChatCapacity: { status: "healthy" },
     });
   });
 
@@ -66,6 +69,7 @@ describe("account health", () => {
       unavailableReason: "not_connected",
       reachoutTimeLock: undefined,
       newChatCap: undefined,
+      newChatCapacity: { status: "unknown" },
       lastFetchedAt: undefined,
       lastFetchErrorAt: undefined,
     });
@@ -165,19 +169,35 @@ describe("account health", () => {
     await expect(checkAccountHealth(fetcher, { isNewRecipient: false })).resolves.toEqual({ allowed: true });
   });
 
-  it("blocks new recipients on new-chat warning but allows known recipients", async () => {
-    const fetcher = makeFetcher({
-      fetchNewChatMessageCap: vi.fn(async () => ({
-        capping_status: "FIRST_WARNING",
-      })),
+  it("reports provider warnings without blocking new-recipient sends", async () => {
+    updateNewChatCap({
+      capping_status: "FIRST_WARNING",
+      used_quota: 42,
+      total_quota: 50,
+      cycle_end_timestamp: "2026-09-06T00:00:00.000Z",
     });
 
-    await expect(checkAccountHealth(fetcher, { isNewRecipient: true })).resolves.toEqual({
-      allowed: false,
-      reason: "NEW_CHAT_RATE_LIMITED",
-      message: "WhatsApp reports a new-chat warning, so new recipient sends are paused",
+    await expect(checkAccountHealth(undefined, { isNewRecipient: true })).resolves.toEqual({ allowed: true });
+    expect(getAccountHealthSnapshot().newChatCapacity).toEqual({
+      status: "warning",
+      used: 42,
+      total: 50,
+      cycleStartAt: undefined,
+      cycleEndAt: "2026-09-06T00:00:00.000Z",
     });
-    await expect(checkAccountHealth(fetcher, { isNewRecipient: false })).resolves.toEqual({ allowed: true });
+  });
+
+  it("accepts realtime capped state without waiting for the health cache to expire", async () => {
+    updateNewChatCap({ capping_status: "CAPPED", used_quota: 50, total_quota: 50 });
+
+    await expect(checkAccountHealth(undefined, { isNewRecipient: true })).resolves.toMatchObject({
+      allowed: false,
+      reason: "WA_NEW_CHAT_CAPPED",
+    });
+    expect(getAccountHealthSnapshot()).toMatchObject({
+      availability: "available",
+      newChatCapacity: { status: "capped", used: 50, total: 50 },
+    });
   });
 
   it("expires reachout timelock before evaluating outbound policy", async () => {

@@ -6,10 +6,12 @@ const messageMock = vi.hoisted(() => ({
 }));
 
 const whatsappMock = vi.hoisted(() => ({
+  downloadRecentInboundMedia: vi.fn(),
   getCurrentQr: vi.fn(),
   getWhatsAppStatus: vi.fn(),
   pairWhatsApp: vi.fn(),
   rebindWhatsApp: vi.fn(),
+  sendMediaMessage: vi.fn(),
   sendTextMessage: vi.fn(),
 }));
 
@@ -36,10 +38,12 @@ describe("HTTP message contracts", () => {
     config.requestLogging = false;
 
     messageMock.getMessageStatus.mockReset();
+    whatsappMock.downloadRecentInboundMedia.mockReset();
     whatsappMock.getCurrentQr.mockReset();
     whatsappMock.getWhatsAppStatus.mockReset();
     whatsappMock.pairWhatsApp.mockReset();
     whatsappMock.rebindWhatsApp.mockReset();
+    whatsappMock.sendMediaMessage.mockReset();
     whatsappMock.sendTextMessage.mockReset();
 
     whatsappMock.getCurrentQr.mockReturnValue({ qr: null, status: "disconnected" });

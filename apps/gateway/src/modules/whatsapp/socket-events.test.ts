@@ -7,7 +7,9 @@ import {
 } from "../messages/message-status-store.js";
 import { checkOutboundPolicy, resetOutboundPolicyState } from "../messages/outbound-policy.js";
 import { allowRecipientJid, getRecipientByJid, resetRecipientStoreForTest } from "../recipients/store.js";
-import { resetAccountHealthForTest } from "./account-health.js";
+import { checkAccountHealth, getAccountHealthSnapshot, resetAccountHealthForTest } from "./account-health.js";
+import { invalidateRecipientLookupCache, resolveRecipientJid } from "./recipient-cache.js";
+import { getRecipientIdentity, resetRecipientIdentityStoreForTest } from "./recipient-identity-store.js";
 import { registerSocketEvents } from "./socket-events.js";
 
 type Handler = (...args: unknown[]) => void;
@@ -38,16 +40,30 @@ function register(socket: WASocket): void {
 }
 
 describe("socket event wiring", () => {
-  it("registers the four Baileys event boundaries", () => {
+  afterEach(async () => {
+    resetAccountHealthForTest();
+    resetRecipientIdentityStoreForTest();
+    invalidateRecipientLookupCache();
+    await resetRecipientStoreForTest();
+  });
+
+  it("registers the Baileys reliability event boundaries", () => {
     const ev = fakeSocketEvents();
     const socket = { ev } as unknown as WASocket;
 
     register(socket);
 
-    expect(ev.on).toHaveBeenCalledWith("creds.update", expect.any(Function));
-    expect(ev.on).toHaveBeenCalledWith("messages.upsert", expect.any(Function));
-    expect(ev.on).toHaveBeenCalledWith("messages.update", expect.any(Function));
-    expect(ev.on).toHaveBeenCalledWith("connection.update", expect.any(Function));
+    for (const event of [
+      "creds.update",
+      "lid-mapping.update",
+      "message-capping.update",
+      "messages.upsert",
+      "messages.update",
+      "message-receipt.update",
+      "connection.update",
+    ]) {
+      expect(ev.on).toHaveBeenCalledWith(event, expect.any(Function));
+    }
   });
 
   it("routes only live direct incoming text notifications", () => {
@@ -105,6 +121,49 @@ describe("socket event wiring", () => {
     ev.emit("creds.update");
     expect(enqueue).toHaveBeenCalledWith(saveCreds, 7);
   });
+
+  it("applies realtime new-chat capping state without blocking warnings", async () => {
+    const ev = fakeSocketEvents();
+    const socket = { ev } as unknown as WASocket;
+    register(socket);
+
+    ev.emit("message-capping.update", {
+      capping_status: "FIRST_WARNING",
+      used_quota: 42,
+      total_quota: 50,
+    });
+
+    expect(getAccountHealthSnapshot()).toMatchObject({
+      newChatCapacity: { status: "warning", used: 42, total: 50 },
+    });
+    await expect(checkAccountHealth(undefined, { isNewRecipient: true })).resolves.toEqual({ allowed: true });
+
+    ev.emit("message-capping.update", { capping_status: "CAPPED", used_quota: 50, total_quota: 50 });
+    await expect(checkAccountHealth(undefined, { isNewRecipient: true })).resolves.toMatchObject({
+      allowed: false,
+      reason: "WA_NEW_CHAT_CAPPED",
+    });
+  });
+
+  it("persists a LID mapping and invalidates stale recipient resolution", async () => {
+    const ev = fakeSocketEvents();
+    const phoneJid = "6281234567890@s.whatsapp.net";
+    const lidJid = "123456789012345@lid";
+    const onWhatsApp = vi.fn(async () => [{ exists: true, jid: "old@s.whatsapp.net" }]);
+    const socket = { ev, onWhatsApp } as unknown as WASocket;
+    register(socket);
+
+    await allowRecipientJid(phoneJid);
+    await resolveRecipientJid(socket, phoneJid);
+    expect(onWhatsApp).toHaveBeenCalledTimes(1);
+
+    ev.emit("lid-mapping.update", { pn: phoneJid, lid: lidJid });
+
+    expect(getRecipientIdentity(phoneJid)?.lidJid).toBe(lidJid);
+    await expect(resolveRecipientJid(socket, phoneJid)).resolves.toBe(lidJid);
+    expect(onWhatsApp).toHaveBeenCalledTimes(1);
+    expect((await getRecipientByJid(phoneJid))?.resolvedJid).toBe(lidJid);
+  });
 });
 
 describe("outbound message outcomes", () => {
@@ -116,6 +175,8 @@ describe("outbound message outcomes", () => {
     await resetRecipientStoreForTest();
     resetMessageStatusStoreForTest();
     resetAccountHealthForTest();
+    resetRecipientIdentityStoreForTest();
+    invalidateRecipientLookupCache();
     await allowRecipientJid(recipientJid);
   });
 
@@ -124,6 +185,8 @@ describe("outbound message outcomes", () => {
     await resetRecipientStoreForTest();
     resetMessageStatusStoreForTest();
     resetAccountHealthForTest();
+    resetRecipientIdentityStoreForTest();
+    invalidateRecipientLookupCache();
   });
 
   function outcomeSocket() {
@@ -137,7 +200,7 @@ describe("outbound message outcomes", () => {
     return { ev, socket };
   }
 
-  it("marks recipient success only when WhatsApp reports server acknowledgement", async () => {
+  it("marks recipient success and server acceptance evidence on acknowledgement", async () => {
     const { ev } = outcomeSocket();
     rememberPendingMessageStatus({
       id: "trace-ack",
@@ -156,7 +219,70 @@ describe("outbound message outcomes", () => {
     ]);
 
     expect((await getRecipientByJid(recipientJid))?.lastSuccessfulOutboundAt).toBeDefined();
-    expect(getMessageStatus("trace-ack")?.status).toBe("accepted");
+    expect(getMessageStatus("trace-ack")).toMatchObject({
+      status: "accepted",
+      deliveryEvidence: "server_accepted",
+    });
+    expect(getMessageStatus("trace-ack")?.serverAcceptedAt).toBeDefined();
+  });
+
+  it("treats a receipt as acceptance even when the server ACK event arrives later", async () => {
+    const { ev } = outcomeSocket();
+    rememberPendingMessageStatus({
+      id: "trace-out-of-order",
+      providerMessageId: "provider-out-of-order",
+      to: resolvedJid,
+      recipientJid,
+    });
+
+    ev.emit("message-receipt.update", [
+      { key: { id: "provider-out-of-order" }, receipt: { receiptTimestamp: 1_788_000_000 } },
+    ]);
+
+    expect(getMessageStatus("trace-out-of-order")).toMatchObject({
+      status: "accepted",
+      deliveryEvidence: "delivered",
+    });
+    expect((await getRecipientByJid(recipientJid))?.lastSuccessfulOutboundAt).toBeDefined();
+
+    ev.emit("messages.update", [
+      { key: { id: "provider-out-of-order" }, update: { status: WAMessageStatus.SERVER_ACK } },
+    ]);
+    expect(getMessageStatus("trace-out-of-order")?.deliveryEvidence).toBe("delivered");
+  });
+
+  it("promotes delivery evidence monotonically from delivered to read to played", () => {
+    const { ev } = outcomeSocket();
+    rememberPendingMessageStatus({
+      id: "trace-receipt",
+      providerMessageId: "provider-receipt",
+      to: resolvedJid,
+      recipientJid,
+    });
+    ev.emit("messages.update", [{ key: { id: "provider-receipt" }, update: { status: WAMessageStatus.SERVER_ACK } }]);
+
+    ev.emit("message-receipt.update", [
+      { key: { id: "provider-receipt" }, receipt: { receiptTimestamp: 1_788_000_000 } },
+    ]);
+    expect(getMessageStatus("trace-receipt")?.deliveryEvidence).toBe("delivered");
+
+    ev.emit("message-receipt.update", [{ key: { id: "provider-receipt" }, receipt: { readTimestamp: 1_788_000_010 } }]);
+    expect(getMessageStatus("trace-receipt")?.deliveryEvidence).toBe("read");
+
+    ev.emit("message-receipt.update", [
+      { key: { id: "provider-receipt" }, receipt: { receiptTimestamp: 1_788_000_020 } },
+    ]);
+    expect(getMessageStatus("trace-receipt")?.deliveryEvidence).toBe("read");
+
+    ev.emit("message-receipt.update", [
+      { key: { id: "provider-receipt" }, receipt: { playedTimestamp: 1_788_000_030 } },
+    ]);
+    expect(getMessageStatus("trace-receipt")).toMatchObject({
+      deliveryEvidence: "played",
+      deliveredAt: expect.any(String),
+      readAt: expect.any(String),
+      playedAt: expect.any(String),
+    });
   });
 
   it("applies recipient cooldown when WhatsApp asynchronously rejects a reach-out", async () => {

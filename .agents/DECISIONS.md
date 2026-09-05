@@ -121,3 +121,19 @@ This file records material decisions whose rationale is expensive to rediscover.
 **Why:** excessive blank space increases scan distance and makes a small operator console feel like a generic AI-minimal SaaS template. Wago's users need to understand state and evidence quickly, not admire empty canvas.
 
 **Implication:** do not reintroduce duplicate page headings, 80-100px routine Audit rows, oversized toolbars, large inactive bands, or empty card-shaped regions. Maintain readable type, 40px collapsed navigation targets, 32-36px routine controls, semantic state text, and responsive wrapping at 320px. Density must improve scanning without hiding prerequisites, risk, or technical evidence.
+
+## D16 — Logical recipient identity and delivery evidence stay separate from Baileys transport details
+
+**Decision:** recipient policy remains keyed by the logical phone-number JID while Baileys LID mappings are persisted as transport addressing metadata. Outbound operation state remains `pending | accepted | rejected`; provider delivery evidence is an additive monotonic dimension (`submitted | server_accepted | delivered | read | played`). New-chat warning states are surfaced as warnings and do not block sends unless WhatsApp explicitly reports `CAPPED`.
+
+**Why:** LID is provider addressing that can change independently of Wago recipient consent/policy, and delivery/read receipts are observations rather than operation-state transitions. Collapsing either distinction would create duplicate recipient policy records, break public status compatibility, or overstate what WhatsApp has actually guaranteed.
+
+**Implication:** `lid-mapping.update` invalidates stale recipient routing without creating a second logical recipient; delivery evidence may advance but never regress; read/played are optional provider evidence; public clients can continue relying on the existing operation status contract while newer clients inspect additive evidence and timestamps.
+
+## D17 — Reply context and media remain bounded integration capabilities
+
+**Decision:** quoted-message context and media support extend Wago's integration surface without creating durable chat history or a dashboard inbox. Recent inbound provider messages may be retained only in bounded process memory for short-lived reply/download operations. Incoming media webhooks carry metadata only; outbound media accepts caller-supplied bytes rather than remote media URLs.
+
+**Why:** contextual replies and media are useful gateway capabilities, but persisting message bodies/media blobs or fetching arbitrary operator-provided URLs would materially expand privacy, storage, SSRF, and lifecycle risk beyond the single-account integration-gateway product.
+
+**Implication:** `replyToMessageId` must resolve to recent same-recipient inbound context or fail explicitly; inbound media download may expire across TTL/process restart and returns an unavailable result rather than pretending durability; media bytes are never inserted into SQLite/webhook payloads; terminal inbound text/media webhook payloads are redacted; outbound binary payloads are size-bounded and no arbitrary remote media fetch path is introduced.
