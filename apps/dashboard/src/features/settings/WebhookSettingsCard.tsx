@@ -294,9 +294,9 @@ export function WebhookSettingsCard() {
                 ))}
               </div>
               <p className="mb-0 mt-2 text-xs leading-5 text-wago-muted">
-                Read and played are observational evidence and appear only when WhatsApp exposes them. Incoming text
-                and media metadata are retained only while an active retry needs them and are removed when delivery
-                becomes terminal. Media bytes are never stored in the webhook payload.
+                Read and played are observational evidence and appear only when WhatsApp exposes them. Incoming text and
+                media metadata are retained only while an active retry needs them and are removed when delivery becomes
+                terminal. Media bytes are never stored in the webhook payload.
               </p>
             </details>
           </div>
