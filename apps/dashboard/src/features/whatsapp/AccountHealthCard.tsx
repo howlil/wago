@@ -173,9 +173,7 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
             </p>
           ) : null}
           {capacity.cycleEndAt ? (
-            <p className="mb-0 mt-0.5 text-[10px] text-wago-tertiary">
-              Cycle ends {formatDate(capacity.cycleEndAt)}
-            </p>
+            <p className="mb-0 mt-0.5 text-[10px] text-wago-tertiary">Cycle ends {formatDate(capacity.cycleEndAt)}</p>
           ) : null}
         </div>
 
