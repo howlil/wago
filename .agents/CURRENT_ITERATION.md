@@ -4,23 +4,38 @@ This file is the single resumable source of truth for active Wago engineering wo
 
 ## Status
 
-**No active product milestone.**
+**Wago UI Anti–AI-Slop Pass 2 — S1 through S7 implemented, verified, and PR-ready.**
 
-## Current baseline
+## Current slice
 
-- `main` includes **Fast Risk-Based CI and Design Verification** via PR #122;
-- squash merge commit: `9863979cea48c8f8ac0d78ffe17c46bdbc963ed1`;
-- final implementation head verified before merge: `16f202ce681ea54d7726f7486f9acb1dd55833d1`;
-- core and docs CI use one explicit frozen pnpm install instead of setup-time install plus a second install;
-- normal core CI remains formatting/lint + full gateway/dashboard tests and builds;
-- Docker image/persistence/rollback smoke is isolated to a path-scoped runtime/deployment/persistence workflow;
-- standalone docs install/build smoke is isolated to package/workspace/build-configuration changes instead of routine content/design edits;
-- JavaScript/TypeScript CodeQL runs source analysis without redundant dependency installation or core build;
-- `task dashboard:design:test` and `task docs:design:test` provide fast deterministic design-contract loops before full affected-app verification;
-- `.agents/QUALITY.md` defines the fast/accurate risk-based verification policy and design-specific testing flow;
-- `.agents/DECISIONS.md` records risk-routed CI as durable decision D13;
-- final-head workflows were all green: CI, Docs CI, Docker Smoke, Docs Standalone Smoke, and CodeQL;
-- product behavior, public API, persistence schema, authentication semantics, and Wago design language were unchanged.
+Branch: `feat/dashboard-surface-motion`
+PR: `#123` — `refactor(dashboard): add tinted surfaces and restrained motion`
+
+Goal:
+- move the dashboard from clean-but-sterile AI-flatness to a compact operator console with stronger Wago-specific hierarchy;
+- preserve flat workspace composition without card walls, glow, gradients, decorative icon boxes, routine shadows, or SaaS-style active pills;
+- increase evidence density across Control, Settings, and especially Audit without changing product behavior, API contracts, authentication, persistence, or global information architecture.
+
+Implemented in Pass 2:
+- S1: added `wago-workspace*`, `wago-control-surface`, `wago-selected*`, and `wago-console-row*` semantic token families; shared routine modules use a visible low-chroma workbench plane plus structural rule;
+- S2: compacted the shell/header, kept the 40px collapsed navigation target, moved active navigation to shared selected-surface/rule motion, and removed the generic admin-template feel without adding decorative chrome;
+- S3: compacted the Control runtime rail, WhatsApp state regions, account-health evidence, and diagnostics disclosure while preserving dependency semantics;
+- S4: tightened Settings to a 160-168px desktop local rail plus fluid active workbench, added shared `layoutId` active-state continuity, and kept hash navigation intact;
+- S5: removed Audit's duplicate heading, moved Refresh into a single compact desktop toolbar, reduced routine event rows toward the 56-68px target, added 20-row client pagination over cursor-loaded events, and kept technical evidence inline;
+- S6: expanded Motion for React only where continuity helps: global/Settings active state, compact module switch opacity, button press feedback, Audit count continuity, and height/opacity technical-detail disclosure; root `MotionConfig reducedMotion="user"` remains authoritative;
+- S7: updated deterministic architecture guards, `apps/dashboard/DESIGN.md`, and durable `.agents/DECISIONS.md` rules for semantic color, density, motion, and anti-AI-slop prohibitions.
+
+## Verification evidence
+
+Product/test head `72190c6ad2ce2f69228b947277417d7c26a1b7a4` passed every workflow triggered by the final product diff:
+- CI: frozen dependency install, formatting/lint, gateway/dashboard tests, and production build passed;
+- Docs CI: docs tests and docs build passed;
+- CodeQL: core JavaScript/TypeScript analysis passed;
+- Docker Smoke: image build plus persistence/rollback smoke passed.
+
+The sprint exposed two deterministic issues during verification and both were fixed before the green head:
+- Biome flagged Audit pagination ARIA semantics, an unnecessary page-reset effect, and two formatter line-wrap mismatches; commit `af282d0375111961c8acedceb084714b89021a17` corrected them;
+- the existing Audit component test still assumed native `<details>` after the deliberate Motion disclosure refactor; commit `72190c6ad2ce2f69228b947277417d7c26a1b7a4` updated the test to assert button `aria-expanded` semantics plus inline animated metadata visibility.
 
 ## Blockers
 
@@ -28,8 +43,8 @@ None.
 
 ## Next action
 
-Await the next explicit user-authorized milestone or task. Do not infer or start product work from historical plans alone.
+Leave PR #123 mergeable and ready for review. Do not merge unless the user explicitly authorizes merging.
 
 ## Completion rule
 
-When a milestone completes and is integrated into `main`, return this file to this idle/no-active-milestone state unless the user has already authorized the next milestone.
+When this milestone is integrated into `main`, return this file to the idle/no-active-milestone state unless the user has already authorized the next milestone.

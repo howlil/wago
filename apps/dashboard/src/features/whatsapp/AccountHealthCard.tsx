@@ -41,19 +41,19 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
 
   if (availability === "checking") {
     return (
-      <section className="border-b border-wago-line py-4" aria-labelledby="account-health-title">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <section className="border-b border-wago-workspace-line py-3" aria-labelledby="account-health-title">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 id="account-health-title" className="m-0 text-xs font-semibold text-wago-ink">
             Account health
           </h3>
-          <span className="text-xs font-medium text-wago-warning">Checking</span>
+          <span className="text-[11px] font-medium text-wago-warning">Checking</span>
         </div>
-        <p className="mb-0 mt-2 max-w-prose text-xs leading-5 text-wago-muted">
-          Refreshing reach-out and new-chat restriction state.
-        </p>
-        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
-          Last checked {formatDate(accountHealth?.lastFetchedAt)}
-        </p>
+        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="mb-0 max-w-prose text-xs leading-4 text-wago-muted">
+            Refreshing reach-out and new-chat restriction state.
+          </p>
+          <p className="mb-0 text-[10px] text-wago-tertiary">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+        </div>
       </section>
     );
   }
@@ -62,19 +62,19 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
 
   if (!availableHealth) {
     return (
-      <section className="border-b border-wago-line py-4" aria-labelledby="account-health-title">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <section className="border-b border-wago-workspace-line py-3" aria-labelledby="account-health-title">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 id="account-health-title" className="m-0 text-xs font-semibold text-wago-ink">
             Account health
           </h3>
-          <span className="text-xs font-medium text-wago-muted">Unavailable</span>
+          <span className="text-[11px] font-medium text-wago-muted">Unavailable</span>
         </div>
-        <p className="mb-0 mt-2 max-w-prose text-xs leading-5 text-wago-muted">
-          {unavailableDescription(accountHealth?.unavailableReason)}
-        </p>
-        <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
-          Last checked {formatDate(accountHealth?.lastFetchedAt)}
-        </p>
+        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="mb-0 max-w-prose text-xs leading-4 text-wago-muted">
+            {unavailableDescription(accountHealth?.unavailableReason)}
+          </p>
+          <p className="mb-0 text-[10px] text-wago-tertiary">Last checked {formatDate(accountHealth?.lastFetchedAt)}</p>
+        </div>
       </section>
     );
   }
@@ -88,58 +88,60 @@ export function AccountHealthCard({ accountHealth }: AccountHealthCardProps) {
   const overallLimited = reachoutRestricted || capRestricted || capWarning;
 
   return (
-    <section className="border-b border-wago-line py-4" aria-labelledby="account-health-title">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className="border-b border-wago-workspace-line py-3" aria-labelledby="account-health-title">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id="account-health-title" className="m-0 text-xs font-semibold text-wago-ink">
           Account health
         </h3>
-        <span className={`text-xs font-semibold ${overallLimited ? "text-wago-warning" : "text-wago-positive"}`}>
+        <span className={`text-[11px] font-semibold ${overallLimited ? "text-wago-warning" : "text-wago-positive"}`}>
           {overallLimited ? "Limited" : "Available"}
         </span>
       </div>
 
-      <dl className="mb-0 mt-3 grid gap-4 md:grid-cols-3 md:gap-0 md:divide-x md:divide-wago-line">
-        <div className="min-w-0 md:pr-4">
-          <dt className="text-[11px] font-medium text-wago-secondary">Reach-out</dt>
+      <dl className="mb-0 mt-2 grid gap-3 md:grid-cols-3 md:gap-0 md:divide-x md:divide-wago-workspace-line">
+        <div className="min-w-0 md:pr-3">
+          <dt className="text-[10px] font-medium uppercase tracking-[0.04em] text-wago-secondary">Reach-out</dt>
           <dd
-            className={`mb-0 mt-1 text-[13px] font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-positive"}`}
+            className={`mb-0 mt-0.5 text-xs font-semibold ${reachoutRestricted ? "text-wago-warning" : "text-wago-positive"}`}
           >
             {reachoutRestricted ? "Limited" : "Available"}
           </dd>
-          <p className="mb-0 mt-1 text-xs leading-5 text-wago-muted">
+          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
             {reachoutRestricted
               ? "New recipients are blocked while the timelock is active."
               : "No reach-out timelock is active."}
           </p>
           {reachoutRestricted && reachout?.retryAt ? (
-            <p className="mb-0 mt-1 text-xs font-medium text-wago-warning">
+            <p className="mb-0 mt-0.5 text-[11px] font-medium text-wago-warning">
               Retry new chats after {formatDate(reachout.retryAt)}
             </p>
           ) : null}
         </div>
 
-        <div className="min-w-0 border-t border-wago-line pt-4 md:border-t-0 md:px-4 md:pt-0">
-          <dt className="text-[11px] font-medium text-wago-secondary">New chats</dt>
+        <div className="min-w-0 border-t border-wago-workspace-line pt-3 md:border-t-0 md:px-3 md:pt-0">
+          <dt className="text-[10px] font-medium uppercase tracking-[0.04em] text-wago-secondary">New chats</dt>
           <dd
-            className={`mb-0 mt-1 text-[13px] font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-positive"}`}
+            className={`mb-0 mt-0.5 text-xs font-semibold ${capRestricted || capWarning ? "text-wago-warning" : "text-wago-positive"}`}
           >
             {capRestricted ? "Capped" : capWarning ? cap?.capping_status : "Normal"}
           </dd>
-          <p className="mb-0 mt-1 text-xs leading-5 text-wago-muted">
+          <p className="mb-0 mt-0.5 text-[11px] leading-4 text-wago-muted">
             {capRestricted || capWarning
               ? "New-recipient sends are paused; known recipients are evaluated normally."
               : "No new-chat warning or cap is reported."}
           </p>
           {showQuota ? (
-            <p className="mb-0 mt-1 text-[10px] text-wago-tertiary">
+            <p className="mb-0 mt-0.5 text-[10px] text-wago-tertiary">
               {cap?.used_quota ?? 0} / {cap?.total_quota} used
             </p>
           ) : null}
         </div>
 
-        <div className="min-w-0 border-t border-wago-line pt-4 md:border-t-0 md:pl-4 md:pt-0">
-          <dt className="text-[11px] font-medium text-wago-secondary">Last checked</dt>
-          <dd className="mb-0 mt-1 text-xs font-medium text-wago-ink">{formatDate(availableHealth.lastFetchedAt)}</dd>
+        <div className="min-w-0 border-t border-wago-workspace-line pt-3 md:border-t-0 md:pl-3 md:pt-0">
+          <dt className="text-[10px] font-medium uppercase tracking-[0.04em] text-wago-secondary">Last checked</dt>
+          <dd className="mb-0 mt-0.5 text-[11px] font-medium text-wago-ink">
+            {formatDate(availableHealth.lastFetchedAt)}
+          </dd>
         </div>
       </dl>
     </section>

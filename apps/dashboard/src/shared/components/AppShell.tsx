@@ -71,7 +71,7 @@ export function AppShell({ children, title, activePath, isRefreshing, onRefresh,
         onCloseMobile={() => setMobileNavOpen(false)}
       />
 
-      <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "lg:pl-14" : "lg:pl-[196px]"}`}>
+      <div className={`transition-[padding] duration-150 ${sidebarCollapsed ? "lg:pl-14" : "lg:pl-[196px]"}`}>
         <AppHeader
           title={title}
           isRefreshing={isRefreshing}
@@ -79,7 +79,7 @@ export function AppShell({ children, title, activePath, isRefreshing, onRefresh,
           refreshLabel={refreshLabel}
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
-        <main className="px-4 pb-8 pt-4 md:px-5 lg:px-6 lg:pb-10">{children}</main>
+        <main className="px-4 pb-6 pt-3 md:px-5 lg:pb-8">{children}</main>
       </div>
     </div>
   );

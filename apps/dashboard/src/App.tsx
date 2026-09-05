@@ -1,3 +1,4 @@
+import { MotionConfig } from "motion/react";
 import { useEffect, useState } from "react";
 import { AccessGate } from "./features/access/AccessGate.js";
 import { AuditPage } from "./pages/audit/AuditPage.js";
@@ -75,10 +76,12 @@ function AuthenticatedApp() {
 
 export function App() {
   return (
-    <TooltipProvider delayDuration={350} skipDelayDuration={150}>
-      <AccessGate>
-        <AuthenticatedApp />
-      </AccessGate>
-    </TooltipProvider>
+    <MotionConfig reducedMotion="user">
+      <TooltipProvider delayDuration={350} skipDelayDuration={150}>
+        <AccessGate>
+          <AuthenticatedApp />
+        </AccessGate>
+      </TooltipProvider>
+    </MotionConfig>
   );
 }

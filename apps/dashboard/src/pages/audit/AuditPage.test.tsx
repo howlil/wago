@@ -148,12 +148,18 @@ describe("AuditPage", () => {
     expect(eventScope.getByText("WhatsApp transport")).toBeTruthy();
     expect(eventScope.getByText("Warning")).toBeTruthy();
     expect(eventScope.getByText("WhatsApp")).toBeTruthy();
-    const summary = eventScope.getByText("Technical details");
-    const disclosure = summary.closest("details") as HTMLDetailsElement | null;
-    expect(disclosure?.open).toBe(false);
 
-    await user.click(summary);
-    expect(disclosure?.open).toBe(true);
+    const disclosure = eventScope.getByRole("button", { name: "Technical details" });
+    expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(eventScope.queryByText("Status Code")).toBeNull();
+
+    await user.click(disclosure);
+    expect(disclosure.getAttribute("aria-expanded")).toBe("true");
     expect(eventScope.getByText("Status Code")).toBeTruthy();
+    expect(eventScope.getByText("428")).toBeTruthy();
+
+    await user.click(disclosure);
+    expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+    await waitFor(() => expect(eventScope.queryByText("Status Code")).toBeNull());
   });
 });

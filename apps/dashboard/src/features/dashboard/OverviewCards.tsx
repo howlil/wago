@@ -21,6 +21,13 @@ const toneDot: Record<Metric["tone"], string> = {
   muted: "bg-wago-tertiary",
 };
 
+const toneSurface: Record<Metric["tone"], string> = {
+  ok: "bg-wago-positive/5",
+  warning: "bg-wago-warning-soft/60",
+  error: "bg-wago-danger-soft/55",
+  muted: "bg-transparent",
+};
+
 function backendMetric(health: BackendHealthState): Metric {
   if (health === "ok") return { label: "Gateway", value: "Healthy", detail: "API responding", tone: "ok" };
   if (health === "checking") {
@@ -94,14 +101,14 @@ function StatusMetric({ metric }: { metric: Metric }) {
   return (
     <section
       aria-label={`${metric.label} status`}
-      className="grid min-w-0 grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-0.5 py-2.5 md:px-4 md:first:pl-0 md:last:pr-0"
+      className={`grid min-w-0 grid-cols-[76px_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 px-2.5 py-2 md:px-3 ${toneSurface[metric.tone]}`}
     >
-      <div className="flex items-center gap-2 text-[11px] font-semibold text-wago-secondary">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-wago-secondary">
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${toneDot[metric.tone]}`} />
         <span>{metric.label}</span>
       </div>
-      <strong className="min-w-0 text-[13px] font-semibold text-wago-ink">{metric.value}</strong>
-      <span className="col-start-2 text-xs leading-5 text-wago-muted">{metric.detail}</span>
+      <strong className="min-w-0 text-xs font-semibold text-wago-ink">{metric.value}</strong>
+      <span className="col-start-2 text-[11px] leading-4 text-wago-muted">{metric.detail}</span>
     </section>
   );
 }
@@ -110,7 +117,7 @@ export function OverviewCards({ health, status, accountHealth }: OverviewCardsPr
   return (
     <section
       aria-label="Gateway runtime status"
-      className="grid divide-y divide-wago-line border-y border-wago-line md:grid-cols-3 md:divide-x md:divide-y-0"
+      className="grid divide-y divide-wago-workspace-line border-y border-wago-workspace-line bg-wago-control-surface md:grid-cols-3 md:divide-x md:divide-y-0"
     >
       <StatusMetric metric={backendMetric(health)} />
       <StatusMetric metric={whatsappMetric(status)} />
