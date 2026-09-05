@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/docs/package.json"
+      - "apps/docs/pnpm-lock.yaml"
       - "apps/docs/pnpm-workspace.yaml"
       - "apps/docs/astro.config.*"
       - "apps/docs/tsconfig.json"
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "apps/docs/package.json"
+      - "apps/docs/pnpm-lock.yaml"
       - "apps/docs/pnpm-workspace.yaml"
       - "apps/docs/astro.config.*"
       - "apps/docs/tsconfig.json"
@@ -34,7 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Smoke standalone static build
+      - name: Mirror MyPaas static builder
         shell: bash
         run: |
           standalone_dir="$(mktemp -d)"
@@ -43,10 +45,14 @@ jobs:
             --exclude='dist' \
             --exclude='.astro' \
             -C apps/docs -cf - . | tar -C "$standalone_dir" -xf -
-          test ! -f "$standalone_dir/pnpm-lock.yaml"
+
+          test -f "$standalone_dir/pnpm-lock.yaml"
+
           docker run --rm \
             --env CI=true \
-            --volume "$standalone_dir:/workspace" \
-            --workdir /workspace \
+            --volume "$standalone_dir:/app" \
+            --workdir /app \
             node:22-alpine \
-            sh -ec 'corepack enable && corepack prepare pnpm@11.21.0 --activate && pnpm install && pnpm build'
+            sh -ec 'corepack enable && pnpm install --frozen-lockfile && pnpm run build'
+
+          test -f "$standalone_dir/dist/index.html"
