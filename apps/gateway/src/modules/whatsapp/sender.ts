@@ -2,21 +2,8 @@ import type { AnyMessageContent, WASocket } from "@whiskeysockets/baileys";
 import { ApplicationError, isApplicationError } from "../../errors/application-error.js";
 import { logger, maskIdentifier } from "../../infrastructure/logger.js";
 import { toWhatsAppJid } from "../../utils/phone.js";
-import {
-  abandonOutboundDispatch,
-  getMessageStatus,
-  markOutboundDispatchIndeterminate,
-  markOutboundDispatchSubmitted,
-  markOutboundDispatchSubmitting,
-  prepareOutboundDispatch,
-} from "../messages/index.js";
-import {
-  checkOutboundPolicy,
-  createOutboundPolicyError,
-  markRecipientReachoutRestricted,
-  recordOutboundDispatched,
-  recordOutboundRejected,
-} from "../messages/outbound-policy.js";
+import { executeOutboundMessage, getMessageStatus, type MessageTransportSubmitResult } from "../messages/index.js";
+import { markRecipientReachoutRestricted } from "../messages/outbound-policy.js";
 import { checkAccountHealth, markReachoutRestricted, refreshAccountHealth } from "./account-health.js";
 import { getConnectionStatus, type WhatsAppStatus } from "./connection-state.js";
 import { createAccountHealthFetcher } from "./observability.js";
@@ -112,15 +99,13 @@ function mediaContent(input: SendMediaMessageInput): AnyMessageContent {
   };
 }
 
-async function handleOutboundFailure(input: {
+async function recordDefinitiveTransportFailure(input: {
   error: unknown;
   jid: string;
   messageId: string;
-  policyInput: Parameters<typeof recordOutboundRejected>[0];
   accountHealthFetcher: ReturnType<typeof createAccountHealthFetcher>;
-}): Promise<never> {
+}): Promise<unknown> {
   const normalizedError = normalizeBaileysSendError(input.error);
-  recordOutboundRejected(input.policyInput, normalizedError);
   logger.warn({
     event: "wa.outbound.rejected",
     messageId: input.messageId,
@@ -138,7 +123,7 @@ async function handleOutboundFailure(input: {
     await markRecipientReachoutRestricted(input.jid);
   }
 
-  throw normalizedError;
+  return normalizedError;
 }
 
 export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
@@ -170,105 +155,86 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
 
       const generation = getSocketGeneration();
       const accountHealthFetcher = createAccountHealthFetcher(activeSocket, generation);
-      const policyInput = {
+
+      const result = await executeOutboundMessage({
+        messageId: options.messageId,
         to,
         jid,
-        text: policyText,
+        textForPolicy: policyText,
         idempotencyKey: options.idempotencyKey,
-        accountHealthCheck: ({ isNewRecipient }: { isNewRecipient: boolean }) =>
-          checkAccountHealth(accountHealthFetcher, { isNewRecipient }),
-      };
-      const policyDecision = await checkOutboundPolicy(policyInput);
-
-      if (!policyDecision.allowed) {
-        logger.warn({
-          event: "wa.outbound.blocked",
-          reason: policyDecision.reason,
-          to: maskIdentifier(jid),
-          retryAt: policyDecision.retryAt,
-        });
-        throw createOutboundPolicyError(policyDecision);
-      }
-
-      let resolvedJid: string;
-      try {
-        resolvedJid = await resolveRecipientJid(activeSocket, jid);
-      } catch (error) {
-        return handleOutboundFailure({
-          error,
-          jid,
-          messageId: options.messageId,
-          policyInput,
-          accountHealthFetcher,
-        });
-      }
-
-      const quoted = options.replyToMessageId
-        ? getRecentInboundQuote(options.replyToMessageId, logicalPhoneFromJid(jid))
-        : null;
-      if (options.replyToMessageId && !quoted) {
-        throw new ApplicationError(
-          "MESSAGE_CONTEXT_UNAVAILABLE",
-          "Reply context is unavailable, expired, or belongs to a different recipient",
-        );
-      }
-
-      prepareOutboundDispatch({
-        messageId: options.messageId,
-        to: resolvedJid,
-        recipientJid: jid,
-        idempotencyKey: options.idempotencyKey,
-      });
-
-      try {
-        markOutboundDispatchSubmitting(options.messageId);
-      } catch (error) {
-        abandonOutboundDispatch(options.messageId);
-        throw error;
-      }
-
-      let result: Awaited<ReturnType<WASocket["sendMessage"]>>;
-      try {
-        result = await activeSocket.sendMessage(resolvedJid, content, quoted ? { quoted } : undefined);
-      } catch (error) {
-        const normalizedError = normalizeBaileysSendError(error);
-        if (isDefinitiveTransportRejection(normalizedError)) {
-          abandonOutboundDispatch(options.messageId);
-          return handleOutboundFailure({
-            error: normalizedError,
-            jid,
-            messageId: options.messageId,
-            policyInput,
-            accountHealthFetcher,
-          });
-        }
-
-        markOutboundDispatchIndeterminate(options.messageId, "transport_failure");
-        logger.warn(
-          {
-            event: "wa.outbound.indeterminate",
-            messageId: options.messageId,
-            errorName: error instanceof Error ? error.name : "UNKNOWN",
-            to: maskIdentifier(resolvedJid),
+        accountHealthCheck: ({ isNewRecipient }) => checkAccountHealth(accountHealthFetcher, { isNewRecipient }),
+        transport: {
+          async resolveRecipient(recipientJid: string): Promise<string> {
+            try {
+              return await resolveRecipientJid(activeSocket, recipientJid);
+            } catch (error) {
+              throw await recordDefinitiveTransportFailure({
+                error,
+                jid: recipientJid,
+                messageId: options.messageId,
+                accountHealthFetcher,
+              });
+            }
           },
-          "WhatsApp transport outcome is indeterminate; automatic retry is suppressed",
-        );
+          async submit(resolvedJid: string): Promise<MessageTransportSubmitResult> {
+            const quoted = options.replyToMessageId
+              ? getRecentInboundQuote(options.replyToMessageId, logicalPhoneFromJid(jid))
+              : null;
+            if (options.replyToMessageId && !quoted) {
+              return {
+                kind: "rejected",
+                error: new ApplicationError(
+                  "MESSAGE_CONTEXT_UNAVAILABLE",
+                  "Reply context is unavailable, expired, or belongs to a different recipient",
+                ),
+              };
+            }
 
-        return { messageId: options.messageId, status: "pending" };
-      }
+            try {
+              const providerResult = await activeSocket.sendMessage(resolvedJid, content, quoted ? { quoted } : undefined);
+              return {
+                kind: "submitted",
+                providerMessageId: providerResult?.key?.id ?? null,
+              };
+            } catch (error) {
+              const normalizedError = normalizeBaileysSendError(error);
+              if (isDefinitiveTransportRejection(normalizedError)) {
+                return {
+                  kind: "rejected",
+                  error: await recordDefinitiveTransportFailure({
+                    error: normalizedError,
+                    jid,
+                    messageId: options.messageId,
+                    accountHealthFetcher,
+                  }),
+                };
+              }
 
-      const providerMessageId = result?.key?.id ?? null;
-      markOutboundDispatchSubmitted(options.messageId, providerMessageId);
-      await recordOutboundDispatched(policyInput, options.messageId);
-
-      logger.info({
-        event: "wa.outbound.submitted",
-        messageId: options.messageId,
-        providerMessageId,
-        to: maskIdentifier(resolvedJid),
+              logger.warn(
+                {
+                  event: "wa.outbound.indeterminate",
+                  messageId: options.messageId,
+                  errorName: error instanceof Error ? error.name : "UNKNOWN",
+                  to: maskIdentifier(resolvedJid),
+                },
+                "WhatsApp transport outcome is indeterminate; automatic retry is suppressed",
+              );
+              return { kind: "indeterminate", error };
+            }
+          },
+        },
       });
 
-      return { messageId: options.messageId, status: "pending" };
+      if (result.transportOutcome === "submitted") {
+        logger.info({
+          event: "wa.outbound.submitted",
+          messageId: options.messageId,
+          providerMessageId: result.providerMessageId,
+          to: maskIdentifier(result.resolvedJid),
+        });
+      }
+
+      return { messageId: result.messageId, status: result.status };
     });
   }
 
