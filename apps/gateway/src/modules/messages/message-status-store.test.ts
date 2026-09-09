@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  enqueueMessageDeliveryWebhook: vi.fn(() => undefined),
+  enqueueMessageDeliveryWebhookDurably: vi.fn(() => true),
+  wakeWebhookDeliveryWorker: vi.fn(() => undefined),
   recordActivity: vi.fn(async () => undefined),
 }));
 
 vi.mock("../webhooks/index.js", () => ({
-  enqueueMessageDeliveryWebhook: mocks.enqueueMessageDeliveryWebhook,
+  enqueueMessageDeliveryWebhookDurably: mocks.enqueueMessageDeliveryWebhookDurably,
+  wakeWebhookDeliveryWorker: mocks.wakeWebhookDeliveryWorker,
 }));
 
 vi.mock("../activity/store.js", () => ({
@@ -42,7 +44,9 @@ function seedSubmittedMessage(input: {
 describe("durable message status store", () => {
   afterEach(() => {
     resetMessageStatusStoreForTest();
-    mocks.enqueueMessageDeliveryWebhook.mockClear();
+    mocks.enqueueMessageDeliveryWebhookDurably.mockReset();
+    mocks.enqueueMessageDeliveryWebhookDurably.mockReturnValue(true);
+    mocks.wakeWebhookDeliveryWorker.mockClear();
     mocks.recordActivity.mockClear();
   });
 
@@ -78,11 +82,30 @@ describe("durable message status store", () => {
     updateMessageStatus("trace-1", { status: "accepted" });
 
     expect(getMessageStatus("trace-1")?.status).toBe("accepted");
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledTimes(1);
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledWith({
       messageId: "trace-1",
       status: "accepted",
     });
+    expect(mocks.wakeWebhookDeliveryWorker).toHaveBeenCalledTimes(1);
+  });
+
+  it("rolls back the message transition when the webhook outbox cannot persist", () => {
+    seedSubmittedMessage({
+      id: "trace-outbox-failure",
+      providerMessageId: "provider-outbox-failure",
+      to: "6281234567890@s.whatsapp.net",
+    });
+    mocks.enqueueMessageDeliveryWebhookDurably.mockImplementationOnce(() => {
+      throw new Error("outbox unavailable");
+    });
+
+    expect(() => updateMessageStatus("trace-outbox-failure", { status: "accepted" })).toThrow("outbox unavailable");
+    expect(getMessageStatus("trace-outbox-failure")).toMatchObject({
+      status: "pending",
+      dispatchState: "submitted",
+    });
+    expect(mocks.wakeWebhookDeliveryWorker).not.toHaveBeenCalled();
   });
 
   it("promotes delivery evidence monotonically and emits each richer evidence once", () => {
@@ -104,19 +127,19 @@ describe("durable message status store", () => {
       deliveredAt: "2026-09-05T00:00:05.000Z",
       readAt: "2026-09-05T00:00:10.000Z",
     });
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledWith({
       messageId: "trace-evidence",
       status: "accepted",
     });
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledWith({
       messageId: "trace-evidence",
       status: "delivered",
     });
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledWith({
       messageId: "trace-evidence",
       status: "read",
     });
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledTimes(3);
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledTimes(3);
   });
 
   it("does not allow a terminal message state to be reversed", () => {
@@ -138,8 +161,8 @@ describe("durable message status store", () => {
       error: "REACHOUT_RESTRICTED",
       message: "Outbound rejected",
     });
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledTimes(1);
-    expect(mocks.enqueueMessageDeliveryWebhook).toHaveBeenCalledWith({
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueMessageDeliveryWebhookDurably).toHaveBeenCalledWith({
       messageId: "trace-2",
       status: "rejected",
       error: "REACHOUT_RESTRICTED",
