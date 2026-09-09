@@ -33,30 +33,13 @@ jobs:
           cache: true
           install: false
 
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm check
-
-      - name: Test core
-        shell: bash
-        run: |
-          set -euo pipefail
-          pnpm --filter @wago/gateway test &
-          gateway_pid=$!
-          pnpm --filter @wago/dashboard test &
-          dashboard_pid=$!
-          wait "$gateway_pid"
-          wait "$dashboard_pid"
-
-      - name: Build core
-        shell: bash
-        run: |
-          set -euo pipefail
-          pnpm --filter @wago/gateway build &
-          gateway_pid=$!
-          pnpm --filter @wago/dashboard build &
-          dashboard_pid=$!
-          wait "$gateway_pid"
-          wait "$dashboard_pid"
+      - name: Check
+        run: task check
