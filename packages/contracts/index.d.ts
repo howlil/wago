@@ -26,7 +26,7 @@ export type AccountHealthSnapshot = {
     retryAt?: string;
     enforcementType?: string;
   };
-  newChatCapacity: {
+  newChatCapacity?: {
     status: NewChatCapacityStatus;
     used?: number;
     total?: number;
