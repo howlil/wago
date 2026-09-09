@@ -8,6 +8,7 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
+      - "Taskfile.yml"
       - ".github/workflows/docs-ci.yml"
 
 permissions:
@@ -34,8 +35,13 @@ jobs:
           cache: true
           install: false
 
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
+
       - name: Install docs dependencies
         run: pnpm install --frozen-lockfile --filter @wago/docs...
 
       - name: Build docs
-        run: pnpm --filter @wago/docs build
+        run: task docs:build
