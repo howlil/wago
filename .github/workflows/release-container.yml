@@ -2,34 +2,13 @@ name: Release Container
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
-    paths:
-      - "apps/gateway/**"
-      - "!apps/gateway/**/*.test.ts"
-      - "!apps/gateway/src/architecture/**"
-      - "apps/dashboard/**"
-      - "!apps/dashboard/**/*.test.ts"
-      - "!apps/dashboard/**/*.test.tsx"
-      - "!apps/dashboard/tests/**"
-      - "!apps/dashboard/architecture/**"
-      - "!apps/dashboard/DESIGN.md"
-      - "Taskfile.yml"
-      - "package.json"
-      - "pnpm-workspace.yaml"
-      - "pnpm-lock.yaml"
-      - "Dockerfile"
-      - ".dockerignore"
-      - ".github/workflows/release-container.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
-  attestations: write
-  id-token: write
 
 concurrency:
   group: release-container-${{ github.ref }}
@@ -39,122 +18,13 @@ env:
   IMAGE_NAME: ghcr.io/howlil/wago-simple
 
 jobs:
-  verify:
-    name: Verify Release Source
+  publish:
+    name: Build and Publish amd64
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Setup pnpm and Node
-        uses: pnpm/setup@v2
-        with:
-          version: 11.21.0
-          runtime: node@26
-          cache: true
-
-      - name: Setup Task
-        uses: go-task/setup-task@v2
-        with:
-          version: 3.x
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check formatting and lint
-        run: task lint
-
-      - name: Run core tests
-        run: task core:test
-
-      - name: Build core apps
-        run: task core:build
-
-  build:
-    name: Build ${{ matrix.platform }}
-    needs: verify
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-24.04
-            arch: amd64
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          labels: |
-            org.opencontainers.image.title=Wago
-            org.opencontainers.image.description=Single-account self-hosted WhatsApp gateway core
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ github.ref_name }}
-            org.opencontainers.image.licenses=MIT
-
-      - name: Build and push platform image by digest
-        id: build
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=release-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=release-${{ matrix.arch }}
-          sbom: true
-          provenance: mode=max
-
-      - name: Export image digest
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          set -euo pipefail
-          test -n "$DIGEST"
-          mkdir -p "${{ runner.temp }}/digests"
-          touch "${{ runner.temp }}/digests/${DIGEST#sha256:}"
-
-      - name: Upload image digest
-        uses: actions/upload-artifact@v7
-        with:
-          name: digest-${{ matrix.arch }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  publish:
-    name: Publish Multi-Arch GHCR Image
-    needs: build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - name: Download platform digests
-        uses: actions/download-artifact@v8
-        with:
-          path: ${{ runner.temp }}/digests
-          pattern: digest-*
-          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -172,113 +42,17 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,prefix=sha-,enable=${{ github.ref == 'refs/heads/main' }}
-            type=ref,event=tag,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-          labels: |
-            org.opencontainers.image.title=Wago
-            org.opencontainers.image.description=Single-account self-hosted WhatsApp gateway core
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ github.ref_name }}
-            org.opencontainers.image.licenses=MIT
+            type=raw,value=latest
+            type=ref,event=tag
+            type=sha,prefix=sha-
 
-      - name: Create multi-architecture manifest
-        id: manifest
-        env:
-          DOCKER_METADATA_OUTPUT_TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          set -euo pipefail
-
-          mapfile -t digests < <(find "${{ runner.temp }}/digests" -type f -printf '%f\n' | sort)
-          if [ "${#digests[@]}" -ne 2 ]; then
-            echo "Expected exactly two platform digests, found ${#digests[@]}" >&2
-            exit 1
-          fi
-
-          sources=()
-          for digest in "${digests[@]}"; do
-            sources+=("${IMAGE_NAME}@sha256:${digest}")
-          done
-
-          tags=()
-          while IFS= read -r tag; do
-            if [ -n "$tag" ]; then
-              tags+=(--tag "$tag")
-            fi
-          done <<< "$DOCKER_METADATA_OUTPUT_TAGS"
-
-          if [ "${#tags[@]}" -eq 0 ]; then
-            echo "No release tags were generated" >&2
-            exit 1
-          fi
-
-          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
-
-          first_tag="${DOCKER_METADATA_OUTPUT_TAGS%%$'\n'*}"
-          manifest_output="$(docker buildx imagetools inspect "$first_tag")"
-          digest="$(awk '/^Digest:/ {print $2}' <<< "$manifest_output")"
-          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "Could not resolve published manifest digest" >&2
-            exit 1
-          fi
-
-          echo "tag=$first_tag" >> "$GITHUB_OUTPUT"
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
-
-      - name: Verify published architectures
-        env:
-          IMAGE_TAG: ${{ steps.manifest.outputs.tag }}
-        run: |
-          set -euo pipefail
-          docker buildx imagetools inspect "$IMAGE_TAG" | tee "${{ runner.temp }}/manifest.txt"
-          grep -q 'Platform:.*linux/amd64' "${{ runner.temp }}/manifest.txt"
-          grep -q 'Platform:.*linux/arm64' "${{ runner.temp }}/manifest.txt"
-
-      - name: Attest image provenance
-        uses: actions/attest-build-provenance@v4
+      - name: Build and push
+        uses: docker/build-push-action@v7
         with:
-          subject-name: ${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.manifest.outputs.digest }}
-          push-to-registry: true
-
-      - name: Write release evidence
-        env:
-          IMAGE_TAG: ${{ steps.manifest.outputs.tag }}
-          IMAGE_DIGEST: ${{ steps.manifest.outputs.digest }}
-          SOURCE_SHA: ${{ github.sha }}
-          SOURCE_REF: ${{ github.ref }}
-          REPOSITORY: ${{ github.repository }}
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-
-          const evidence = {
-            schema: 'wago.release-evidence/v1',
-            repository: process.env.REPOSITORY,
-            source_sha: process.env.SOURCE_SHA,
-            source_ref: process.env.SOURCE_REF,
-            image: process.env.IMAGE_NAME,
-            tag: process.env.IMAGE_TAG,
-            manifest_digest: process.env.IMAGE_DIGEST,
-            published_at: new Date().toISOString(),
-          };
-
-          fs.writeFileSync(
-            path.join(process.env.RUNNER_TEMP, 'release-evidence.json'),
-            `${JSON.stringify(evidence, null, 2)}\n`,
-          );
-          NODE
-
-      - name: Upload release evidence
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-evidence-${{ github.sha }}
-          path: ${{ runner.temp }}/release-evidence.json
-          if-no-files-found: error
-          retention-days: 30
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=release-amd64
+          cache-to: type=gha,mode=max,scope=release-amd64
