@@ -6,9 +6,9 @@ import {
   prepareOutboundDispatch,
 } from "./outbound-dispatch.js";
 import {
-  type OutboundAccountHealthCheck,
   checkOutboundPolicy,
   createOutboundPolicyError,
+  type OutboundAccountHealthCheck,
   recordOutboundDispatched,
   recordOutboundRejected,
 } from "./outbound-policy.js";
@@ -41,7 +41,9 @@ export type ExecuteOutboundMessageResult = {
   providerMessageId: string | null;
 };
 
-export async function executeOutboundMessage(input: ExecuteOutboundMessageInput): Promise<ExecuteOutboundMessageResult> {
+export async function executeOutboundMessage(
+  input: ExecuteOutboundMessageInput,
+): Promise<ExecuteOutboundMessageResult> {
   const policyInput = {
     to: input.to,
     jid: input.jid,
