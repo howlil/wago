@@ -180,23 +180,21 @@ export function prepareMessageStatus(input: { id: string; to: string; recipientJ
 
 export function markMessageSubmitting(messageId: string): StoredMessageStatus | null {
   const current = getMessageStatus(messageId);
-  if (!current || current.status !== "pending") return current;
+  if (current?.status !== "pending") return current;
   const nextState = nextMessageDispatchState(current.dispatchState, "submission_started");
   if (!nextState) return current;
 
-  const nowMs = Date.now();
-  const result = transitionDispatchState.run(nextState, nowMs, messageId, current.dispatchState);
-  return Number(result.changes) === 0 ? getMessageStatus(messageId) : getMessageStatus(messageId);
+  transitionDispatchState.run(nextState, Date.now(), messageId, current.dispatchState);
+  return getMessageStatus(messageId);
 }
 
 export function markMessageSubmitted(messageId: string, providerMessageId: string | null): StoredMessageStatus | null {
   const current = getMessageStatus(messageId);
-  if (!current || current.status !== "pending") return current;
+  if (current?.status !== "pending") return current;
   const nextState = nextMessageDispatchState(current.dispatchState, "submission_succeeded");
   if (nextState !== "submitted") return current;
 
-  const nowMs = Date.now();
-  const result = markSubmitted.run(providerMessageId, nowMs, messageId);
+  const result = markSubmitted.run(providerMessageId, Date.now(), messageId);
   const updated = getMessageStatus(messageId);
   if (!updated || Number(result.changes) === 0) {
     return updated;
@@ -219,12 +217,11 @@ export function markMessageSubmitted(messageId: string, providerMessageId: strin
 
 export function markMessageIndeterminate(messageId: string): StoredMessageStatus | null {
   const current = getMessageStatus(messageId);
-  if (!current || current.status !== "pending") return current;
+  if (current?.status !== "pending") return current;
   const nextState = nextMessageDispatchState(current.dispatchState, "submission_ambiguous");
   if (!nextState) return current;
 
-  const nowMs = Date.now();
-  transitionDispatchState.run(nextState, nowMs, messageId, current.dispatchState);
+  transitionDispatchState.run(nextState, Date.now(), messageId, current.dispatchState);
   return getMessageStatus(messageId);
 }
 
