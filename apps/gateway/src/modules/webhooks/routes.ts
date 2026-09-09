@@ -4,7 +4,6 @@ import { asyncHandler } from "../../http/middleware/async-handler.js";
 import { requestHasValidBrowserSession, requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { requestHasSameOrigin } from "../../http/middleware/origin.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
-import { optionalHttpString, requiredHttpString } from "../../http/validation.js";
 import { recordActivity } from "../activity/store.js";
 import type { WebhookDeliveryStatus } from "./delivery-store.js";
 import {
@@ -138,7 +137,7 @@ webhookRouter.post(
 );
 
 webhookRouter.get("/deliveries", requireAuthenticatedRequest, (req, res) => {
-  const rawStatus = optionalHttpString(req.query.status);
+  const rawStatus = typeof req.query.status === "string" ? req.query.status : undefined;
   if (rawStatus && !WEBHOOK_STATUSES.has(rawStatus as WebhookDeliveryStatus)) {
     return res.status(400).json({
       success: false,
@@ -147,7 +146,8 @@ webhookRouter.get("/deliveries", requireAuthenticatedRequest, (req, res) => {
     });
   }
 
-  const requestedLimit = Number(optionalHttpString(req.query.limit) ?? 50);
+  const rawLimit = typeof req.query.limit === "string" ? req.query.limit : undefined;
+  const requestedLimit = Number(rawLimit ?? 50);
   const limit = Number.isFinite(requestedLimit) ? requestedLimit : 50;
   if (limit < MIN_WEBHOOK_DELIVERY_LIMIT || limit > MAX_WEBHOOK_DELIVERY_LIMIT) {
     return res.status(400).json({
@@ -166,7 +166,7 @@ webhookRouter.get("/deliveries", requireAuthenticatedRequest, (req, res) => {
 });
 
 webhookRouter.get("/deliveries/:id", requireAuthenticatedRequest, (req, res) => {
-  const deliveryId = requiredHttpString(req.params.id);
+  const deliveryId = typeof req.params.id === "string" ? req.params.id : "";
   if (!hasValidDeliveryId(deliveryId)) {
     return res.status(400).json({
       success: false,
@@ -188,7 +188,7 @@ webhookRouter.get("/deliveries/:id", requireAuthenticatedRequest, (req, res) => 
 });
 
 webhookRouter.post("/deliveries/:id/redeliver", requireAuthenticatedRequest, redeliveryRateLimit, (req, res) => {
-  const deliveryId = requiredHttpString(req.params.id);
+  const deliveryId = typeof req.params.id === "string" ? req.params.id : "";
   if (!hasValidDeliveryId(deliveryId)) {
     return res.status(400).json({
       success: false,

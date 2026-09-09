@@ -1,11 +1,57 @@
+import { randomUUID } from "node:crypto";
 import { Router, raw } from "express";
 import { isApplicationError } from "../../errors/application-error.js";
 import { asyncHandler } from "../../http/middleware/async-handler.js";
 import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
 import { createRateLimit } from "../../http/middleware/rate-limit.js";
 import { recordActivity } from "../activity/store.js";
-import type { MessageMediaKind, MessageService } from "./message.service.js";
+import type { PublicWebhookDelivery } from "../webhooks/index.js";
+import type { StoredMessageStatus } from "./message-status-store.js";
 import { isOutboundPolicyError } from "./outbound-policy.js";
+
+export type MessageMediaKind = "image" | "video" | "audio" | "document";
+
+type MessageSendOptions = {
+  idempotencyKey?: string;
+  messageId: string;
+  replyToMessageId?: string;
+};
+
+type MessageSendResult = {
+  messageId: string;
+  status: "pending";
+};
+
+type MessageMediaInput = {
+  kind: MessageMediaKind;
+  data: Buffer;
+  mimetype: string;
+  caption?: string;
+  fileName?: string;
+};
+
+type DownloadedInboundMedia = {
+  data: Buffer;
+  media: {
+    kind: MessageMediaKind;
+    mimetype?: string;
+    fileName?: string;
+    fileLength?: number;
+    caption?: string;
+    seconds?: number;
+    width?: number;
+    height?: number;
+  };
+};
+
+export type MessageRouteDependencies = {
+  sendText: (to: string, text: string, options: MessageSendOptions) => Promise<MessageSendResult>;
+  sendMedia: (to: string, media: MessageMediaInput, options: MessageSendOptions) => Promise<MessageSendResult>;
+  downloadInboundMedia: (messageId: string) => Promise<DownloadedInboundMedia>;
+  getStatus: (messageId: string) => StoredMessageStatus | null | undefined;
+  getWebhookDelivery?: (messageId: string) => PublicWebhookDelivery | null;
+  createMessageId?: () => string;
+};
 
 const mediaKinds = new Set<MessageMediaKind>(["image", "video", "audio", "document"]);
 
@@ -34,6 +80,43 @@ function mediaContentTypeAllowed(kind: MessageMediaKind, mimetype: string): bool
 
 function safeDownloadFileName(value: string): string {
   return value.replace(/[\\"\r\n]/g, "_").slice(0, 255) || "attachment";
+}
+
+function optionalStatusFields(status: StoredMessageStatus) {
+  return {
+    ...(status.deliveryEvidence !== undefined ? { deliveryEvidence: status.deliveryEvidence } : {}),
+    ...(status.error !== undefined ? { error: status.error } : {}),
+    ...(status.message !== undefined ? { message: status.message } : {}),
+    ...(status.acceptedAt !== undefined ? { acceptedAt: status.acceptedAt } : {}),
+    ...(status.rejectedAt !== undefined ? { rejectedAt: status.rejectedAt } : {}),
+    ...(status.serverAcceptedAt !== undefined ? { serverAcceptedAt: status.serverAcceptedAt } : {}),
+    ...(status.deliveredAt !== undefined ? { deliveredAt: status.deliveredAt } : {}),
+    ...(status.readAt !== undefined ? { readAt: status.readAt } : {}),
+    ...(status.playedAt !== undefined ? { playedAt: status.playedAt } : {}),
+  };
+}
+
+function publicMessageStatus(status: StoredMessageStatus) {
+  return {
+    id: status.id,
+    to: status.to,
+    status: status.status,
+    createdAt: status.createdAt,
+    updatedAt: status.updatedAt,
+    ...optionalStatusFields(status),
+  };
+}
+
+function messageDiagnostic(status: StoredMessageStatus, webhook: PublicWebhookDelivery | null) {
+  return {
+    id: status.id,
+    status: status.status,
+    createdAt: status.createdAt,
+    updatedAt: status.updatedAt,
+    ...optionalStatusFields(status),
+    dispatchState: status.dispatchState,
+    webhook,
+  };
 }
 
 function recordSendFailure(error: unknown, to: string): void {
@@ -104,8 +187,9 @@ function recordSendFailure(error: unknown, to: string): void {
   });
 }
 
-export function createMessageRouter(messageService: MessageService) {
+export function createMessageRouter(deps: MessageRouteDependencies) {
   const messageRouter = Router();
+  const createMessageId = deps.createMessageId ?? randomUUID;
 
   messageRouter.post(
     "/send",
@@ -146,10 +230,9 @@ export function createMessageRouter(messageService: MessageService) {
         const idempotencyKey =
           headerIdempotencyKey ||
           (typeof bodyIdempotencyKey === "string" && bodyIdempotencyKey.trim() ? bodyIdempotencyKey.trim() : undefined);
-        const result = await messageService.send({
-          to,
-          text,
+        const result = await deps.sendText(to, text, {
           ...(idempotencyKey ? { idempotencyKey } : {}),
+          messageId: createMessageId(),
           ...(replyToMessageId ? { replyToMessageId } : {}),
         });
 
@@ -205,16 +288,21 @@ export function createMessageRouter(messageService: MessageService) {
 
       try {
         const idempotencyKey = req.header("idempotency-key")?.trim();
-        const result = await messageService.sendMedia({
+        const result = await deps.sendMedia(
           to,
-          kind,
-          data: req.body,
-          mimetype,
-          ...(caption ? { caption } : {}),
-          ...(fileName ? { fileName } : {}),
-          ...(idempotencyKey ? { idempotencyKey } : {}),
-          ...(replyToMessageId ? { replyToMessageId } : {}),
-        });
+          {
+            kind,
+            data: req.body,
+            mimetype,
+            ...(caption ? { caption } : {}),
+            ...(fileName ? { fileName } : {}),
+          },
+          {
+            ...(idempotencyKey ? { idempotencyKey } : {}),
+            messageId: createMessageId(),
+            ...(replyToMessageId ? { replyToMessageId } : {}),
+          },
+        );
         return res.status(202).json({ success: true, ...result });
       } catch (error) {
         recordSendFailure(error, to);
@@ -237,7 +325,7 @@ export function createMessageRouter(messageService: MessageService) {
       }
 
       try {
-        const result = await messageService.downloadInboundMedia(messageId);
+        const result = await deps.downloadInboundMedia(messageId);
         res.setHeader("Cache-Control", "no-store");
         res.setHeader("Content-Type", result.media.mimetype ?? "application/octet-stream");
         res.setHeader("Content-Length", result.data.length.toString());
@@ -261,8 +349,8 @@ export function createMessageRouter(messageService: MessageService) {
       });
     }
 
-    const result = messageService.findStatus(messageId);
-    if (!result) {
+    const status = deps.getStatus(messageId);
+    if (!status) {
       return res.status(404).json({
         success: false,
         error: "MESSAGE_STATUS_NOT_FOUND",
@@ -270,7 +358,7 @@ export function createMessageRouter(messageService: MessageService) {
       });
     }
 
-    return res.json({ success: true, ...result });
+    return res.json({ success: true, ...publicMessageStatus(status) });
   });
 
   messageRouter.get("/:id", requireAuthenticatedRequest, (req, res) => {
@@ -283,8 +371,8 @@ export function createMessageRouter(messageService: MessageService) {
       });
     }
 
-    const result = messageService.findDiagnostic(messageId);
-    if (!result) {
+    const status = deps.getStatus(messageId);
+    if (!status) {
       return res.status(404).json({
         success: false,
         error: "MESSAGE_NOT_FOUND",
@@ -292,7 +380,10 @@ export function createMessageRouter(messageService: MessageService) {
       });
     }
 
-    return res.json({ success: true, ...result });
+    return res.json({
+      success: true,
+      ...messageDiagnostic(status, deps.getWebhookDelivery?.(messageId) ?? null),
+    });
   });
 
   return messageRouter;

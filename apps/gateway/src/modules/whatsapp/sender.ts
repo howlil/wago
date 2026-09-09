@@ -273,13 +273,8 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
   }
 
   return {
-    async sendText(to: string, text: string, options: SendTextMessageOptions): Promise<SendTextMessageResult> {
-      const result = await sendContent(to, { text }, text, options);
-      const stored = options.messageId;
-      // Keep Baileys' getMessage fallback for text sends without retaining durable chat content.
-      // The provider id is resolved from the durable diagnostic after submission by existing event wiring.
-      void stored;
-      return result;
+    sendText(to: string, text: string, options: SendTextMessageOptions): Promise<SendTextMessageResult> {
+      return sendContent(to, { text }, text, options);
     },
     sendMedia(
       to: string,

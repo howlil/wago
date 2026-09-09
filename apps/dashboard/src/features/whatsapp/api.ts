@@ -28,14 +28,6 @@ export type AccountHealthSnapshot = {
     retryAt?: string;
     enforcementType?: string;
   };
-  newChatCap?: {
-    total_quota?: number;
-    used_quota?: number;
-    cycle_start_timestamp?: string;
-    cycle_end_timestamp?: string;
-    server_sent_timestamp?: string;
-    capping_status?: string;
-  };
   newChatCapacity?: {
     status: NewChatCapacityStatus;
     used?: number;

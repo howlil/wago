@@ -78,7 +78,7 @@ function messagingMetric(
   }
 
   const reachoutActive = Boolean(accountHealth.reachoutTimeLock?.isActive);
-  const capStatus = accountHealth.newChatCap?.capping_status;
+  const capStatus = accountHealth.newChatCapacity?.status;
 
   if (reachoutActive) {
     return {
@@ -88,10 +88,10 @@ function messagingMetric(
       tone: "warning",
     };
   }
-  if (capStatus === "CAPPED") {
+  if (capStatus === "capped") {
     return { label: "Messaging", value: "New chats capped", detail: "New recipients paused", tone: "warning" };
   }
-  if (capStatus === "FIRST_WARNING" || capStatus === "SECOND_WARNING") {
+  if (capStatus === "warning") {
     return { label: "Messaging", value: "Warning", detail: "New recipients paused", tone: "warning" };
   }
   return { label: "Messaging", value: "Normal", detail: "No active restriction", tone: "ok" };

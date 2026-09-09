@@ -1,6 +1,5 @@
 import { type Response, Router } from "express";
 import { requireAuthenticatedRequest } from "../../http/middleware/auth.js";
-import { optionalHttpString } from "../../http/validation.js";
 import { listAudit } from "./query.js";
 import type { ActivityCategory, ActivityLevel, AuditSource } from "./store.js";
 
@@ -22,9 +21,9 @@ activityRouter.get("/", requireAuthenticatedRequest, async (req, res, next) => {
   const rawSource = req.query.source;
   const rawCategory = req.query.category;
   const rawLevel = req.query.level;
-  const source = optionalHttpString(rawSource);
-  const category = optionalHttpString(rawCategory);
-  const level = optionalHttpString(rawLevel);
+  const source = typeof rawSource === "string" ? rawSource : undefined;
+  const category = typeof rawCategory === "string" ? rawCategory : undefined;
+  const level = typeof rawLevel === "string" ? rawLevel : undefined;
 
   if (
     (rawSource !== undefined && (!source || !AUDIT_SOURCES.has(source as AuditSource))) ||
@@ -34,10 +33,11 @@ activityRouter.get("/", requireAuthenticatedRequest, async (req, res, next) => {
     return invalidFilterResponse(res);
   }
 
-  const requestedLimit = Number(optionalHttpString(req.query.limit) ?? 100);
+  const rawLimit = typeof req.query.limit === "string" ? req.query.limit : undefined;
+  const requestedLimit = Number(rawLimit ?? 100);
   const limit = Number.isFinite(requestedLimit) ? requestedLimit : 100;
-  const before = optionalHttpString(req.query.before);
-  const q = optionalHttpString(req.query.q);
+  const before = typeof req.query.before === "string" ? req.query.before : undefined;
+  const q = typeof req.query.q === "string" ? req.query.q : undefined;
 
   try {
     const page = await listAudit({
