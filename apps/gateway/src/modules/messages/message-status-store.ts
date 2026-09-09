@@ -1,11 +1,17 @@
-import { getDatabase } from "../../infrastructure/database.js";
+import { getDatabase, withTransaction } from "../../infrastructure/database.js";
 import { logger } from "../../infrastructure/logger.js";
 import { recordActivity } from "../activity/store.js";
-import { enqueueMessageDeliveryWebhook } from "../webhooks/index.js";
+import { enqueueMessageDeliveryWebhookDurably, wakeWebhookDeliveryWorker } from "../webhooks/index.js";
+import {
+  canAdvanceMessageDeliveryEvidence,
+  canSetTerminalMessageStatus,
+  type MessageDeliveryEvidence,
+  type MessageDeliveryStatus,
+  type MessageDispatchState,
+  nextMessageDispatchState,
+} from "./message-state.js";
 
-export type MessageDeliveryStatus = "pending" | "accepted" | "rejected";
-export type MessageDispatchState = "prepared" | "submitting" | "submitted" | "indeterminate";
-export type MessageDeliveryEvidence = "submitted" | "server_accepted" | "delivered" | "read" | "played";
+export type { MessageDeliveryEvidence, MessageDeliveryStatus, MessageDispatchState } from "./message-state.js";
 
 export type StoredMessageStatus = {
   id: string;
@@ -50,14 +56,6 @@ type MessageStatusRow = {
 const MESSAGE_DIAGNOSTIC_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
 const MAX_MESSAGE_DIAGNOSTICS = 2_000;
 const database = getDatabase();
-
-const evidenceRank: Record<MessageDeliveryEvidence, number> = {
-  submitted: 0,
-  server_accepted: 1,
-  delivered: 2,
-  read: 3,
-  played: 4,
-};
 
 const selectById = database.prepare("SELECT * FROM outbound_messages WHERE id = ?");
 const selectByProviderId = database.prepare("SELECT * FROM outbound_messages WHERE provider_message_id = ?");
@@ -161,7 +159,11 @@ function recordEvidenceActivity(messageId: string, evidence: MessageDeliveryEvid
     description: `WhatsApp reported ${evidence.replace("_", " ")} evidence for the outbound message.`,
     metadata: { messageId },
   });
-  enqueueMessageDeliveryWebhook({ messageId, status: evidence });
+}
+
+function enqueueEvidenceWebhook(messageId: string, evidence: MessageDeliveryEvidence): boolean {
+  if (evidence === "submitted" || evidence === "server_accepted") return false;
+  return enqueueMessageDeliveryWebhookDurably({ messageId, status: evidence });
 }
 
 export function prepareMessageStatus(input: { id: string; to: string; recipientJid?: string }): StoredMessageStatus {
@@ -177,20 +179,25 @@ export function prepareMessageStatus(input: { id: string; to: string; recipientJ
 }
 
 export function markMessageSubmitting(messageId: string): StoredMessageStatus | null {
-  const nowMs = Date.now();
-  const result = transitionDispatchState.run("submitting", nowMs, messageId, "prepared");
-  if (Number(result.changes) === 0) {
-    return getMessageStatus(messageId);
-  }
+  const current = getMessageStatus(messageId);
+  if (current?.status !== "pending") return current;
+  const nextState = nextMessageDispatchState(current.dispatchState, "submission_started");
+  if (!nextState) return current;
+
+  transitionDispatchState.run(nextState, Date.now(), messageId, current.dispatchState);
   return getMessageStatus(messageId);
 }
 
 export function markMessageSubmitted(messageId: string, providerMessageId: string | null): StoredMessageStatus | null {
-  const nowMs = Date.now();
-  const result = markSubmitted.run(providerMessageId, nowMs, messageId);
   const current = getMessageStatus(messageId);
-  if (!current || Number(result.changes) === 0) {
-    return current;
+  if (current?.status !== "pending") return current;
+  const nextState = nextMessageDispatchState(current.dispatchState, "submission_succeeded");
+  if (nextState !== "submitted") return current;
+
+  const result = markSubmitted.run(providerMessageId, Date.now(), messageId);
+  const updated = getMessageStatus(messageId);
+  if (!updated || Number(result.changes) === 0) {
+    return updated;
   }
 
   void recordActivity({
@@ -200,17 +207,21 @@ export function markMessageSubmitted(messageId: string, providerMessageId: strin
     title: "Message queued",
     description: "An outbound message was submitted to the WhatsApp transport.",
     metadata: {
-      messageId: current.id,
-      targetJid: current.to,
+      messageId: updated.id,
+      targetJid: updated.to,
     },
   });
 
-  return current;
+  return updated;
 }
 
 export function markMessageIndeterminate(messageId: string): StoredMessageStatus | null {
-  const nowMs = Date.now();
-  transitionDispatchState.run("indeterminate", nowMs, messageId, "submitting");
+  const current = getMessageStatus(messageId);
+  if (current?.status !== "pending") return current;
+  const nextState = nextMessageDispatchState(current.dispatchState, "submission_ambiguous");
+  if (!nextState) return current;
+
+  transitionDispatchState.run(nextState, Date.now(), messageId, current.dispatchState);
   return getMessageStatus(messageId);
 }
 
@@ -239,9 +250,7 @@ export function updateMessageDeliveryEvidence(
 ): StoredMessageStatus | null {
   const current = getMessageStatus(messageId);
   if (!current || current.status === "rejected") return current;
-  if (current.deliveryEvidence && evidenceRank[evidence] <= evidenceRank[current.deliveryEvidence]) {
-    return current;
-  }
+  if (!canAdvanceMessageDeliveryEvidence(current.deliveryEvidence, evidence)) return current;
 
   const observedAtMs = observedAt.getTime();
   const serverAcceptedAt = current.serverAcceptedAt
@@ -261,7 +270,12 @@ export function updateMessageDeliveryEvidence(
       ? observedAtMs
       : null;
 
-  updateEvidence.run(evidence, observedAtMs, serverAcceptedAt, deliveredAt, readAt, playedAt, messageId);
+  const webhookQueued = withTransaction(() => {
+    updateEvidence.run(evidence, observedAtMs, serverAcceptedAt, deliveredAt, readAt, playedAt, messageId);
+    return enqueueEvidenceWebhook(messageId, evidence);
+  });
+
+  if (webhookQueued) wakeWebhookDeliveryWorker();
   recordEvidenceActivity(messageId, evidence);
   return getMessageStatus(messageId);
 }
@@ -290,24 +304,35 @@ export function updateMessageStatus(
     message?: string;
   },
 ): StoredMessageStatus | null {
+  const before = getMessageStatus(messageId);
+  if (!before || !canSetTerminalMessageStatus(before.status, patch.status)) return before;
+
   const nowMs = Date.now();
-  const result = updateTerminal.run(
-    patch.status,
-    patch.error ?? null,
-    patch.message ?? null,
-    nowMs,
-    patch.status === "accepted" ? nowMs : null,
-    patch.status === "rejected" ? nowMs : null,
-    messageId,
-  );
+  let changed = false;
+  const webhookQueued = withTransaction(() => {
+    const result = updateTerminal.run(
+      patch.status,
+      patch.error ?? null,
+      patch.message ?? null,
+      nowMs,
+      patch.status === "accepted" ? nowMs : null,
+      patch.status === "rejected" ? nowMs : null,
+      messageId,
+    );
+    changed = Number(result.changes) > 0;
+    if (!changed) return false;
+    return enqueueMessageDeliveryWebhookDurably({
+      messageId,
+      status: patch.status,
+      ...(patch.status === "rejected" && patch.error ? { error: patch.error } : {}),
+    });
+  });
 
   const current = getMessageStatus(messageId);
-  if (!current || Number(result.changes) === 0) {
-    return current;
-  }
+  if (!current || !changed) return current;
+  if (webhookQueued) wakeWebhookDeliveryWorker();
 
   if (patch.status === "accepted") {
-    enqueueMessageDeliveryWebhook({ messageId, status: "accepted" });
     void recordActivity({
       level: "success",
       category: "messaging",
@@ -317,11 +342,6 @@ export function updateMessageStatus(
       metadata: { messageId },
     });
   } else {
-    enqueueMessageDeliveryWebhook({
-      messageId,
-      status: "rejected",
-      error: patch.error,
-    });
     void recordActivity({
       level: "warning",
       category: "messaging",

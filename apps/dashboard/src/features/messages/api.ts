@@ -1,46 +1,17 @@
+import type {
+  MessageDeliveryEvidence,
+  MessageDiagnosticResponse,
+  MessageMediaKind,
+  MessageStatusResponse,
+} from "@wago/contracts";
 import { requestBlob, requestJson } from "../../shared/api/client.js";
+
+export type { MessageDeliveryEvidence, MessageDiagnosticResponse, MessageMediaKind, MessageStatusResponse };
 
 export type SendMessageResponse = {
   success: true;
   messageId: string;
   status: "pending";
-};
-
-export type MessageDeliveryEvidence = "submitted" | "server_accepted" | "delivered" | "read" | "played";
-export type MessageMediaKind = "image" | "video" | "audio" | "document";
-
-export type MessageStatusResponse = {
-  success: true;
-  id: string;
-  to: string;
-  status: "pending" | "accepted" | "rejected";
-  deliveryEvidence?: MessageDeliveryEvidence;
-  error?: string;
-  message?: string;
-  createdAt: string;
-  updatedAt: string;
-  acceptedAt?: string;
-  rejectedAt?: string;
-  serverAcceptedAt?: string;
-  deliveredAt?: string;
-  readAt?: string;
-  playedAt?: string;
-};
-
-export type MessageDiagnosticResponse = Omit<MessageStatusResponse, "to"> & {
-  dispatchState: "prepared" | "submitting" | "submitted" | "indeterminate";
-  webhook: {
-    id: string;
-    event: string;
-    status: string;
-    attemptCount: number;
-    redeliveryCount: number;
-    lastStatusCode: number | null;
-    lastErrorCode: string | null;
-    createdAt: string;
-    lastAttemptAt: string | null;
-    deliveredAt: string | null;
-  } | null;
 };
 
 export type SendMediaMessageInput = {

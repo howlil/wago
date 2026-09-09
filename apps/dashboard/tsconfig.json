@@ -14,7 +14,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@wago/contracts": ["../../packages/contracts/index.d.ts"]
+    }
   },
   "include": ["src"],
   "references": []

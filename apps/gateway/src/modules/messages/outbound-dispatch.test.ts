@@ -9,7 +9,8 @@ vi.mock("../activity/store.js", () => ({
 }));
 
 vi.mock("../webhooks/index.js", () => ({
-  enqueueMessageDeliveryWebhook: vi.fn(() => undefined),
+  enqueueMessageDeliveryWebhookDurably: vi.fn(() => true),
+  wakeWebhookDeliveryWorker: vi.fn(() => undefined),
 }));
 
 import { getDatabase } from "../../infrastructure/database.js";

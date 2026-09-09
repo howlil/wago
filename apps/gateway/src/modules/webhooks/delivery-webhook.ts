@@ -161,14 +161,24 @@ export function serializeWebhookDelivery(delivery: StoredWebhookDelivery): Publi
   };
 }
 
-export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput): void {
+export function enqueueMessageDeliveryWebhookDurably(input: MessageDeliveryWebhookInput): boolean {
   const settings = settingsStore.get();
-  if (!settings?.enabled || !settings.url || !settings.secret) return;
+  if (!settings?.enabled || !settings.url || !settings.secret) return false;
+  const now = new Date();
+  const envelope = createMessageDeliveryWebhookEnvelope(input, { now: () => now });
+  store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
+  return true;
+}
+
+export function wakeWebhookDeliveryWorker(): void {
+  void worker.tick();
+}
+
+export function enqueueMessageDeliveryWebhook(input: MessageDeliveryWebhookInput): void {
   try {
-    const now = new Date();
-    const envelope = createMessageDeliveryWebhookEnvelope(input, { now: () => now });
-    store.enqueue(envelope, now.getTime() + WEBHOOK_DELIVERY_HORIZON_MS);
-    void worker.tick();
+    if (enqueueMessageDeliveryWebhookDurably(input)) {
+      wakeWebhookDeliveryWorker();
+    }
   } catch (error) {
     logger.error(
       {
@@ -203,7 +213,7 @@ function enqueueInboundEnvelope(input: IncomingMessageWebhookInput | IncomingMed
         metadata: { messageId: input.messageId, deliveryId: queued.id, webhookEvent: envelope.event },
       });
     }
-    void worker.tick();
+    wakeWebhookDeliveryWorker();
   } catch (error) {
     logger.error(
       {
@@ -301,7 +311,7 @@ export function redeliverWebhookDelivery(
         redeliveryCount: result.delivery.redeliveryCount,
       },
     });
-    void worker.tick();
+    wakeWebhookDeliveryWorker();
   }
   return { kind: result.kind, delivery: serializeWebhookDelivery(result.delivery) };
 }

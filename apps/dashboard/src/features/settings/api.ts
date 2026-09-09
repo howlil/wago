@@ -1,4 +1,19 @@
+import type {
+  WebhookAttemptOutcome,
+  WebhookDelivery,
+  WebhookDeliveryAttempt,
+  WebhookDeliveryDetail,
+  WebhookDeliveryStatus,
+} from "@wago/contracts";
 import { requestJson } from "../../shared/api/client.js";
+
+export type {
+  WebhookAttemptOutcome,
+  WebhookDelivery,
+  WebhookDeliveryAttempt,
+  WebhookDeliveryDetail,
+  WebhookDeliveryStatus,
+};
 
 export type WebhookSettingsResponse = {
   success: true;
@@ -8,49 +23,6 @@ export type WebhookSettingsResponse = {
   rotationPending: boolean;
   updatedAt: string | null;
   generatedSecret?: string;
-};
-
-export type WebhookDeliveryStatus = "pending" | "delivering" | "delivered" | "failed" | "expired";
-export type WebhookAttemptOutcome =
-  | "in_progress"
-  | "succeeded"
-  | "retryable_failure"
-  | "permanent_failure"
-  | "interrupted";
-
-export type WebhookDelivery = {
-  id: string;
-  event: string;
-  messageId: string;
-  status: WebhookDeliveryStatus;
-  attemptCount: number;
-  redeliveryCount: number;
-  nextAttemptAt: string | null;
-  firstAttemptAt: string | null;
-  lastAttemptAt: string | null;
-  lastStatusCode: number | null;
-  lastErrorCode: string | null;
-  createdAt: string;
-  deliveredAt: string | null;
-  expiresAt: string;
-  claimedAt: string | null;
-  redeliveryAvailable: boolean;
-};
-
-export type WebhookDeliveryAttempt = {
-  sequence: number;
-  redeliveryNumber: number;
-  outcome: WebhookAttemptOutcome;
-  startedAt: string;
-  completedAt: string | null;
-  statusCode: number | null;
-  errorCode: string | null;
-  retryable: boolean | null;
-  nextAttemptAt: string | null;
-};
-
-export type WebhookDeliveryDetail = WebhookDelivery & {
-  attempts: WebhookDeliveryAttempt[];
 };
 
 export type WebhookTestDelivery = Pick<
