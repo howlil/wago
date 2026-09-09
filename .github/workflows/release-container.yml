@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: ghcr.io/howlil/wago-simple
+  IMAGE_NAME: ghcr.io/howlil/wago
 
 jobs:
   publish:
