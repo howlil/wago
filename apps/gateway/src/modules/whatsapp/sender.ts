@@ -191,7 +191,11 @@ export function createWhatsAppSender(deps: WhatsAppSenderDependencies) {
             }
 
             try {
-              const providerResult = await activeSocket.sendMessage(resolvedJid, content, quoted ? { quoted } : undefined);
+              const providerResult = await activeSocket.sendMessage(
+                resolvedJid,
+                content,
+                quoted ? { quoted } : undefined,
+              );
               return {
                 kind: "submitted",
                 providerMessageId: providerResult?.key?.id ?? null,
