@@ -41,8 +41,17 @@ function register(socket: WASocket): void {
   });
 }
 
-function seedSubmittedMessage(input: { id: string; providerMessageId: string; to: string; recipientJid?: string }): void {
-  prepareMessageStatus({ id: input.id, to: input.to, ...(input.recipientJid ? { recipientJid: input.recipientJid } : {}) });
+function seedSubmittedMessage(input: {
+  id: string;
+  providerMessageId: string;
+  to: string;
+  recipientJid?: string;
+}): void {
+  prepareMessageStatus({
+    id: input.id,
+    to: input.to,
+    ...(input.recipientJid ? { recipientJid: input.recipientJid } : {}),
+  });
   markMessageSubmitting(input.id);
   markMessageSubmitted(input.id, input.providerMessageId);
 }

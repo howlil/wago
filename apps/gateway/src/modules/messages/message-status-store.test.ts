@@ -30,7 +30,11 @@ function seedSubmittedMessage(input: {
   to: string;
   recipientJid?: string;
 }): void {
-  prepareMessageStatus({ id: input.id, to: input.to, ...(input.recipientJid ? { recipientJid: input.recipientJid } : {}) });
+  prepareMessageStatus({
+    id: input.id,
+    to: input.to,
+    ...(input.recipientJid ? { recipientJid: input.recipientJid } : {}),
+  });
   markMessageSubmitting(input.id);
   markMessageSubmitted(input.id, input.providerMessageId);
 }
