@@ -24,3 +24,10 @@ export {
   prepareOutboundDispatch,
   recoverInterruptedOutboundDispatches,
 } from "./outbound-dispatch.js";
+export type {
+  ExecuteOutboundMessageInput,
+  ExecuteOutboundMessageResult,
+  MessageTransport,
+  MessageTransportSubmitResult,
+} from "./send-message.js";
+export { executeOutboundMessage } from "./send-message.js";
