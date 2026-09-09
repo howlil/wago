@@ -1,6 +1,6 @@
 services:
   wago:
-    image: ghcr.io/howlil/wago-simple:latest
+    image: ghcr.io/howlil/wago:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
