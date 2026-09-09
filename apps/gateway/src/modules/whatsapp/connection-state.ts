@@ -1,17 +1,28 @@
+import type {
+  AccountHealthSnapshot as PublicAccountHealthSnapshot,
+  WhatsAppStatus,
+  WhatsAppStatusSnapshot,
+} from "@wago/contracts";
 import { recordActivity } from "../activity/store.js";
-import { type AccountHealthSnapshot, getAccountHealthSnapshot } from "./account-health.js";
-import { getWhatsAppBinding, type WhatsAppBinding } from "./binding-store.js";
+import { getAccountHealthSnapshot } from "./account-health.js";
+import { getWhatsAppBinding } from "./binding-store.js";
 
-export type WhatsAppStatus = "connecting" | "qr" | "connected" | "disconnected";
+export type { WhatsAppStatus, WhatsAppStatusSnapshot };
 
 let status: WhatsAppStatus = "disconnected";
 let currentQr: string | null = null;
 
-export type WhatsAppStatusSnapshot = {
-  status: WhatsAppStatus;
-  binding: WhatsAppBinding;
-  accountHealth: AccountHealthSnapshot;
-};
+function getPublicAccountHealthSnapshot(): PublicAccountHealthSnapshot {
+  const snapshot = getAccountHealthSnapshot();
+  return {
+    availability: snapshot.availability,
+    ...(snapshot.unavailableReason ? { unavailableReason: snapshot.unavailableReason } : {}),
+    ...(snapshot.reachoutTimeLock ? { reachoutTimeLock: snapshot.reachoutTimeLock } : {}),
+    newChatCapacity: snapshot.newChatCapacity,
+    ...(snapshot.lastFetchedAt ? { lastFetchedAt: snapshot.lastFetchedAt } : {}),
+    ...(snapshot.lastFetchErrorAt ? { lastFetchErrorAt: snapshot.lastFetchErrorAt } : {}),
+  };
+}
 
 export function markConnecting(): void {
   if (status !== "connecting") {
@@ -87,7 +98,7 @@ export function getWhatsAppStatusSnapshot(): WhatsAppStatusSnapshot {
   return {
     status,
     binding: getWhatsAppBinding(),
-    accountHealth: getAccountHealthSnapshot(),
+    accountHealth: getPublicAccountHealthSnapshot(),
   };
 }
 
