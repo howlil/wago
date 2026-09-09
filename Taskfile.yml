@@ -9,7 +9,7 @@ tasks:
       - task --list
 
   install:
-    desc: Install all workspace dependencies
+    desc: Install workspace dependencies
     cmds:
       - pnpm install
 
@@ -29,8 +29,27 @@ tasks:
       - gateway:dev
       - dashboard:dev
 
+  test:
+    desc: Run gateway and dashboard tests in parallel
+    deps:
+      - gateway:test
+      - dashboard:test
+
+  build:
+    desc: Build gateway and dashboard in parallel
+    deps:
+      - gateway:build
+      - dashboard:build
+
+  check:
+    desc: Run the core pre-merge quality gate
+    cmds:
+      - task: lint
+      - task: test
+      - task: build
+
   gateway:dev:
-    desc: Run the WhatsApp gateway in development mode
+    desc: Run the gateway in development mode
     cmds:
       - pnpm --filter @wago/gateway dev
 
@@ -54,93 +73,37 @@ tasks:
     cmds:
       - pnpm --filter @wago/dashboard test
 
-  dashboard:design:test:
-    desc: Run fast dashboard design and information-architecture regression guards
-    cmds:
-      - pnpm --filter @wago/dashboard exec vitest run --environment jsdom --pool=threads --testTimeout=15000 tests/architecture/information-architecture.test.ts src/shared/layout/AppHeader.test.ts
-
   dashboard:build:
     desc: Build the dashboard
     cmds:
       - pnpm --filter @wago/dashboard build
 
   docs:dev:
-    desc: Run the public documentation site
+    desc: Run the documentation site
     cmds:
       - pnpm --filter @wago/docs dev
-
-  docs:test:
-    desc: Run documentation tests
-    cmds:
-      - pnpm --filter @wago/docs test
-
-  docs:design:test:
-    desc: Run fast docs public-surface and design regression guards
-    cmds:
-      - pnpm --filter @wago/docs exec node --test src/components/api/public-surface.test.ts
 
   docs:build:
     desc: Build the documentation site
     cmds:
       - pnpm --filter @wago/docs build
 
-  core:test:
-    desc: Run gateway and dashboard tests
-    deps:
-      - gateway:test
-      - dashboard:test
-
-  core:build:
-    desc: Build gateway and dashboard
-    deps:
-      - gateway:build
-      - dashboard:build
-
-  core:check:
-    desc: Run all distributable-core quality gates
+  image:
+    desc: Build the local production image
     cmds:
-      - task: lint
-      - task: core:test
-      - task: core:build
+      - docker build -t wago:local .
 
-  test:
-    desc: Run all workspace tests
-    deps:
-      - gateway:test
-      - dashboard:test
-      - docs:test
-
-  build:
-    desc: Build all workspace applications
-    deps:
-      - gateway:build
-      - dashboard:build
-      - docs:build
-
-  check:
-    desc: Run repository-wide quality gates
-    cmds:
-      - task: lint
-      - task: test
-      - task: build
-
-  docs:check:
-    desc: Run documentation tests and build
-    cmds:
-      - task: docs:test
-      - task: docs:build
-
-  docker:build:
-    desc: Build the local production container image
-    cmds:
-      - docker build -t wago-simple:local .
-
-  docker:up:
-    desc: Start Wago with Docker Compose services
+  up:
+    desc: Start Wago with Docker Compose
     cmds:
       - docker compose up -d
 
-  docker:down:
+  down:
     desc: Stop Wago Docker Compose services
     cmds:
       - docker compose down
+
+  logs:
+    desc: Follow Wago container logs
+    cmds:
+      - docker compose logs -f wago

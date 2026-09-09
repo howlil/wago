@@ -18,7 +18,7 @@ const repo = 'https://github.com/howlil/wago';
   />
 
   <Callout title={id ? 'Distribution boundary' : 'Distribution boundary'}>
-    {id ? 'Artifact runtime yang didistribusikan adalah gateway + dashboard core di apps/. Public Astro docs di apps/docs/ dibangun terpisah; canonical project knowledge dan active engineering state untuk agent berada di .agents/ dan bukan bagian dokumentasi user.' : 'The distributed runtime artifact is the gateway + dashboard core under apps/. Public Astro docs under apps/docs/ are built separately; canonical project knowledge and active engineering state for agents live under .agents/ and are not user documentation.'}
+    {id ? 'Artifact runtime yang didistribusikan adalah gateway + dashboard core di apps/. Public Astro docs di apps/docs/ dibangun terpisah; root Taskfile adalah command surface untuk monorepo.' : 'The distributed runtime artifact is the gateway + dashboard core under apps/. Public Astro docs under apps/docs/ are built separately; the root Taskfile is the command surface for the monorepo.'}
   </Callout>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-4">{id ? 'Dokumen OSS' : 'OSS documents'}</h2>
@@ -35,15 +35,15 @@ const repo = 'https://github.com/howlil/wago';
   <div class="grid sm:grid-cols-2 gap-4 mb-10">
     <DocCard href={`${repo}/issues/new/choose`} title={id ? 'Issue templates' : 'Issue templates'} description={id ? 'Form terstruktur untuk bug report dan feature request.' : 'Structured forms for bug reports and feature requests.'} />
     <DocCard href={`${repo}/blob/main/.github/PULL_REQUEST_TEMPLATE.md`} title="Pull request template" description={id ? 'Checklist konsisten untuk perubahan contributor.' : 'A consistent checklist for contributor pull requests.'} />
-    <DocCard href={`${repo}/actions/workflows/ci.yml`} title="Core CI" description={id ? 'Biome, gateway/dashboard tests, core build, dan Docker smoke.' : 'Biome, gateway/dashboard tests, core build, and Docker smoke.'} />
-    <DocCard href={`${repo}/actions/workflows/docs-ci.yml`} title="Docs CI" description={id ? 'Docs helper tests dan Astro static build untuk dokumentasi publik.' : 'Docs helper tests and the Astro static build for public documentation.'} />
-    <DocCard href={`${repo}/actions/workflows/codeql.yml`} title="CodeQL" description={id ? 'Static security analysis untuk JavaScript/TypeScript core.' : 'Static security analysis for the JavaScript/TypeScript core.'} />
+    <DocCard href={`${repo}/actions/workflows/ci.yml`} title="Core CI" description={id ? 'Taskfile menjalankan Biome, gateway/dashboard tests, dan core build.' : 'Taskfile runs Biome, gateway/dashboard tests, and the core build.'} />
+    <DocCard href={`${repo}/actions/workflows/docs-ci.yml`} title="Docs CI" description={id ? 'Taskfile menjalankan Astro static build untuk dokumentasi publik.' : 'Taskfile runs the Astro static build for public documentation.'} />
+    <DocCard href={`${repo}/actions/workflows/codeql.yml`} title="CodeQL" description={id ? 'Scheduled/manual static security analysis untuk JavaScript/TypeScript core.' : 'Scheduled/manual static security analysis for the JavaScript/TypeScript core.'} />
     <DocCard href={`${repo}/blob/main/.github/dependabot.yml`} title="Dependabot" description={id ? 'Pemeliharaan dependency per workspace app dan GitHub Actions.' : 'Dependency maintenance per workspace app and for GitHub Actions.'} />
-    <DocCard href={`${repo}/actions/workflows/release-container.yml`} title="Container release" description={id ? 'Build gateway/dashboard multi-architecture, GHCR publish, SBOM, dan provenance.' : 'Multi-architecture gateway/dashboard build, GHCR publishing, SBOM, and provenance.'} />
+    <DocCard href={`${repo}/actions/workflows/release-container.yml`} title="Container release" description={id ? 'Perubahan runtime di main otomatis build amd64 dan push ke GHCR tanpa mengulang full test suite.' : 'Runtime changes on main automatically build amd64 and push to GHCR without repeating the full test suite.'} />
   </div>
 
-  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Nama repository vs image' : 'Repository vs image naming'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Repository canonical adalah howlil/wago. Container registry tetap memakai ghcr.io/howlil/wago-simple sebagai identifier distribusi yang sudah ada; dokumentasi membedakan keduanya agar link repository tetap current tanpa memutus nama image deployment.' : 'The canonical repository is howlil/wago. The container registry still uses ghcr.io/howlil/wago-simple as the existing distribution identifier; the documentation keeps these separate so repository links remain current without changing the deployment image name.'}</p>
+  <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Repository dan image' : 'Repository and image'}</h2>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-8">{id ? 'Repository canonical adalah howlil/wago dan container canonical adalah ghcr.io/howlil/wago.' : 'The canonical repository is howlil/wago and the canonical container is ghcr.io/howlil/wago.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Scope governance' : 'Scope governance'}</h2>
   <p class="text-sm text-[#a1a1aa] leading-relaxed mb-4">{id ? 'Wago mempertahankan scope kecil: satu akun, satu instance, self-hosted, text messaging, recipient allow/opt-out, outbound safety, structured audit, REST API, dan control dashboard. Fitur yang mengubah produk menjadi bulk sender, campaign tool, multi-tenant platform, scraping tool, atau anti-detection system berada di luar scope.' : 'Wago keeps a narrow scope: one account, one instance, self-hosted, text messaging, recipient allow/opt-out, outbound safety, structured audit, a REST API, and a control dashboard. Features that turn it into a bulk sender, campaign tool, multi-tenant platform, scraping tool, or anti-detection system are out of scope.'}</p>
@@ -59,7 +59,7 @@ const repo = 'https://github.com/howlil/wago';
   </ul>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mb-3">{id ? 'Release & versioning' : 'Releases & versioning'}</h2>
-  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-3">{id ? 'Perubahan gateway/dashboard core pada main menghasilkan latest, main, dan sha-* container tags. Perubahan docs saja tidak memicu publish. Tag Git v* dapat menghasilkan tag container versi/semver.' : 'Gateway/dashboard core changes on main produce latest, main, and sha-* container tags. Docs-only changes do not publish an image. Git v* tags can produce version/semver container tags.'}</p>
+  <p class="text-sm text-[#a1a1aa] leading-relaxed mb-3">{id ? 'Perubahan gateway/dashboard core pada main menghasilkan latest, main, dan sha-* container tags. Perubahan docs saja tidak memicu publish. Manual workflow dispatch hanya fallback.' : 'Gateway/dashboard core changes on main produce latest, main, and sha-* container tags. Docs-only changes do not publish an image. Manual workflow dispatch is only a fallback.'}</p>
 
   <h2 class="text-xl font-semibold text-[#fafafa] mt-9 mb-3">Support</h2>
   <p class="text-sm text-[#a1a1aa] leading-relaxed mb-3">{id ? 'Gunakan GitHub Issues untuk bug yang reproducible dan feature request yang masih berada dalam scope. Sebelum membuka issue, cek Operations docs dan existing issues, lalu hapus data sensitif.' : 'Use GitHub Issues for reproducible bugs and in-scope feature requests. Before opening an issue, check Operations docs and existing issues, then remove sensitive data.'}</p>
