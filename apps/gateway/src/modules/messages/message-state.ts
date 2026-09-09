@@ -32,6 +32,9 @@ export function canAdvanceMessageDeliveryEvidence(
   return current === undefined || evidenceRank[next] > evidenceRank[current];
 }
 
-export function canSetTerminalMessageStatus(current: MessageDeliveryStatus, next: Exclude<MessageDeliveryStatus, "pending">): boolean {
+export function canSetTerminalMessageStatus(
+  current: MessageDeliveryStatus,
+  next: Exclude<MessageDeliveryStatus, "pending">,
+): boolean {
   return current === "pending" && (next === "accepted" || next === "rejected");
 }
