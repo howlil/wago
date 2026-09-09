@@ -2,8 +2,20 @@ name: Release Container
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths:
+      - "apps/gateway/**"
+      - "!apps/gateway/**/*.test.ts"
+      - "apps/dashboard/**"
+      - "!apps/dashboard/**/*.test.ts"
+      - "!apps/dashboard/**/*.test.tsx"
+      - "!apps/dashboard/tests/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/release-container.yml"
   workflow_dispatch:
 
 permissions:
@@ -11,7 +23,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: release-container-${{ github.ref }}
+  group: release-container-main
   cancel-in-progress: true
 
 env:
@@ -19,7 +31,7 @@ env:
 
 jobs:
   publish:
-    name: Build and Publish amd64
+    name: Publish GHCR amd64
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -43,7 +55,7 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
-            type=ref,event=tag
+            type=raw,value=main
             type=sha,prefix=sha-
 
       - name: Build and push
