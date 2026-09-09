@@ -1,6 +1,11 @@
 import type { WASocket } from "@whiskeysockets/baileys";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { rememberPendingMessageStatus, resetMessageStatusStoreForTest } from "../messages/message-status-store.js";
+import {
+  markMessageSubmitted,
+  markMessageSubmitting,
+  prepareMessageStatus,
+  resetMessageStatusStoreForTest,
+} from "../messages/message-status-store.js";
 import { resetRecentInboundStoreForTest } from "./recent-inbound-store.js";
 import { registerSocketEvents } from "./socket-events.js";
 
@@ -32,6 +37,12 @@ function register(socket: WASocket, overrides: Record<string, unknown> = {}) {
   });
 }
 
+function seedSubmittedMessage(input: { id: string; providerMessageId: string; to: string; recipientJid?: string }): void {
+  prepareMessageStatus({ id: input.id, to: input.to, ...(input.recipientJid ? { recipientJid: input.recipientJid } : {}) });
+  markMessageSubmitting(input.id);
+  markMessageSubmitted(input.id, input.providerMessageId);
+}
+
 describe("socket contextual inbound events", () => {
   afterEach(() => {
     resetMessageStatusStoreForTest();
@@ -39,7 +50,7 @@ describe("socket contextual inbound events", () => {
   });
 
   it("maps a quoted provider id back to the canonical Wago outbound id", () => {
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "wago-outbound-1",
       providerMessageId: "provider-outbound-1",
       to: "6281234567890@s.whatsapp.net",

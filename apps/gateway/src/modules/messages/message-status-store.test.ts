@@ -16,11 +16,24 @@ vi.mock("../activity/store.js", () => ({
 import {
   getMessageStatus,
   getMessageStatusByProviderId,
-  rememberPendingMessageStatus,
+  markMessageSubmitted,
+  markMessageSubmitting,
+  prepareMessageStatus,
   resetMessageStatusStoreForTest,
   updateMessageDeliveryEvidence,
   updateMessageStatus,
 } from "./message-status-store.js";
+
+function seedSubmittedMessage(input: {
+  id: string;
+  providerMessageId: string;
+  to: string;
+  recipientJid?: string;
+}): void {
+  prepareMessageStatus({ id: input.id, to: input.to, ...(input.recipientJid ? { recipientJid: input.recipientJid } : {}) });
+  markMessageSubmitting(input.id);
+  markMessageSubmitted(input.id, input.providerMessageId);
+}
 
 describe("durable message status store", () => {
   afterEach(() => {
@@ -30,7 +43,7 @@ describe("durable message status store", () => {
   });
 
   it("persists canonical and provider correlation without message content", () => {
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-1",
       providerMessageId: "provider-1",
       to: "6281234567890@s.whatsapp.net",
@@ -51,7 +64,7 @@ describe("durable message status store", () => {
   });
 
   it("enqueues accepted exactly once when a pending message becomes accepted", () => {
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-1",
       providerMessageId: "provider-1",
       to: "6281234567890@s.whatsapp.net",
@@ -69,7 +82,7 @@ describe("durable message status store", () => {
   });
 
   it("promotes delivery evidence monotonically and emits each richer evidence once", () => {
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-evidence",
       providerMessageId: "provider-evidence",
       to: "6281234567890@s.whatsapp.net",
@@ -103,7 +116,7 @@ describe("durable message status store", () => {
   });
 
   it("does not allow a terminal message state to be reversed", () => {
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-2",
       providerMessageId: "provider-2",
       to: "6281234567890@s.whatsapp.net",

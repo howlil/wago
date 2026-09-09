@@ -13,10 +13,7 @@ export {
   markMessageSubmitted,
   markMessageSubmitting,
   prepareMessageStatus,
-  rememberPendingMessageStatus,
-  updateMessageDeliveryEvidence,
   updateMessageDeliveryEvidenceByProviderId,
-  updateMessageStatus,
   updateMessageStatusByProviderId,
 } from "./message-status-store.js";
 export {

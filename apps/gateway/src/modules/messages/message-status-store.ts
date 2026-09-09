@@ -64,18 +64,6 @@ const selectByProviderId = database.prepare("SELECT * FROM outbound_messages WHE
 const selectByDispatchState = database.prepare(
   "SELECT * FROM outbound_messages WHERE status = 'pending' AND dispatch_state = ? ORDER BY created_at ASC",
 );
-const insertPending = database.prepare(`
-  INSERT OR IGNORE INTO outbound_messages (
-    id,
-    provider_message_id,
-    recipient_jid,
-    resolved_jid,
-    status,
-    delivery_evidence,
-    created_at,
-    updated_at
-  ) VALUES (?, ?, ?, ?, 'pending', 'submitted', ?, ?)
-`);
 const insertPrepared = database.prepare(`
   INSERT INTO outbound_messages (
     id,
@@ -232,36 +220,6 @@ export function deletePendingMessageStatus(messageId: string): boolean {
 
 export function listPendingMessagesByDispatchState(dispatchState: MessageDispatchState): StoredMessageStatus[] {
   return (selectByDispatchState.all(dispatchState) as MessageStatusRow[]).map(mapRow);
-}
-
-export function rememberPendingMessageStatus(input: {
-  id: string;
-  providerMessageId: string | null;
-  to: string;
-  recipientJid?: string;
-}): StoredMessageStatus {
-  const nowMs = Date.now();
-  insertPending.run(input.id, input.providerMessageId, input.recipientJid ?? null, input.to, nowMs, nowMs);
-  pruneMessageDiagnostics(nowMs);
-
-  const stored = getMessageStatus(input.id);
-  if (!stored) {
-    throw new Error("Could not persist outbound message diagnostics");
-  }
-
-  void recordActivity({
-    level: "info",
-    category: "messaging",
-    code: "message.queued",
-    title: "Message queued",
-    description: "An outbound message was submitted to the WhatsApp transport.",
-    metadata: {
-      messageId: stored.id,
-      targetJid: stored.to,
-    },
-  });
-
-  return stored;
 }
 
 export function getMessageStatus(messageId: string): StoredMessageStatus | null {

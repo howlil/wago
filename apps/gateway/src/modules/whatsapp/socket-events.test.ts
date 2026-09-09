@@ -2,7 +2,9 @@ import { WAMessageStatus, type WASocket } from "@whiskeysockets/baileys";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getMessageStatus,
-  rememberPendingMessageStatus,
+  markMessageSubmitted,
+  markMessageSubmitting,
+  prepareMessageStatus,
   resetMessageStatusStoreForTest,
 } from "../messages/message-status-store.js";
 import { checkOutboundPolicy, resetOutboundPolicyState } from "../messages/outbound-policy.js";
@@ -37,6 +39,12 @@ function register(socket: WASocket): void {
     resetReconnectAttempt: vi.fn(),
     scheduleReconnect: vi.fn(),
   });
+}
+
+function seedSubmittedMessage(input: { id: string; providerMessageId: string; to: string; recipientJid?: string }): void {
+  prepareMessageStatus({ id: input.id, to: input.to, ...(input.recipientJid ? { recipientJid: input.recipientJid } : {}) });
+  markMessageSubmitting(input.id);
+  markMessageSubmitted(input.id, input.providerMessageId);
 }
 
 describe("socket event wiring", () => {
@@ -202,7 +210,7 @@ describe("outbound message outcomes", () => {
 
   it("marks recipient success and server acceptance evidence on acknowledgement", async () => {
     const { ev } = outcomeSocket();
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-ack",
       providerMessageId: "provider-ack",
       to: resolvedJid,
@@ -228,7 +236,7 @@ describe("outbound message outcomes", () => {
 
   it("treats a receipt as acceptance even when the server ACK event arrives later", async () => {
     const { ev } = outcomeSocket();
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-out-of-order",
       providerMessageId: "provider-out-of-order",
       to: resolvedJid,
@@ -253,7 +261,7 @@ describe("outbound message outcomes", () => {
 
   it("promotes delivery evidence monotonically from delivered to read to played", () => {
     const { ev } = outcomeSocket();
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-receipt",
       providerMessageId: "provider-receipt",
       to: resolvedJid,
@@ -287,7 +295,7 @@ describe("outbound message outcomes", () => {
 
   it("applies recipient cooldown when WhatsApp asynchronously rejects a reach-out", async () => {
     const { ev } = outcomeSocket();
-    rememberPendingMessageStatus({
+    seedSubmittedMessage({
       id: "trace-rejected",
       providerMessageId: "provider-rejected",
       to: resolvedJid,
