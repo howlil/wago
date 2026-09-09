@@ -5,9 +5,9 @@ import type {
   NewChatCapacityStatus,
   PairingResponse,
   QrResponse,
+  WhatsAppStatusResponse as StatusResponse,
   WhatsAppBinding,
   WhatsAppStatus,
-  WhatsAppStatusResponse as StatusResponse,
 } from "@wago/contracts";
 import { requestJson, requestText } from "../../shared/api/client.js";
 
